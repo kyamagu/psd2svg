@@ -1,7 +1,7 @@
 PSD2SVG
 =======
 
-PSD to SVG converter based on ``psd-tools2``_ and ``svgwrite``_.
+PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
 
 .. _`psd-tools2`: https://github.com/kyamagu/psd-tools
 
