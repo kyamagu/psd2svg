@@ -724,8 +724,9 @@ class PSD2SVG(object):
                 color_items = dict(color.items)
                 # b'Nm  ', b'bookID', b'bookKey' fields can exist.
                 return 'rgb({},{},{})'.format(
-                    color_items[b'Rd  '], color_items[b'Grn '],
-                    color_items[b'Bl  '])
+                    int(color_items[b'Rd  '].value),
+                    int(color_items[b'Grn '].value),
+                    int(color_items[b'Bl  '].value))
             else:
                 raise NotImplementedError
         elif b'Grad' in items:
