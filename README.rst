@@ -3,6 +3,10 @@ PSD2SVG
 
 PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
 
+.. image:: https://img.shields.io/travis/kyamagu/psd2svg/master.svg
+   :alt: Build Status
+   :target: https://travis-ci.org/kyamagu/psd2svg
+
 .. _`psd-tools2`: https://github.com/kyamagu/psd-tools
 
 .. _`svgwrite`: https://github.com/mozman/svgwrite
