@@ -1,0 +1,27 @@
+language: python
+python: 3.6
+sudo: false
+branches:
+    only:
+        - master
+        - /^\d\.\d+$/
+
+env:
+    - TOXENV=py27
+    - TOXENV=py36
+
+addons:
+    apt:
+        packages:
+            - libfreetype6-dev
+            - liblcms2-dev
+            - libffi-dev
+
+install:
+    - pip install -U pip wheel tox
+
+script: tox
+
+cache:
+    directories:
+        - $HOME/.cache/pip
