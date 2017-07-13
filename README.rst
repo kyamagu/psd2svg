@@ -3,6 +3,10 @@ PSD2SVG
 
 PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
 
+.. image:: https://img.shields.io/pypi/v/psd2svg.svg
+   :target: https://pypi.python.org/pypi/psd2svg
+   :alt: PyPI Version
+   
 .. image:: https://img.shields.io/travis/kyamagu/psd2svg/master.svg
    :alt: Build Status
    :target: https://travis-ci.org/kyamagu/psd2svg
@@ -52,7 +56,7 @@ to the path specified by ``--resource-prefix``::
 
 To render text in vector stroke::
 
-    psd2svg input.psd output/ --text_mode text
+    psd2svg input.psd output/ --text-mode text
 
 The tool can specify URL instead of file path (S3 requires ``boto3``)::
 
