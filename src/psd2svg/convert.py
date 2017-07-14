@@ -1012,7 +1012,14 @@ class PSD2SVG(object):
                 tspan['text-decoration'] = " ".join(decoration)
 
             if b'FillColor' in span:
-                rgb = [int(c*255) for c in span[b'FillColor'][b'Values'][1:]]
+                if span[b'FillColor'][b'Type'] == 0:
+                    gray = span[b'FillColor'][b'Values'][1]
+                    rgb = (gray, gray, gray)
+                else:
+                    rgb = [int(c*255) for c in
+                           span[b'FillColor'][b'Values'][1:]]
+                if len(rgb) != 3:
+                    raise ValueError('Unsupported FillColor')
                 opacity = span[b'FillColor'][b'Values'][0]
             else:
                 rgb = (0, 0, 0)
