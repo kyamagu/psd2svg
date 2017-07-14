@@ -8,6 +8,7 @@ import psd_tools
 import hashlib
 import numpy as np
 import psd_tools
+from psd_tools.constants import TaggedBlock
 import svgwrite
 import re
 import base64
@@ -1025,33 +1026,33 @@ class PSD2SVG(object):
     def _get_adjustments(self, layer):
         target = None
         blocks = dict(layer._info.tagged_blocks)
+        for key in set.union(TaggedBlock._ADJUSTMENT_KEYS,
+                             TaggedBlock._FILL_KEYS):
+            if key in blocks:
+                target = self._dwg.g()
+                target['class'] = 'adjustment '
+
         if b'brit' in blocks:
             cged = blocks.get(b'CgEd', None)
             if cged:
                 cged = dict(cged.descriptor.items)
-            target = self._dwg.g()
             target['class'] = 'adjustment brightness'
             target['filter'] = self._add_brightness(
                 blocks[b'brit'], cged, layer)
         if b'expA' in blocks:
-            target = self._dwg.g()
             target['class'] = 'adjustment exposure'
             target['filter'] = self._add_exposure(blocks[b'expA'], layer)
         if b'hue2' in blocks or b'hue ' in blocks:
             items = blocks.get(b'hue2', blocks.get(b'hue ', None))
-            target = self._dwg.g()
             target['class'] = 'adjustment hue-saturation'
             target['filter'] = self._add_huesaturation(items, layer)
         if b'levl' in blocks:
-            target = self._dwg.g()
             target['class'] = 'adjustment levels'
             # target['filter'] = self._add_levels(blocks[b'levl'], layer)
         if b'vibA' in blocks:
-            target = self._dwg.g()
             target['class'] = 'adjustment vibrance'
             target['filter'] = self._add_vibrance(blocks[b'vibA'], layer)
         if b'curv' in blocks:
-            target = self._dwg.g()
             target['class'] = 'adjustment curves'
             # target['filter'] = self._add_curves(blocks[b'curv'], layer)
         if target and target['class'].startswith('adjustment'):
