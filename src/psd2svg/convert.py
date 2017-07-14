@@ -727,7 +727,16 @@ class PSD2SVG(object):
                     int(color_items[b'Rd  '].value),
                     int(color_items[b'Grn '].value),
                     int(color_items[b'Bl  '].value))
+            elif color.classID == b'CMYC':
+                color_items = dict(color.items)
+                cmyk = (color_items[b'Cyn '].value,
+                        color_items[b'Mgnt'].value,
+                        color_items[b'Ylw '].value,
+                        color_items[b'Blck'].value)
+                rgb = cmyk2rgb(cmyk)
+                return 'rgb({},{},{})'.format(*map(int, rgb))
             else:
+                logger.error('Unsupported color: {}'.format(color.classID))
                 raise NotImplementedError
         elif b'Grad' in items:
             logger.warning('Unsupported gradient fill')
@@ -1291,3 +1300,9 @@ def _get_text_info(layer):
             'spans': spans,
             'justification': justification,
             'matrix': matrix}
+
+
+def cmyk2rgb(cmyk):
+    return (2.55 * (1.0 - cmyk[0]) * (1.0 - cmyk[3]),
+            2.55 * (1.0 - cmyk[1]) * (1.0 - cmyk[3]),
+            2.55 * (1.0 - cmyk[2]) * (1.0 - cmyk[3]))
