@@ -1200,7 +1200,7 @@ class PSD2SVG(object):
         filt.feColorMatrix('hue', type='saturate',
                            values='{}'.format(saturation),
                            result='saturation')
-        transfer = filt.feComponentTransfer(result=result)
+        transfer = filt.feComponentTransfer('saturation', result=result)
         transfer['color-interpolation-filters'] = 'sRGB'
         if lightness < 0:
             transfer.feFuncR('linear', slope=lightness + 1, intercept=0)
