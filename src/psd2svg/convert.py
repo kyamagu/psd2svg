@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-import os
+import base64
+import hashlib
 import io
 from logging import getLogger
-import psd_tools
-import hashlib
 import numpy as np
+import os
 import psd_tools
 from psd_tools.constants import TaggedBlock
-import svgwrite
 import re
-import base64
+import svgwrite
 
 from .storage import get_storage
 
