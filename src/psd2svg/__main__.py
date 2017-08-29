@@ -31,10 +31,11 @@ def main():
 
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(),
                                       'WARNING'))
-    PSD2SVG.run_convert(
-        args.input, args.output, resource_prefix=args.resource_prefix,
-        text_mode=args.text_mode, export_resource=args.export_resource,
-        overwrite=args.overwrite)
+    converter = PSD2SVG(
+        resource_prefix=args.resource_prefix, text_mode=args.text_mode,
+        export_resource=args.export_resource, overwrite=args.overwrite)
+    converter.load(args.input)
+    converter.convert(args.output)
 
 
 if __name__ == '__main__':
