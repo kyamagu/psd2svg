@@ -982,9 +982,6 @@ class PSD2SVG(object):
 
         newline = False
         for span in text_info['spans']:
-            if span[b'Text'] == '\r':
-                newline = True
-                continue
             value = _safe_utf8(span[b'Text'])
             tspan = self._dwg.tspan(value)
             if newline:
@@ -1032,6 +1029,9 @@ class PSD2SVG(object):
             tspan['fill-opacity'] = opacity
 
             text.add(tspan)
+
+            if len(span[b'Text']) > 0 and span[b'Text'][-1] == '\r':
+                newline = True
         return text
 
     def _get_adjustments(self, layer):
