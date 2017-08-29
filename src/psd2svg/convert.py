@@ -1037,7 +1037,7 @@ class PSD2SVG(object):
                              TaggedBlock._FILL_KEYS):
             if key in blocks:
                 target = self._dwg.g()
-                target['class'] = 'adjustment '
+                target['class'] = 'adjustment'
 
         if b'brit' in blocks:
             cged = blocks.get(b'CgEd', None)
