@@ -6,7 +6,7 @@ PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
 .. image:: https://img.shields.io/pypi/v/psd2svg.svg
    :target: https://pypi.python.org/pypi/psd2svg
    :alt: PyPI Version
-   
+
 .. image:: https://img.shields.io/travis/kyamagu/psd2svg/master.svg
    :alt: Build Status
    :target: https://travis-ci.org/kyamagu/psd2svg
@@ -66,11 +66,11 @@ The tool can specify URL instead of file path (S3 requires ``boto3``)::
 API
 ---
 
-The package contains high-level conversion method ``run_convert``::
+The package contains high-level conversion function ``psd2svg``::
 
-    from psd2svg import PSD2SVG
+    from psd2svg import psd2svg
 
-    PSD2SVG.run_convert('path/to/input.psd', 'path/to/output/')
+    psd2svg('path/to/input.psd', 'path/to/output/')
 
 Test
 ----
