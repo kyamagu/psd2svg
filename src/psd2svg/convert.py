@@ -978,7 +978,7 @@ class PSD2SVG(object):
         for span in text_info['spans']:
             rspans = span[b'Text'].split('\r')
             for index in range(len(rspans)):
-                if len(rspans[index]) == 0:
+                if len(rspans[index]) == 0 and index == len(rspans) - 1:
                     break
                 value = _safe_utf8(rspans[index])
                 tspan = self._dwg.tspan(value)
