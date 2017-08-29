@@ -978,13 +978,18 @@ class PSD2SVG(object):
         for span in text_info['spans']:
             rspans = span[b'Text'].split('\r')
             for index in range(len(rspans)):
-                if len(rspans[index]) == 0 and index == len(rspans) - 1:
-                    break
-                value = _safe_utf8(rspans[index])
+                if index > 0:
+                    newline = True
+                if len(rspans[index]) == 0:
+                    continue
+
+                value = _safe_utf8(rspans[index]).replace(' ', u'\xa0')
+                # Whitespace workaround, because newline is ignored.
                 tspan = self._dwg.tspan(value)
                 if newline:
                     tspan['x'] = 0
                     tspan['dy'] = '1em'
+                    newline = False
 
                 tspan['font-family'] = span[b'Font'][b'Name']
 
@@ -1026,10 +1031,6 @@ class PSD2SVG(object):
                 tspan['fill-opacity'] = opacity
 
                 text.add(tspan)
-                if index == 0 and len(rspans) > 1:
-                    newline = True
-                else:
-                    newline = False
 
         return text
 
