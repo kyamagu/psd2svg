@@ -283,7 +283,8 @@ class PSD2SVG(object):
             mask.add(self._dwg.rect(
                 fill='rgb(0,0,0)', insert=(mask_bbox.x1, mask_bbox.y1),
                 size=(mask_bbox.width, mask_bbox.height)))
-            mask.add(self._dwg.use(last_target.get_iri()))
+            mask.add(self._dwg.use(last_target.get_iri(),
+                filter=self._get_white_filter().get_funciri()))
             mask['color-interpolation'] = 'sRGB'
             self._clip_group = self._dwg.g(mask=mask.get_funciri())
             self._clip_group['class'] = 'clipping-mask'
