@@ -5,4 +5,6 @@ from .storage import *
 
 
 def psd2svg(input_url, output_url='', **kwargs):
-    return PSD2SVG.run_convert(input_url, output_url, **kwargs)
+    converter = PSD2SVG(**kwargs)
+    converter.load(input_url)
+    return converter.convert(output_url)

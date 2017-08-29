@@ -112,12 +112,6 @@ class PSD2SVG(object):
         self.reset_id = reset_id
         self._psd = None
 
-    @classmethod
-    def run_convert(cls, input_url, output_url, **kwargs):
-        converter = cls(**kwargs)
-        converter.load(input_url)
-        return converter.convert(output_url)
-
     def load(self, url):
         storage = get_storage(os.path.dirname(url))
         filename = os.path.basename(url)
@@ -982,56 +976,61 @@ class PSD2SVG(object):
 
         newline = False
         for span in text_info['spans']:
-            value = _safe_utf8(span[b'Text'])
-            tspan = self._dwg.tspan(value)
-            if newline:
-                tspan['x'] = 0
-                tspan['dy'] = '1em'
-                newline = False
+            rspans = span[b'Text'].split('\r')
+            for index in range(len(rspans)):
+                if len(rspans[index]) == 0:
+                    break
+                value = _safe_utf8(rspans[index])
+                tspan = self._dwg.tspan(value)
+                if newline:
+                    tspan['x'] = 0
+                    tspan['dy'] = '1em'
 
-            tspan['font-family'] = span[b'Font'][b'Name']
+                tspan['font-family'] = span[b'Font'][b'Name']
 
-            if int(span[b'Font'][b'Synthetic']) & 1:
-                tspan['font-style'] = 'italic'
-            if int(span[b'Font'][b'Synthetic']) & 2:
-                tspan['font-weight'] = 'bold'
+                if int(span[b'Font'][b'Synthetic']) & 1:
+                    tspan['font-style'] = 'italic'
+                if int(span[b'Font'][b'Synthetic']) & 2:
+                    tspan['font-weight'] = 'bold'
 
-            fontsize = span.get(b'FontSize', 12)  # Not sure default 12...
-            # SVG cannot apply per-letter scaling...
-            if span.get(b'HorizontalScale', None) is not None:
-                fontsize *= span[b'HorizontalScale']
-            tspan['font-size'] = fontsize
-            if span.get(b'Tracking', None):
-                tspan['letter-spacing'] = span[b'Tracking'] / 100
+                fontsize = span.get(b'FontSize', 12)  # Not sure default 12...
+                # SVG cannot apply per-letter scaling...
+                if span.get(b'HorizontalScale', None) is not None:
+                    fontsize *= span[b'HorizontalScale']
+                tspan['font-size'] = fontsize
+                if span.get(b'Tracking', None):
+                    tspan['letter-spacing'] = span[b'Tracking'] / 100
 
-            decoration = []
-            if span.get(b'Underline', False):
-                decoration.append('underline')
-            if span.get(b'Strikethrough', False):
-                decoration.append('line-through')
-            if len(decoration) > 0:
-                tspan['text-decoration'] = " ".join(decoration)
+                decoration = []
+                if span.get(b'Underline', False):
+                    decoration.append('underline')
+                if span.get(b'Strikethrough', False):
+                    decoration.append('line-through')
+                if len(decoration) > 0:
+                    tspan['text-decoration'] = " ".join(decoration)
 
-            if b'FillColor' in span:
-                if span[b'FillColor'][b'Type'] == 0:
-                    gray = span[b'FillColor'][b'Values'][1]
-                    rgb = (gray, gray, gray)
+                if b'FillColor' in span:
+                    if span[b'FillColor'][b'Type'] == 0:
+                        gray = span[b'FillColor'][b'Values'][1]
+                        rgb = (gray, gray, gray)
+                    else:
+                        rgb = [int(c*255) for c in
+                               span[b'FillColor'][b'Values'][1:]]
+                    if len(rgb) != 3:
+                        raise ValueError('Unsupported FillColor')
+                    opacity = span[b'FillColor'][b'Values'][0]
                 else:
-                    rgb = [int(c*255) for c in
-                           span[b'FillColor'][b'Values'][1:]]
-                if len(rgb) != 3:
-                    raise ValueError('Unsupported FillColor')
-                opacity = span[b'FillColor'][b'Values'][0]
-            else:
-                rgb = (0, 0, 0)
-                opacity = 1.0
-            tspan['fill'] = 'rgb({},{},{})'.format(*rgb)
-            tspan['fill-opacity'] = opacity
+                    rgb = (0, 0, 0)
+                    opacity = 1.0
+                tspan['fill'] = 'rgb({},{},{})'.format(*rgb)
+                tspan['fill-opacity'] = opacity
 
-            text.add(tspan)
+                text.add(tspan)
+                if index == 0 and len(rspans) > 1:
+                    newline = True
+                else:
+                    newline = False
 
-            if len(span[b'Text']) > 0 and span[b'Text'][-1] == '\r':
-                newline = True
         return text
 
     def _get_adjustments(self, layer):
