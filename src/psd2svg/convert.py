@@ -983,7 +983,7 @@ class PSD2SVG(object):
                 if len(rspans[index]) == 0:
                     continue
 
-                value = _safe_utf8(rspans[index]).replace(' ', u'\xa0')
+                value = _safe_utf8(rspans[index]).replace(u' ', '\u00a0')
                 # Whitespace workaround, because newline is ignored.
                 tspan = self._dwg.tspan(value)
                 if newline:
