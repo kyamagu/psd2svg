@@ -279,6 +279,10 @@ class PSD2SVG(object):
                 last_stroke = self._current_group.elements.pop()
                 last_target = self._current_group.elements[-1]
             mask = self._dwg.defs.add(self._dwg.mask())
+            mask_bbox = layer.bbox
+            mask.add(self._dwg.rect(
+                fill='rgb(0,0,0)', insert=(mask_bbox.x1, mask_bbox.y1),
+                size=(mask_bbox.width, mask_bbox.height)))
             mask.add(self._dwg.use(last_target.get_iri()))
             mask['color-interpolation'] = 'sRGB'
             self._clip_group = self._dwg.g(mask=mask.get_funciri())
