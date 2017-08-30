@@ -276,11 +276,7 @@ class PSD2SVG(object):
                 last_target = self._current_group.elements[-1]
             mask = self._dwg.defs.add(self._dwg.mask())
             mask_bbox = layer.bbox
-            mask.add(self._dwg.rect(
-                fill='rgb(0,0,0)', insert=(mask_bbox.x1, mask_bbox.y1),
-                size=(mask_bbox.width, mask_bbox.height)))
-            mask.add(self._dwg.use(last_target.get_iri(),
-                filter=self._get_white_filter().get_funciri()))
+            mask.add(self._dwg.use(last_target.get_iri()))
             mask['color-interpolation'] = 'sRGB'
             self._clip_group = self._dwg.g(mask=mask.get_funciri())
             self._clip_group['class'] = 'clipping-mask'
@@ -850,13 +846,18 @@ class PSD2SVG(object):
                 color='rgb{}'.format(color))
         return grad
 
-    def _get_white_filter(self):
+    def _get_white_filter(self, color='white'):
         if not self._white_filter:
             self._white_filter = self._dwg.defs.add(self._dwg.filter())
             self._white_filter['class'] = 'white-filter'
-            self._white_filter.feColorMatrix(
-                'SourceAlpha', type='matrix',
-                values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0")
+            if color == 'white':
+                self._white_filter.feColorMatrix(
+                    'SourceAlpha', type='matrix',
+                    values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0")
+            else:
+                self._white_filter.feColorMatrix(
+                    'SourceAlpha', type='matrix',
+                    values="0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0")
         return self._white_filter
 
     def _get_identity_filter(self):
