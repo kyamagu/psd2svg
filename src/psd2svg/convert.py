@@ -233,6 +233,8 @@ class PSD2SVG(object):
         # Blending options.
         if not layer._info.flags.visible:
             target['visibility'] = 'hidden'
+            if vector_stroke:
+                vector_stroke['visibility'] = 'hidden'
         blend_mode = BLEND_MODE.get(layer._info.blend_mode, 'normal')
         if not blend_mode == 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
@@ -874,25 +876,50 @@ class PSD2SVG(object):
         blocks = layer._tagged_blocks
         if b'vstk' in blocks and (b'vsms' in blocks or b'vmsk' in blocks):
             vstk = dict(blocks[b'vstk'].data.items)
+            # vstk defines bezier curves.
             if vstk.get(b'strokeEnabled').value:
                 vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
-                anchors = [
-                    (p['anchor'][1] * self.width,
-                     p['anchor'][0] * self.height)
-                    for p in vsms.path if p['selector'] in (1, 2)]
-                return self._add_vstk(vstk, anchors, target.get_iri(),
+                return self._add_vstk(vstk, vsms, target.get_iri(),
                                       layer.bbox)
         return None
 
-    def _add_vstk(self, vstk, anchors, target_iri, bbox):
+    def _generate_path(self, vsms, command='C'):
+        # Iterator for SVG path constructor.
+        anchors = [p for p in vsms.path if p['selector'] in (1, 2)]
+
+        # Initial point.
+        yield 'M'
+        yield anchors[0]['anchor'][1] * self.width
+        yield anchors[0]['anchor'][0] * self.height
+        yield command
+
+        # Rest of the points.
+        for p1, p2 in zip(anchors, anchors[1:] + anchors[0:1]):
+            yield p1['control_leaving_knot'][1] * self.width
+            yield p1['control_leaving_knot'][0] * self.height
+            yield p2['control_preceding_knot'][1] * self.width
+            yield p2['control_preceding_knot'][0] * self.height
+            yield p2['anchor'][1] * self.width
+            yield p2['anchor'][0] * self.height
+
+        # Closing if needed.
+        closed = True
+        for p in vsms.path:
+            if p['selector'] == 3:
+                closed = False
+                break
+        if closed:
+            yield 'Z'
+
+    def _add_vstk(self, vstk, vsms, target_iri, bbox):
         line_style = vstk[b'strokeStyleLineAlignment'].value
-        target = self._dwg.polygon(points=anchors, fill='none')
+        target = self._dwg.path(self._generate_path(vsms, 'C'), fill='none')
 
         stroke_width = int(vstk[b'strokeStyleLineWidth'].value)
         if line_style == b'strokeStyleAlignInside':
             clippath = self._dwg.defs.add(self._dwg.clipPath())
             clippath['class'] = 'stroke-inside'
-            clippath.add(self._dwg.polygon(points=anchors))
+            clippath.add(self._dwg.path(self._generate_path(vsms)))
             target['stroke-width'] = stroke_width * 2
             target['clip-path'] = clippath.get_funciri()
         elif line_style == b'strokeStyleAlignOutside':
@@ -901,7 +928,7 @@ class PSD2SVG(object):
             mask.add(self._dwg.rect(
                 insert=(bbox.x1, bbox.y1), size=(bbox.width, bbox.height),
                 fill='white'))
-            mask.add(self._dwg.polygon(points=anchors, fill='black'))
+            mask.add(self._dwg.path(self._generate_path(vsms), fill='black'))
             target['stroke-width'] = stroke_width * 2
             target['mask'] = mask.get_funciri()
         else:
