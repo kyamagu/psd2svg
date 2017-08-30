@@ -987,8 +987,12 @@ class PSD2SVG(object):
                 # Whitespace workaround, because newline is ignored.
                 tspan = self._dwg.tspan(value)
                 if newline:
-                    tspan['x'] = 0
-                    tspan['dy'] = '1em'
+                    if text['direction']:
+                        tspan['y'] = 0
+                        tspan['dx'] = '-1em'
+                    else:
+                        tspan['x'] = 0
+                        tspan['dy'] = '1em'
                     newline = False
 
                 tspan['font-family'] = span[b'Font'][b'Name']
