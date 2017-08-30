@@ -342,6 +342,8 @@ class PSD2SVG(object):
                     target = container
         elif _is_shape_layer(layer._info):
             blocks = layer._tagged_blocks
+            from IPython.lib.pretty import pprint
+            pprint(blocks)
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
                 (p['anchor'][1] * self.width,
@@ -987,7 +989,7 @@ class PSD2SVG(object):
                 # Whitespace workaround, because newline is ignored.
                 tspan = self._dwg.tspan(value)
                 if newline:
-                    if text['direction']:
+                    if text_info['direction']:
                         tspan['y'] = 0
                         tspan['dx'] = '-1em'
                     else:
