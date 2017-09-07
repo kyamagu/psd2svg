@@ -6,6 +6,7 @@ from psd2svg.converter.adjustments import AdjustmentsConverter
 from psd2svg.converter.core import LayerConverter
 from psd2svg.converter.effects import EffectsConverter
 from psd2svg.converter.io import PSDReader, SVGWriter
+from psd2svg.converter.shape import ShapeConverter
 from psd2svg.converter.text import TextConverter
 from psd2svg.version import __version__
 
@@ -20,7 +21,7 @@ def psd2svg(input_url, output_url='', **kwargs):
 
 
 class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
-              PSDReader, SVGWriter, TextConverter):
+              PSDReader, ShapeConverter, SVGWriter, TextConverter):
     """PSD to SVG converter
 
     input_url - url or file-like object to input file
