@@ -26,6 +26,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+.python-version
 .tox/
 .coverage
 .cache
@@ -53,3 +54,6 @@ docs/_build/
 # macOS
 .DS_Store
 *~
+
+# Other
+tmp/
