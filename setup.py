@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from setuptools import setup
-
 import os
 import sys
 
@@ -38,7 +37,7 @@ setup(
     author_email='KotaYamaguchi1984@gmail.com',
     license='MIT License',
     package_dir={'': 'src'},
-    packages=['psd2svg'],
+    packages=['psd2svg', 'psd2svg.converter', 'psd2svg.utils'],
     install_requires=[
         'pillow',
         'svgwrite',

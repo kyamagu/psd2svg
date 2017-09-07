@@ -1,4 +1,4 @@
-from psd2svg import get_storage
+from psd2svg.storage import get_storage
 
 
 def _read_functions(storage, key):
