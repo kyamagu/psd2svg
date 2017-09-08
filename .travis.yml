@@ -6,10 +6,14 @@ branches:
         - master
         - /^\d\.\d+$/
 
-env:
-    - TOXENV=py27
-    - TOXENV=py35
-    - TOXENV=py36
+matrix:
+    include:
+        - python: 2.7.13
+          env: TOXENV=py27
+        - python: 3.5
+          env: TOXENV=py35
+        - python: 3.6
+          env: TOXENV=py36
 
 addons:
     apt:
