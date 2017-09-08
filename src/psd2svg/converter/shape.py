@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from logging import getLogger
+from psd_tools.constants import TaggedBlock
 from psd2svg.converter.constants import BLEND_MODE2
 
 
@@ -11,11 +12,15 @@ class ShapeConverter(object):
 
     def _get_vector_stroke(self, layer, target):
         blocks = layer._tagged_blocks
-        if b'vstk' in blocks and (b'vsms' in blocks or b'vmsk' in blocks):
-            vstk = dict(blocks[b'vstk'].data.items)
+        if TaggedBlock.VECTOR_STROKE_DATA in blocks and (
+                TaggedBlock.VECTOR_MASK_SETTING2 in blocks or
+                TaggedBlock.VECTOR_MASK_SETTING1 in blocks):
+            vstk = dict(blocks[TaggedBlock.VECTOR_STROKE_DATA].data.items)
             # vstk defines bezier curves.
             if vstk.get(b'strokeEnabled').value:
-                vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
+                vsms = blocks.get(
+                    TaggedBlock.VECTOR_MASK_SETTING2,
+                    blocks.get(TaggedBlock.VECTOR_MASK_SETTING1))
                 return self._add_vstk(vstk, vsms, target.get_iri(),
                                       layer.bbox)
         return None
