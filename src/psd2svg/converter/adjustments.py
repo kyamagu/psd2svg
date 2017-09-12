@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+
+import numpy as np
+import svgwrite
 from logging import getLogger
 from psd_tools.constants import TaggedBlock
 
+from psd2svg.utils.xml import safe_utf8
 
 logger = getLogger(__name__)
 
@@ -42,7 +46,7 @@ class AdjustmentsConverter(object):
             target['class'] = 'adjustment curves'
             # target['filter'] = self._add_curves(blocks[b'curv'], layer)
         if target and target['class'].startswith('adjustment'):
-            target.set_desc(title=_safe_utf8(layer.name))
+            target.set_desc(title=safe_utf8(layer.name))
             if layer._info.clipping:
                 element = self._current_group.elements[-1]
                 if not isinstance(element, svgwrite.container.Defs) and \
