@@ -10,7 +10,8 @@ FIXTURES = [
 ]
 
 EXTERNAL_FIXTURES = [
-    p for p in glob('/Users/a14824/projects/psd-tools/tests/psd_files/*.psd')
+    p for p in glob(os.path.join(
+        os.getenv('PSD2SVG_FIXTURES_PATH', ''), '*.psd'))
     ]
 
 @pytest.mark.parametrize('psd_file', FIXTURES)
