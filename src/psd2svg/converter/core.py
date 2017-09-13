@@ -114,7 +114,8 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif _has_visible_pixels(layer._info):
+        elif layer.kind in ('pixel', 'type', 'shape') and (
+            layer.bbox.width > 0 and layer.bbox.height > 0):
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -138,7 +139,7 @@ class LayerConverter(object):
                     container.add(text)
                     container['class'] = 'text-container'
                     target = container
-        elif _is_shape_layer(layer._info):
+        elif layer.kind == 'shape':
             blocks = layer._tagged_blocks
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
@@ -161,7 +162,7 @@ class LayerConverter(object):
         return target
 
     def _add_mask_if_exist(self, layer):
-        mask_data = layer.mask_data
+        mask_data = layer.mask
         if not mask_data or not mask_data.is_valid or \
                 mask_data.mask_data.flags.mask_disabled:
             return None

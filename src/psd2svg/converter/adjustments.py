@@ -74,7 +74,7 @@ class AdjustmentsConverter(object):
         # This applies masked adjustments to the graphics element.
         # Note that SVG filter cannot be applied to the background.
         #
-        mask_data = layer.mask_data
+        mask_data = layer.mask
         if not mask_data or not mask_data.is_valid or \
                 mask_data.mask_data.flags.mask_disabled:
             return None
