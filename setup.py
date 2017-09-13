@@ -42,7 +42,7 @@ setup(
         'pillow',
         'svgwrite',
         'numpy',
-        'psd-tools2>=1.5',
+        'psd-tools2>=1.6.1',
         'future',
     ],
     include_package_data=True,
