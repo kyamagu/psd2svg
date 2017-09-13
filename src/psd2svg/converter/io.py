@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 import base64
 import hashlib
 import io
@@ -7,6 +7,7 @@ from logging import getLogger
 import os
 import psd_tools
 from psd2svg.storage import get_storage
+import xml.dom.minidom as minidom
 
 
 logger = getLogger(__name__)
@@ -49,9 +50,13 @@ class SVGWriter(object):
         url = self._output.url(self._output_file)
         logger.info('Saving {}'.format(url))
         with io.StringIO() as f:
-            self._dwg.write(f, pretty=True)
-            self._output.put(self._output_file,
-                             f.getvalue().encode('utf-8'))
+            # svgwrite's pretty option is not compatible with Python 2.7
+            # unicode. Here we manually encode utf-8.
+            self._dwg.write(f, pretty=False)
+            xml_string = f.getvalue().encode('utf-8')
+            xml_tree = minidom.parseString(xml_string)
+            pretty_string = xml_tree.toprettyxml(indent='  ').encode('utf-8')
+            self._output.put(self._output_file, pretty_string)
         return url
 
     def _get_image_href(self, image, fmt='png', icc_profile=None):

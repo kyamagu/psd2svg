@@ -22,6 +22,13 @@ addons:
             - liblcms2-dev
             - libffi-dev
 
+git:
+    lfs_skip_smudge: true
+
+before_install:
+    - echo -e "machine github.com\n login 30cba336a070ec8129202e78b5b1cf9b9d73237d" >> ~/.netrc
+    - git lfs pull
+
 install:
     - pip install -U pip wheel tox
 
