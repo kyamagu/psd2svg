@@ -122,8 +122,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif layer.kind in ('pixel', 'type', 'shape') and (
-            layer.bbox.width > 0 and layer.bbox.height > 0):
+        elif _has_visible_pixels(layer._info):
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -147,7 +146,7 @@ class LayerConverter(object):
                     container.add(text)
                     container['class'] = 'text-container'
                     target = container
-        elif layer.kind == 'shape':
+        elif _is_shape_layer(layer._info):
             blocks = layer._tagged_blocks
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
