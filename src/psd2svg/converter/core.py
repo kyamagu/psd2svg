@@ -16,6 +16,8 @@ class LayerConverter(object):
     def _add_group(self, layers):
         for layer in reversed(layers):
             self._add_layer(layer)
+            for clip in reversed(layer.clip_layers):
+                self._add_layer(clip)
 
     def _add_layer(self, layer):
         target = self._get_target(layer)
