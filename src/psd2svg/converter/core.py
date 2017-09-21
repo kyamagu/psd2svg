@@ -145,7 +145,7 @@ class LayerConverter(object):
             anchors = [
                 (p['anchor'][1] * self.width,
                  p['anchor'][0] * self.height)
-                for p in vsms.path if p['selector'] in (1, 2)]
+                for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
             fill = 'none'
             if b'SoCo' in blocks:
                 items = dict(blocks[b'SoCo'].data.items)

@@ -27,7 +27,7 @@ class ShapeConverter(object):
 
     def _generate_path(self, vsms, command='C'):
         # Iterator for SVG path constructor.
-        anchors = [p for p in vsms.path if p['selector'] in (1, 2)]
+        anchors = [p for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
 
         # Initial point.
         yield 'M'
