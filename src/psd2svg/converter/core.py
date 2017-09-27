@@ -14,6 +14,8 @@ class LayerConverter(object):
     def _add_group(self, layers):
         for layer in reversed(layers):
             self._add_layer(layer)
+            for clip in reversed(layer.clip_layers):
+                self._add_layer(clip)
 
     def _add_layer(self, layer):
         target = self._get_target(layer)
@@ -76,7 +78,13 @@ class LayerConverter(object):
                 last_target = self._current_group.elements[-1]
             mask = self._dwg.defs.add(self._dwg.mask())
             mask_bbox = layer.bbox
-            mask.add(self._dwg.use(last_target.get_iri()))
+
+            # import psd2svg.utils.debug_info as debug_info
+            # debug_info.add_debug_info(mask)
+            use = self._dwg.use(last_target.get_iri())
+            use['filter'] = self._get_white_filter().get_funciri()
+            mask.add(use)
+
             mask['color-interpolation'] = 'sRGB'
             self._clip_group = self._dwg.g(mask=mask.get_funciri())
             self._clip_group['class'] = 'clipping-mask'
@@ -114,8 +122,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif layer.kind in ('pixel', 'type', 'shape') and (
-            layer.bbox.width > 0 and layer.bbox.height > 0):
+        elif _has_visible_pixels(layer._info):
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -139,13 +146,13 @@ class LayerConverter(object):
                     container.add(text)
                     container['class'] = 'text-container'
                     target = container
-        elif layer.kind == 'shape':
+        elif _is_shape_layer(layer._info):
             blocks = layer._tagged_blocks
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
                 (p['anchor'][1] * self.width,
                  p['anchor'][0] * self.height)
-                for p in vsms.path if p['selector'] in (1, 2)]
+                for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
             fill = 'none'
             if b'SoCo' in blocks:
                 items = dict(blocks[b'SoCo'].data.items)
