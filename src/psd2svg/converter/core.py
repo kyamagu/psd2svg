@@ -150,10 +150,7 @@ class LayerConverter(object):
                 (p['anchor'][1] * self.width,
                  p['anchor'][0] * self.height)
                 for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
-            fill = 'none'
-            if b'SoCo' in blocks:
-                items = dict(blocks[b'SoCo'].data.items)
-                fill = self._get_color_in_item(items)
+            fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
             target.set_desc(title=safe_utf8(layer.name))
         else:
