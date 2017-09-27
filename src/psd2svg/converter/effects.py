@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import numpy as np
 import svgwrite
+from psd_tools.constants import TaggedBlock
 from psd_tools.decoder.actions import List, Descriptor
 from psd2svg.converter.constants import BLEND_MODE2
 from psd2svg.utils.color import cmyk2rgb
@@ -369,6 +370,17 @@ class EffectsConverter(object):
         else:
             logger.error('Unknown color in items: {}'.format(items.keys()))
             raise NotImplementedError
+
+    def _get_fill(self, layer):
+        blocks = layer._tagged_blocks
+        if b'PtFl' in blocks:  # TODO implement
+            logger.warning('Unsupported pattern fill')
+            return 'none'
+        for key in TaggedBlock._FILL_KEYS:
+            if key in blocks:
+                items = dict(blocks[key].data.items)
+                return self._get_color_in_item(items)
+        return 'none'
 
     def _make_pattern(self, items, insert=(0, 0)):
         pattern_id = dict(items[b'Ptrn'].items)[b'Idnt'].value
