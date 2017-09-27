@@ -2,6 +2,10 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import psd_tools
+from psd_tools import BBox
+from psd_tools.constants import TaggedBlock
+from psd_tools.user_api.psd_image import _VisibleLayer
+
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
 
@@ -14,6 +18,8 @@ class LayerConverter(object):
     def _add_group(self, layers):
         for layer in reversed(layers):
             self._add_layer(layer)
+            for clip in reversed(layer.clip_layers):
+                self._add_layer(clip)
 
     def _add_layer(self, layer):
         target = self._get_target(layer)
@@ -114,7 +120,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif layer.kind in ('pixel', 'type', 'shape') and (
+        elif isinstance(layer, _VisibleLayer) and (
             layer.bbox.width > 0 and layer.bbox.height > 0):
             # Regular pixel layer.
             target = self._dwg.image(
@@ -145,12 +151,16 @@ class LayerConverter(object):
             anchors = [
                 (p['anchor'][1] * self.width,
                  p['anchor'][0] * self.height)
-                for p in vsms.path if p['selector'] in (1, 2)]
-            fill = 'none'
-            if b'SoCo' in blocks:
-                items = dict(blocks[b'SoCo'].data.items)
-                fill = self._get_color_in_item(items)
+                for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
+            fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
+            target.set_desc(title=safe_utf8(layer.name))
+        elif any(TaggedBlock.is_fill_key(key) for key in layer._tagged_blocks.keys()):
+            record = layer._info
+            bbox = BBox(record.left, record.top, record.right, record.bottom)
+            target = self._dwg.rect(
+                insert=(bbox.x1, bbox.y1), size=(bbox.width, bbox.height),
+                fill=self._get_fill(layer))
             target.set_desc(title=safe_utf8(layer.name))
         else:
             target = self._get_adjustments(layer)
