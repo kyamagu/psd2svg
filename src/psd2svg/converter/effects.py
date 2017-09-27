@@ -370,6 +370,13 @@ class EffectsConverter(object):
             logger.error('Unknown color in items: {}'.format(items.keys()))
             raise NotImplementedError
 
+    def _get_fill(self, layer):
+        blocks = layer._tagged_blocks
+        if b'SoCo' in blocks:
+            items = dict(blocks[b'SoCo'].data.items)
+            return self._get_color_in_item(items)
+        return 'none'
+
     def _make_pattern(self, items, insert=(0, 0)):
         pattern_id = dict(items[b'Ptrn'].items)[b'Idnt'].value
         patt = self._psd.patterns.get(pattern_id, None)
