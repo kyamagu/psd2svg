@@ -2,6 +2,8 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import psd_tools
+from psd_tools.user_api.psd_image import _VisibleLayer
+
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
 
@@ -114,7 +116,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif layer.kind in ('pixel', 'type', 'shape') and (
+        elif isinstance(layer, _VisibleLayer) and (
             layer.bbox.width > 0 and layer.bbox.height > 0):
             # Regular pixel layer.
             target = self._dwg.image(
