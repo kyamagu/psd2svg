@@ -89,3 +89,4 @@ Notes
 * Smart object filters are not implemented.
 * Browser support: SVG rendering quality greatly differs depending on the
   browser. Chrome tends to be the best quality.
+* APIs of this tool is NOT thread-safe.
