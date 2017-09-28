@@ -35,8 +35,12 @@ class ShapeConverter(object):
         yield anchors[0]['anchor'][0] * self.height
         yield command
 
+        # Closed path or open path
+        closed = any(p['selector'] == 0 for p in vsms.path)
+        points = zip(anchors, anchors[1:] + anchors[0:1]) if closed else zip(anchors, anchors[1:])
+
         # Rest of the points.
-        for p1, p2 in zip(anchors, anchors[1:] + anchors[0:1]):
+        for p1, p2 in points:
             yield p1['control_leaving_knot'][1] * self.width
             yield p1['control_leaving_knot'][0] * self.height
             yield p2['control_preceding_knot'][1] * self.width
@@ -44,12 +48,6 @@ class ShapeConverter(object):
             yield p2['anchor'][1] * self.width
             yield p2['anchor'][0] * self.height
 
-        # Closing if needed.
-        closed = True
-        for p in vsms.path:
-            if p['selector'] == 3:
-                closed = False
-                break
         if closed:
             yield 'Z'
 
