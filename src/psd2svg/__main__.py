@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 import argparse
 import logging
-from .convert import PSD2SVG
+from psd2svg import PSD2SVG
 
 
 def main():
