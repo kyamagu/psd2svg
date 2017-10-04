@@ -82,7 +82,11 @@ class LayerConverter(object):
                 last_target = self._current_group.elements[-1]
             mask = self._dwg.defs.add(self._dwg.mask())
             mask_bbox = layer.bbox
-            mask.add(self._dwg.use(last_target.get_iri()))
+
+            use = self._dwg.use(last_target.get_iri())
+            use['filter'] = self._get_white_filter().get_funciri()
+            mask.add(use)
+
             mask['color-interpolation'] = 'sRGB'
             self._clip_group = self._dwg.g(mask=mask.get_funciri())
             self._clip_group['class'] = 'clipping-mask'
