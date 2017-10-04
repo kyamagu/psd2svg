@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 from psd2svg.converter.constants import JUSTIFICATIONS
+from psd2svg.utils.color import cmyk2rgb
 from psd2svg.utils.xml import safe_utf8
 
 
@@ -84,10 +85,17 @@ class TextConverter(object):
                     if span[b'FillColor'][b'Type'] == 0:
                         gray = span[b'FillColor'][b'Values'][1]
                         rgb = (gray, gray, gray)
-                    else:
+                    elif span[b'FillColor'][b'Type'] == 1:
                         rgb = [int(c*255) for c in
                                span[b'FillColor'][b'Values'][1:]]
-                    if len(rgb) != 3:
+                        if len(rgb) != 3:
+                            raise ValueError('Unsupported FillColor')
+                    elif span[b'FillColor'][b'Type'] == 2:
+                        cmyk = span[b'FillColor'][b'Values'][1:]
+                        if len(cmyk) != 4:
+                            raise ValueError('Unsupported FillColor')
+                        rgb = [int(round(c * 100)) for c in cmyk2rgb(cmyk)]
+                    else:
                         raise ValueError('Unsupported FillColor')
                     opacity = span[b'FillColor'][b'Values'][0]
                 else:
