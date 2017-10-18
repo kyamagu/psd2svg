@@ -24,6 +24,10 @@ Use ``pip`` to install::
 
 To use AWS S3 storage backend::
 
+    pip install psd2svg[s3]
+
+or::
+
     pip install boto3
 
 Usage

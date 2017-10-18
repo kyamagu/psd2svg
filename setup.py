@@ -45,6 +45,10 @@ setup(
         'psd-tools2>=1.6.3',
         'future',
     ],
+    extras_require = {
+        's3': [
+            'boto3']
+    },
     include_package_data=True,
     entry_points={
         'console_scripts': ['psd2svg=psd2svg.__main__:main']
