@@ -23,6 +23,8 @@ def get_storage(dirname, **kwargs):
         return FileSystemStorage(dirname, **kwargs)
     elif result.scheme == 's3':
         return S3Storage(result.netloc, result.path, **kwargs)
+    elif result.scheme == 'hdfs':
+        return HdfsStorage(result.netloc, result.path, **kwargs)
     else:
         return UrlStorage(dirname, **kwargs)
 
@@ -159,6 +161,53 @@ class S3Storage(_BaseStorage):
     def url(self, path=''):
         return ('s3://' + self.bucket.name + '/' +
                 os.path.normpath(os.path.join(self.key_prefix, path)))
+
+
+class HdfsStorage(_BaseStorage):
+    def __init__(self, namenode, path, use_trash=False, effective_user=None, use_sasl=True,
+                 hdfs_namenode_principal='hdfs', use_datanode_hostname=False):
+        from snakebite.client import HAClient
+        from snakebite.namenode import Namenode
+        self.path = path
+        namenodes = [Namenode(namenode)]
+        self._client = HAClient(
+            namenodes,
+            use_trash=use_trash,
+            effective_user=effective_user,
+            use_sasl=use_sasl,
+            hdfs_namenode_principal=hdfs_namenode_principal,
+            use_datanode_hostname=use_datanode_hostname
+        )
+
+    @contextmanager
+    def open(self, filename, mode='rb', **kwargs):
+        path = '{0}/{1}'.format(self.path, filename)
+        if mode.startswith('r'):
+            stream = self._hdfs_file_stream(path)
+            try:
+                yield stream
+            finally:
+                stream.close()
+        elif mode.startswith('w'):
+            raise NotImplementedError
+        else:
+            raise ValueError('Unsupported mode {}'.format(mode))
+
+    def _hdfs_file_stream(self, path):
+        try:
+            from cStringIO import StringIO
+        except:
+            from StringIO import StringIO
+        generator = self._client.cat([path]).next()
+        buf = StringIO()
+        for i in generator:
+            buf.write(i)
+        buf.seek(0)
+        return buf
+
+    def get(self, path, **kwargs):
+        with self._hdfs_file_stream(path) as f:
+            return f.getvalue()
 
 
 class UrlStorage(_BaseStorage):
