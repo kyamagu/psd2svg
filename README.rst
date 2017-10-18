@@ -30,6 +30,10 @@ or::
 
     pip install boto3
 
+To use HDFS storage backend::
+
+  pip install psd2svg[hdfs,kerberos]
+
 Usage
 -----
 
@@ -94,3 +98,5 @@ Notes
 * Browser support: SVG rendering quality greatly differs depending on the
   browser. Chrome tends to be the best quality.
 * APIs of this tool is NOT thread-safe.
+* To use HDFS storage backend, Python 2.7 environment is needed
+  and should be Kerberos-enabled and only read access is available.

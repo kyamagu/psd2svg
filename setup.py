@@ -46,6 +46,11 @@ setup(
         'future',
     ],
     extras_require = {
+        'hdfs': [
+            'snakebite'],
+        'kerberos': [
+            'python-krbV',
+            'sasl'],
         's3': [
             'boto3']
     },
