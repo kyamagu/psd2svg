@@ -87,6 +87,13 @@ Invoke tox::
 
     tox
 
+Publish
+-------
+
+Execute the following command::
+
+  make publish
+
 Notes
 -----
 
