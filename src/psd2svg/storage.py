@@ -156,7 +156,7 @@ class S3Storage(_BaseStorage):
 
     def list(self):
         for obj in self.bucket.objects.filter(Prefix=self.key_prefix):
-            yield obj.key.lstrip(self.key_prefix).lstrip('/')
+            yield obj.key.replace(self.key_prefix, "").lstrip('/')
 
     def url(self, path=''):
         return ('s3://' + self.bucket.name + '/' +
