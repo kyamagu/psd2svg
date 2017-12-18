@@ -30,7 +30,7 @@ def test_input_psd(tmpdir, psd_file):
 @pytest.mark.parametrize('psd_file', FIXTURES[0:1])
 def test_input_layer(tmpdir, psd_file):
     psd = PSDImage.load(psd_file)
-    assert psd2svg(psd.layers[1]).startswith(b"<")
+    assert psd2svg(psd.layers[0]).startswith(b"<")
 
 
 @pytest.mark.parametrize('psd_file', FIXTURES[0:1])
