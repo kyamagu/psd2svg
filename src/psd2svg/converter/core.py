@@ -136,6 +136,7 @@ class LayerConverter(object):
 
             text = self._get_text(layer)
             if text:
+                text['class'] = 'text-text'
                 if self.text_mode == 'text-only':
                     text.set_desc(title=safe_utf8(layer.name))
                     target = text

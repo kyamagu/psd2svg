@@ -66,7 +66,7 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             viewBox="0 0 {} {}".format(self.width, self.height))
 
         if self.text_mode in ('image', 'image-only'):
-            stylesheet = 'text { display: none; }'
+            stylesheet = '.text-text { display: none; }'
         elif self.text_mode in ('text', 'text-only'):
             stylesheet = '.text-image { display: none; }'
         self._dwg.defs.add(self._dwg.style(stylesheet))
