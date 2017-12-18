@@ -1,3 +1,4 @@
+from builtins import str
 import os
 import pytest
 import io
@@ -18,7 +19,7 @@ def test_convert(tmpdir, psd_file):
 @pytest.mark.parametrize('psd_file', FIXTURES[0:1])
 def test_input_io(tmpdir, psd_file):
     with open(psd_file, "rb") as f:
-        assert isinstance(psd2svg(f), bytes)
+        assert isinstance(psd2svg(f), str)
 
 
 @pytest.mark.parametrize('psd_file', FIXTURES[0:1])
@@ -30,10 +31,10 @@ def test_input_psd(tmpdir, psd_file):
 @pytest.mark.parametrize('psd_file', FIXTURES[2:3])
 def test_input_layer(tmpdir, psd_file):
     psd = PSDImage.load(psd_file)
-    assert psd2svg(psd.layers[0]).startswith(b"<")
+    assert psd2svg(psd.layers[0]).startswith("<")
 
 
 @pytest.mark.parametrize('psd_file', FIXTURES[0:1])
 def test_output_io(tmpdir, psd_file):
-    with io.BytesIO() as f:
+    with io.StringIO() as f:
         assert f == psd2svg(psd_file, f)
