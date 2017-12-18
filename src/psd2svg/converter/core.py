@@ -61,7 +61,8 @@ class LayerConverter(object):
             target = self._add_effects(effects, layer, target, fill_opacity,
                                        interior_blend_mode)
 
-        if layer._info.clipping and self._clip_group:
+        if (layer != self._input_layer and
+            layer._info.clipping and self._clip_group):
             self._clip_group.add(target)
 
             # Acutally clipping with mask and mix-blend-mode does not
@@ -72,7 +73,7 @@ class LayerConverter(object):
             if not self._clbl:
                 self._clip_group.attribs['style'] += '; isolation: isolate;'
 
-        elif layer._info.clipping:
+        elif layer != self._input_layer and layer._info.clipping:
             # Convert the last target to a clipping mask
             last_stroke = None
             last_target = self._current_group.elements[-1]
