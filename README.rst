@@ -86,7 +86,7 @@ The package contains high-level conversion function ``psd2svg``:
 
     # Stream IO.
     with open('input.psd', 'rb') as fi:
-        with open('output.svg', 'wb') as fo:
+        with open('output.svg', 'w') as fo:
             psd2svg(fi, fo)
 
     # psd_tools IO.
