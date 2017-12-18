@@ -81,7 +81,7 @@ class SVGWriter(object):
         if self._output_file:
             url = self._output.url(self._output_file)
             logger.info('Saving {}'.format(url))
-            self._output.put(self._output_file, pretty_string)
+            self._output.put(self._output_file, pretty_string.encode('utf-8'))
             return url
         elif self._output:
             self._output.write(pretty_string)
@@ -97,7 +97,7 @@ class SVGWriter(object):
             xml_string = f.getvalue().encode('utf-8')
 
         xml_tree = minidom.parseString(xml_string)
-        return xml_tree.toprettyxml(indent='  ').encode('utf-8')
+        return xml_tree.toprettyxml(indent='  ')
 
     def _get_image_href(self, image, fmt='png', icc_profile=None):
         output = io.BytesIO()
