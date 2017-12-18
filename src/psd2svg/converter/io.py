@@ -18,13 +18,16 @@ class PSDReader(object):
     def _load(self, input_data):
         if hasattr(input_data, "read"):
             self._load_stream(input_data)
+            self._layer = None
         elif isinstance(input_data, PSDImage):
             self._load_psd(input_data)
+            self._layer = None
         elif isinstance(input_data, _RawLayer):
             self._load_psd(input_data._psd)
             self._layer = input_data
         else:
             self._load_storage(input_data)
+            self._layer = None
 
     def _load_storage(self, url):
         storage = get_storage(os.path.dirname(url))
