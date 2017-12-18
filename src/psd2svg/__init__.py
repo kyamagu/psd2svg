@@ -40,9 +40,9 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self.overwrite = overwrite
         self.reset_id = reset_id
         self._psd = None
-        self._layer = None
+        self._input_layer = None
 
-    def convert(self, input, output=None):
+    def convert(self, input, output=None, layer_view=True):
         self._load(input)
         self._set_output(output)
 
@@ -57,9 +57,16 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self._white_filter = None
         self._identity_filter = None
 
-        self._dwg = svgwrite.Drawing(
-            size=(self.width, self.height),
-            viewBox="0 0 {} {}".format(self.width, self.height))
+        if layer_view and self._input_layer and self._input_layer.bbox:
+            bbox = self._input_layer.bbox
+            self._dwg = svgwrite.Drawing(
+                size=(bbox.width, bbox.height),
+                viewBox="{} {} {} {}".format(
+                    bbox.x1, bbox.y1, bbox.width, bbox.height))
+        else:
+            self._dwg = svgwrite.Drawing(
+                size=(self.width, self.height),
+                viewBox="0 0 {} {}".format(self.width, self.height))
 
         if self.text_mode in ('image', 'image-only'):
             stylesheet = '.text-text { display: none; }'
@@ -69,8 +76,8 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
 
         # Add layers.
         self._current_group = self._dwg
-        if self._layer:
-            self._add_group([self._layer])
+        if self._input_layer:
+            self._add_group([self._input_layer])
         else:
             self._add_group(self._psd.layers)
             self._add_photoshop_view()
