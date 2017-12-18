@@ -14,18 +14,17 @@ from psd2svg.version import __version__
 logger = getLogger(__name__)
 
 
-def psd2svg(input_url, output_url='', **kwargs):
+def psd2svg(input, output=None, **kwargs):
     converter = PSD2SVG(**kwargs)
-    converter.load(input_url)
-    return converter.convert(output_url)
+    return converter.convert(input, output)
 
 
 class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
               PSDReader, ShapeConverter, SVGWriter, TextConverter):
     """PSD to SVG converter
 
-    input_url - url or file-like object to input file
-    output_url - url to export svg
+    input_url - url, file-like object, PSDImage, or any of its layer.
+    output_url - url or file-like object to export svg. if None, return data.
     text_mode - option to switch text rendering (default 'image')
       * 'image' use Photoshop's bitmap
       * 'text' use SVG text
@@ -41,17 +40,14 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self.overwrite = overwrite
         self.reset_id = reset_id
         self._psd = None
+        self._layer = None
 
-    def load(self, url):
-        self._load(url)
+    def convert(self, input, output=None):
+        self._load(input)
+        self._set_output(output)
 
-    def load_stream(self, stream):
-        self._load_stream(stream)
-
-    def convert(self, output_url):
-        self._set_output(output_url)
-
-        if not self.overwrite and self._output.exists(self._output_file):
+        if (not self.overwrite and self._output_file and
+            self._output.exists(self._output_file)):
             url = self._output.url(self._output_file)
             logger.warning('File exists: {}'.format(url))
             return url
@@ -73,8 +69,11 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
 
         # Add layers.
         self._current_group = self._dwg
-        self._add_group(self._psd.layers)
-        self._add_photoshop_view()
+        if self._layer:
+            self._add_group([self._layer])
+        else:
+            self._add_group(self._psd.layers)
+            self._add_photoshop_view()
 
         return self._save_svg()
 

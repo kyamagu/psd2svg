@@ -74,11 +74,31 @@ The tool can specify URL instead of file path (S3 requires ``boto3``)::
 API
 ---
 
-The package contains high-level conversion function ``psd2svg``::
+
+The package contains high-level conversion function ``psd2svg``:
+
+.. code-block:: python
 
     from psd2svg import psd2svg
 
+    # File IO.
     psd2svg('path/to/input.psd', 'path/to/output/')
+
+    # Stream IO.
+    with open('input.psd', 'rb') as fi:
+        with open('output.svg', 'wb') as fo:
+            psd2svg(fi, fo)
+
+    # psd_tools IO.
+    from psd_tools import PSDImage
+    psd = PSDImage.load('path/to/input.psd')
+    svg = psd2svg(psd)
+    print(svg)
+
+    # Additionally, individual layers can be rendered.
+    layer_svg = psd2svg(psd.layers[3])
+    print(layer_svg)
+
 
 Test
 ----
