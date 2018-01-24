@@ -62,7 +62,7 @@ class LayerConverter(object):
                                        interior_blend_mode)
 
         if (layer != self._input_layer and
-            layer._info.clipping and self._clip_group):
+                layer._info.clipping and self._clip_group):
             self._clip_group.add(target)
 
             # Acutally clipping with mask and mix-blend-mode does not
@@ -126,7 +126,7 @@ class LayerConverter(object):
             self._add_group(layer.layers)
             self._current_group = current_group
         elif isinstance(layer, _VisibleLayer) and (
-            layer.bbox.width > 0 and layer.bbox.height > 0):
+                layer.bbox.width > 0 and layer.bbox.height > 0):
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -161,7 +161,8 @@ class LayerConverter(object):
             fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
             target.set_desc(title=safe_utf8(layer.name))
-        elif any(TaggedBlock.is_fill_key(key) for key in layer._tagged_blocks.keys()):
+        elif any(TaggedBlock.is_fill_key(key)
+                 for key in layer._tagged_blocks.keys()):
             record = layer._info
             bbox = BBox(record.left, record.top, record.right, record.bottom)
             target = self._dwg.rect(

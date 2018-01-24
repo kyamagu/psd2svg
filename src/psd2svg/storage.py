@@ -164,8 +164,9 @@ class S3Storage(_BaseStorage):
 
 
 class HdfsStorage(_BaseStorage):
-    def __init__(self, namenode, path, use_trash=False, effective_user=None, use_sasl=True,
-                 hdfs_namenode_principal='hdfs', use_datanode_hostname=False):
+    def __init__(self, namenode, path, use_trash=False, effective_user=None,
+                 use_sasl=True, hdfs_namenode_principal='hdfs',
+                 use_datanode_hostname=False):
         from snakebite.client import HAClient
         from snakebite.namenode import Namenode
         self.path = path
