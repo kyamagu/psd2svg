@@ -37,7 +37,8 @@ class ShapeConverter(object):
 
         # Closed path or open path
         closed = any(p['selector'] == 0 for p in vsms.path)
-        points = zip(anchors, anchors[1:] + anchors[0:1]) if closed else zip(anchors, anchors[1:])
+        points = (zip(anchors, anchors[1:] + anchors[0:1])
+                  if closed else zip(anchors, anchors[1:]))
 
         # Rest of the points.
         for p1, p2 in points:

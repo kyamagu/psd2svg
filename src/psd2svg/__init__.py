@@ -47,7 +47,7 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self._set_output(output)
 
         if (not self.overwrite and self._output_file and
-            self._output.exists(self._output_file)):
+                self._output.exists(self._output_file)):
             url = self._output.url(self._output_file)
             logger.warning('File exists: {}'.format(url))
             return url
