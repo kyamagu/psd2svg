@@ -2,9 +2,8 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import psd_tools
-from psd_tools import BBox
+from psd_tools.user_api import BBox
 from psd_tools.constants import TaggedBlock
-from psd_tools.user_api.psd_image import _VisibleLayer
 
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
@@ -52,7 +51,7 @@ class LayerConverter(object):
             target['opacity'] = opacity * fill_opacity
 
         # TODO: Filter to strokes requires a different approach.
-        blocks = layer._tagged_blocks
+        blocks = layer.tagged_blocks
 
         if effects:
             interior_blend_mode = None
@@ -116,7 +115,7 @@ class LayerConverter(object):
 
     def _get_target(self, layer):
         target = None
-        if isinstance(layer, psd_tools.Group):
+        if layer.is_group():
             # Group.
             current_group = self._current_group
             target = self._dwg.g()
@@ -125,8 +124,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif isinstance(layer, _VisibleLayer) and (
-                layer.bbox.width > 0 and layer.bbox.height > 0):
+        elif layer.has_pixels():
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -152,7 +150,7 @@ class LayerConverter(object):
                     container['class'] = 'text-container'
                     target = container
         elif layer.kind == 'shape':
-            blocks = layer._tagged_blocks
+            blocks = layer.tagged_blocks
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
                 (p['anchor'][1] * self.width,
@@ -162,7 +160,7 @@ class LayerConverter(object):
             target = self._dwg.polygon(points=anchors, fill=fill)
             target.set_desc(title=safe_utf8(layer.name))
         elif any(TaggedBlock.is_fill_key(key)
-                 for key in layer._tagged_blocks.keys()):
+                 for key in layer.tagged_blocks.keys()):
             record = layer._info
             bbox = BBox(record.left, record.top, record.right, record.bottom)
             target = self._dwg.rect(
@@ -180,7 +178,7 @@ class LayerConverter(object):
 
     def _add_mask_if_exist(self, layer):
         mask_data = layer.mask
-        if not mask_data or not mask_data.is_valid or \
+        if not mask_data or not mask_data.is_valid() or \
                 mask_data.mask_data.flags.mask_disabled:
             return None
         background_color = mask_data.mask_data.real_background_color
