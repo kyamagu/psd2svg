@@ -110,7 +110,7 @@ class TextConverter(object):
 
 
 def _get_text_info(layer):
-    type_info = dict(layer._info.tagged_blocks).get(b'TySh', None)
+    type_info = dict(layer._record.tagged_blocks).get(b'TySh', None)
     if type_info is None:
         return None
     engine_data = dict(type_info.text_data.items)[b'EngineData']
