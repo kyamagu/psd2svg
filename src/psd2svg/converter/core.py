@@ -36,11 +36,11 @@ class LayerConverter(object):
             target['mask'] = mask.get_funciri()
 
         # Blending options.
-        if not layer._info.flags.visible:
+        if not layer._record.flags.visible:
             target['visibility'] = 'hidden'
             if vector_stroke:
                 vector_stroke['visibility'] = 'hidden'
-        blend_mode = BLEND_MODE.get(layer._info.blend_mode, 'normal')
+        blend_mode = BLEND_MODE.get(layer._record.blend_mode, 'normal')
         if not blend_mode == 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         opacity, fill_opacity = self._get_opacity(layer)
@@ -61,7 +61,7 @@ class LayerConverter(object):
                                        interior_blend_mode)
 
         if (layer != self._input_layer and
-                layer._info.clipping and self._clip_group):
+                layer._record.clipping and self._clip_group):
             self._clip_group.add(target)
 
             # Acutally clipping with mask and mix-blend-mode does not
@@ -72,7 +72,7 @@ class LayerConverter(object):
             if not self._clbl:
                 self._clip_group.attribs['style'] += '; isolation: isolate;'
 
-        elif layer != self._input_layer and layer._info.clipping:
+        elif layer != self._input_layer and layer._record.clipping:
             # Convert the last target to a clipping mask
             last_stroke = None
             last_target = self._current_group.elements[-1]
@@ -161,7 +161,7 @@ class LayerConverter(object):
             target.set_desc(title=safe_utf8(layer.name))
         elif any(TaggedBlock.is_fill_key(key)
                  for key in layer.tagged_blocks.keys()):
-            record = layer._info
+            record = layer._record
             bbox = BBox(record.left, record.top, record.right, record.bottom)
             target = self._dwg.rect(
                 insert=(bbox.x1, bbox.y1), size=(bbox.width, bbox.height),
@@ -204,7 +204,7 @@ class LayerConverter(object):
         return mask
 
     def _get_opacity(self, layer):
-        record = layer._info
+        record = layer._record
         opacity = record.opacity / 255.0
         fill_opacity = dict(record.tagged_blocks).get(b'iOpa', 255) / 255.0
         return opacity, fill_opacity
