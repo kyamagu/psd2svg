@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 import argparse
 import logging
-from psd2svg import PSD2SVG
+from psd2svg import psd2svg
 
 
 def main():
@@ -32,11 +32,9 @@ def main():
 
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(),
                                       'WARNING'))
-    converter = PSD2SVG(
-        resource_prefix=args.resource_prefix, text_mode=args.text_mode,
-        export_resource=args.export_resource, overwrite=args.overwrite)
-    converter.load(args.input)
-    converter.convert(args.output)
+    psd2svg(args.input, args.output,
+            resource_prefix=args.resource_prefix, text_mode=args.text_mode,
+            export_resource=args.export_resource, overwrite=args.overwrite)
 
 
 if __name__ == '__main__':

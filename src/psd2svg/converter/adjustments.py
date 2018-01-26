@@ -14,7 +14,7 @@ class AdjustmentsConverter(object):
 
     def _get_adjustments(self, layer):
         target = None
-        blocks = dict(layer._info.tagged_blocks)
+        blocks = dict(layer._record.tagged_blocks)
         for key in set.union(TaggedBlock._ADJUSTMENT_KEYS,
                              TaggedBlock._FILL_KEYS):
             if key in blocks:
@@ -46,7 +46,7 @@ class AdjustmentsConverter(object):
             # target['filter'] = self._add_curves(blocks[b'curv'], layer)
         if target and target['class'].startswith('adjustment'):
             target.set_desc(title=safe_utf8(layer.name))
-            if layer._info.clipping:
+            if layer._record.clipping:
                 element = self._current_group.elements[-1]
                 if not isinstance(element, svgwrite.container.Defs) and \
                         not isinstance(element, svgwrite.base.Title) and \
@@ -75,7 +75,7 @@ class AdjustmentsConverter(object):
         # Note that SVG filter cannot be applied to the background.
         #
         mask_data = layer.mask
-        if not mask_data or not mask_data.is_valid or \
+        if not mask_data or not mask_data.is_valid() or \
                 mask_data.mask_data.flags.mask_disabled:
             return None
 
