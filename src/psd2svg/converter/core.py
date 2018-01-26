@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-import psd_tools
 from psd_tools.user_api import BBox
 from psd_tools.constants import TaggedBlock
 
@@ -159,14 +158,6 @@ class LayerConverter(object):
             fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
             target.set_desc(title=safe_utf8(layer.name))
-        elif any(TaggedBlock.is_fill_key(key)
-                 for key in layer.tagged_blocks.keys()):
-            record = layer._record
-            bbox = BBox(record.left, record.top, record.right, record.bottom)
-            target = self._dwg.rect(
-                insert=(bbox.x1, bbox.y1), size=(bbox.width, bbox.height),
-                fill=self._get_fill(layer))
-            target.set_desc(title=safe_utf8(layer.name))
         else:
             target = self._get_adjustments(layer)
             if target:
@@ -188,7 +179,7 @@ class LayerConverter(object):
         # In SVG, mask needs a default rect.
         default_bbox = layer.bbox
         if not default_bbox:
-            default_bbox = psd_tools.BBox(0, 0, self.width, self.height)
+            default_bbox = BBox(0, 0, self.width, self.height)
         mask = self._dwg.defs.add(self._dwg.mask(
             size=(default_bbox.width, default_bbox.height)))
         mask.add(self._dwg.rect(
