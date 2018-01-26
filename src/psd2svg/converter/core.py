@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-import psd_tools
-from psd_tools import BBox
+from psd_tools.user_api import BBox
 from psd_tools.constants import TaggedBlock
-from psd_tools.user_api.psd_image import _VisibleLayer
 
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
@@ -37,11 +35,11 @@ class LayerConverter(object):
             target['mask'] = mask.get_funciri()
 
         # Blending options.
-        if not layer._info.flags.visible:
+        if not layer.visible:
             target['visibility'] = 'hidden'
             if vector_stroke:
                 vector_stroke['visibility'] = 'hidden'
-        blend_mode = BLEND_MODE.get(layer._info.blend_mode, 'normal')
+        blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
         if not blend_mode == 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         opacity, fill_opacity = self._get_opacity(layer)
@@ -52,7 +50,7 @@ class LayerConverter(object):
             target['opacity'] = opacity * fill_opacity
 
         # TODO: Filter to strokes requires a different approach.
-        blocks = layer._tagged_blocks
+        blocks = layer.tagged_blocks
 
         if effects:
             interior_blend_mode = None
@@ -62,7 +60,7 @@ class LayerConverter(object):
                                        interior_blend_mode)
 
         if (layer != self._input_layer and
-                layer._info.clipping and self._clip_group):
+                layer._record.clipping and self._clip_group):
             self._clip_group.add(target)
 
             # Acutally clipping with mask and mix-blend-mode does not
@@ -73,7 +71,7 @@ class LayerConverter(object):
             if not self._clbl:
                 self._clip_group.attribs['style'] += '; isolation: isolate;'
 
-        elif layer != self._input_layer and layer._info.clipping:
+        elif layer != self._input_layer and layer._record.clipping:
             # Convert the last target to a clipping mask
             last_stroke = None
             last_target = self._current_group.elements[-1]
@@ -116,7 +114,7 @@ class LayerConverter(object):
 
     def _get_target(self, layer):
         target = None
-        if isinstance(layer, psd_tools.Group):
+        if layer.is_group():
             # Group.
             current_group = self._current_group
             target = self._dwg.g()
@@ -125,8 +123,7 @@ class LayerConverter(object):
             self._current_group = target
             self._add_group(layer.layers)
             self._current_group = current_group
-        elif isinstance(layer, _VisibleLayer) and (
-                layer.bbox.width > 0 and layer.bbox.height > 0):
+        elif layer.has_pixels():
             # Regular pixel layer.
             target = self._dwg.image(
                 self._get_image_href(layer.as_PIL()),
@@ -152,7 +149,7 @@ class LayerConverter(object):
                     container['class'] = 'text-container'
                     target = container
         elif layer.kind == 'shape':
-            blocks = layer._tagged_blocks
+            blocks = layer.tagged_blocks
             vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
             anchors = [
                 (p['anchor'][1] * self.width,
@@ -160,14 +157,6 @@ class LayerConverter(object):
                 for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
             fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
-            target.set_desc(title=safe_utf8(layer.name))
-        elif any(TaggedBlock.is_fill_key(key)
-                 for key in layer._tagged_blocks.keys()):
-            record = layer._info
-            bbox = BBox(record.left, record.top, record.right, record.bottom)
-            target = self._dwg.rect(
-                insert=(bbox.x1, bbox.y1), size=(bbox.width, bbox.height),
-                fill=self._get_fill(layer))
             target.set_desc(title=safe_utf8(layer.name))
         else:
             target = self._get_adjustments(layer)
@@ -180,7 +169,7 @@ class LayerConverter(object):
 
     def _add_mask_if_exist(self, layer):
         mask_data = layer.mask
-        if not mask_data or not mask_data.is_valid or \
+        if not mask_data or not mask_data.is_valid() or \
                 mask_data.mask_data.flags.mask_disabled:
             return None
         background_color = mask_data.mask_data.real_background_color
@@ -190,7 +179,7 @@ class LayerConverter(object):
         # In SVG, mask needs a default rect.
         default_bbox = layer.bbox
         if not default_bbox:
-            default_bbox = psd_tools.BBox(0, 0, self.width, self.height)
+            default_bbox = BBox(0, 0, self.width, self.height)
         mask = self._dwg.defs.add(self._dwg.mask(
             size=(default_bbox.width, default_bbox.height)))
         mask.add(self._dwg.rect(
@@ -206,9 +195,8 @@ class LayerConverter(object):
         return mask
 
     def _get_opacity(self, layer):
-        record = layer._info
-        opacity = record.opacity / 255.0
-        fill_opacity = dict(record.tagged_blocks).get(b'iOpa', 255) / 255.0
+        opacity = layer.opacity / 255.0
+        fill_opacity = layer.get_tag(b'iOpa', 255) / 255.0
         return opacity, fill_opacity
 
     def _add_photoshop_view(self):
@@ -218,13 +206,3 @@ class LayerConverter(object):
             self._get_image_href(image), insert=(0, 0),
             size=(self.width, self.height), visibility='hidden'))
         original['class'] = 'photoshop-image'
-
-
-def _has_visible_pixels(record):
-    return (record.bottom - record.top > 0 and
-            record.right - record.left > 0)
-
-
-def _is_shape_layer(record):
-    blocks = dict(record.tagged_blocks)
-    return (b'vmsk' in blocks or b'vsms' in blocks) and b'vogk' in blocks

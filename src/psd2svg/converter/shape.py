@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 from psd_tools.constants import TaggedBlock
-from psd2svg.converter.constants import BLEND_MODE2
+from psd2svg.converter.constants import BLEND_MODE
 
 
 logger = getLogger(__name__)
@@ -109,7 +109,7 @@ class ShapeConverter(object):
         if offset:
             target['stroke-dashoffset'] = offset
 
-        blend_mode = BLEND_MODE2.get(
+        blend_mode = BLEND_MODE.get(
             vstk[b'strokeStyleBlendMode'].value, 'normal')
         if blend_mode != 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)

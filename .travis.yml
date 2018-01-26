@@ -21,6 +21,7 @@ addons:
             - libfreetype6-dev
             - liblcms2-dev
             - libffi-dev
+            - inkscape
 
 git:
     lfs_skip_smudge: true
