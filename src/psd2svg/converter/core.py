@@ -35,11 +35,11 @@ class LayerConverter(object):
             target['mask'] = mask.get_funciri()
 
         # Blending options.
-        if not layer._record.flags.visible:
+        if not layer.visible:
             target['visibility'] = 'hidden'
             if vector_stroke:
                 vector_stroke['visibility'] = 'hidden'
-        blend_mode = BLEND_MODE.get(layer._record.blend_mode, 'normal')
+        blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
         if not blend_mode == 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         opacity, fill_opacity = self._get_opacity(layer)
@@ -195,9 +195,8 @@ class LayerConverter(object):
         return mask
 
     def _get_opacity(self, layer):
-        record = layer._record
-        opacity = record.opacity / 255.0
-        fill_opacity = dict(record.tagged_blocks).get(b'iOpa', 255) / 255.0
+        opacity = layer.opacity / 255.0
+        fill_opacity = layer.get_tag(b'iOpa', 255) / 255.0
         return opacity, fill_opacity
 
     def _add_photoshop_view(self):
