@@ -37,7 +37,12 @@ setup(
     author_email='KotaYamaguchi1984@gmail.com',
     license='MIT License',
     package_dir={'': 'src'},
-    packages=['psd2svg', 'psd2svg.converter', 'psd2svg.utils'],
+    packages=[
+        'psd2svg',
+        'psd2svg.converter',
+        'psd2svg.utils',
+        'psd2svg.rasterizer'
+    ],
     install_requires=[
         'pillow',
         'svgwrite',
