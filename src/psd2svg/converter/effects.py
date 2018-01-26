@@ -5,7 +5,7 @@ import numpy as np
 import svgwrite
 from psd_tools.constants import TaggedBlock
 from psd_tools.decoder.actions import List, Descriptor
-from psd2svg.converter.constants import BLEND_MODE2
+from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.color import cmyk2rgb
 
 
@@ -126,7 +126,7 @@ class EffectsConverter(object):
         rect['fill-opacity'] = items[b'Opct'].value / 100.0
 
         if not blend_mode:
-            blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+            blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             rect['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return rect
@@ -144,7 +144,7 @@ class EffectsConverter(object):
             rect['fill-opacity'] = opacity
 
         if not blend_mode:
-            blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+            blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             rect['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return rect
@@ -158,14 +158,14 @@ class EffectsConverter(object):
         rect['fill-opacity'] = items[b'Opct'].value / 100.0
 
         if not blend_mode:
-            blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+            blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             rect['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return rect
 
     def _add_drsh(self, items, target_iri):
         blur = items[b'blur'].value
-        blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+        blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
 
         spread = items[b'Ckmt'].value / 100
         angle = items[b'lagl'].value
@@ -195,7 +195,7 @@ class EffectsConverter(object):
 
     def _add_orgl(self, items, target_iri):
         blur = items[b'blur'].value
-        blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+        blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         spread = items[b'Ckmt'].value / 100
 
         # Real outer glow needs distance transform.
@@ -254,7 +254,7 @@ class EffectsConverter(object):
         target = self._dwg.use(target_iri, filter=filt.get_funciri())
         target['class'] = 'layer-effect inner-shadow'
         if not blend_mode:
-            blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+            blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return target
@@ -285,7 +285,7 @@ class EffectsConverter(object):
         target = self._dwg.use(target_iri, filter=filt.get_funciri())
         target['class'] = 'layer-effect inner-glow'
         if not blend_mode:
-            blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+            blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return target
@@ -326,7 +326,7 @@ class EffectsConverter(object):
 
         target = self._dwg.use(target_iri, filter=filt.get_funciri())
         target['class'] = 'layer-effect stroke'
-        blend_mode = BLEND_MODE2.get(items[b'Md  '].value, 'normal')
+        blend_mode = BLEND_MODE.get(items[b'Md  '].value, 'normal')
         if blend_mode != 'normal':
             target['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         return target
