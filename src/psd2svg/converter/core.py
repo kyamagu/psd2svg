@@ -206,13 +206,3 @@ class LayerConverter(object):
             self._get_image_href(image), insert=(0, 0),
             size=(self.width, self.height), visibility='hidden'))
         original['class'] = 'photoshop-image'
-
-
-def _has_visible_pixels(record):
-    return (record.bottom - record.top > 0 and
-            record.right - record.left > 0)
-
-
-def _is_shape_layer(record):
-    blocks = dict(record.tagged_blocks)
-    return (b'vmsk' in blocks or b'vsms' in blocks) and b'vogk' in blocks
