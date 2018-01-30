@@ -54,7 +54,7 @@ class LayerConverter(object):
 
         if effects:
             interior_blend_mode = None
-            if blocks.get(b'infx', False):
+            if blocks.get(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
                 interior_blend_mode = blend_mode
             target = self._add_effects(effects, layer, target, fill_opacity,
                                        interior_blend_mode)
@@ -107,7 +107,7 @@ class LayerConverter(object):
             self._current_group.add(target)
 
             # Keep info for when next layer is clip group
-            self._clbl = blocks.get(b'clbl')
+            self._clbl = blocks.get(TaggedBlock.BLEND_CLIPPING_ELEMENTS)
 
         if vector_stroke:
             self._current_group.add(vector_stroke)
@@ -193,7 +193,8 @@ class LayerConverter(object):
 
     def _get_opacity(self, layer):
         opacity = layer.opacity / 255.0
-        fill_opacity = layer.get_tag(b'iOpa', 255) / 255.0
+        fill_opacity = layer.get_tag(
+            TaggedBlock.BLEND_FILL_OPACITY, 255) / 255.0
         return opacity, fill_opacity
 
     def _add_photoshop_view(self):
