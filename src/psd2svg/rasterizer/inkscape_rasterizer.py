@@ -39,11 +39,16 @@ class InkscapeRasterizer(object):
     def rasterize(self, url, size=None, format="png"):
         with temporary_directory() as tempdir:
             output_file = os.path.join(tempdir, "output.{}".format(format))
-            cmd = [os.path.abspath(url), "-e", output_file]
+            cmd = [os.path.abspath(url), "-e", output_file,
+                   "-b" "FFFFFF", "-y", "0"]
             if size:
                 cmd += ["-w", size[0], "-h", size[1]]
             proc = subprocess.check_call(
                 [self.executable_path, "-z"] + cmd,
                 stdout=sys.stdout, stderr=sys.stdout)
             assert os.path.exists(output_file)
-            return Image.open(output_file)
+            rasterized = Image.open(output_file)
+            canvas = Image.new("RGBA", size=rasterized.size,
+                               color=(255, 255, 255, 0))
+            canvas.alpha_composite(rasterized)
+            return canvas
