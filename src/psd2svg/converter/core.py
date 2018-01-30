@@ -149,12 +149,9 @@ class LayerConverter(object):
                     container['class'] = 'text-container'
                     target = container
         elif layer.kind == 'shape':
-            blocks = layer.tagged_blocks
-            vsms = blocks.get(b'vsms', blocks.get(b'vmsk'))
-            anchors = [
-                (p['anchor'][1] * self.width,
-                 p['anchor'][0] * self.height)
-                for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
+            anchors = layer.get_anchors()
+            if not anchors:
+                return None
             fill = self._get_fill(layer)
             target = self._dwg.polygon(points=anchors, fill=fill)
             target.set_desc(title=safe_utf8(layer.name))
