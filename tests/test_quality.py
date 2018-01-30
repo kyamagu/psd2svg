@@ -43,6 +43,4 @@ def test_quality(rasterizer, tmpdir, psd_file):
     assert preview.height == rendered.height
     preview_hash = imagehash.average_hash(preview)
     rendered_hash = imagehash.average_hash(rendered)
-    pprint(preview.getextrema())
-    pprint(rendered.getextrema())
     assert(preview_hash == rendered_hash)
