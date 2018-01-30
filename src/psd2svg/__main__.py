@@ -2,8 +2,8 @@
 from __future__ import absolute_import, unicode_literals
 import argparse
 import logging
+import os
 from psd2svg import psd2svg
-
 
 def main():
     parser = argparse.ArgumentParser(description='Convert PSD file to SVG')
@@ -32,9 +32,25 @@ def main():
 
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(),
                                       'WARNING'))
-    psd2svg(args.input, args.output,
-            resource_prefix=args.resource_prefix, text_mode=args.text_mode,
-            export_resource=args.export_resource, overwrite=args.overwrite)
+
+    prefix, ext = os.path.splitext(args.output)
+    if ext.lower() in (".png", ".jpg", ".jpeg", ".gif" ".tiff"):
+        from psd2svg.rasterizer import create_rasterizer
+        rasterizer = create_rasterizer()
+        svg_file = prefix + ".svg"
+        psd2svg(args.input, svg_file,
+                resource_prefix=args.resource_prefix,
+                text_mode=args.text_mode,
+                export_resource=args.export_resource,
+                overwrite=args.overwrite)
+        image = rasterizer.rasterize(svg_file)
+        image.save(args.output)
+    else:
+        psd2svg(args.input, args.output,
+                resource_prefix=args.resource_prefix,
+                text_mode=args.text_mode,
+                export_resource=args.export_resource,
+                overwrite=args.overwrite)
 
 
 if __name__ == '__main__':
