@@ -41,10 +41,18 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self.overwrite = overwrite
         self.reset_id = reset_id
         self.no_preview = no_preview
+        self._reset()
+
+    def _reset(self):
         self._psd = None
         self._input_layer = None
+        self._white_filter = None
+        self._identity_filter = None
+        if self.reset_id:
+            svgwrite.utils.AutoID._set_value(0)
 
     def convert(self, input, output=None, layer_view=True):
+        self._reset()
         self._load(input)
         self._set_output(output)
 
@@ -53,11 +61,6 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             url = self._output.url(self._output_file)
             logger.warning('File exists: {}'.format(url))
             return url
-
-        if self.reset_id:
-            svgwrite.utils.AutoID._set_value(0)
-        self._white_filter = None
-        self._identity_filter = None
 
         if layer_view and self._input_layer and self._input_layer.bbox:
             bbox = self._input_layer.bbox
@@ -77,11 +80,10 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self._dwg.defs.add(self._dwg.style(stylesheet))
 
         # Add layers.
-        self._current_group = self._dwg
         if self._input_layer:
-            self._add_group([self._input_layer])
+            self._dwg.add(self.convert_layer(self._input_layer))
         else:
-            self._add_group(self._psd.layers)
+            self.create_group(self._psd, element=self._dwg)
             if not self.no_preview:
                 self._add_photoshop_view()
 

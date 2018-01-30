@@ -13,6 +13,129 @@ logger = getLogger(__name__)
 
 class LayerConverter(object):
 
+    def convert_layer(self, layer):
+        """Convert the given layer"""
+        if layer.is_group():
+            element = self.create_group(layer)
+
+        elif layer.has_pixels():
+            element = self.create_image(layer)
+            if layer.kind == 'type':
+                # TODO: Embed text metadata.
+                pass
+            if layer.kind == 'shape':
+                # TODO: Embed vector graphics.
+                pass
+        else:
+            # element = self._get_adjustments(layer)
+            return None
+
+        element = self.add_attributes(layer, element)
+        mask_element = self.create_mask(layer)
+        if mask_element:
+            element['mask'] = mask_element.get_funciri()
+
+        element = self.add_effects(layer, element)
+        return element
+
+    def create_group(self, group, element=None):
+        """Create and fill in a new group element."""
+        if not element:
+            element = self._dwg.g()
+        for child_layer in reversed(group.layers):
+            child_element = self.convert_layer(child_layer)
+            element.add(child_element)
+
+            # Clipping.
+            if len(child_layer.clip_layers) > 0:
+                clip_group = self.create_clipping(child_layer, child_element)
+                element.add(clip_group)
+        return element
+
+    def create_image(self, layer):
+        element = self._dwg.image(
+            self._get_image_href(layer.as_PIL()),
+            insert=(layer.bbox.x1, layer.bbox.y1),
+            size=(layer.bbox.width, layer.bbox.height),
+            debug=False)  # To disable attribute validation.
+        return element
+
+    def create_mask(self, layer):
+        mask_data = layer.mask
+        if not mask_data or not mask_data.is_valid() or \
+                mask_data.mask_data.flags.mask_disabled:
+            return None
+        background_color = mask_data.mask_data.real_background_color
+        if background_color is None:
+            background_color = mask_data.background_color
+
+        # In SVG, mask needs a default rect.
+        default_bbox = layer.bbox
+        if not default_bbox:
+            default_bbox = BBox(0, 0, self.width, self.height)
+        mask_element = self._dwg.defs.add(self._dwg.mask(
+            size=(default_bbox.width, default_bbox.height)))
+        mask_element.add(self._dwg.rect(
+            insert=(default_bbox.x1, default_bbox.y1),
+            size=(default_bbox.width, default_bbox.height),
+            fill='rgb({0},{0},{0})'.format(background_color)))
+        bbox = mask_data.bbox
+        mask_element.add(self._dwg.image(
+            self._get_image_href(mask_data.as_PIL()),
+            size=(bbox.width, bbox.height),
+            insert=(bbox.x1, bbox.y1)))
+        mask_element['color-interpolation'] = 'sRGB'
+        return mask_element
+
+    def create_clipping(self, layer, clip_element):
+        # Create a mask for this clip element.
+        mask = self._dwg.defs.add(self._dwg.mask())
+        use = self._dwg.use(clip_element.get_iri())
+        use['filter'] = self._get_white_filter().get_funciri()
+        mask.add(use)
+        mask['color-interpolation'] = 'sRGB'
+        # Group and apply the mask.
+        element = self._dwg.g(mask=mask.get_funciri())
+        element['class'] = 'psd-clipping'
+        for child_layer in reversed(layer.clip_layers):
+            clipped_element = self.convert_layer(child_layer)
+            if clipped_element:
+                element.add(clipped_element)
+        return element
+
+    def add_attributes(self, layer, element):
+        element.set_desc(title=safe_utf8(layer.name))
+        element['class'] = 'psd-layer psd-{}'.format(layer.kind)
+        if not layer.visible:
+            element['visibility'] = 'hidden'
+        blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
+        if not blend_mode == 'normal':
+            element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
+        if layer.opacity < 255.0:
+            element['opacity'] = layer.opacity / 255.0
+        return element
+
+    def add_effects(self, layer, element):
+        effects = layer.effects
+        fill_opacity = layer.get_tag(
+            TaggedBlock.BLEND_FILL_OPACITY, 255) / 255.0
+        if not effects:
+            if fill_opacity < 1.0:
+                element['opacity'] = layer.opacity / 255.0 * fill_opacity
+            return element
+
+        interior_blend_mode = None
+        if layer.get_tag(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
+            interior_blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
+        return self._add_effects(layer, element, effects, fill_opacity,
+                                 interior_blend_mode)
+
+
+    #
+    # Deprecate the following.
+    #
+
+
     def _add_group(self, layers):
         for layer in reversed(layers):
             self._add_layer(layer)
