@@ -82,7 +82,7 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             self._add_group([self._input_layer])
         else:
             self._add_group(self._psd.layers)
-            if self.no_preview:
+            if not self.no_preview:
                 self._add_photoshop_view()
 
         return self._save_svg()
