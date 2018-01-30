@@ -26,6 +26,8 @@ def main():
     parser.add_argument(
         '--overwrite', action='store_true', help='Overwrite output')
     parser.add_argument(
+        '--no-preview', action='store_true', help='Do not embed a preview')
+    parser.add_argument(
         '--loglevel', metavar='LEVEL', default='WARNING',
         help='Logging level, default WARNING')
     args = parser.parse_args()
@@ -42,7 +44,8 @@ def main():
                 resource_prefix=args.resource_prefix,
                 text_mode=args.text_mode,
                 export_resource=args.export_resource,
-                overwrite=args.overwrite)
+                overwrite=args.overwrite,
+                embed_preview=args.no_preview)
         image = rasterizer.rasterize(svg_file)
         image.save(args.output)
     else:
@@ -50,7 +53,8 @@ def main():
                 resource_prefix=args.resource_prefix,
                 text_mode=args.text_mode,
                 export_resource=args.export_resource,
-                overwrite=args.overwrite)
+                overwrite=args.overwrite,
+                embed_preview=args.no_preview)
 
 
 if __name__ == '__main__':

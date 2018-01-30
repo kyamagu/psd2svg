@@ -33,12 +33,14 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
     export_resource - use dataURI to embed bitmap (default True)
     """
     def __init__(self, text_mode='image', export_resource=False,
-                 resource_prefix='', overwrite=True, reset_id=True):
+                 resource_prefix='', overwrite=True, reset_id=True,
+                 no_preview=False):
         self.text_mode = text_mode
         self.export_resource = export_resource
         self.resource_prefix = resource_prefix
         self.overwrite = overwrite
         self.reset_id = reset_id
+        self.no_preview = no_preview
         self._psd = None
         self._input_layer = None
 
@@ -80,7 +82,8 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             self._add_group([self._input_layer])
         else:
             self._add_group(self._psd.layers)
-            self._add_photoshop_view()
+            if self.no_preview:
+                self._add_photoshop_view()
 
         return self._save_svg()
 
