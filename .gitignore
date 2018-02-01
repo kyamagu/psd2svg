@@ -56,4 +56,5 @@ docs/_build/
 *~
 
 # Other
+.pytest_cache
 tmp/

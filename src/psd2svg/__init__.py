@@ -41,9 +41,10 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self.overwrite = overwrite
         self.reset_id = reset_id
         self.no_preview = no_preview
-        self._reset()
+        self.reset()
 
-    def _reset(self):
+    def reset(self):
+        """Reset the converter."""
         self._psd = None
         self._input_layer = None
         self._white_filter = None
@@ -52,7 +53,8 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             svgwrite.utils.AutoID._set_value(0)
 
     def convert(self, input, output=None, layer_view=True):
-        self._reset()
+        """Convert the given PSD to SVG."""
+        self.reset()
         self._load(input)
         self._set_output(output)
 
@@ -62,12 +64,12 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             logger.warning('File exists: {}'.format(url))
             return url
 
-        if layer_view and self._input_layer and self._input_layer.bbox:
-            bbox = self._input_layer.bbox
+        if layer_view and self._input_layer and self._input_layer.has_box():
             self._dwg = svgwrite.Drawing(
-                size=(bbox.width, bbox.height),
+                size=(self._input_layer.width, self._input_layer.height),
                 viewBox="{} {} {} {}".format(
-                    bbox.x1, bbox.y1, bbox.width, bbox.height))
+                    self._input_layer.left, self._input_layer.top,
+                    self._input_layer.width, self._input_layer.height))
         else:
             self._dwg = svgwrite.Drawing(
                 size=(self.width, self.height),
@@ -85,7 +87,7 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         else:
             self.create_group(self._psd, element=self._dwg)
             if not self.no_preview:
-                self._add_photoshop_view()
+                self._dwg.add(self.create_preview())
 
         return self._save_svg()
 
