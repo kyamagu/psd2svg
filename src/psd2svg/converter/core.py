@@ -14,7 +14,14 @@ logger = getLogger(__name__)
 class LayerConverter(object):
 
     def convert_layer(self, layer):
-        """Convert the given layer"""
+        """
+        Convert the given layer.
+
+        The current implementation always converts a PSD layer to a single
+        SVG element.
+
+        :return: SVG element.
+        """
         if layer.is_group():
             element = self.create_group(layer)
 
@@ -33,7 +40,7 @@ class LayerConverter(object):
             # element = self._get_adjustments(layer)
             element = self.create_shape(layer)
 
-        # TODO: vector stroke.
+        # TODO: Deal with vector stroke.
         # self._get_vector_stroke(layer, target)
 
         element = self.add_attributes(layer, element)
