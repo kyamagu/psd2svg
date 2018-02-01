@@ -105,8 +105,8 @@ class SVGWriter(object):
         image.save(output, format=fmt, icc_profile=icc_profile)
         encoded_image = output.getvalue()
         output.close()
-        checksum = hashlib.md5(encoded_image).hexdigest()
         if self.export_resource:
+            checksum = hashlib.md5(encoded_image).hexdigest()
             filename = checksum + '.' + fmt
             if self.overwrite or not self._resource.exists(filename):
                 logger.info('Saving {}'.format(
