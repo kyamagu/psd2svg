@@ -41,7 +41,6 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         self.overwrite = overwrite
         self.reset_id = reset_id
         self.no_preview = no_preview
-        self.reset()
 
     def reset(self):
         """Reset the converter."""
@@ -93,8 +92,8 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
 
     @property
     def width(self):
-        return self._psd.header.width if self._psd else None
+        return self._psd.width if hasattr(self, '_psd') else None
 
     @property
     def height(self):
-        return self._psd.header.height if self._psd else None
+        return self._psd.height if hasattr(self, '_psd') else None
