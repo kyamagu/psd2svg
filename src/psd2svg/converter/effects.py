@@ -14,6 +14,152 @@ logger = getLogger(__name__)
 
 class EffectsConverter(object):
 
+    def add_effects(self, layer, element):
+        """Add effects to the element."""
+        fill_opacity = layer.get_tag(
+            TaggedBlock.BLEND_FILL_OPACITY, 255) / 255.0
+        if len(layer.effects) == 0:
+            if fill_opacity < 1.0:
+                element['opacity'] = layer.opacity / 255.0 * fill_opacity
+            return element
+        else:
+            container = self._dwg.g()
+            container['class'] = 'psd-effects'
+
+        # Shadow effects
+
+
+        blend_mode = None  # Interior blend mode
+        if layer.get_tag(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
+            blend_mode = layer.blend_mode
+
+        # Overlay effects
+        if layer.effects.has((
+                'coloroverlay', 'patternoverlay', 'gradientoverlay')):
+
+            self._dwg.defs.add(element)
+            mask = self.create_overlay_mask(layer, element)
+
+            # Add the original.
+            # use = self._dwg.use(element.get_iri(), opacity=fill_opacity)
+            # container.add(use)
+
+            for effect in layer.effects.find('patternoverlay'):
+                overlay = self.create_pattern_overlay(
+                    layer, effect, mask, blend_mode)
+                container.add(overlay)
+
+            for effect in layer.effects.find('gradientoverlay'):
+                overlay = self.create_gradient_overlay(
+                    layer, effect, mask, blend_mode)
+                container.add(overlay)
+
+            for effect in layer.effects.find('coloroverlay'):
+                overlay = self.create_color_overlay(
+                    layer, effect, mask, blend_mode)
+                container.add(overlay)
+
+        return container
+
+    def create_overlay_mask(self, layer, element):
+        if not layer.has_box():
+            logger.warning('Fill effect to empty layer.')
+
+        mask_element = self._dwg.defs.add(self._dwg.mask(
+            size=(layer.width, layer.height)))
+        mask_element['color-interpolation'] = 'sRGB'
+        use = mask_element.add(self._dwg.use(element.get_iri()))
+        use['filter'] = self._get_white_filter().get_funciri()
+        return mask_element
+
+    def create_color_overlay(self, layer, effect, mask, blend_mode):
+        element = self._dwg.rect(
+            size=(layer.width, layer.height),
+            insert=(layer.left, layer.top),
+            fill=self._get_color(effect.color),
+            mask=mask.get_funciri())
+        self.add_overlay_attribute(
+            element, effect, blend_mode, 'color-overlay')
+        return element
+
+    def create_pattern_overlay(self, layer, effect, mask, blend_mode):
+        pattern = self.create_pattern(
+            pattern_id=effect.pattern.id,
+            phase=effect.phase,
+            scale=effect.scale,
+            insert=(layer.left, layer.top))
+        element = self._dwg.rect(
+            size=(layer.width, layer.height),
+            insert=(layer.left, layer.top),
+            fill=pattern.get_funciri(),
+            mask=mask.get_funciri())
+        self.add_overlay_attribute(
+            element, effect, blend_mode, 'pattern-overlay')
+        return element
+
+    def create_gradient_overlay(self, layer, effect, mask, blend_mode):
+        gradient = self.create_gradient(effect, (layer.width, layer.height))
+        element = self._dwg.rect(
+            size=(layer.width, layer.height),
+            insert=(layer.left, layer.top),
+            fill=gradient.get_funciri(),
+            mask=mask_elemen.get_funciri())
+        self.add_overlay_attribute(
+            element, effect, blend_mode, 'gradient-overlay')
+        return element
+
+    def add_overlay_attribute(self, element, effect, blend_mode, extra_class):
+        element['class'] = 'layer-effect {}'.format(extra_class)
+        opacity = effect.opacity / 100.0
+        if opacity < 1.0:
+            element['fill-opacity'] = opacity
+        self.add_blend_mode(
+            element, blend_mode if blend_mode else effect.blend_mode)
+
+
+    def _get_white_filter(self, color='white'):
+        if not self._white_filter:
+            self._white_filter = self._dwg.defs.add(self._dwg.filter())
+            self._white_filter['class'] = 'white-filter'
+            if color == 'white':
+                self._white_filter.feColorMatrix(
+                    'SourceAlpha', type='matrix',
+                    values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0")
+            else:
+                self._white_filter.feColorMatrix(
+                    'SourceAlpha', type='matrix',
+                    values="0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0")
+        return self._white_filter
+
+    def _get_identity_filter(self):
+        if not self._identity_filter:
+            self._identity_filter = self._dwg.defs.add(self._dwg.filter())
+            self._identity_filter['class'] = 'identify-filter'
+            transfer = self._identity_filter.feComponentTransfer(
+                'SourceGraphic')
+            transfer['color-interpolation'] = 'sRGB'
+            transfer.feFuncR('identity')
+            transfer.feFuncG('identity')
+            transfer.feFuncB('identity')
+            transfer.feFuncA('identity')
+        return self._identity_filter
+
+    """
+    Deprecate below.
+    """
+
+    def _get_color(self, color):
+        # TODO: Implement color converter to RGB.
+        if color.name == 'rgb':
+            return 'rgb({},{},{})'.format(*map(int, color.value))
+        elif color.name == 'gray':
+            return 'rgb({0},{0},{0})'.format(int(255 * color.value[0]))
+        elif color.name == 'cmyk':
+            logger.error("CMYK conversion not implemented")
+            pass
+        return 'rgb(0,0,0)'
+
+
     def _get_effects(self, layer):
         blocks = layer._tagged_blocks
         effects = blocks.get(
@@ -477,30 +623,3 @@ class EffectsConverter(object):
                 offset=mp[index], opacity=fo[index],
                 color='rgb{}'.format(color))
         return grad
-
-    def _get_white_filter(self, color='white'):
-        if not self._white_filter:
-            self._white_filter = self._dwg.defs.add(self._dwg.filter())
-            self._white_filter['class'] = 'white-filter'
-            if color == 'white':
-                self._white_filter.feColorMatrix(
-                    'SourceAlpha', type='matrix',
-                    values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0")
-            else:
-                self._white_filter.feColorMatrix(
-                    'SourceAlpha', type='matrix',
-                    values="0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0")
-        return self._white_filter
-
-    def _get_identity_filter(self):
-        if not self._identity_filter:
-            self._identity_filter = self._dwg.defs.add(self._dwg.filter())
-            self._identity_filter['class'] = 'identify-filter'
-            transfer = self._identity_filter.feComponentTransfer(
-                'SourceGraphic')
-            transfer['color-interpolation'] = 'sRGB'
-            transfer.feFuncR('identity')
-            transfer.feFuncG('identity')
-            transfer.feFuncB('identity')
-            transfer.feFuncA('identity')
-        return self._identity_filter
