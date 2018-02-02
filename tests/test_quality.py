@@ -37,7 +37,7 @@ def test_quality(rasterizer, tmpdir, psd_file):
     svg_file = os.path.join(tmpdir.dirname, "output.svg")
     psd = PSDImage.load(psd_file)
     preview = psd.as_PIL().convert("RGBA")
-    psd2svg.psd2svg(psd, svg_file)
+    psd2svg.psd2svg(psd, svg_file, no_preview=True)
     rendered = rasterizer.rasterize(svg_file)
     assert preview.width == rendered.width
     assert preview.height == rendered.height
