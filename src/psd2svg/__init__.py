@@ -85,8 +85,9 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
             self._dwg.add(self.convert_layer(self._input_layer))
         else:
             self.create_group(self._psd, element=self._dwg)
-            if not self.no_preview:
-                self._dwg.add(self.create_preview())
+            empty_psd = len(self._psd.layers) == 0
+            if not self.no_preview or empty_psd:
+                self._dwg.add(self.create_preview(hidden=not empty_psd))
 
         return self._save_svg()
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
+import svgwrite
 from psd_tools.user_api import BBox
 from psd_tools.constants import TaggedBlock
-
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
-
+import numpy as np
 
 logger = getLogger(__name__)
 
@@ -25,7 +25,7 @@ class LayerConverter(object):
         if layer.is_group():
             element = self.create_group(layer)
 
-        elif layer.has_relevant_pixels():
+        elif layer.has_pixels():
             element = self.create_image(layer)
             if layer.kind == 'type':
                 # TODO: Embed text metadata.
@@ -40,9 +40,11 @@ class LayerConverter(object):
             # element = self._get_adjustments(layer)
             element = self.create_shape(layer)
 
+
         # TODO: Deal with vector stroke.
         # self._get_vector_stroke(layer, target)
 
+        element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
         mask_element = self.create_mask(layer)
         if mask_element and not layer.mask.disabled:
@@ -82,13 +84,13 @@ class LayerConverter(object):
         if layer.has_box():
             element = self._dwg.rect(
                 insert=(layer.left, layer.top),
-                size=(layer.width, layer.height),
-                fill="none")
+                size=(layer.width, layer.height))
+        elif layer.kind == 'shape' and layer.has_path():
+            element = self.create_path(layer)
         else:
             element = self._dwg.rect(
                 insert=(self._psd.bbox.x1, self._psd.bbox.y1),
-                size=(self._psd.bbox.width, self._psd.bbox.height),
-                fill="none")
+                size=(self._psd.bbox.width, self._psd.bbox.height))
         # TODO: Create a backdrop-filter.
         return element
 
@@ -142,31 +144,138 @@ class LayerConverter(object):
             element['visibility'] = 'hidden'
         return element
 
+    def add_fill(self, layer, element):
+        if layer.has_tag(TaggedBlock.PATTERN_FILL_SETTING):
+            pattern_id = layer.get_tag(TaggedBlock.PATTERN_FILL_SETTING).id
+            pattern_element = self.create_pattern(pattern_id)
+            element['fill'] = pattern_element.get_funciri()
+        if layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
+            effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
+
+            # TODO: Fix empty bbox.
+            if layer.kind == 'shape' and not layer.has_box():
+                bbox = layer.get_bbox(vector=True)
+                gradident_element = self.create_gradient(
+                    effect, (bbox.width, bbox.height))
+            else:
+                gradident_element = self.create_gradient(
+                    effect, (layer.width, layer.height))
+            element['fill'] = gradident_element.get_funciri()
+        elif layer.has_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING):
+            color = layer.get_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING)
+            if color.name == 'rgb':
+                element['fill'] = 'rgb({},{},{})'.format(
+                    *map(int, color.value))
+            else:
+                logger.warning("Unsupported color: {}".format(color))
+        return element
+
     def add_attributes(self, layer, element):
         """Add layer attributes such as blending or visibility options."""
         element.set_desc(title=safe_utf8(layer.name))
         element['class'] = 'psd-layer psd-{}'.format(layer.kind)
         if not layer.visible:
             element['visibility'] = 'hidden'
-        blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
-        if not blend_mode == 'normal':
-            element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
         if layer.opacity < 255.0:
             element['opacity'] = layer.opacity / 255.0
+        self.add_blend_mode(element, layer.blend_mode)
         return element
 
-    def add_effects(self, layer, element):
-        """Add effects to the element."""
-        effects = layer.effects
-        fill_opacity = layer.get_tag(
-            TaggedBlock.BLEND_FILL_OPACITY, 255) / 255.0
-        if not effects:
-            if fill_opacity < 1.0:
-                element['opacity'] = layer.opacity / 255.0 * fill_opacity
+    def add_blend_mode(self, element, blend_mode):
+        """Set blending option to the element."""
+        blend_mode = BLEND_MODE.get(blend_mode, 'normal')
+        if blend_mode != 'normal':
+            element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
+
+    def create_pattern(self, pattern_id, phase=(0, 0), scale=100.0,
+                       insert=(0, 0)):
+        """Create a pattern element."""
+        pattern = self._psd.patterns.get(pattern_id)
+        if not pattern:
+            logger.error('Pattern data not found')
+            return self._dwg.defs.add(svgwrite.pattern.Pattern())
+
+        element = self._dwg.defs.add(svgwrite.pattern.Pattern(
+            width=pattern.width,
+            height=pattern.height,
+            patternUnits='userSpaceOnUse',
+            patternContentUnits='userSpaceOnUse',
+            patternTransform='translate({},{}) scale({})'.format(
+                insert[0] + phase[0], insert[1] + phase[1], scale / 100.0),
+        ))
+        element.add(self._dwg.image(
+            self._get_image_href(pattern.as_PIL()),
+            insert=(0, 0),
+            size=(pattern.width, pattern.height),
+        ))
+        return element
+
+    def create_gradient(self, effect, size):
+        if effect.type == 'radial':
+            element = self._dwg.defs.add(svgwrite.gradients.RadialGradient(
+                center=None, r=.5))
+        else:
+            theta = np.radians(-effect.angle)
+            start = np.array([size[0] * np.cos(theta - np.pi),
+                              size[1] * np.sin(theta - np.pi)])
+            end = np.array([size[0] * np.cos(theta), size[1] * np.sin(theta)])
+            r = 1.0 * np.max(np.abs(start))
+
+            start = start / (2 * r) + 0.5
+            end = end / (2 * r) + 0.5
+
+            start = [np.around(x, decimals=6) for x in start]
+            end = [np.around(x, decimals=6) for x in end]
+
+            element = self._dwg.defs.add(svgwrite.gradients.LinearGradient(
+                start=start, end=end))
+
+        gradient = effect.gradient
+        if not gradient.colors:
+            logger.warning("Unsupported gradient type: {}".format(gradient))
             return element
 
-        interior_blend_mode = None
-        if layer.get_tag(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
-            interior_blend_mode = BLEND_MODE.get(layer.blend_mode, 'normal')
-        return self._add_effects(layer.effects, layer, element, fill_opacity,
-                                 interior_blend_mode)
+        # Interpolate color and opacity for both points.
+        cp = np.array([x.location / 4096 for x in gradient.colors])
+        op = np.array([x.location / 4096 for x in gradient.transform])
+        c_items = np.array([
+            x.color.value for x in gradient.colors]).transpose()
+        o_items = np.array([x.opacity / 100.0 for x in gradient.transform])
+
+        # Remove duplicate points.
+        index = np.concatenate((np.diff(cp) > 0, [True]))
+        if np.any(np.logical_not(index)):
+            logger.warning('Duplicate gradient color stop: {}'.format(cp))
+        cp = cp[index]
+        c_items = c_items[:, index]
+        index = np.concatenate((np.diff(op) > 0, [True]))
+        if np.any(np.logical_not(index)):
+            logger.warning('Duplicate gradient opacity stop: {}'.format(op))
+        op = op[index]
+        o_items = o_items[index]
+
+        # Single point handling.
+        if len(cp) < 2:
+            cp = np.array([0.0, 1.0])
+            c_items = np.concatenate((c_items, c_items), axis=1)
+        if len(op) < 2:
+            op = np.array([0.0, 1.0])
+            o_items = np.array(list(o_items) + list(o_items))
+
+        # Reverse if specified.
+        if effect.reversed:
+            cp = 1.0 - cp[::-1]
+            op = 1.0 - op[::-1]
+            c_items = c_items[:, ::-1]
+            o_items = o_items[::-1]
+
+        mp = np.unique(np.concatenate((cp, op)))
+        fc = np.stack(
+            [np.interp(mp, cp, c_items[index, :]) for index in range(3)])
+        fo = np.interp(mp, op, o_items)
+
+        for index in range(len(mp)):
+            color = tuple(fc[:, index].astype(np.uint8).tolist())
+            element.add_stop_color(offset=mp[index], opacity=fo[index],
+                                color='rgb{}'.format(color))
+        return element

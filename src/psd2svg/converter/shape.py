@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-from psd_tools.constants import TaggedBlock
+from psd_tools.constants import TaggedBlock, PathResource
 from psd2svg.converter.constants import BLEND_MODE
 
 
@@ -9,6 +9,53 @@ logger = getLogger(__name__)
 
 
 class ShapeConverter(object):
+
+    def create_path(self, layer):
+        return self._dwg.path(self._generate_path(layer.vector_mask))
+
+    def _generate_path(self, vector_mask, command='C'):
+        # Iterator for SVG path constructor.
+        knot_types = (
+            PathResource.CLOSED_SUBPATH_BEZIER_KNOT_LINKED,
+            PathResource.CLOSED_SUBPATH_BEZIER_KNOT_UNLINKED,
+            PathResource.OPEN_SUBPATH_BEZIER_KNOT_LINKED,
+            PathResource.OPEN_SUBPATH_BEZIER_KNOT_UNLINKED
+        )
+        anchors = [p for p in vector_mask.path
+                   if p['selector'] in knot_types]
+        if len(anchors) == 0:
+            print(vector_mask)
+            return
+
+        # Initial point.
+        yield 'M'
+        yield anchors[0]['anchor'][1] * self.width
+        yield anchors[0]['anchor'][0] * self.height
+        yield command
+
+        # Closed path or open path
+        closed = any(
+            p['selector'] == PathResource.CLOSED_SUBPATH_LENGTH_RECORD
+            for p in vector_mask.path
+        )
+        points = (zip(anchors, anchors[1:] + anchors[0:1])
+                  if closed else zip(anchors, anchors[1:]))
+
+        # Rest of the points.
+        for p1, p2 in points:
+            yield p1['control_leaving_knot'][1] * self.width
+            yield p1['control_leaving_knot'][0] * self.height
+            yield p2['control_preceding_knot'][1] * self.width
+            yield p2['control_preceding_knot'][0] * self.height
+            yield p2['anchor'][1] * self.width
+            yield p2['anchor'][0] * self.height
+
+        if closed:
+            yield 'Z'
+
+    """
+    Deprecate the following.
+    """
 
     def _get_vector_stroke(self, layer, target):
         blocks = layer._tagged_blocks
@@ -24,33 +71,6 @@ class ShapeConverter(object):
                 return self._add_vstk(vstk, vsms, target.get_iri(),
                                       layer.bbox)
         return None
-
-    def _generate_path(self, vsms, command='C'):
-        # Iterator for SVG path constructor.
-        anchors = [p for p in vsms.path if p['selector'] in (1, 2, 4, 5)]
-
-        # Initial point.
-        yield 'M'
-        yield anchors[0]['anchor'][1] * self.width
-        yield anchors[0]['anchor'][0] * self.height
-        yield command
-
-        # Closed path or open path
-        closed = any(p['selector'] == 0 for p in vsms.path)
-        points = (zip(anchors, anchors[1:] + anchors[0:1])
-                  if closed else zip(anchors, anchors[1:]))
-
-        # Rest of the points.
-        for p1, p2 in points:
-            yield p1['control_leaving_knot'][1] * self.width
-            yield p1['control_leaving_knot'][0] * self.height
-            yield p2['control_preceding_knot'][1] * self.width
-            yield p2['control_preceding_knot'][0] * self.height
-            yield p2['anchor'][1] * self.width
-            yield p2['anchor'][0] * self.height
-
-        if closed:
-            yield 'Z'
 
     def _add_vstk(self, vstk, vsms, target_iri, bbox):
         line_style = vstk[b'strokeStyleLineAlignment'].value
