@@ -25,20 +25,20 @@ class LayerConverter(object):
         if layer.is_group():
             element = self.create_group(layer)
 
-        elif layer.has_pixels():
+        elif layer.has_relevant_pixels():
             element = self.create_image(layer)
             if layer.kind == 'type':
                 # TODO: Embed text metadata.
                 # text = self._get_text(layer)
                 pass
-            if layer.kind == 'shape':
-                # TODO: Embed vector graphics.
-                pass
+
+        elif layer.kind == 'shape' and layer.has_path():
+            element = self.create_path(layer)
 
         else:
             # Boxless element is either shape fill or adjustment.
             # element = self._get_adjustments(layer)
-            element = self.create_shape(layer)
+            element = self.create_rect(layer)
 
 
         # TODO: Deal with vector stroke.
@@ -79,14 +79,15 @@ class LayerConverter(object):
             debug=False)  # To disable attribute validation.
         return element
 
-    def create_shape(self, layer):
+    def create_path(self, layer):
+        return self._dwg.path(self._generate_path(layer.vector_mask))
+
+    def create_rect(self, layer):
         """Create an adjustment element."""
         if layer.has_box():
             element = self._dwg.rect(
                 insert=(layer.left, layer.top),
                 size=(layer.width, layer.height))
-        elif layer.kind == 'shape' and layer.has_path():
-            element = self.create_path(layer)
         else:
             element = self._dwg.rect(
                 insert=(self._psd.bbox.x1, self._psd.bbox.y1),
@@ -277,5 +278,5 @@ class LayerConverter(object):
         for index in range(len(mp)):
             color = tuple(fc[:, index].astype(np.uint8).tolist())
             element.add_stop_color(offset=mp[index], opacity=fo[index],
-                                color='rgb{}'.format(color))
+                                   color='rgb{}'.format(color))
         return element
