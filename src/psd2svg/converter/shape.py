@@ -10,9 +10,6 @@ logger = getLogger(__name__)
 
 class ShapeConverter(object):
 
-    def create_path(self, layer):
-        return self._dwg.path(self._generate_path(layer.vector_mask))
-
     def _generate_path(self, vector_mask, command='C'):
         # Iterator for SVG path constructor.
         knot_types = (
@@ -24,7 +21,6 @@ class ShapeConverter(object):
         anchors = [p for p in vector_mask.path
                    if p['selector'] in knot_types]
         if len(anchors) == 0:
-            print(vector_mask)
             return
 
         # Initial point.
