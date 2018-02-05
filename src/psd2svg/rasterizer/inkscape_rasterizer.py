@@ -16,7 +16,7 @@ import sys
 import subprocess
 from psd2svg.utils import temporary_directory
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 class InkscapeRasterizer(object):
