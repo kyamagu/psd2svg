@@ -24,30 +24,20 @@ class ShapeConverter(object):
 
     def _generate_path(self, vector_mask, command='C'):
         # Iterator for SVG path constructor.
-        knot_types = (
-            PathResource.CLOSED_SUBPATH_BEZIER_KNOT_LINKED,
-            PathResource.CLOSED_SUBPATH_BEZIER_KNOT_UNLINKED,
-            PathResource.OPEN_SUBPATH_BEZIER_KNOT_LINKED,
-            PathResource.OPEN_SUBPATH_BEZIER_KNOT_UNLINKED
-        )
-        anchors = [p for p in vector_mask.path
-                   if p['selector'] in knot_types]
-        if len(anchors) == 0:
+        knots = vector_mask.knots
+        if len(knots) == 0:
             return
 
         # Initial point.
         yield 'M'
-        yield anchors[0]['anchor'][1] * self.width
-        yield anchors[0]['anchor'][0] * self.height
+        yield knots[0]['anchor'][1] * self.width
+        yield knots[0]['anchor'][0] * self.height
         yield command
 
         # Closed path or open path
-        closed = any(
-            p['selector'] == PathResource.CLOSED_SUBPATH_LENGTH_RECORD
-            for p in vector_mask.path
-        )
-        points = (zip(anchors, anchors[1:] + anchors[0:1])
-                  if closed else zip(anchors, anchors[1:]))
+        closed = vector_mask.closed
+        points = (zip(knots, knots[1:] + knots[0:1])
+                  if closed else zip(knots, knots[1:]))
 
         # Rest of the points.
         for p1, p2 in points:
