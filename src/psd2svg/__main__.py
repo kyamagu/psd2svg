@@ -28,6 +28,9 @@ def main():
     parser.add_argument(
         '--no-preview', action='store_true', help='Do not embed a preview')
     parser.add_argument(
+        '--rasterizer', metavar='METHOD', default='chromium', type=str,
+        help='Specify which rasterizer to use. default chromium.')
+    parser.add_argument(
         '--loglevel', metavar='LEVEL', default='WARNING',
         help='Logging level, default WARNING')
     args = parser.parse_args()
@@ -38,7 +41,7 @@ def main():
     prefix, ext = os.path.splitext(args.output)
     if ext.lower() in (".png", ".jpg", ".jpeg", ".gif" ".tiff"):
         from psd2svg.rasterizer import create_rasterizer
-        rasterizer = create_rasterizer()
+        rasterizer = create_rasterizer(args.rasterizer)
         svg_file = prefix + ".svg"
         psd2svg(args.input, svg_file,
                 resource_prefix=args.resource_prefix,

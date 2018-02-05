@@ -5,6 +5,7 @@ from glob import glob
 import os
 import pytest
 import imagehash
+import numpy as np
 import psd2svg
 import psd2svg.rasterizer
 from psd_tools import PSDImage
@@ -29,18 +30,23 @@ EASY_CASES = list(set(FIXTURES) - set(HARD_CASES))
 
 @pytest.fixture(scope="module")
 def rasterizer():
-    return psd2svg.rasterizer.create_rasterizer()
+    rasterizer = psd2svg.rasterizer.create_rasterizer("chromium")
+    yield rasterizer
+    del rasterizer
 
 
 @pytest.mark.parametrize('psd_file', EASY_CASES)
 def test_quality(rasterizer, tmpdir, psd_file):
     svg_file = os.path.join(tmpdir.dirname, "output.svg")
     psd = PSDImage.load(psd_file)
-    preview = psd.as_PIL().convert("RGBA")
+    preview = psd.as_PIL()
     psd2svg.psd2svg(psd, svg_file, no_preview=True)
     rendered = rasterizer.rasterize(svg_file)
     assert preview.width == rendered.width
     assert preview.height == rendered.height
     preview_hash = imagehash.average_hash(preview)
     rendered_hash = imagehash.average_hash(rendered)
-    assert(preview_hash == rendered_hash)
+    error_count = np.sum(
+        np.bitwise_xor(preview_hash.hash, rendered_hash.hash))
+    error_rate = error_count / float(preview_hash.hash.size)
+    assert error_rate <= 0.05
