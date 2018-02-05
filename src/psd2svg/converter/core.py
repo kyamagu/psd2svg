@@ -110,6 +110,7 @@ class LayerConverter(object):
                 insert=(self._psd.bbox.x1, self._psd.bbox.y1),
                 size=(self._psd.bbox.width, self._psd.bbox.height))
         # TODO: Create a backdrop-filter.
+        element['fill'] = 'none'
         return element
 
     def create_mask(self, layer):
