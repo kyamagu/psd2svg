@@ -34,15 +34,14 @@ class LayerConverter(object):
 
         elif layer.kind == 'shape' and layer.has_path():
             element = self.create_path(layer)
+            # TODO: Deal with coflict in add_attributes() later.
+            # Blending, mask, and class names conflict.
+            element = self.add_stroke_style(layer, element)
 
         else:
             # Boxless element is either shape fill or adjustment.
             # element = self._get_adjustments(layer)
             element = self.create_rect(layer)
-
-
-        # TODO: Deal with vector stroke.
-        # self._get_vector_stroke(layer, target)
 
         element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
@@ -71,7 +70,7 @@ class LayerConverter(object):
         return element
 
     def create_image(self, layer):
-        """Create a pixel object."""
+        """Create an image element."""
         element = self._dwg.image(
             self._get_image_href(layer.as_PIL()),
             insert=(layer.left, layer.top),
@@ -80,10 +79,11 @@ class LayerConverter(object):
         return element
 
     def create_path(self, layer):
-        return self._dwg.path(self._generate_path(layer.vector_mask))
+        """Create a path element."""
+        return self._dwg.path(d=self._generate_path(layer.vector_mask))
 
     def create_rect(self, layer):
-        """Create an adjustment element."""
+        """Create a shape or adjustment element."""
         if layer.has_box():
             element = self._dwg.rect(
                 insert=(layer.left, layer.top),
@@ -120,13 +120,20 @@ class LayerConverter(object):
     def create_clipping(self, layer, clip_element):
         """Create clipped elements."""
         # Create a mask for this clip element.
-        mask = self._dwg.defs.add(self._dwg.mask())
-        use = self._dwg.use(clip_element.get_iri())
-        use['filter'] = self._get_white_filter().get_funciri()
-        mask.add(use)
-        mask['color-interpolation'] = 'sRGB'
-        # Group and apply the mask.
-        element = self._dwg.g(mask=mask.get_funciri())
+        if isinstance(clip_element, svgwrite.path.Path):
+            clippath = self._dwg.defs.add(self._dwg.clipPath())
+            use = self._dwg.use(clip_element.get_iri())
+            clippath.add(use)
+            element = self._dwg.g()
+            element['clip-path'] = clippath.get_funciri()
+        else:
+            mask = self._dwg.defs.add(self._dwg.mask())
+            use = self._dwg.use(clip_element.get_iri())
+            use['filter'] = self._get_white_filter().get_funciri()
+            mask.add(use)
+            mask['color-interpolation'] = 'sRGB'
+            element = self._dwg.g(mask=mask.get_funciri())
+
         element['class'] = 'psd-clipping'
         for child_layer in reversed(layer.clip_layers):
             clipped_element = self.convert_layer(child_layer)
@@ -147,10 +154,10 @@ class LayerConverter(object):
 
     def add_fill(self, layer, element):
         if layer.has_tag(TaggedBlock.PATTERN_FILL_SETTING):
-            pattern_id = layer.get_tag(TaggedBlock.PATTERN_FILL_SETTING).id
-            pattern_element = self.create_pattern(pattern_id)
+            effect = layer.get_tag(TaggedBlock.PATTERN_FILL_SETTING)
+            pattern_element = self.create_pattern(effect)
             element['fill'] = pattern_element.get_funciri()
-        if layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
+        elif layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
 
             # TODO: Fix empty bbox.
@@ -188,10 +195,29 @@ class LayerConverter(object):
         if blend_mode != 'normal':
             element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
 
-    def create_pattern(self, pattern_id, phase=(0, 0), scale=100.0,
-                       insert=(0, 0)):
+    def create_solid_color(self, effect):
+        """
+        Create a fill attribute.
+
+        This is supposed to be solidColor of SVG 1.2 Tiny spec, but for now,
+        implement as fill attribute.
+
+        :rtype: str
+        """
+        color = effect.color
+        if color.name == 'rgb':
+            return 'rgb({},{},{})'.format(*map(int, color.value))
+        elif color.name == 'gray':
+            return 'rgb({0},{0},{0})'.format(int(color.value[0]))
+        else:
+            logger.warning('Unsupported color: {}'.format(color))
+            return 'rgba(0,0,0,0)'
+
+    def create_pattern(self, effect, insert=(0, 0)):
         """Create a pattern element."""
-        pattern = self._psd.patterns.get(pattern_id)
+        pattern = self._psd.patterns.get(effect.pattern.id)
+        phase = effect.phase
+        scale = effect.scale
         if not pattern:
             logger.error('Pattern data not found')
             return self._dwg.defs.add(svgwrite.pattern.Pattern())
