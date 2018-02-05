@@ -81,7 +81,23 @@ class LayerConverter(object):
 
     def create_path(self, layer):
         """Create a path element."""
-        return self._dwg.path(d=self._generate_path(layer.vector_mask))
+        path = self._dwg.path(d=self._generate_path(layer.vector_mask))
+        if layer.vector_mask.initial_fill_rule:
+            element = self._dwg.defs.add(self._dwg.rect(
+                insert=(self._psd.bbox.x1, self._psd.bbox.y1),
+                size=(self._psd.bbox.width, self._psd.bbox.height)))
+            mask = self._dwg.defs.add(self._dwg.mask())
+            mask.add(self._dwg.rect(
+                insert=(self._psd.bbox.x1, self._psd.bbox.y1),
+                size=(self._psd.bbox.width, self._psd.bbox.height),
+                fill='white'))
+            path['fill'] = 'black'
+            mask.add(path)
+            element['mask'] = mask.get_funciri()
+            use = self._dwg.use(element.get_iri())
+            return use
+        else:
+            return path
 
     def create_rect(self, layer):
         """Create a shape or adjustment element."""
@@ -154,13 +170,16 @@ class LayerConverter(object):
         return element
 
     def add_fill(self, layer, element):
-        if layer.has_tag(TaggedBlock.PATTERN_FILL_SETTING):
+        """Add fill attribute to the given element."""
+        if layer.has_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING):
+            effect = layer.get_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING)
+            element['fill'] = self.create_solid_color(effect)
+        elif layer.has_tag(TaggedBlock.PATTERN_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.PATTERN_FILL_SETTING)
             pattern_element = self.create_pattern(effect)
             element['fill'] = pattern_element.get_funciri()
         elif layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
-
             # TODO: Fix empty bbox.
             if layer.kind == 'shape' and not layer.has_box():
                 bbox = layer.get_bbox(vector=True)
@@ -170,9 +189,6 @@ class LayerConverter(object):
                 gradident_element = self.create_gradient(
                     effect, (layer.width, layer.height))
             element['fill'] = gradident_element.get_funciri()
-        elif layer.has_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING):
-            effect = layer.get_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING)
-            element['fill'] = self.create_solid_color(effect)
         return element
 
     def add_attributes(self, layer, element):
