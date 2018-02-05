@@ -6,6 +6,7 @@ from psd_tools.user_api import BBox
 from psd_tools.constants import TaggedBlock
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
+from psd2svg.utils.color import cmyk2rgb
 import numpy as np
 
 logger = getLogger(__name__)
@@ -170,12 +171,8 @@ class LayerConverter(object):
                     effect, (layer.width, layer.height))
             element['fill'] = gradident_element.get_funciri()
         elif layer.has_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING):
-            color = layer.get_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING)
-            if color.name == 'rgb':
-                element['fill'] = 'rgb({},{},{})'.format(
-                    *map(int, color.value))
-            else:
-                logger.warning("Unsupported color: {}".format(color))
+            effect = layer.get_tag(TaggedBlock.SOLID_COLOR_SHEET_SETTING)
+            element['fill'] = self.create_solid_color(effect)
         return element
 
     def add_attributes(self, layer, element):
@@ -209,6 +206,9 @@ class LayerConverter(object):
             return 'rgb({},{},{})'.format(*map(int, color.value))
         elif color.name == 'gray':
             return 'rgb({0},{0},{0})'.format(int(color.value[0]))
+        elif color.name == 'cmyk':
+            rgb = cmyk2rgb(color.value)
+            return 'rgb({},{},{})'.format(*map(int, rgb))
         else:
             logger.warning('Unsupported color: {}'.format(color))
             return 'rgba(0,0,0,0)'
