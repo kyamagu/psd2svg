@@ -76,18 +76,14 @@ class EffectsConverter(object):
         element = self._dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
-            fill=self._get_color(effect.color),
+            fill=self.create_solid_color(effect),
             mask=mask.get_funciri())
         self.add_overlay_attribute(
             element, effect, blend_mode, 'color-overlay')
         return element
 
     def create_pattern_overlay(self, layer, effect, mask, blend_mode):
-        pattern = self.create_pattern(
-            pattern_id=effect.pattern.id,
-            phase=effect.phase,
-            scale=effect.scale,
-            insert=(layer.left, layer.top))
+        pattern = self.create_pattern(effect, (layer.left, layer.top))
         element = self._dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
@@ -103,7 +99,7 @@ class EffectsConverter(object):
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
             fill=gradient.get_funciri(),
-            mask=mask_elemen.get_funciri())
+            mask=mask.get_funciri())
         self.add_overlay_attribute(
             element, effect, blend_mode, 'gradient-overlay')
         return element
