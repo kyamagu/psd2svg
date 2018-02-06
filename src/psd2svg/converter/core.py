@@ -219,10 +219,11 @@ class LayerConverter(object):
         :rtype: str
         """
         color = effect.color
+        print(color)
         if color.name == 'rgb':
             return 'rgb({},{},{})'.format(*map(int, color.value))
         elif color.name == 'gray':
-            return 'rgb({0},{0},{0})'.format(int(color.value[0]))
+            return 'rgb({0},{0},{0})'.format(int(255 * color.value[0]))
         elif color.name == 'cmyk':
             rgb = cmyk2rgb(color.value)
             return 'rgb({},{},{})'.format(*map(int, rgb))

@@ -24,32 +24,31 @@ class ShapeConverter(object):
 
     def generate_path(self, vector_mask, command='C'):
         """Sequence generator for SVG path constructor."""
-        knots = vector_mask.knots
-        if len(knots) == 0:
-            return
+        for path in vector_mask.paths:
+            if path.num_knots == 0:
+                continue
 
-        # Initial point.
-        yield 'M'
-        yield knots[0]['anchor'][1] * self.width
-        yield knots[0]['anchor'][0] * self.height
-        yield command
+            # Initial point.
+            yield 'M'
+            yield path.knots[0].anchor[1] * self.width
+            yield path.knots[0].anchor[0] * self.height
+            yield command
 
-        # Closed path or open path
-        closed = vector_mask.closed
-        points = (zip(knots, knots[1:] + knots[0:1])
-                  if closed else zip(knots, knots[1:]))
+            # Closed path or open path
+            points = (zip(path.knots, path.knots[1:] + path.knots[0:1])
+                      if path.closed else zip(path.knots, path.knots[1:]))
 
-        # Rest of the points.
-        for p1, p2 in points:
-            yield p1['control_leaving_knot'][1] * self.width
-            yield p1['control_leaving_knot'][0] * self.height
-            yield p2['control_preceding_knot'][1] * self.width
-            yield p2['control_preceding_knot'][0] * self.height
-            yield p2['anchor'][1] * self.width
-            yield p2['anchor'][0] * self.height
+            # Rest of the points.
+            for p1, p2 in points:
+                yield p1.leaving_knot[1] * self.width
+                yield p1.leaving_knot[0] * self.height
+                yield p2.preceding_knot[1] * self.width
+                yield p2.preceding_knot[0] * self.height
+                yield p2.anchor[1] * self.width
+                yield p2.anchor[0] * self.height
 
-        if closed:
-            yield 'Z'
+            if path.closed:
+                yield 'Z'
 
 
     def add_stroke_style(self, layer, element):
