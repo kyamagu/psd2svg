@@ -38,6 +38,7 @@ class LayerConverter(object):
             # TODO: Deal with coflict in add_attributes() later.
             # Blending, mask, and class names conflict.
             element = self.add_stroke_style(layer, element)
+            element = self.add_stroke_content_style(layer, element)
 
         else:
             # Boxless element is either shape fill or adjustment.
