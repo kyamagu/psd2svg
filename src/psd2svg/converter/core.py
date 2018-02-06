@@ -219,7 +219,6 @@ class LayerConverter(object):
         :rtype: str
         """
         color = effect.color
-        print(color)
         if color.name == 'rgb':
             return 'rgb({},{},{})'.format(*map(int, color.value))
         elif color.name == 'gray':
