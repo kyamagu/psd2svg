@@ -109,3 +109,29 @@ class ShapeConverter(object):
         self.add_blend_mode(element, stroke.blend_mode)
 
         return element
+
+
+    def add_stroke_content_style(self, layer, element):
+        """Add stroke content (fill) style to the path element."""
+        if not layer.has_stroke_content():
+            return element
+
+        effect = layer.stroke_content
+        if not effect.enabled:
+            return element
+
+        if effect.name == 'ColorOverlay':
+            element['fill'] = self.create_solid_color(effect)
+        elif effect.name == 'PatternOverlay':
+            pattern = self.create_pattern(
+                effect, insert=(layer.left, layer.top))
+            element['fill'] = pattern.get_funciri()
+        elif effect.name == 'GradientOverlay':
+            bbox = layer.get_bbox()
+            if bbox.is_empty():
+                bbox = layer.get_bbox(vector=True)
+            gradient = self.create_gradient(
+                effect, size=(bbox.width, bbox.height))
+            element['fill'] = gradient.get_funciri()
+
+        return element
