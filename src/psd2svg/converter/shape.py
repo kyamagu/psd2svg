@@ -22,8 +22,8 @@ class ShapeConverter(object):
         b'strokeStyleBevelJoin': 'bevel',
     }
 
-    def _generate_path(self, vector_mask, command='C'):
-        # Iterator for SVG path constructor.
+    def generate_path(self, vector_mask, command='C'):
+        """Sequence generator for SVG path constructor."""
         knots = vector_mask.knots
         if len(knots) == 0:
             return
@@ -65,7 +65,7 @@ class ShapeConverter(object):
             clippath = self._dwg.defs.add(self._dwg.clipPath())
             clippath['class'] = 'psd-stroke stroke-inside'
             clippath.add(self._dwg.path(
-                self._generate_path(layer.vector_mask)))
+                self.generate_path(layer.vector_mask)))
             element['stroke-width'] = stroke.line_width * 2
             element['clip-path'] = clippath.get_funciri()
         elif stroke.line_alignment == b'strokeStyleAlignOutside':
@@ -76,16 +76,14 @@ class ShapeConverter(object):
                 size=(layer.width, layer.height),
                 fill='white'))
             mask.add(self._dwg.path(
-                self._generate_path(layer.vector_mask), fill='black'))
+                self.generate_path(layer.vector_mask), fill='black'))
             element['stroke-width'] = stroke.line_width * 2
             element['mask'] = mask.get_funciri()
         else:
             element['stroke-width'] = stroke.line_width
 
         if stroke.fill_enabled:
-            if stroke.content.name == 'ColorOverlay':
-                element['stroke'] = self.create_solid_color(stroke.content)
-            elif stroke.content.name == 'PatternOverlay':
+            if stroke.content.name == 'PatternOverlay':
                 pattern = self.create_pattern(
                     stroke.content, insert=(layer.left, layer.top))
                 element['stroke'] = pattern.get_funciri()
@@ -96,6 +94,8 @@ class ShapeConverter(object):
                 gradient = self.create_gradient(
                     stroke.content, size=(bbox.width, bbox.height))
                 element['stroke'] = gradient.get_funciri()
+            elif stroke.content.name == 'ColorOverlay':
+                element['stroke'] = self.create_solid_color(stroke.content)
 
         element['stroke-opacity'] = stroke.opacity / 100.0
         element['stroke-linecap'] = self.STROKE_STYLE_LINE_CAP_TYPES.get(
@@ -120,9 +120,7 @@ class ShapeConverter(object):
         if not effect.enabled:
             return element
 
-        if effect.name == 'ColorOverlay':
-            element['fill'] = self.create_solid_color(effect)
-        elif effect.name == 'PatternOverlay':
+        if effect.name == 'PatternOverlay':
             pattern = self.create_pattern(
                 effect, insert=(layer.left, layer.top))
             element['fill'] = pattern.get_funciri()
@@ -133,5 +131,7 @@ class ShapeConverter(object):
             gradient = self.create_gradient(
                 effect, size=(bbox.width, bbox.height))
             element['fill'] = gradient.get_funciri()
+        if effect.name == 'ColorOverlay':
+            element['fill'] = self.create_solid_color(effect)
 
         return element

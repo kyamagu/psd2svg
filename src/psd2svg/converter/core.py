@@ -82,7 +82,7 @@ class LayerConverter(object):
 
     def create_path(self, layer):
         """Create a path element."""
-        path = self._dwg.path(d=self._generate_path(layer.vector_mask))
+        path = self._dwg.path(d=self.generate_path(layer.vector_mask))
         if layer.vector_mask.initial_fill_rule:
             element = self._dwg.defs.add(self._dwg.rect(
                 insert=(self._psd.bbox.x1, self._psd.bbox.y1),
@@ -182,15 +182,14 @@ class LayerConverter(object):
             element['fill'] = pattern_element.get_funciri()
         elif layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
-            # TODO: Fix empty bbox.
             if layer.kind == 'shape' and not layer.has_box():
                 bbox = layer.get_bbox(vector=True)
-                gradident_element = self.create_gradient(
-                    effect, (bbox.width, bbox.height))
             else:
-                gradident_element = self.create_gradient(
-                    effect, (layer.width, layer.height))
-            element['fill'] = gradident_element.get_funciri()
+                bbox = layer.bbox
+            if bbox.is_empty():
+                bbox = layer._psd.viewbox
+            gradient = self.create_gradient(effect, (bbox.width, bbox.height))
+            element['fill'] = gradient.get_funciri()
         return element
 
     def add_attributes(self, layer, element):
