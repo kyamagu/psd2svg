@@ -22,6 +22,7 @@ HARD_CASES = [
         "layer_params.psd",
         "layer_comps.psd",
         "gray0.psd",  # Seems the preview image is inaccurate.
+        "note.psd",  # No preview.
     ]
 ]
 
