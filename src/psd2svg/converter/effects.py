@@ -36,10 +36,10 @@ class EffectsConverter(object):
 
         # Outer effects.
         for effect in layer.effects.find('dropshadow'):
-            shadow = self.create_dropshadow(layer, effect, element)
+            shadow = self.create_drop_shadow(layer, effect, element)
             container.add(shadow)
         for effect in layer.effects.find('outerglow'):
-            glow = self.create_outerglow(layer, effect, element)
+            glow = self.create_outer_glow(layer, effect, element)
             container.add(glow)
 
         blend_mode = None  # Interior blend mode.
@@ -144,7 +144,7 @@ class EffectsConverter(object):
         self.add_blend_mode(
             element, blend_mode if blend_mode else effect.blend_mode)
 
-    def create_dropshadow(self, layer, effect, element):
+    def create_drop_shadow(self, layer, effect, element):
         """Create a drop shadow effect."""
         blur = effect.size
         spread = effect.choke / 100.0
@@ -172,7 +172,7 @@ class EffectsConverter(object):
         self.add_blend_mode(shadow, effect.blend_mode)
         return shadow
 
-    def create_outerglow(self, layer, effect, element):
+    def create_outer_glow(self, layer, effect, element):
         """Create an outer glow effect."""
         blur = effect.size
         spread = effect.choke / 100.0
