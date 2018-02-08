@@ -10,20 +10,12 @@ logger = getLogger(__name__)
 
 class ShapeConverter(object):
 
-    STROKE_STYLE_LINE_CAP_TYPES = {
-        b'strokeStyleButtCap': 'butt',
-        b'strokeStyleRoundCap': 'round',
-        b'strokeStyleSquareCap': 'square',
-    }
-
-    STROKE_STYLE_LINE_JOIN_TYPES = {
-        b'strokeStyleMiterJoin': 'miter',
-        b'strokeStyleRoundJoin': 'round',
-        b'strokeStyleBevelJoin': 'bevel',
-    }
-
     def generate_path(self, vector_mask, command='C'):
         """Sequence generator for SVG path constructor."""
+
+        # TODO: Implement even-odd rule for multiple paths.
+        # first path --> show, second path --> hide, third path --> show.
+        # should be clipPath.
         for path in vector_mask.paths:
             if path.num_knots == 0:
                 continue
@@ -57,29 +49,30 @@ class ShapeConverter(object):
             return element
 
         stroke = layer.stroke
-        if not stroke.stroke_enabled:
+        if not stroke.enabled:
             return element
 
-        if stroke.line_alignment == b'strokeStyleAlignInside':
-            clippath = self._dwg.defs.add(self._dwg.clipPath())
-            clippath['class'] = 'psd-stroke stroke-inside'
-            clippath.add(self._dwg.path(
-                self.generate_path(layer.vector_mask)))
-            element['stroke-width'] = stroke.line_width * 2
-            element['clip-path'] = clippath.get_funciri()
-        elif stroke.line_alignment == b'strokeStyleAlignOutside':
-            mask = self._dwg.defs.add(self._dwg.mask())
-            mask['class'] = 'psd-stroke stroke-outside'
-            mask.add(self._dwg.rect(
-                insert=(layer.left, layer.top),
-                size=(layer.width, layer.height),
-                fill='white'))
-            mask.add(self._dwg.path(
-                self.generate_path(layer.vector_mask), fill='black'))
-            element['stroke-width'] = stroke.line_width * 2
-            element['mask'] = mask.get_funciri()
-        else:
-            element['stroke-width'] = stroke.line_width
+        # if stroke.line_alignment == 'inner':
+        #     clippath = self._dwg.defs.add(self._dwg.clipPath())
+        #     clippath['class'] = 'psd-stroke stroke-inside'
+        #     clippath.add(self._dwg.path(
+        #         self.generate_path(layer.vector_mask)))
+        #     element['stroke-width'] = stroke.line_width * 2
+        #     element['clip-path'] = clippath.get_funciri()
+        # elif stroke.line_alignment == 'outer':
+        #     mask = self._dwg.defs.add(self._dwg.mask())
+        #     mask['class'] = 'psd-stroke stroke-outside'
+        #     mask.add(self._dwg.rect(
+        #         insert=(layer.left, layer.top),
+        #         size=(layer.width, layer.height),
+        #         fill='white'))
+        #     mask.add(self._dwg.path(
+        #         self.generate_path(layer.vector_mask), fill='black'))
+        #     element['stroke-width'] = stroke.line_width * 2
+        #     element['mask'] = mask.get_funciri()
+        # else:
+        element['stroke-width'] = stroke.line_width.value
+        element['stroke-alignment'] = stroke.line_alignment
 
         if stroke.fill_enabled:
             if stroke.content.name == 'PatternOverlay':
@@ -96,14 +89,13 @@ class ShapeConverter(object):
             elif stroke.content.name == 'ColorOverlay':
                 element['stroke'] = self.create_solid_color(stroke.content)
 
-        element['stroke-opacity'] = stroke.opacity / 100.0
-        element['stroke-linecap'] = self.STROKE_STYLE_LINE_CAP_TYPES.get(
-            stroke.line_cap_type)
-        element['stroke-linejoin'] = self.STROKE_STYLE_LINE_JOIN_TYPES.get(
-            stroke.line_join_type)
+        element['stroke-opacity'] = stroke.opacity.value / 100.0
+        element['stroke-linecap'] =  stroke.line_cap_type
+        element['stroke-linejoin'] = stroke.line_join_type
         if stroke.line_dash_set:
             element['stroke-dasharray'] = ",".join(
-                [str(x * stroke.line_width) for x in stroke.line_dash_set])
+                [str(x.value * stroke.line_width.value)
+                 for x in stroke.line_dash_set])
             element['stroke-dashoffset'] = stroke.line_dash_offset
         self.add_blend_mode(element, stroke.blend_mode)
 
