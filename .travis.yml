@@ -21,7 +21,7 @@ addons:
             - libfreetype6-dev
             - liblcms2-dev
             - libffi-dev
-            - inkscape
+    chrome: stable
 
 git:
     lfs_skip_smudge: true
@@ -32,6 +32,12 @@ before_install:
 
 install:
     - pip install -U pip wheel tox
+
+before_script:
+    - wget https://chromedriver.storage.googleapis.com/2.35/chromedriver_linux64.zip
+    - unzip chromedriver_linux64.zip
+    - sudo chmod +x chromedriver
+    - sudo cp chromedriver /usr/local/bin
 
 script: tox
 
