@@ -138,7 +138,7 @@ class EffectsConverter(object):
     def _add_overlay_attribute(self, element, effect, blend_mode, kind):
         """Add common overlay attributes."""
         element['class'] = 'layer-effect {}'.format(kind)
-        opacity = effect.opacity / 100.0
+        opacity = effect.opacity.value / 100.0  # TODO: Check unit
         if opacity < 1.0:
             element['fill-opacity'] = opacity
         self.add_blend_mode(
@@ -146,10 +146,10 @@ class EffectsConverter(object):
 
     def create_drop_shadow(self, layer, effect, element):
         """Create a drop shadow effect."""
-        blur = effect.size
-        spread = effect.choke / 100.0
-        angle = effect.angle
-        radius = effect.distance
+        blur = effect.size.value
+        spread = effect.choke.value / 100.0
+        angle = effect.angle.value
+        radius = effect.distance.value
         dx = radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
         filt = self._dwg.defs.add(self._dwg.filter(
@@ -157,13 +157,13 @@ class EffectsConverter(object):
         filt['class'] = 'drop-shadow'
 
         filt.feOffset('SourceAlpha', dx=dx, dy=dy, result='drshOffset')
-        filt.feGaussianBlur('drshOffset', stdDeviation=blur / 2,
+        filt.feGaussianBlur('drshOffset', stdDeviation=blur / 2.0,
                             result='drshBlur')
         transfer = filt.feComponentTransfer('drshBlur', result='drshBlurA')
         transfer.feFuncA('linear', slope=1.0 + 4 * spread, intercept=0.0)
         flood = filt.feFlood(result='drshFlood')
         flood['flood-color'] = self.create_solid_color(effect)
-        flood['flood-opacity'] = effect.opacity / 100.0
+        flood['flood-opacity'] = effect.opacity.value / 100.0
         filt.feComposite('drshFlood', in2='drshBlurA', operator='in',
                          result='drshShadow')
 
@@ -174,8 +174,8 @@ class EffectsConverter(object):
 
     def create_outer_glow(self, layer, effect, element):
         """Create an outer glow effect."""
-        blur = effect.size
-        spread = effect.choke / 100.0
+        blur = effect.size.value
+        spread = effect.choke.value / 100.0
         filt = self._dwg.defs.add(self._dwg.filter(
             x='-50%', y='-50%', size=('200%', '200%')))
         filt['class'] = 'outerglow'
@@ -201,7 +201,7 @@ class EffectsConverter(object):
             flood['flood-color'] = color = self.create_solid_color(effect)
         else:
             logger.warning("Gradient glow not implemented")
-        flood['flood-opacity'] = effect.opacity / 100.0
+        flood['flood-opacity'] = effect.opacity.value / 100.0
         filt.feComposite('orglFlood', in2='orglBlurA', operator='in',
                          result='orglShadow')
         filt.feComposite('orglShadow', in2='SourceAlpha', operator='out',
@@ -213,9 +213,9 @@ class EffectsConverter(object):
         return glow
 
     def create_inner_shadow(self, layer, effect, element, blend_mode):
-        blur = effect.size
-        angle = effect.angle
-        radius = effect.distance
+        blur = effect.size.value
+        angle = effect.angle.value
+        radius = effect.distance.value
         dx = radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
@@ -223,11 +223,11 @@ class EffectsConverter(object):
         filt['class'] = 'inner-shadow'
         flood = filt.feFlood(result='irshFlood')
         flood['flood-color'] = self.create_solid_color(effect)
-        flood['flood-opacity'] = effect.opacity / 100.0
+        flood['flood-opacity'] = effect.opacity.value / 100.0
         filt.feComposite('irshFlood', in2='SourceAlpha', operator='out',
                          result='irshShadow')
         filt.feOffset('irshShadow', dx=dx, dy=dy, result='irshOffset')
-        filt.feGaussianBlur('irshOffset', stdDeviation=blur / 2,
+        filt.feGaussianBlur('irshOffset', stdDeviation=blur / 2.0,
                             result='irshBlur')
         filt.feComposite('irshBlur', in2='SourceAlpha', operator='in',
                          result='irshShadow')
@@ -239,8 +239,8 @@ class EffectsConverter(object):
         return shadow
 
     def create_inner_glow(self, layer, effect, element, blend_mode):
-        blur = effect.size
-        spread = effect.choke / 100.0
+        blur = effect.size.value
+        spread = effect.choke.value / 100.0
 
         # Real inner glow needs distance transform.
         filt = self._dwg.defs.add(self._dwg.filter())
@@ -251,7 +251,7 @@ class EffectsConverter(object):
             flood['flood-color'] = color = self.create_solid_color(effect)
         else:
             logger.warning("Gradient glow not implemented")
-        flood['flood-opacity'] = effect.opacity / 100.0
+        flood['flood-opacity'] = effect.opacity.value / 100.0
         # Saturate alpha mask before glow.
         transfer = filt.feComponentTransfer('SourceAlpha', result='irglAlpha')
         transfer.feFuncA('linear', slope=255, intercept=0)
@@ -272,7 +272,7 @@ class EffectsConverter(object):
 
     def create_stroke(self, layer, effect, element):
         """Create a stroke effect."""
-        radius = int(effect.size / 6.0)  # TODO: Check unit.
+        radius = int(effect.size.value)  # TODO: Check unit.
         style = effect.position
 
         filt = self._dwg.defs.add(self._dwg.filter())
@@ -284,15 +284,15 @@ class EffectsConverter(object):
         else:
             logger.warning("Gradient or pattern stroke not implemented")
 
-        flood['flood-opacity'] = effect.opacity / 100.0
-        if style == b'OutF':
+        flood['flood-opacity'] = effect.opacity.value / 100.0
+        if style == 'outer':
             filt.feMorphology('SourceAlpha', result='frfxMorph',
                               operator='dilate', radius=radius)
             filt.feComposite('frfxFlood', in2='frfxMorph', operator='in',
                              result='frfxBoundary')
             filt.feComposite('frfxBoundary', in2='SourceAlpha',
                              operator='out')
-        elif style == b'InsF':
+        elif style == 'inner':
             filt.feMorphology('SourceAlpha', result='frfxMorph',
                               operator='erode', radius=radius)
             filt.feComposite('frfxFlood', in2='frfxMorph', operator='out',

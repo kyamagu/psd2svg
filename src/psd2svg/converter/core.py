@@ -93,11 +93,13 @@ class LayerConverter(object):
                 size=(self._psd.bbox.width, self._psd.bbox.height),
                 fill='white'))
             path['fill'] = 'black'
+            path['clip-rule'] = 'evenodd'
             mask.add(path)
             element['mask'] = mask.get_funciri()
             use = self._dwg.use(element.get_iri())
             return use
         else:
+            path['fill-rule'] = 'evenodd'
             return path
 
     def create_rect(self, layer):
@@ -234,7 +236,7 @@ class LayerConverter(object):
         """Create a pattern element."""
         pattern = self._psd.patterns.get(effect.pattern.id)
         phase = effect.phase
-        scale = effect.scale
+        scale = effect.scale.value  # TODO: Check unit
         if not pattern:
             logger.error('Pattern data not found')
             return self._dwg.defs.add(svgwrite.pattern.Pattern())
@@ -259,14 +261,14 @@ class LayerConverter(object):
             element = self._dwg.defs.add(svgwrite.gradients.RadialGradient(
                 center=None, r=.5))
         else:
-            theta = np.radians(-effect.angle)
+            theta = np.radians(-effect.angle.value)
             start = np.array([size[0] * np.cos(theta - np.pi),
                               size[1] * np.sin(theta - np.pi)])
             end = np.array([size[0] * np.cos(theta), size[1] * np.sin(theta)])
             r = 1.0 * np.max(np.abs(start))
 
-            start = start / (2 * r) + 0.5
-            end = end / (2 * r) + 0.5
+            start = start / (2.0 * r) + 0.5
+            end = end / (2.0 * r) + 0.5
 
             start = [np.around(x, decimals=6) for x in start]
             end = [np.around(x, decimals=6) for x in end]
@@ -280,11 +282,12 @@ class LayerConverter(object):
             return element
 
         # Interpolate color and opacity for both points.
-        cp = np.array([x.location / 4096 for x in gradient.colors])
-        op = np.array([x.location / 4096 for x in gradient.transform])
+        cp = np.array([x.location / 4096.0 for x in gradient.colors])
+        op = np.array([x.location / 4096.0 for x in gradient.transform])
         c_items = np.array([
             x.color.value for x in gradient.colors]).transpose()
-        o_items = np.array([x.opacity / 100.0 for x in gradient.transform])
+        o_items = np.array([x.opacity.value / 100.0
+                            for x in gradient.transform])  # TODO: Check unit.
 
         # Remove duplicate points.
         index = np.concatenate((np.diff(cp) > 0, [True]))
