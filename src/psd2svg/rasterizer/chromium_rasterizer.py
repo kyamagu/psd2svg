@@ -34,6 +34,7 @@ class ChromiumRasterizer(object):
         options.add_argument("headless")
         options.add_argument("disable-gpu")
         options.add_argument("disable-infobars")
+        options.add_argument("enable-experimental-web-platform-features")
         options.add_argument("default-background-color FFFFFF00")
         self.driver = webdriver.Chrome(
             executable_path=executable_path,
