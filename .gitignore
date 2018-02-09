@@ -51,9 +51,14 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
 # macOS
 .DS_Store
 *~
 
 # Other
+.pytest_cache
 tmp/

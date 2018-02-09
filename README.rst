@@ -22,17 +22,6 @@ Use ``pip`` to install::
 
     pip install psd2svg
 
-To use AWS S3 storage backend::
-
-    pip install psd2svg[s3]
-
-or::
-
-    pip install boto3
-
-To use HDFS storage backend::
-
-  pip install psd2svg[hdfs,kerberos]
 
 Usage
 -----
@@ -66,14 +55,9 @@ To render text in vector stroke::
 
     psd2svg input.psd output/ --text-mode text
 
-The tool can specify URL instead of file path (S3 requires ``boto3``)::
-
-    psd2svg http://example.com/input.psd
-    psd2svg s3://bucketname/path/to/input.psd s3://bucketname/path/to/output/
 
 API
 ---
-
 
 The package contains high-level conversion function ``psd2svg``:
 
@@ -107,12 +91,28 @@ Invoke tox::
 
     tox
 
-Publish
--------
 
-Execute the following command::
+Storage backend support
+-----------------------
 
-  make publish
+To use AWS S3 storage backend::
+
+    pip install psd2svg[s3]
+
+or::
+
+    pip install boto3
+
+
+The tool can specify URL instead of file path (S3 requires ``boto3``)::
+
+    psd2svg http://example.com/input.psd
+    psd2svg s3://bucketname/path/to/input.psd s3://bucketname/path/to/output/
+
+
+To use HDFS storage backend::
+
+  pip install psd2svg[hdfs,kerberos]
 
 Notes
 -----

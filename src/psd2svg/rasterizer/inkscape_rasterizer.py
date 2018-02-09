@@ -10,24 +10,13 @@ Prerequisite:
 from __future__ import absolute_import, unicode_literals
 
 from PIL import Image
-import contextlib
-import tempfile
 import logging
 import os
-import shutil
 import sys
 import subprocess
+from psd2svg.utils import temporary_directory
 
-logger = logging.getLogger(__file__)
-
-
-@contextlib.contextmanager
-def temporary_directory(*args, **kwargs):
-    d = tempfile.mkdtemp(*args, **kwargs)
-    try:
-        yield d
-    finally:
-        shutil.rmtree(d)
+logger = logging.getLogger(__name__)
 
 
 class InkscapeRasterizer(object):
