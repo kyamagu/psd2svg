@@ -18,7 +18,8 @@ from psd2svg.utils import temporary_directory
 logger = logging.getLogger(__name__)
 
 
-BATIK_PATH = "/usr/share/java/batik-rasterizer.jar"
+BATIK_PATH = os.environ.get(
+    'BATIK_PATH', "/usr/share/java/batik-rasterizer.jar")
 
 
 class BatikRasterizer(object):
