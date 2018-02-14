@@ -44,6 +44,8 @@ class LayerConverter(object):
             # Boxless element is either shape fill or adjustment.
             # element = self._get_adjustments(layer)
             element = self.create_rect(layer)
+            if layer.kind == 'adjustment':
+                self.add_adjustment(layer, element)
 
         element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
@@ -209,7 +211,10 @@ class LayerConverter(object):
         """Set blending option to the element."""
         blend_mode = BLEND_MODE.get(blend_mode, 'normal')
         if blend_mode != 'normal':
-            element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
+            if 'style' in element.attribs:
+                element['style'] += 'mix-blend-mode: {};'.format(blend_mode)
+            else:
+                element['style'] = 'mix-blend-mode: {};'.format(blend_mode)
 
     def create_solid_color(self, effect):
         """

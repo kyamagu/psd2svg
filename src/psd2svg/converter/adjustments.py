@@ -10,7 +10,102 @@ import svgwrite
 logger = getLogger(__name__)
 
 
+"""
+Adjustment conversion is a bit tricky due to the poor support of
+``BackgroundImage`` and ``BackgroundAlpha`` specification in most of the
+renderers. Also CSS's `backdrop-filter` is not available in SVG.
+
+The possible workaround is to wrap ALL elements appearing before the
+adjustment in a group, and apply a filter to the group. This is not
+perfect as the transparent background still does not get the filter effect.
+The conversion is like the following.
+
+In PSD::
+
+    <psdimage>
+        <pixel name="Background">
+        <pixel name="Layer-1">
+        <adjustment name="Adjustment-1">
+        <adjustment name="Adjustment-2">
+        <pixel name="Layer-2">
+
+In SVG::
+
+    <svg>
+        <defs>
+            <filter id="Adjustment-1"></filter>
+            <filter id="Adjustment-2"></filter>
+        </defs>
+
+        <g filter="url(#Adjustment-2)">
+            <g filter="url(#Adjustment-1)">
+                <image id="Layer-1"></image>
+                <image id="Background"></image>
+            </g>
+        </g>
+        <image id="Layer-2"></image>
+    </svg>
+
+"""
+
+
 class AdjustmentsConverter(object):
+
+    def add_adjustment(self, layer, element):
+        self._dwg['enable-background'] = 'new'
+        adjustment = layer.data
+        if adjustment.name == "blackwhite":
+            self.add_blackwhite(adjustment, element)
+        elif adjustment.name == "brightnesscontrast":
+            pass
+        elif adjustment.name == "channelmixer":
+            pass
+        elif adjustment.name == "colorbalance":
+            pass
+        elif adjustment.name == "colorlookup":
+            pass
+        elif adjustment.name == "curves":
+            pass
+        elif adjustment.name == "exposure":
+            pass
+        elif adjustment.name == "gradientmap":
+            pass
+        elif adjustment.name == "huesaturation":
+            pass
+        elif adjustment.name == "invert":
+            pass
+        elif adjustment.name == "levels":
+            pass
+        elif adjustment.name == "photofilter":
+            pass
+        elif adjustment.name == "posterize":
+            pass
+        elif adjustment.name == "selectivecolor":
+            pass
+        elif adjustment.name == "threshold":
+            pass
+        elif adjustment.name == "vibrance":
+            pass
+        else:
+            logger.error("Unknown adjustment {}".format(adjustment))
+
+
+    def add_blackwhite(self, adjustment, element):
+        filt = self._dwg.defs.add(self._dwg.filter())
+        filt.feColorMatrix(
+            'BackgroundImage',
+            type='matrix',
+            result='result',
+            values='0.333 0.333 0.333 0 0 '
+                   '0.333 0.333 0.333 0 0 '
+                   '0.333 0.333 0.333 0 0 '
+                   '0 0 0 1 0 ')
+        element['filter'] = filt.get_funciri()
+
+
+    def add_brightnesscontrast(self, adjustment, element):
+        pass
+
 
     def _get_adjustments(self, layer):
         target = None
