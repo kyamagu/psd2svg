@@ -96,7 +96,7 @@ class ShapeConverter(object):
             element['stroke-dasharray'] = ",".join(
                 [str(x.value * stroke.line_width.value)
                  for x in stroke.line_dash_set])
-            element['stroke-dashoffset'] = stroke.line_dash_offset
+            element['stroke-dashoffset'] = stroke.line_dash_offset.value
         self.add_blend_mode(element, stroke.blend_mode)
 
         return element
