@@ -54,38 +54,44 @@ class AdjustmentsConverter(object):
     def add_adjustment(self, layer, element):
         self._dwg['enable-background'] = 'new'
         adjustment = layer.data
-        if adjustment.name == "blackwhite":
+        if adjustment.name == "coloroverlay":
+            logger.warning("adjustment not implemented {}".format(adjustment))
+        elif adjustment.name == "patternoverlay":
+            logger.warning("adjustment not implemented {}".format(adjustment))
+        elif adjustment.name == "gradientoverlay":
+            logger.warning("adjustment not implemented {}".format(adjustment))
+        elif adjustment.name == "blackwhite":
             self.add_blackwhite(adjustment, element)
         elif adjustment.name == "brightnesscontrast":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "channelmixer":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "colorbalance":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "colorlookup":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "curves":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "exposure":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "gradientmap":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "huesaturation":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "invert":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "levels":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "photofilter":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "posterize":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "selectivecolor":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "threshold":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "vibrance":
-            pass
+            logger.warning("adjustment not implemented {}".format(adjustment))
         else:
             logger.error("Unknown adjustment {}".format(adjustment))
 
