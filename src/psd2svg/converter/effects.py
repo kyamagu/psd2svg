@@ -46,6 +46,10 @@ class EffectsConverter(object):
         if layer.get_tag(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
             blend_mode = layer.blend_mode
 
+        # Add the original.
+        use = self._dwg.use(element.get_iri(), opacity=fill_opacity)
+        container.add(use)
+
         # Overlay effects.
         if layer.effects.has((
                 'coloroverlay', 'patternoverlay', 'gradientoverlay')):
@@ -66,11 +70,6 @@ class EffectsConverter(object):
                     layer, effect, mask, blend_mode)
                 container.add(overlay)
 
-        else:
-            # Add the original.
-            use = self._dwg.use(element.get_iri(), opacity=fill_opacity)
-            container.add(use)
-
         # Inner effects.
         for effect in layer.effects.find('innershadow'):
             shadow = self.create_inner_shadow(
@@ -80,6 +79,8 @@ class EffectsConverter(object):
         for effect in layer.effects.find('innerglow'):
             glow = self.create_inner_glow(layer, effect, element, blend_mode)
             container.add(glow)
+
+        # TODO: satin and bevelemboss
 
         # Stroke.
         for effect in layer.effects.find('stroke'):
@@ -150,7 +151,7 @@ class EffectsConverter(object):
         spread = effect.choke.value / 100.0
         angle = effect.angle.value
         radius = effect.distance.value
-        dx = radius * np.cos(np.radians(angle))
+        dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
         filt = self._dwg.defs.add(self._dwg.filter(
             x='-50%', y='-50%', size=('200%', '200%')))
@@ -198,9 +199,11 @@ class EffectsConverter(object):
         flood = filt.feFlood(result='orglFlood')
 
         if effect.color:
-            flood['flood-color'] = color = self.create_solid_color(effect)
+            flood['flood-color'] = self.create_solid_color(effect)
         else:
             logger.warning("Gradient glow not implemented")
+            flood['flood-color'] = self.create_solid_color(
+                effect.gradient.colors[0])
         flood['flood-opacity'] = effect.opacity.value / 100.0
         filt.feComposite('orglFlood', in2='orglBlurA', operator='in',
                          result='orglShadow')
@@ -216,7 +219,7 @@ class EffectsConverter(object):
         blur = effect.size.value
         angle = effect.angle.value
         radius = effect.distance.value
-        dx = radius * np.cos(np.radians(angle))
+        dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
         filt = self._dwg.defs.add(self._dwg.filter())
@@ -279,10 +282,17 @@ class EffectsConverter(object):
         filt['class'] = 'stroke'
         flood = filt.feFlood(result='frfxFlood')
         # TODO: Implement gradient or pattern fill
-        if effect.fill_type == b'SClr':
+        if effect.fill_type == 'solid-color':
             flood['flood-color'] = self.create_solid_color(effect.fill)
+        elif effect.fill_type == 'pattern':
+            logger.warning("Pattern stroke not implemented")
+        elif effect.fill_type == 'gradient':
+            logger.warning("Gradient stroke not implemented")
+            flood['flood-color'] = self.create_solid_color(
+                effect.fill.gradient.colors[0])
         else:
-            logger.warning("Gradient or pattern stroke not implemented")
+            logger.warning("Unknown fill type: {}".format(effect.fill_type))
+
 
         flood['flood-opacity'] = effect.opacity.value / 100.0
         if style == 'outer':

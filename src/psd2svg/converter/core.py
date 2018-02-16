@@ -49,9 +49,12 @@ class LayerConverter(object):
 
         element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
-        mask_element = self.create_mask(layer)
-        if mask_element and not layer.mask.disabled:
-            element['mask'] = mask_element.get_funciri()
+        if layer.has_mask():
+            mask = layer.mask
+            if mask.has_box() and not mask.disabled and (
+                    not mask.user_mask_from_render):
+                mask_element = self.create_mask(layer)
+                element['mask'] = mask_element.get_funciri()
 
         element = self.add_effects(layer, element)
         return element
