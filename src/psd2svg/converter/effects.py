@@ -80,7 +80,15 @@ class EffectsConverter(object):
             glow = self.create_inner_glow(layer, effect, element, blend_mode)
             container.add(glow)
 
-        # TODO: satin and bevelemboss
+        # Bevel and emboss.
+        for effect in layer.effects.find('bevelemboss'):
+            bevelemboss = self.create_bevel_emboss(layer, effect, element)
+            container.add(bevelemboss)
+
+        # Satin.
+        for effect in layer.effects.find('satin'):
+            satin = self.create_satin(layer, effect, element)
+            container.add(satin)
 
         # Stroke.
         for effect in layer.effects.find('stroke'):
@@ -272,6 +280,67 @@ class EffectsConverter(object):
         self.add_blend_mode(
             glow, blend_mode if blend_mode else effect.blend_mode)
         return glow
+
+    def create_bevel_emboss(self, layer, effect, element):
+        # In SVG, bevel and emboss need to be split into two elements.
+
+        # Shadow.
+        filt = self._dwg.defs.add(self._dwg.filter())
+        shadow = self._dwg.use(
+            element.get_iri(), filter=filt.get_funciri())
+        shadow['class'] = 'layer-effect bevel-emboss shadow'
+        shadow['opacity'] = effect.shadow_opacity.value / 100.0
+        self.add_blend_mode(shadow, effect.shadow_mode)
+        filt['class'] = 'bevel-emboss shadow'
+        blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+            stdDeviation=effect.size.value / 2.0)
+        if True or effect.bevel_style == 'inner-bevel':
+            light = filt.feDiffuseLighting('blur',
+                result='shadow',
+                surfaceScale=effect.size.value / 0.6,
+                diffuseConstant=2.0)
+            light.feDistantLight(azimuth=-effect.angle.value,
+                                 elevation=effect.altitude.value)
+            filt.feComposite('shadow', in2='SourceAlpha', operator='in')
+        else:
+            logger.warning("Not implemented: {}".format(effect.bevel_style))
+
+        # Highlight.
+        filt = self._dwg.defs.add(self._dwg.filter())
+        highlight = self._dwg.use(
+            element.get_iri(), filter=filt.get_funciri())
+        highlight['class'] = 'layer-effect bevel-emboss highlight'
+        highlight['opacity'] = effect.highlight_opacity.value / 100.0
+        self.add_blend_mode(highlight, effect.highlight_mode)
+        filt['class'] = 'bevel-emboss highlight'
+        blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+            stdDeviation=effect.size.value / 2.0)
+        if True or effect.bevel_style == 'inner-bevel':
+            light = filt.feSpecularLighting('blur',
+                result='highlight',
+                surfaceScale=effect.size.value / 1.6,
+                specularExponent=14.0,
+                specularConstant=1.0)
+            light.feDistantLight(azimuth=-effect.angle.value,
+                                 elevation=effect.altitude.value)
+            filt.feComposite('highlight', in2='SourceAlpha', operator='in')
+        else:
+            logger.warning("Not implemented: {}".format(effect.bevel_style))
+
+        container = self._dwg.g()
+        container.add(shadow)
+        container.add(highlight)
+        container['class'] = 'layer-effect bevel-emboss'
+        return container
+
+    def create_satin(self, layer, effect, element):
+        filt = self._dwg.defs.add(self._dwg.filter())
+        filt['class'] = 'satin'
+        satin = self._dwg.use(
+            element.get_iri(), filter=filt.get_funciri())
+        satin['class'] = 'layer-effect satin'
+        self.add_blend_mode(effect.blend_mode)
+        return satin
 
     def create_stroke(self, layer, effect, element):
         """Create a stroke effect."""
