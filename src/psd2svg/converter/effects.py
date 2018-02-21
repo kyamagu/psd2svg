@@ -5,6 +5,7 @@ import numpy as np
 import svgwrite
 from psd_tools.constants import TaggedBlock
 from psd_tools.decoder.actions import List, Descriptor
+from psd_tools.user_api.actions import Color
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.color import cmyk2rgb
 
@@ -292,16 +293,41 @@ class EffectsConverter(object):
         shadow['opacity'] = effect.shadow_opacity.value / 100.0
         self.add_blend_mode(shadow, effect.shadow_mode)
         filt['class'] = 'bevel-emboss shadow'
-        blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-            stdDeviation=effect.size.value / 2.0)
-        if True or effect.bevel_style == 'inner-bevel':
+        if effect.bevel_style == 'inner-bevel':
+            blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+                stdDeviation=effect.size.value / 2.0)
             light = filt.feDiffuseLighting('blur',
                 result='shadow',
-                surfaceScale=effect.size.value / 0.6,
+                surfaceScale=effect.size.value / 2.0,
                 diffuseConstant=2.0)
             light.feDistantLight(azimuth=-effect.angle.value,
                                  elevation=effect.altitude.value)
-            filt.feComposite('shadow', in2='SourceAlpha', operator='in')
+            color = [(x / 255.0) for x in effect.shadow_color.value]
+            filt.feColorMatrix(
+                'shadow',
+                result='color-shadow',
+                type='matrix',
+                values="0 0 0 0 {:g} 0 0 0 0 {:g} "
+                       "0 0 0 0 {:g} -1.0 0 0 0 1.0".format(*color))
+            filt.feComposite('color-shadow', in2='SourceAlpha', operator='in')
+        elif effect.bevel_style == 'emboss':
+            filt['x'], filt['y'] = '-10%', '-10%'
+            filt['width'], filt['height'] = '120%', '120%'
+            blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+                stdDeviation=effect.size.value / 3.2)
+            light = filt.feDiffuseLighting('blur',
+                result='shadow',
+                surfaceScale=effect.size.value / 1.2,
+                diffuseConstant=2.0)
+            light.feDistantLight(azimuth=-effect.angle.value,
+                                 elevation=effect.altitude.value)
+            color = [(x / 255.0) for x in effect.shadow_color.value]
+            filt.feColorMatrix(
+                'shadow',
+                result='color-shadow',
+                type='matrix',
+                values="0 0 0 0 {:g} 0 0 0 0 {:g} "
+                       "0 0 0 0 {:g} -1.0 0 0 0 1.0".format(*color))
         else:
             logger.warning("Not implemented: {}".format(effect.bevel_style))
 
@@ -313,9 +339,9 @@ class EffectsConverter(object):
         highlight['opacity'] = effect.highlight_opacity.value / 100.0
         self.add_blend_mode(highlight, effect.highlight_mode)
         filt['class'] = 'bevel-emboss highlight'
-        blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-            stdDeviation=effect.size.value / 2.0)
-        if True or effect.bevel_style == 'inner-bevel':
+        if effect.bevel_style == 'inner-bevel':
+            blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+                stdDeviation=effect.size.value / 2.0)
             light = filt.feSpecularLighting('blur',
                 result='highlight',
                 surfaceScale=effect.size.value / 1.6,
@@ -323,7 +349,23 @@ class EffectsConverter(object):
                 specularConstant=1.0)
             light.feDistantLight(azimuth=-effect.angle.value,
                                  elevation=effect.altitude.value)
+            light['lighting-color'] = self.create_solid_color(
+                effect.highlight_color)
             filt.feComposite('highlight', in2='SourceAlpha', operator='in')
+        elif effect.bevel_style == 'emboss':
+            filt['x'], filt['y'] = '-10%', '-10%'
+            filt['width'], filt['height'] = '120%', '120%'
+            blur = filt.feGaussianBlur('SourceAlpha', result='blur',
+                stdDeviation=effect.size.value / 3.2)
+            light = filt.feSpecularLighting('blur',
+                result='highlight',
+                surfaceScale=effect.size.value / 3.2,
+                specularExponent=14.0,
+                specularConstant=1.0)
+            light.feDistantLight(azimuth=-effect.angle.value,
+                                 elevation=effect.altitude.value)
+            light['lighting-color'] = self.create_solid_color(
+                effect.highlight_color)
         else:
             logger.warning("Not implemented: {}".format(effect.bevel_style))
 
@@ -339,7 +381,7 @@ class EffectsConverter(object):
         satin = self._dwg.use(
             element.get_iri(), filter=filt.get_funciri())
         satin['class'] = 'layer-effect satin'
-        self.add_blend_mode(effect.blend_mode)
+        self.add_blend_mode(satin, effect.blend_mode)
         return satin
 
     def create_stroke(self, layer, effect, element):

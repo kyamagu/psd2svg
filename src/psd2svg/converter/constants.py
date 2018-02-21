@@ -92,6 +92,7 @@ BLEND_MODE = {
     'luminosity': 'luminosity',
     # Descriptor values.
     'linearnormaldodge': 'plus-lighter /*linear-dodge*/',
+    'linearnormalburn': 'plus-darker /*linear-burn*/',
 }
 
 JUSTIFICATIONS = {
