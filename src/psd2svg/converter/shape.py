@@ -52,13 +52,13 @@ class ShapeConverter(object):
         if not stroke.enabled:
             return element
 
-        # if stroke.line_alignment == 'inner':
-        #     clippath = self._dwg.defs.add(self._dwg.clipPath())
-        #     clippath['class'] = 'psd-stroke stroke-inside'
-        #     clippath.add(self._dwg.path(
-        #         self.generate_path(layer.vector_mask)))
-        #     element['stroke-width'] = stroke.line_width * 2
-        #     element['clip-path'] = clippath.get_funciri()
+        if stroke.line_alignment == 'inner':
+            clippath = self._dwg.defs.add(self._dwg.clipPath())
+            clippath['class'] = 'psd-stroke stroke-inner'
+            clippath.add(self._dwg.path(
+                self.generate_path(layer.vector_mask)))
+            element['stroke-width'] = stroke.line_width.value * 2
+            element['clip-path'] = clippath.get_funciri()
         # elif stroke.line_alignment == 'outer':
         #     mask = self._dwg.defs.add(self._dwg.mask())
         #     mask['class'] = 'psd-stroke stroke-outside'
@@ -70,9 +70,10 @@ class ShapeConverter(object):
         #         self.generate_path(layer.vector_mask), fill='black'))
         #     element['stroke-width'] = stroke.line_width * 2
         #     element['mask'] = mask.get_funciri()
-        # else:
-        element['stroke-width'] = stroke.line_width.value
-        element['stroke-alignment'] = stroke.line_alignment
+        else:
+            element['stroke-width'] = stroke.line_width.value
+
+        # element['stroke-alignment'] = stroke.line_alignment
 
         if stroke.fill_enabled:
             if stroke.content.name == 'PatternOverlay':
@@ -96,7 +97,7 @@ class ShapeConverter(object):
             element['stroke-dasharray'] = ",".join(
                 [str(x.value * stroke.line_width.value)
                  for x in stroke.line_dash_set])
-            element['stroke-dashoffset'] = stroke.line_dash_offset
+            element['stroke-dashoffset'] = stroke.line_dash_offset.value
         self.add_blend_mode(element, stroke.blend_mode)
 
         return element

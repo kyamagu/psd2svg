@@ -44,12 +44,17 @@ class LayerConverter(object):
             # Boxless element is either shape fill or adjustment.
             # element = self._get_adjustments(layer)
             element = self.create_rect(layer)
+            if layer.kind == 'adjustment':
+                self.add_adjustment(layer, element)
 
         element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
-        mask_element = self.create_mask(layer)
-        if mask_element and not layer.mask.disabled:
-            element['mask'] = mask_element.get_funciri()
+        if layer.has_mask():
+            mask = layer.mask
+            if mask.has_box() and not mask.disabled and (
+                    not mask.user_mask_from_render):
+                mask_element = self.create_mask(layer)
+                element['mask'] = mask_element.get_funciri()
 
         element = self.add_effects(layer, element)
         return element
@@ -209,7 +214,10 @@ class LayerConverter(object):
         """Set blending option to the element."""
         blend_mode = BLEND_MODE.get(blend_mode, 'normal')
         if blend_mode != 'normal':
-            element['style'] = 'mix-blend-mode: {}'.format(blend_mode)
+            if 'style' in element.attribs:
+                element['style'] += 'mix-blend-mode: {};'.format(blend_mode)
+            else:
+                element['style'] = 'mix-blend-mode: {};'.format(blend_mode)
 
     def create_solid_color(self, effect):
         """
@@ -220,7 +228,10 @@ class LayerConverter(object):
 
         :rtype: str
         """
-        color = effect.color
+        if hasattr(effect, 'color'):
+            color = effect.color
+        else:
+            color = effect
         if color.name == 'rgb':
             return 'rgb({},{},{})'.format(*map(int, color.value))
         elif color.name == 'gray':

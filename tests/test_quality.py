@@ -17,12 +17,8 @@ FIXTURES = [
 HARD_CASES = [
     os.path.join(os.path.dirname(__file__), 'fixtures', p) for p in [
         "advanced-blending.psd",
-        "layer_effects.psd",
         "layer_params.psd",
-        "layer_comps.psd",
         "gray0.psd",  # Seems the preview image is inaccurate.
-        "adjustment-fillers.psd",  # No preview.
-        "note.psd",  # No preview.
     ]
 ]
 
@@ -40,6 +36,8 @@ def rasterizer():
 def test_quality(rasterizer, tmpdir, psd_file):
     svg_file = os.path.join(tmpdir.dirname, "output.svg")
     psd = PSDImage.load(psd_file)
+    if not psd.has_preview():
+        pytest.skip('psd file does not have a preview, skipping tests')
     preview = psd.as_PIL()
     psd2svg.psd2svg(psd, svg_file, no_preview=True)
     rendered = rasterizer.rasterize(svg_file)
