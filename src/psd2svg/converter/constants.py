@@ -90,6 +90,9 @@ BLEND_MODE = {
     'saturation': 'saturation',
     'color': 'color',
     'luminosity': 'luminosity',
+    # Descriptor values.
+    'linearnormaldodge': 'plus-lighter /*linear-dodge*/',
+    'linearnormalburn': 'plus-darker /*linear-burn*/',
 }
 
 JUSTIFICATIONS = {
