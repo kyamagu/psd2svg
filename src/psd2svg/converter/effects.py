@@ -225,6 +225,7 @@ class EffectsConverter(object):
         return glow
 
     def create_inner_shadow(self, layer, effect, element, blend_mode):
+        """Create inner shadow effect."""
         blur = effect.size.value
         angle = effect.angle.value
         radius = effect.distance.value
@@ -251,6 +252,7 @@ class EffectsConverter(object):
         return shadow
 
     def create_inner_glow(self, layer, effect, element, blend_mode):
+        """Create inner glow effect."""
         blur = effect.size.value
         spread = effect.choke.value / 100.0
 
@@ -283,6 +285,7 @@ class EffectsConverter(object):
         return glow
 
     def create_bevel_emboss(self, layer, effect, element):
+        """Create bevel and emboss effect."""
         # In SVG, bevel and emboss need to be split into two elements.
 
         # Shadow.
@@ -376,11 +379,58 @@ class EffectsConverter(object):
         return container
 
     def create_satin(self, layer, effect, element):
+        """Create satin effect."""
+
+        """
+        Sating effect is complicated to reproduce:
+
+        1. Create two shifted self-shapes from two sides, where the
+           shift arrangement is determined from the angle parameter and
+           distance. The two shape masks should follow even-odd filling rule.
+        2. Invert the filled area if inverted.
+        3. Apply Gaussian blur to the filled area from the two rectangles.
+        4. For the filled area, apply specified color and opacity.
+        """
+        angle = effect.angle.value
+        radius = effect.distance.value
+        dx = -radius * np.cos(np.radians(angle))
+        dy = radius * np.sin(np.radians(angle))
+
         filt = self._dwg.defs.add(self._dwg.filter())
         filt['class'] = 'satin'
+        filt.feOffset('SourceAlpha', result='shape1', dx=dx, dy=dy)
+        filt.feOffset('SourceAlpha', result='shape2', dx=-dx, dy=-dy)
+        filt.feComposite('shape1', in2='shape2', result='xor', operator='xor')
+        color = [x / 255.0 for x in effect.color.value]
+        if effect.inverted:
+            filt.feColorMatrix(
+                'xor',
+                result='xor-shaded',
+                type='matrix',
+                values='1 0 0 0 {:g} '
+                       '0 1 0 0 {:g} '
+                       '0 0 1 0 {:g} '
+                       '0 0 0 -1 1 '.format(*color),
+                )
+        else:
+            filt.feColorMatrix(
+                'xor',
+                result='xor-shaded',
+                type='matrix',
+                values='1 0 0 0 {:g} '
+                       '0 1 0 0 {:g} '
+                       '0 0 1 0 {:g} '
+                       '0 0 0 1 0 '.format(*color),
+                )
+        filt.feGaussianBlur('xor-shaded', result='blur',
+            stdDeviation=effect.size.value / 2.0)
+        filt.feComposite('blur', in2='SourceAlpha', operator='in')
+
         satin = self._dwg.use(
             element.get_iri(), filter=filt.get_funciri())
         satin['class'] = 'layer-effect satin'
+        satin['opacity'] = effect.opacity.value / 100.0
+
         self.add_blend_mode(satin, effect.blend_mode)
         return satin
 
