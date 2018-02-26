@@ -42,6 +42,7 @@ class LayerConverter(object):
 
         elif layer.kind == 'adjustment':
             element = self.create_adjustment(layer)
+            # TODO: Wrap previous elements with the adjustment.
 
         else:
             # Boxless shape fill.
