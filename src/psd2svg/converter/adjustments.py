@@ -39,10 +39,29 @@ In SVG::
 
         <g filter="url(#Adjustment-2)">
             <g filter="url(#Adjustment-1)">
-                <image id="Layer-1"></image>
                 <image id="Background"></image>
+                <image id="Layer-1"></image>
             </g>
         </g>
+        <image id="Layer-2"></image>
+    </svg>
+
+
+In a ideal situation where ``BackgroundImage`` is available, the following
+conversion should work.
+
+In SVG::
+
+    <svg enable-background="new">
+        <defs>
+            <filter id="Adjustment-1"></filter>
+            <filter id="Adjustment-2"></filter>
+        </defs>
+
+        <image id="Background"></image>
+        <image id="Layer-1"></image>
+        <g filter="url(#Adjustment-1)" />
+        <g filter="url(#Adjustment-2)" />
         <image id="Layer-2"></image>
     </svg>
 
@@ -51,8 +70,8 @@ In SVG::
 
 class AdjustmentsConverter(object):
 
-    def add_adjustment(self, layer, element):
-        self._dwg['enable-background'] = 'new'
+    def create_adjustment(self, layer):
+        # self._dwg['enable-background'] = 'new'
         adjustment = layer.data
         if adjustment.name == "coloroverlay":
             logger.warning("adjustment not implemented {}".format(adjustment))
@@ -61,7 +80,7 @@ class AdjustmentsConverter(object):
         elif adjustment.name == "gradientoverlay":
             logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "blackwhite":
-            self.add_blackwhite(adjustment, element)
+            return self.create_blackwhite(adjustment)
         elif adjustment.name == "brightnesscontrast":
             logger.warning("adjustment not implemented {}".format(adjustment))
         elif adjustment.name == "channelmixer":
@@ -95,18 +114,21 @@ class AdjustmentsConverter(object):
         else:
             logger.error("Unknown adjustment {}".format(adjustment))
 
+        return self._dwg.g()
 
-    def add_blackwhite(self, adjustment, element):
+
+    def create_blackwhite(self, adjustment):
         filt = self._dwg.defs.add(self._dwg.filter())
         filt.feColorMatrix(
-            'BackgroundImage',
+            'SourceImage',
             type='matrix',
             result='result',
             values='0.333 0.333 0.333 0 0 '
                    '0.333 0.333 0.333 0 0 '
                    '0.333 0.333 0.333 0 0 '
                    '0 0 0 1 0 ')
-        element['filter'] = filt.get_funciri()
+        container = self._dwg.g(filter=filt.get_funciri())
+        return container
 
 
     def add_brightnesscontrast(self, adjustment, element):
