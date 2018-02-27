@@ -15,8 +15,8 @@ def main():
                         help="Logging level, default INFO.")
     parser.add_argument("--size", metavar="WxH", type=str, default=None,
                         help="Size of the screen. default None")
-    parser.add_argument('--type', metavar='TYPE', type=str,
-                        default="inkscape", help='Rasterizer type.')
+    parser.add_argument('--rasterizer', metavar='TYPE', type=str,
+                        default="chromium", help='Rasterizer type.')
 
     args = parser.parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper()))
