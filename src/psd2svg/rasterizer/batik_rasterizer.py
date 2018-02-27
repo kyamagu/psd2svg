@@ -34,7 +34,7 @@ class BatikRasterizer(object):
             output_file = os.path.join(d, "output.{}".format(format))
             cmd = ["java", "-Djava.awt.headless=true",
                    "-jar", self.jar_path,
-                   "-bg", "0,255,255,255",
+                   "-bg", "0.255.255.255",
                    "-d", output_file,
                    "{}".format(url),
                    ]
