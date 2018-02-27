@@ -168,7 +168,8 @@ class EffectsConverter(object):
 
         filt.feOffset('SourceAlpha', dx=dx, dy=dy, result='drshOffset')
         filt.feGaussianBlur('drshOffset', stdDeviation=blur / 2.0,
-                            result='drshBlur')
+                            result='drshBlur',
+                            **{'color-interpolation-filters': 'sRGB'})
         transfer = filt.feComponentTransfer('drshBlur', result='drshBlurA')
         transfer.feFuncA('linear', slope=1.0 + 4 * spread, intercept=0.0)
         flood = filt.feFlood(result='drshFlood')
@@ -298,7 +299,8 @@ class EffectsConverter(object):
         filt['class'] = 'bevel-emboss shadow'
         if effect.bevel_style == 'inner-bevel':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 2.0)
+                stdDeviation=effect.size.value / 2.0,
+                **{'color-interpolation-filters': 'sRGB'})
             light = filt.feDiffuseLighting('blur',
                 result='shadow',
                 surfaceScale=effect.size.value / 2.0,
@@ -317,7 +319,8 @@ class EffectsConverter(object):
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 3.2)
+                stdDeviation=effect.size.value / 3.2,
+                **{'color-interpolation-filters': 'sRGB'})
             light = filt.feDiffuseLighting('blur',
                 result='shadow',
                 surfaceScale=effect.size.value / 1.2,
@@ -344,7 +347,8 @@ class EffectsConverter(object):
         filt['class'] = 'bevel-emboss highlight'
         if effect.bevel_style == 'inner-bevel':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 2.0)
+                stdDeviation=effect.size.value / 2.0,
+                **{'color-interpolation-filters': 'sRGB'})
             light = filt.feSpecularLighting('blur',
                 result='highlight',
                 surfaceScale=effect.size.value / 1.6,
@@ -359,7 +363,8 @@ class EffectsConverter(object):
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 3.2)
+                stdDeviation=effect.size.value / 3.2,
+                **{'color-interpolation-filters': 'sRGB'})
             light = filt.feSpecularLighting('blur',
                 result='highlight',
                 surfaceScale=effect.size.value / 3.2,
@@ -423,7 +428,8 @@ class EffectsConverter(object):
                        '0 0 0 1 0 '.format(*color),
                 )
         filt.feGaussianBlur('xor-shaded', result='blur',
-            stdDeviation=effect.size.value / 2.0)
+            stdDeviation=effect.size.value / 2.0,
+            **{'color-interpolation-filters': 'sRGB'})
         filt.feComposite('blur', in2='SourceAlpha', operator='in')
 
         satin = self._dwg.use(
