@@ -27,7 +27,7 @@ EASY_CASES = list(set(FIXTURES) - set(HARD_CASES))
 
 @pytest.fixture(scope="module")
 def rasterizer():
-    rasterizer = psd2svg.rasterizer.create_rasterizer("chromium")
+    rasterizer = psd2svg.rasterizer.create_rasterizer()
     yield rasterizer
     del rasterizer
 
