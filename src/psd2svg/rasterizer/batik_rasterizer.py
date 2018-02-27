@@ -14,6 +14,7 @@ import logging
 import os
 import subprocess
 from psd2svg.utils import temporary_directory
+from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ BATIK_PATH = os.environ.get(
     'BATIK_PATH', "/usr/share/java/batik-rasterizer.jar")
 
 
-class BatikRasterizer(object):
+class BatikRasterizer(BaseRasterizer):
     """Batik rasterizer."""
 
     def __init__(self, jar_path=None, **kwargs):
@@ -42,4 +43,5 @@ class BatikRasterizer(object):
                 cmd += ["-w", size[0], "-h", size[1]]
             subprocess.check_call(cmd, stdout=subprocess.PIPE)
             assert os.path.exists(output_file)
-            return Image.open(output_file)
+            rasterized = Image.open(output_file)
+            return self.composite_background(rasterized)
