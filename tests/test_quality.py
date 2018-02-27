@@ -48,4 +48,4 @@ def test_quality(rasterizer, tmpdir, psd_file):
     error_count = np.sum(
         np.bitwise_xor(preview_hash.hash, rendered_hash.hash))
     error_rate = error_count / float(preview_hash.hash.size)
-    assert error_rate <= 0.125
+    assert error_rate <= 0.1
