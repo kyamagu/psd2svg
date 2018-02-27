@@ -32,8 +32,12 @@ class BatikRasterizer(object):
     def rasterize(self, url, size=None, format="png"):
         with temporary_directory() as d:
             output_file = os.path.join(d, "output.{}".format(format))
-            cmd = ["java", "-Djava.awt.headless=true", "-jar", self.jar_path,
-                   "{}".format(url), "-d", output_file]
+            cmd = ["java", "-Djava.awt.headless=true",
+                   "-jar", self.jar_path,
+                   "-bg", "0,255,255,255",
+                   "-d", output_file,
+                   "{}".format(url),
+                   ]
             if size:
                 cmd += ["-w", size[0], "-h", size[1]]
             subprocess.check_call(cmd, stdout=subprocess.PIPE)
