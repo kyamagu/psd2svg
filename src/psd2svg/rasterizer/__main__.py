@@ -1,7 +1,7 @@
 from psd2svg.rasterizer import create_rasterizer
-from logging import getLogger
+import logging
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def main():
