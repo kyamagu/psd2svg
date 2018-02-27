@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Chromium-based rasterizer module.
+Batik-based rasterizer module.
+
+Download the latest batik rasterizer to use the module. Note Ubuntu 16.04LTS
+package is broken and does not work.
 
 Prerequisite:
 
-    sudo apt-get install -y chromedriver chromium
+    wget http://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&\
+    filename=xmlgraphics/batik/binaries/batik-bin-1.9.tar.gz
+    export BATIK_PATH=./batik-bin-1.9.tar.gz
+
+Deb package:
+
+    sudo apt-get install -y libbatik-java
+
 
 """
 from __future__ import absolute_import, unicode_literals

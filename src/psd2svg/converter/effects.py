@@ -203,7 +203,8 @@ class EffectsConverter(object):
         else:
             result = 'SourceAlpha'
         filt.feGaussianBlur(
-            result, stdDeviation=blur * (1 - spread), result='orglBlur')
+            result, stdDeviation=blur * (1 - spread), result='orglBlur',
+            **{'color-interpolation-filters': 'sRGB'})
         transfer = filt.feComponentTransfer('orglBlur', result='orglBlurA')
         transfer.feFuncA('linear', slope=1 + 4 * spread, intercept=0.0)
         flood = filt.feFlood(result='orglFlood')
@@ -242,7 +243,8 @@ class EffectsConverter(object):
                          result='irshShadow')
         filt.feOffset('irshShadow', dx=dx, dy=dy, result='irshOffset')
         filt.feGaussianBlur('irshOffset', stdDeviation=blur / 2.0,
-                            result='irshBlur')
+                            result='irshBlur',
+                            **{'color-interpolation-filters': 'sRGB'})
         filt.feComposite('irshBlur', in2='SourceAlpha', operator='in',
                          result='irshShadow')
 
@@ -275,7 +277,8 @@ class EffectsConverter(object):
         filt.feMorphology('irglShadow', radius=blur * spread,
                           operator='dilate', result='irglDilate')
         filt.feGaussianBlur('irglDilate', stdDeviation=blur * (1 - spread),
-                            result='irglBlur')
+                            result='irglBlur',
+                            **{'color-interpolation-filters': 'sRGB'})
         filt.feComposite('irglBlur', in2='irglAlpha', operator='in',
                          result='irglShadow')
 
