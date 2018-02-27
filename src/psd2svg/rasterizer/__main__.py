@@ -21,7 +21,7 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper()))
     size = tuple(args.size.split("x")) if args.size else None
-    rasterizer = create_rasterizer(args.type)
+    rasterizer = create_rasterizer(args.rasterizer)
     image = rasterizer.rasterize(args.input, size=size)
     image.save(args.output)
 
