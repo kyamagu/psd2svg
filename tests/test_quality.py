@@ -27,7 +27,7 @@ EASY_CASES = list(set(FIXTURES) - set(HARD_CASES))
 
 @pytest.fixture(scope="module")
 def rasterizer():
-    rasterizer = psd2svg.rasterizer.create_rasterizer("chromium")
+    rasterizer = psd2svg.rasterizer.create_rasterizer()
     yield rasterizer
     del rasterizer
 
@@ -48,4 +48,4 @@ def test_quality(rasterizer, tmpdir, psd_file):
     error_count = np.sum(
         np.bitwise_xor(preview_hash.hash, rendered_hash.hash))
     error_rate = error_count / float(preview_hash.hash.size)
-    assert error_rate <= 0.125
+    assert error_rate <= 0.1

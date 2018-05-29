@@ -1,7 +1,7 @@
 from psd2svg.rasterizer import create_rasterizer
-from logging import getLogger
+import logging
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -15,13 +15,13 @@ def main():
                         help="Logging level, default INFO.")
     parser.add_argument("--size", metavar="WxH", type=str, default=None,
                         help="Size of the screen. default None")
-    parser.add_argument('--type', metavar='TYPE', type=str,
-                        default="inkscape", help='Rasterizer type.')
+    parser.add_argument('--rasterizer', metavar='TYPE', type=str,
+                        default="chromium", help='Rasterizer type.')
 
     args = parser.parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper()))
     size = tuple(args.size.split("x")) if args.size else None
-    rasterizer = create_rasterizer(args.type)
+    rasterizer = create_rasterizer(args.rasterizer)
     image = rasterizer.rasterize(args.input, size=size)
     image.save(args.output)
 

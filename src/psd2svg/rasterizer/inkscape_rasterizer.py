@@ -15,11 +15,12 @@ import os
 import sys
 import subprocess
 from psd2svg.utils import temporary_directory
+from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
 
 logger = logging.getLogger(__name__)
 
 
-class InkscapeRasterizer(object):
+class InkscapeRasterizer(BaseRasterizer):
     """Inkscape rasterizer."""
 
     def __init__(self, executable_path="inkscape", **kwargs):
@@ -37,7 +38,4 @@ class InkscapeRasterizer(object):
                 stdout=sys.stdout, stderr=sys.stdout)
             assert os.path.exists(output_file)
             rasterized = Image.open(output_file)
-            canvas = Image.new("RGBA", size=rasterized.size,
-                               color=(255, 255, 255, 0))
-            canvas.alpha_composite(rasterized)
-            return canvas
+            return self.composite_background(rasterized)
