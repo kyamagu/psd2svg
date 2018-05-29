@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 VIEWPORT_SIZE = (16, 16)  # Default size when nothing is specified.
 
 
-class ChromiumRasterizer(object):
+class ChromiumRasterizer(BaseRasterizer):
     """Chromium rasterizer."""
 
     def __init__(self, executable_path="chromedriver", dpi=96.0, **kwargs):
@@ -58,10 +59,7 @@ class ChromiumRasterizer(object):
             logger.info("Resizing captured screenshot from {} to {}".format(
                 rasterized.size, size))
             rasterized = rasterized.resize(size, Image.NEAREST)
-        canvas = Image.new("RGBA", size=rasterized.size,
-                           color=(255, 255, 255, 0))
-        canvas.alpha_composite(rasterized)
-        return canvas
+        return self.composite_background(rasterized)
 
     def _set_windowsize(self):
         svg = self.driver.find_element_by_tag_name("svg")

@@ -40,12 +40,13 @@ class LayerConverter(object):
             element = self.add_stroke_style(layer, element)
             element = self.add_stroke_content_style(layer, element)
 
+        elif layer.kind == 'adjustment':
+            element = self.create_adjustment(layer)
+            # TODO: Wrap previous elements with the adjustment.
+
         else:
-            # Boxless element is either shape fill or adjustment.
-            # element = self._get_adjustments(layer)
+            # Boxless shape fill.
             element = self.create_rect(layer)
-            if layer.kind == 'adjustment':
-                self.add_adjustment(layer, element)
 
         element = self.add_fill(layer, element)
         element = self.add_attributes(layer, element)
@@ -117,7 +118,6 @@ class LayerConverter(object):
             element = self._dwg.rect(
                 insert=(self._psd.bbox.x1, self._psd.bbox.y1),
                 size=(self._psd.bbox.width, self._psd.bbox.height))
-        # TODO: Create a backdrop-filter.
         element['fill'] = 'none'
         return element
 
