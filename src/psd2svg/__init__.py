@@ -34,13 +34,13 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
     """
     def __init__(self, text_mode='image', export_resource=False,
                  resource_prefix='', overwrite=True, reset_id=True,
-                 no_preview=False):
+                 embed_preview=False):
         self.text_mode = text_mode
         self.export_resource = export_resource
         self.resource_prefix = resource_prefix
         self.overwrite = overwrite
         self.reset_id = reset_id
-        self.no_preview = no_preview
+        self.embed_preview = embed_preview
 
     def reset(self):
         """Reset the converter."""
@@ -86,7 +86,7 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
         else:
             self.create_group(self._psd, element=self._dwg)
             empty_psd = len(self._psd.layers) == 0
-            if not self.no_preview or empty_psd:
+            if self.embed_preview or empty_psd:
                 self._dwg.add(self.create_preview(hidden=not empty_psd))
 
         return self._save_svg()
