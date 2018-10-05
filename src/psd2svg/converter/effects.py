@@ -32,8 +32,18 @@ class EffectsConverter(object):
         else:
             container = self._dwg.g()
             container['class'] = 'psd-effects'
+            # Move class annotation.
+            if 'class' in element.attribs:
+                container['class'] += ' ' + element.attribs['class']
+                del element.attribs['class']
+            # Move subclass of title nodes.
+            for child in element.elements:
+                if isinstance(child, svgwrite.base.Title):
+                    container.add(child)
+            for child in container.elements:
+                element.elements.remove(child)
             self._dwg.defs.add(element)
-            # TODO: Move element title and description.
+
 
         # Outer effects.
         for effect in layer.effects.find('dropshadow'):
@@ -49,6 +59,7 @@ class EffectsConverter(object):
 
         # Add the original.
         use = self._dwg.use(element.get_iri(), opacity=fill_opacity)
+        use['class'] = 'layer-effect original'
         container.add(use)
 
         # Overlay effects.

@@ -51,10 +51,6 @@ to the path specified by ``--resource-prefix``::
     psd2svg input.psd svg/ --export-resource --resource-prefix=../png/
     # => svg/input.svg, png/xxx1.png, ...
 
-To render text in vector stroke::
-
-    psd2svg input.psd output/ --text-mode text
-
 
 API
 ---
@@ -82,6 +78,22 @@ The package contains high-level conversion function ``psd2svg``:
     # Additionally, individual layers can be rendered.
     layer_svg = psd2svg(psd.layers[3])
     print(layer_svg)
+
+
+The package also has rasterizer module to convert SVG to PIL Image:
+
+
+.. code-block:: python
+
+    from psd2svg.rasterizer import create_rasterizer
+
+    rasterizer = create_rasterizer()
+    image = rasterizer.rasterize(svg)
+    image.save('path/to/output.png')
+
+
+The rasterizer requires one of Selenium + ChromeDriver, Apache Batik, or
+Inkscape. Make sure to install them beforehand.
 
 
 Test
