@@ -26,19 +26,22 @@ class LayerConverter(object):
         if layer.is_group():
             element = self.create_group(layer)
 
-        elif layer.has_relevant_pixels():
+        elif layer.kind == 'shape':
+            if layer.has_path():
+                element = self.create_path(layer)
+            else:
+                element = self.create_rect(layer)
+            # TODO: Deal with coflict in add_attributes() later.
+            # Blending, mask, and class names conflict.
+            element = self.add_stroke_style(layer, element)
+            element = self.add_stroke_content_style(layer, element)
+
+        elif layer.has_pixels():
             element = self.create_image(layer)
             if layer.kind == 'type':
                 # TODO: Embed text metadata.
                 # text = self._get_text(layer)
                 pass
-
-        elif layer.kind == 'shape' and layer.has_path():
-            element = self.create_path(layer)
-            # TODO: Deal with coflict in add_attributes() later.
-            # Blending, mask, and class names conflict.
-            element = self.add_stroke_style(layer, element)
-            element = self.add_stroke_content_style(layer, element)
 
         elif layer.kind == 'adjustment':
             element = self.create_adjustment(layer)
@@ -53,7 +56,7 @@ class LayerConverter(object):
         if layer.has_mask():
             mask = layer.mask
             if mask.has_box() and not mask.disabled and (
-                    not mask.user_mask_from_render):
+                not mask.user_mask_from_render or layer.has_vector_mask()):
                 mask_element = self.create_mask(layer)
                 element['mask'] = mask_element.get_funciri()
 
