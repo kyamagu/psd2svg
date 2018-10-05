@@ -72,23 +72,21 @@ class ShapeConverter(object):
         #     element['mask'] = mask.get_funciri()
         else:
             element['stroke-width'] = stroke.line_width.value
-
         # element['stroke-alignment'] = stroke.line_alignment
 
-        if stroke.fill_enabled:
-            if stroke.content.name == 'PatternOverlay':
-                pattern = self.create_pattern(
-                    stroke.content, insert=(layer.left, layer.top))
-                element['stroke'] = pattern.get_funciri()
-            elif stroke.content.name == 'GradientOverlay':
-                bbox = layer.get_bbox()
-                if bbox.is_empty():
-                    bbox = layer.get_bbox(vector=True)
-                gradient = self.create_gradient(
-                    stroke.content, size=(bbox.width, bbox.height))
-                element['stroke'] = gradient.get_funciri()
-            elif stroke.content.name == 'ColorOverlay':
-                element['stroke'] = self.create_solid_color(stroke.content)
+        if stroke.content.name == 'patternoverlay':
+            pattern = self.create_pattern(
+                stroke.content, insert=(layer.left, layer.top))
+            element['stroke'] = pattern.get_funciri()
+        elif stroke.content.name == 'gradientoverlay':
+            gradient = self.create_gradient(
+                stroke.content, size=(layer.width, layer.height))
+            element['stroke'] = gradient.get_funciri()
+        elif stroke.content.name == 'coloroverlay':
+            element['stroke'] = self.create_solid_color(stroke.content)
+
+        if not stroke.fill_enabled:
+            element['fill-opacity'] = 0
 
         element['stroke-opacity'] = stroke.opacity.value / 100.0
         element['stroke-linecap'] =  stroke.line_cap_type
@@ -112,18 +110,15 @@ class ShapeConverter(object):
         if not effect.enabled:
             return element
 
-        if effect.name == 'PatternOverlay':
+        if effect.name == 'patternoverlay':
             pattern = self.create_pattern(
                 effect, insert=(layer.left, layer.top))
             element['fill'] = pattern.get_funciri()
-        elif effect.name == 'GradientOverlay':
-            bbox = layer.get_bbox()
-            if bbox.is_empty():
-                bbox = layer.get_bbox(vector=True)
+        elif effect.name == 'gradientoverlay':
             gradient = self.create_gradient(
-                effect, size=(bbox.width, bbox.height))
+                effect, size=(layer.width, layer.height))
             element['fill'] = gradient.get_funciri()
-        if effect.name == 'ColorOverlay':
+        if effect.name == 'coloroverlay':
             element['fill'] = self.create_solid_color(effect)
 
         return element

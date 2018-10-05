@@ -26,19 +26,22 @@ class LayerConverter(object):
         if layer.is_group():
             element = self.create_group(layer)
 
-        elif layer.has_relevant_pixels():
+        elif layer.kind == 'shape':
+            if layer.has_path():
+                element = self.create_path(layer)
+            else:
+                element = self.create_rect(layer)
+            # TODO: Deal with coflict in add_attributes() later.
+            # Blending, mask, and class names conflict.
+            element = self.add_stroke_style(layer, element)
+            element = self.add_stroke_content_style(layer, element)
+
+        elif layer.has_pixels():
             element = self.create_image(layer)
             if layer.kind == 'type':
                 # TODO: Embed text metadata.
                 # text = self._get_text(layer)
                 pass
-
-        elif layer.kind == 'shape' and layer.has_path():
-            element = self.create_path(layer)
-            # TODO: Deal with coflict in add_attributes() later.
-            # Blending, mask, and class names conflict.
-            element = self.add_stroke_style(layer, element)
-            element = self.add_stroke_content_style(layer, element)
 
         elif layer.kind == 'adjustment':
             element = self.create_adjustment(layer)
@@ -53,7 +56,7 @@ class LayerConverter(object):
         if layer.has_mask():
             mask = layer.mask
             if mask.has_box() and not mask.disabled and (
-                    not mask.user_mask_from_render):
+                not mask.user_mask_from_render or layer.has_vector_mask()):
                 mask_element = self.create_mask(layer)
                 element['mask'] = mask_element.get_funciri()
 
@@ -189,13 +192,8 @@ class LayerConverter(object):
             element['fill'] = pattern_element.get_funciri()
         elif layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
-            if layer.kind == 'shape' and not layer.has_box():
-                bbox = layer.get_bbox(vector=True)
-            else:
-                bbox = layer.bbox
-            if bbox.is_empty():
-                bbox = layer._psd.viewbox
-            gradient = self.create_gradient(effect, (bbox.width, bbox.height))
+            gradient = self.create_gradient(
+                effect, (layer.width, layer.height))
             element['fill'] = gradient.get_funciri()
         return element
 

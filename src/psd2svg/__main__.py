@@ -26,7 +26,7 @@ def main():
     parser.add_argument(
         '--overwrite', action='store_true', help='Overwrite output')
     parser.add_argument(
-        '--no-preview', action='store_true', help='Do not embed a preview')
+        '--embed-preview', action='store_true', help='Embed a preview')
     parser.add_argument(
         '--rasterizer', metavar='METHOD', default='chromium', type=str,
         help='Specify which rasterizer to use. default chromium.')
@@ -48,7 +48,7 @@ def main():
                 text_mode=args.text_mode,
                 export_resource=args.export_resource,
                 overwrite=args.overwrite,
-                no_preview=args.no_preview)
+                embed_preview=args.embed_preview)
         image = rasterizer.rasterize(svg_file)
         image.save(args.output)
     else:
@@ -57,7 +57,7 @@ def main():
                 text_mode=args.text_mode,
                 export_resource=args.export_resource,
                 overwrite=args.overwrite,
-                no_preview=args.no_preview)
+                embed_preview=args.embed_preview)
 
 
 if __name__ == '__main__':
