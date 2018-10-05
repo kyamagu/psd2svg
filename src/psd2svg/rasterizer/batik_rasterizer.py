@@ -9,7 +9,8 @@ Prerequisite:
 
     wget http://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&\
     filename=xmlgraphics/batik/binaries/batik-bin-1.9.tar.gz
-    export BATIK_PATH=./batik-bin-1.9.tar.gz
+    tar xzf batik-bin-1.9.tar.gz
+    export BATIK_PATH=./batik-bin-1.9
 
 Deb package:
 
