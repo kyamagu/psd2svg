@@ -192,13 +192,8 @@ class LayerConverter(object):
             element['fill'] = pattern_element.get_funciri()
         elif layer.has_tag(TaggedBlock.GRADIENT_FILL_SETTING):
             effect = layer.get_tag(TaggedBlock.GRADIENT_FILL_SETTING)
-            if layer.kind == 'shape' and not layer.has_box():
-                bbox = layer.get_bbox(vector=True)
-            else:
-                bbox = layer.bbox
-            if bbox.is_empty():
-                bbox = layer._psd.viewbox
-            gradient = self.create_gradient(effect, (bbox.width, bbox.height))
+            gradient = self.create_gradient(
+                effect, (layer.width, layer.height))
             element['fill'] = gradient.get_funciri()
         return element
 
