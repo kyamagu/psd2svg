@@ -12,6 +12,7 @@ from __future__ import absolute_import, unicode_literals
 from selenium import webdriver
 from PIL import Image
 from io import BytesIO
+import json
 import logging
 import math
 import os
@@ -27,6 +28,19 @@ logger = logging.getLogger(__name__)
 VIEWPORT_SIZE = (16, 16)  # Default size when nothing is specified.
 
 
+# https://stackoverflow.com/questions/46656622/
+def send(driver, cmd, params={}):
+    resource = (
+        "/session/%s/chromium/send_command_and_get_result" % driver.session_id
+    )
+    url = driver.command_executor._url + resource
+    body = json.dumps({'cmd':cmd, 'params': params})
+    response = driver.command_executor._request('POST', url, body)
+    if response['status']:
+        raise Exception(response.get('value'))
+    return response.get('value')
+
+
 class ChromiumRasterizer(BaseRasterizer):
     """Chromium rasterizer."""
 
@@ -35,12 +49,18 @@ class ChromiumRasterizer(BaseRasterizer):
         options.add_argument("headless")
         options.add_argument("disable-gpu")
         options.add_argument("disable-infobars")
+        options.add_argument("no-sandbox")
+        options.add_argument("disable-dev-shm-usage")
         options.add_argument("enable-experimental-web-platform-features")
         options.add_argument("default-background-color FFFFFF00")
         self.driver = webdriver.Chrome(
             executable_path=executable_path,
             chrome_options=options)
         self.dpi = dpi
+        send(self.driver,
+             "Emulation.setDefaultBackgroundColorOverride",
+             {'color': {'r': 255, 'g': 255, 'b': 255, 'a': 0}}
+        )
 
     def __del__(self):
         self.driver.quit()
