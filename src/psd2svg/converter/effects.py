@@ -3,9 +3,11 @@ from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import numpy as np
 import svgwrite
-from psd_tools.constants import TaggedBlock
-from psd_tools.decoder.actions import List, Descriptor
-from psd_tools.user_api.actions import Color
+from psd_tools2.constants import TaggedBlockID
+from psd_tools2.api.effects import (
+    OuterGlow, InnerGlow, DropShadow, InnerShadow, ColorOverlay,
+    PatternOverlay, GradientOverlay, BevelEmboss, Satin, Stroke
+)
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.color import cmyk2rgb
 
@@ -23,11 +25,12 @@ class EffectsConverter(object):
         multiple items each corresponding to the applied effect.
         """
 
-        fill_opacity = layer.get_tag(
-            TaggedBlock.BLEND_FILL_OPACITY, 255) / 255.0
+        fill_opacity = layer.tagged_blocks.get_data(
+            TaggedBlockID.BLEND_FILL_OPACITY, 255
+        ) / 255.0
         if len(layer.effects) == 0:
-            if fill_opacity < 1.0:
-                element['opacity'] = layer.opacity / 255.0 * fill_opacity
+            # if fill_opacity < 1.0:
+            #     element['opacity'] = layer.opacity / 255.0 * fill_opacity
             return element
         else:
             container = self._dwg.g()
@@ -46,15 +49,19 @@ class EffectsConverter(object):
 
 
         # Outer effects.
-        for effect in layer.effects.find('dropshadow'):
-            shadow = self.create_drop_shadow(layer, effect, element)
-            container.add(shadow)
-        for effect in layer.effects.find('outerglow'):
-            glow = self.create_outer_glow(layer, effect, element)
-            container.add(glow)
+        for effect in layer.effects:
+            if isinstance(effect, DropShadow):
+                shadow = self.create_drop_shadow(layer, effect, element)
+                container.add(shadow)
+        for effect in layer.effects:
+            if isinstance(effect, OuterGlow):
+                glow = self.create_outer_glow(layer, effect, element)
+                container.add(glow)
 
         blend_mode = None  # Interior blend mode.
-        if layer.get_tag(TaggedBlock.BLEND_INTERIOR_ELEMENTS, False):
+        if layer.tagged_blocks.get_data(
+            TaggedBlockID.BLEND_INTERIOR_ELEMENTS, False
+        ):
             blend_mode = layer.blend_mode
 
         # Add the original.
@@ -63,55 +70,74 @@ class EffectsConverter(object):
         container.add(use)
 
         # Overlay effects.
-        if layer.effects.has((
-                'coloroverlay', 'patternoverlay', 'gradientoverlay')):
-
+        if any(
+            isinstance(effect, (
+                PatternOverlay, GradientOverlay, ColorOverlay
+            ))
+            for effect in layer.effects
+        ):
             mask = self._create_overlay_mask(layer, element)
-            for effect in layer.effects.find('patternoverlay'):
-                overlay = self.create_pattern_overlay(
-                    layer, effect, mask, blend_mode)
-                container.add(overlay)
+            for effect in layer.effects:
+                if isinstance(effect, PatternOverlay):
+                    overlay = self.create_pattern_overlay(
+                        layer, effect, mask, blend_mode
+                    )
+                    container.add(overlay)
 
-            for effect in layer.effects.find('gradientoverlay'):
-                overlay = self.create_gradient_overlay(
-                    layer, effect, mask, blend_mode)
-                container.add(overlay)
+            for effect in layer.effects:
+                if isinstance(effect, GradientOverlay):
+                    overlay = self.create_gradient_overlay(
+                        layer, effect, mask, blend_mode
+                    )
+                    container.add(overlay)
 
-            for effect in layer.effects.find('coloroverlay'):
-                overlay = self.create_color_overlay(
-                    layer, effect, mask, blend_mode)
-                container.add(overlay)
+            for effect in layer.effects:
+                if isinstance(effect, ColorOverlay):
+                    overlay = self.create_color_overlay(
+                        layer, effect, mask, blend_mode
+                    )
+                    container.add(overlay)
 
         # Inner effects.
-        for effect in layer.effects.find('innershadow'):
-            shadow = self.create_inner_shadow(
-                layer, effect, element, blend_mode)
-            container.add(shadow)
+        for effect in layer.effects:
+            if isinstance(effect, InnerShadow):
+                shadow = self.create_inner_shadow(
+                    layer, effect, element, blend_mode
+                )
+                container.add(shadow)
 
-        for effect in layer.effects.find('innerglow'):
-            glow = self.create_inner_glow(layer, effect, element, blend_mode)
-            container.add(glow)
+        for effect in layer.effects:
+            if isinstance(effect, InnerGlow):
+                glow = self.create_inner_glow(
+                    layer, effect, element, blend_mode
+                )
+                container.add(glow)
 
         # Bevel and emboss.
-        for effect in layer.effects.find('bevelemboss'):
-            bevelemboss = self.create_bevel_emboss(layer, effect, element)
-            container.add(bevelemboss)
+        for effect in layer.effects:
+            if isinstance(effect, BevelEmboss):
+                bevelemboss = self.create_bevel_emboss(
+                    layer, effect, element
+                )
+                container.add(bevelemboss)
 
         # Satin.
-        for effect in layer.effects.find('satin'):
-            satin = self.create_satin(layer, effect, element)
-            container.add(satin)
+        for effect in layer.effects:
+            if isinstance(effect, Satin):
+                satin = self.create_satin(layer, effect, element)
+                container.add(satin)
 
         # Stroke.
-        for effect in layer.effects.find('stroke'):
-            stroke = self.create_stroke(layer, effect, element)
-            container.add(stroke)
+        for effect in layer.effects:
+            if isinstance(effect, Stroke):
+                stroke = self.create_stroke(layer, effect, element)
+                container.add(stroke)
 
         return container
 
     def _create_overlay_mask(self, layer, element):
         """Create a mask used for overlay effects."""
-        if not layer.has_box():
+        if layer.width == 0 or layer.height == 0:
             logger.warning('Fill effect to empty layer.')
 
         mask_element = self._dwg.defs.add(self._dwg.mask(
@@ -126,7 +152,7 @@ class EffectsConverter(object):
         element = self._dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
-            fill=self.create_solid_color(effect),
+            fill=self.create_solid_color(effect.value['Clr ']),
             mask=mask.get_funciri())
         self._add_overlay_attribute(
             element, effect, blend_mode, 'color-overlay')
@@ -134,7 +160,7 @@ class EffectsConverter(object):
 
     def create_pattern_overlay(self, layer, effect, mask, blend_mode):
         """Create a pattern overlay."""
-        pattern = self.create_pattern(effect, (layer.left, layer.top))
+        pattern = self.create_pattern(effect.value, (layer.left, layer.top))
         element = self._dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
@@ -146,11 +172,13 @@ class EffectsConverter(object):
 
     def create_gradient_overlay(self, layer, effect, mask, blend_mode):
         """Create a gradient overlay."""
-        gradient = self.create_gradient(effect, (layer.width, layer.height))
+        gradient = self.create_gradient(
+            effect.value, (layer.width, layer.height)
+        )
         element = self._dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
-            fill=gradient.get_funciri(),
+            fill=gradient.get_funciri() if gradient else 'none',
             mask=mask.get_funciri())
         self._add_overlay_attribute(
             element, effect, blend_mode, 'gradient-overlay')
@@ -159,7 +187,7 @@ class EffectsConverter(object):
     def _add_overlay_attribute(self, element, effect, blend_mode, kind):
         """Add common overlay attributes."""
         element['class'] = 'layer-effect {}'.format(kind)
-        opacity = effect.opacity.value / 100.0  # TODO: Check unit
+        opacity = effect.opacity / 100.0  # TODO: Check unit
         if opacity < 1.0:
             element['fill-opacity'] = opacity
         self.add_blend_mode(
@@ -167,10 +195,10 @@ class EffectsConverter(object):
 
     def create_drop_shadow(self, layer, effect, element):
         """Create a drop shadow effect."""
-        blur = effect.size.value
-        spread = effect.choke.value / 100.0
-        angle = effect.angle.value
-        radius = effect.distance.value
+        blur = effect.size
+        spread = effect.choke / 100.0
+        angle = effect.angle
+        radius = effect.distance
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
         filt = self._dwg.defs.add(self._dwg.filter(
@@ -184,8 +212,8 @@ class EffectsConverter(object):
         transfer = filt.feComponentTransfer('drshBlur', result='drshBlurA')
         transfer.feFuncA('linear', slope=1.0 + 4 * spread, intercept=0.0)
         flood = filt.feFlood(result='drshFlood')
-        flood['flood-color'] = self.create_solid_color(effect)
-        flood['flood-opacity'] = effect.opacity.value / 100.0
+        flood['flood-color'] = self.create_solid_color(effect.value['Clr '])
+        flood['flood-opacity'] = effect.opacity / 100.0
         filt.feComposite('drshFlood', in2='drshBlurA', operator='in',
                          result='drshShadow')
 
@@ -196,8 +224,8 @@ class EffectsConverter(object):
 
     def create_outer_glow(self, layer, effect, element):
         """Create an outer glow effect."""
-        blur = effect.size.value
-        spread = effect.choke.value / 100.0
+        blur = effect.size
+        spread = effect.choke / 100.0
         filt = self._dwg.defs.add(self._dwg.filter(
             x='-50%', y='-50%', size=('200%', '200%')))
         filt['class'] = 'outerglow'
@@ -221,12 +249,15 @@ class EffectsConverter(object):
         flood = filt.feFlood(result='orglFlood')
 
         if effect.color:
-            flood['flood-color'] = self.create_solid_color(effect)
+            flood['flood-color'] = self.create_solid_color(
+                effect.value['Clr ']
+            )
         else:
             logger.warning("Gradient glow not implemented")
             flood['flood-color'] = self.create_solid_color(
-                effect.gradient.colors[0])
-        flood['flood-opacity'] = effect.opacity.value / 100.0
+                effect.value['Grad']['Clrs'][0]['Clr ']
+            )
+        flood['flood-opacity'] = effect.opacity / 100.0
         filt.feComposite('orglFlood', in2='orglBlurA', operator='in',
                          result='orglShadow')
         filt.feComposite('orglShadow', in2='SourceAlpha', operator='out',
@@ -239,17 +270,17 @@ class EffectsConverter(object):
 
     def create_inner_shadow(self, layer, effect, element, blend_mode):
         """Create inner shadow effect."""
-        blur = effect.size.value
-        angle = effect.angle.value
-        radius = effect.distance.value
+        blur = effect.size
+        angle = effect.angle
+        radius = effect.distance
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
         filt = self._dwg.defs.add(self._dwg.filter())
         filt['class'] = 'inner-shadow'
         flood = filt.feFlood(result='irshFlood')
-        flood['flood-color'] = self.create_solid_color(effect)
-        flood['flood-opacity'] = effect.opacity.value / 100.0
+        flood['flood-color'] = self.create_solid_color(effect.value['Clr '])
+        flood['flood-opacity'] = effect.opacity / 100.0
         filt.feComposite('irshFlood', in2='SourceAlpha', operator='out',
                          result='irshShadow')
         filt.feOffset('irshShadow', dx=dx, dy=dy, result='irshOffset')
@@ -267,8 +298,8 @@ class EffectsConverter(object):
 
     def create_inner_glow(self, layer, effect, element, blend_mode):
         """Create inner glow effect."""
-        blur = effect.size.value
-        spread = effect.choke.value / 100.0
+        blur = effect.size
+        spread = effect.choke / 100.0
 
         # Real inner glow needs distance transform.
         filt = self._dwg.defs.add(self._dwg.filter())
@@ -276,10 +307,12 @@ class EffectsConverter(object):
         flood = filt.feFlood(result='irglFlood')
         # TODO: Gradient fill
         if effect.color:
-            flood['flood-color'] = color = self.create_solid_color(effect)
+            flood['flood-color'] = color = self.create_solid_color(
+                effect.value['Clr ']
+            )
         else:
             logger.warning("Gradient glow not implemented")
-        flood['flood-opacity'] = effect.opacity.value / 100.0
+        flood['flood-opacity'] = effect.opacity / 100.0
         # Saturate alpha mask before glow.
         transfer = filt.feComponentTransfer('SourceAlpha', result='irglAlpha')
         transfer.feFuncA('linear', slope=255, intercept=0)
@@ -308,20 +341,20 @@ class EffectsConverter(object):
         shadow = self._dwg.use(
             element.get_iri(), filter=filt.get_funciri())
         shadow['class'] = 'layer-effect bevel-emboss shadow'
-        shadow['opacity'] = effect.shadow_opacity.value / 100.0
+        shadow['opacity'] = effect.shadow_opacity / 100.0
         self.add_blend_mode(shadow, effect.shadow_mode)
         filt['class'] = 'bevel-emboss shadow'
         if effect.bevel_style == 'inner-bevel':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 2.0,
+                stdDeviation=effect.size / 2.0,
                 **{'color-interpolation-filters': 'sRGB'})
             light = filt.feDiffuseLighting('blur',
                 result='shadow',
-                surfaceScale=effect.size.value / 2.0,
+                surfaceScale=effect.size / 2.0,
                 diffuseConstant=2.0)
-            light.feDistantLight(azimuth=-effect.angle.value,
-                                 elevation=effect.altitude.value)
-            color = [(x / 255.0) for x in effect.shadow_color.value]
+            light.feDistantLight(azimuth=-effect.angle,
+                                 elevation=effect.altitude)
+            color = [(x / 255.0) for x in effect.shadow_color.values()]
             filt.feColorMatrix(
                 'shadow',
                 result='color-shadow',
@@ -333,15 +366,15 @@ class EffectsConverter(object):
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 3.2,
+                stdDeviation=effect.size / 3.2,
                 **{'color-interpolation-filters': 'sRGB'})
             light = filt.feDiffuseLighting('blur',
                 result='shadow',
-                surfaceScale=effect.size.value / 1.2,
+                surfaceScale=effect.size / 1.2,
                 diffuseConstant=2.0)
-            light.feDistantLight(azimuth=-effect.angle.value,
-                                 elevation=effect.altitude.value)
-            color = [(x / 255.0) for x in effect.shadow_color.value]
+            light.feDistantLight(azimuth=-effect.angle,
+                                 elevation=effect.altitude)
+            color = [(x / 255.0) for x in effect.shadow_color.values()]
             filt.feColorMatrix(
                 'shadow',
                 result='color-shadow',
@@ -349,27 +382,29 @@ class EffectsConverter(object):
                 values="0 0 0 0 {:g} 0 0 0 0 {:g} "
                        "0 0 0 0 {:g} -1.0 0 0 0 1.0".format(*color))
         else:
-            logger.warning("Not implemented: {}".format(effect.bevel_style))
+            logger.warning("Bevel style not implemented: {}".format(
+                effect.bevel_style
+            ))
 
         # Highlight.
         filt = self._dwg.defs.add(self._dwg.filter())
         highlight = self._dwg.use(
             element.get_iri(), filter=filt.get_funciri())
         highlight['class'] = 'layer-effect bevel-emboss highlight'
-        highlight['opacity'] = effect.highlight_opacity.value / 100.0
+        highlight['opacity'] = effect.highlight_opacity / 100.0
         self.add_blend_mode(highlight, effect.highlight_mode)
         filt['class'] = 'bevel-emboss highlight'
         if effect.bevel_style == 'inner-bevel':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 2.0,
+                stdDeviation=effect.size / 2.0,
                 **{'color-interpolation-filters': 'sRGB'})
             light = filt.feSpecularLighting('blur',
                 result='highlight',
-                surfaceScale=effect.size.value / 1.6,
+                surfaceScale=effect.size / 1.6,
                 specularExponent=14.0,
                 specularConstant=1.0)
-            light.feDistantLight(azimuth=-effect.angle.value,
-                                 elevation=effect.altitude.value)
+            light.feDistantLight(azimuth=-effect.angle,
+                                 elevation=effect.altitude)
             light['lighting-color'] = self.create_solid_color(
                 effect.highlight_color)
             filt.feComposite('highlight', in2='SourceAlpha', operator='in')
@@ -377,19 +412,21 @@ class EffectsConverter(object):
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
-                stdDeviation=effect.size.value / 3.2,
+                stdDeviation=effect.size / 3.2,
                 **{'color-interpolation-filters': 'sRGB'})
             light = filt.feSpecularLighting('blur',
                 result='highlight',
-                surfaceScale=effect.size.value / 3.2,
+                surfaceScale=effect.size / 3.2,
                 specularExponent=14.0,
                 specularConstant=1.0)
-            light.feDistantLight(azimuth=-effect.angle.value,
-                                 elevation=effect.altitude.value)
+            light.feDistantLight(azimuth=-effect.angle,
+                                 elevation=effect.altitude)
             light['lighting-color'] = self.create_solid_color(
                 effect.highlight_color)
         else:
-            logger.warning("Not implemented: {}".format(effect.bevel_style))
+            logger.warning("Bevel style not implemented: {}".format(
+                effect.bevel_style
+            ))
 
         container = self._dwg.g()
         container.add(shadow)
@@ -410,8 +447,8 @@ class EffectsConverter(object):
         3. Apply Gaussian blur to the filled area from the two rectangles.
         4. For the filled area, apply specified color and opacity.
         """
-        angle = effect.angle.value
-        radius = effect.distance.value
+        angle = effect.angle
+        radius = effect.distance
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
@@ -420,7 +457,7 @@ class EffectsConverter(object):
         filt.feOffset('SourceAlpha', result='shape1', dx=dx, dy=dy)
         filt.feOffset('SourceAlpha', result='shape2', dx=-dx, dy=-dy)
         filt.feComposite('shape1', in2='shape2', result='xor', operator='xor')
-        color = [x / 255.0 for x in effect.color.value]
+        color = [x / 255.0 for x in effect.color.values()]
         if effect.inverted:
             filt.feColorMatrix(
                 'xor',
@@ -442,21 +479,21 @@ class EffectsConverter(object):
                        '0 0 0 1 0 '.format(*color),
                 )
         filt.feGaussianBlur('xor-shaded', result='blur',
-            stdDeviation=effect.size.value / 2.0,
+            stdDeviation=effect.size / 2.0,
             **{'color-interpolation-filters': 'sRGB'})
         filt.feComposite('blur', in2='SourceAlpha', operator='in')
 
         satin = self._dwg.use(
             element.get_iri(), filter=filt.get_funciri())
         satin['class'] = 'layer-effect satin'
-        satin['opacity'] = effect.opacity.value / 100.0
+        satin['opacity'] = effect.opacity / 100.0
 
         self.add_blend_mode(satin, effect.blend_mode)
         return satin
 
     def create_stroke(self, layer, effect, element):
         """Create a stroke effect."""
-        radius = int(effect.size.value)  # TODO: Check unit.
+        radius = int(effect.size)  # TODO: Check unit.
         style = effect.position
 
         filt = self._dwg.defs.add(self._dwg.filter())
@@ -464,18 +501,23 @@ class EffectsConverter(object):
         flood = filt.feFlood(result='frfxFlood')
         # TODO: Implement gradient or pattern fill
         if effect.fill_type == 'solid-color':
-            flood['flood-color'] = self.create_solid_color(effect.fill)
-        elif effect.fill_type == 'pattern':
-            logger.warning("Pattern stroke not implemented")
-        elif effect.fill_type == 'gradient':
-            logger.warning("Gradient stroke not implemented")
             flood['flood-color'] = self.create_solid_color(
-                effect.fill.gradient.colors[0])
+                effect.value['Clr ']
+            )
+        elif effect.fill_type == 'pattern-overlay':
+            logger.warning("Pattern stroke not implemented")
+        elif effect.fill_type == 'gradient-overlay':
+            logger.warning("Gradient stroke not implemented")
+            grad = effect.value['Grad']
+            if 'Clrs' in grad:
+                flood['flood-color'] = self.create_solid_color(
+                    grad['Clrs'][0]['Clr ']
+                )
         else:
             logger.warning("Unknown fill type: {}".format(effect.fill_type))
 
 
-        flood['flood-opacity'] = effect.opacity.value / 100.0
+        flood['flood-opacity'] = effect.opacity / 100.0
         if style == 'outer':
             filt.feMorphology('SourceAlpha', result='frfxMorph',
                               operator='dilate', radius=radius)
