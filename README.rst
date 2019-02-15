@@ -36,19 +36,19 @@ name from the input::
     psd2svg input.psd output/  # => output/input.svg
     psd2svg input.psd          # => input.svg
 
-When ``--export-resource`` flag is specified, all png resources are exported
-to the path specified by ``--resource-prefix``::
+When ``--resource-path`` flag is specified, all png resources are exported
+to the path specified by ``--resource-path``::
 
-    psd2svg input.psd output.svg --export-resource
+    psd2svg input.psd output.svg --resource-path .
     # => output.svg, xxx1.png, ...
 
-    psd2svg input.psd output/ --export-resource
+    psd2svg input.psd output/ --resource-path .
     # => output/input.svg, output/xxx1.png, ...
 
-    psd2svg input.psd output/ --export-resource --resource-prefix=resources/
+    psd2svg input.psd output/ --resource-path=resources/
     # => output/input.svg, output/resources/xxx1.png, ...
 
-    psd2svg input.psd svg/ --export-resource --resource-prefix=../png/
+    psd2svg input.psd svg/ --resource-path=../png/
     # => svg/input.svg, png/xxx1.png, ...
 
 
@@ -75,8 +75,8 @@ The package contains high-level conversion function ``psd2svg``:
     svg = psd2svg(psd)
     print(svg)
 
-    # Additionally, individual layers can be rendered.
-    layer_svg = psd2svg(psd.layers[3])
+    # Additionally, individual layers can be directly rendered.
+    layer_svg = psd2svg(psd[3])
     print(layer_svg)
 
 
