@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-from psd_tools.constants import TaggedBlock
+from psd_tools2.constants import TaggedBlockID
 from psd2svg.utils.xml import safe_utf8
 import numpy as np
 import svgwrite
@@ -71,48 +71,46 @@ In SVG::
 class AdjustmentsConverter(object):
 
     def create_adjustment(self, layer):
-        # self._dwg['enable-background'] = 'new'
-        adjustment = layer.data
-        if adjustment.name == "coloroverlay":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "patternoverlay":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "gradientoverlay":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "blackwhite":
-            return self.create_blackwhite(adjustment)
-        elif adjustment.name == "brightnesscontrast":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "channelmixer":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "colorbalance":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "colorlookup":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "curves":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "exposure":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "gradientmap":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "huesaturation":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "invert":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "levels":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "photofilter":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "posterize":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "selectivecolor":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "threshold":
-            logger.warning("adjustment not implemented {}".format(adjustment))
-        elif adjustment.name == "vibrance":
-            logger.warning("adjustment not implemented {}".format(adjustment))
+        if layer.kind == "coloroverlay":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "patternoverlay":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "gradientoverlay":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "blackwhite":
+            return self.create_blackwhite(layer)
+        elif layer.kind == "brightnesscontrast":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "channelmixer":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "colorbalance":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "colorlookup":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "curves":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "exposure":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "gradientmap":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "huesaturation":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "invert":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "levels":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "photofilter":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "posterize":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "selectivecolor":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "threshold":
+            logger.warning("Not implemented {}".format(layer))
+        elif layer.kind == "vibrance":
+            logger.warning("Not implemented {}".format(layer))
         else:
-            logger.error("Unknown adjustment {}".format(adjustment))
+            logger.error("Unknown adjustment {}".format(layer))
 
         return self._dwg.g()
 

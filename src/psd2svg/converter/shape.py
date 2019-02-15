@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-from psd_tools.constants import TaggedBlock, PathResource
+from psd_tools2.constants import TaggedBlockID
 from psd2svg.converter.constants import BLEND_MODE
 
 
@@ -17,29 +17,29 @@ class ShapeConverter(object):
         # first path --> show, second path --> hide, third path --> show.
         # should be clipPath.
         for path in vector_mask.paths:
-            if path.num_knots == 0:
+            if len(path) == 0:
                 continue
 
             # Initial point.
             yield 'M'
-            yield path.knots[0].anchor[1] * self.width
-            yield path.knots[0].anchor[0] * self.height
+            yield path[0].anchor[1] * self.width
+            yield path[0].anchor[0] * self.height
             yield command
 
             # Closed path or open path
-            points = (zip(path.knots, path.knots[1:] + path.knots[0:1])
-                      if path.closed else zip(path.knots, path.knots[1:]))
+            points = (zip(path, path[1:] + path[0:1]) if path.is_closed()
+                      else zip(path, path[1:]))
 
             # Rest of the points.
             for p1, p2 in points:
-                yield p1.leaving_knot[1] * self.width
-                yield p1.leaving_knot[0] * self.height
-                yield p2.preceding_knot[1] * self.width
-                yield p2.preceding_knot[0] * self.height
+                yield p1.leaving[1] * self.width
+                yield p1.leaving[0] * self.height
+                yield p2.preceding[1] * self.width
+                yield p2.preceding[0] * self.height
                 yield p2.anchor[1] * self.width
                 yield p2.anchor[0] * self.height
 
-            if path.closed:
+            if path.is_closed():
                 yield 'Z'
 
 
@@ -82,8 +82,10 @@ class ShapeConverter(object):
             gradient = self.create_gradient(
                 stroke.content, size=(layer.width, layer.height))
             element['stroke'] = gradient.get_funciri()
-        elif stroke.content.name == 'coloroverlay':
-            element['stroke'] = self.create_solid_color(stroke.content)
+        elif stroke.content.classID == b'solidColorLayer':
+            element['stroke'] = self.create_solid_color(
+                stroke.content['Clr ']
+            )
 
         if not stroke.fill_enabled:
             element['fill-opacity'] = 0
