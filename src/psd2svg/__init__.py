@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import svgwrite
+from psd_tools2 import PSDImage
 from psd2svg.converter.adjustments import AdjustmentsConverter
 from psd2svg.converter.core import LayerConverter
 from psd2svg.converter.effects import EffectsConverter
@@ -25,70 +26,51 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
 
     input_url - url, file-like object, PSDImage, or any of its layer.
     output_url - url or file-like object to export svg. if None, return data.
-    text_mode - option to switch text rendering (default 'image')
-      * 'image' use Photoshop's bitmap
-      * 'text' use SVG text
-      * 'image-only' use Photoshop's bitmap and discard SVG text
-      * 'text-only' use SVG text and discard Photoshop bitmap
     export_resource - use dataURI to embed bitmap (default True)
     """
-    def __init__(self, text_mode='image', export_resource=False,
-                 resource_prefix='', overwrite=True, reset_id=True,
-                 embed_preview=False):
-        self.text_mode = text_mode
-        self.export_resource = export_resource
-        self.resource_prefix = resource_prefix
-        self.overwrite = overwrite
-        self.reset_id = reset_id
-        self.embed_preview = embed_preview
+    def __init__(self, resource_path=None):
+        self.resource_path = resource_path
 
     def reset(self):
         """Reset the converter."""
         self._psd = None
-        self._input_layer = None
         self._white_filter = None
         self._identity_filter = None
-        if self.reset_id:
-            svgwrite.utils.AutoID._set_value(0)
+        svgwrite.utils.AutoID._set_value(0)
 
-    def convert(self, input, output=None, layer_view=True):
+    def convert(self, layer, output=None):
         """Convert the given PSD to SVG."""
         self.reset()
-        self._load(input)
+        self._set_input(layer)
         self._set_output(output)
 
-        if (not self.overwrite and self._output_file and
-                self._output.exists(self._output_file)):
-            url = self._output.url(self._output_file)
-            logger.warning('File exists: {}'.format(url))
-            return url
+        layer = self._layer
+        bbox = layer.viewbox if hasattr(layer, 'viewbox') else layer.bbox
+        if bbox == (0, 0, 0, 0):
+            bbox = self._psd.viewbox
 
-        if layer_view and self._input_layer and self._input_layer.has_box():
-            self._dwg = svgwrite.Drawing(
-                size=(self._input_layer.width, self._input_layer.height),
-                viewBox="{} {} {} {}".format(
-                    self._input_layer.left, self._input_layer.top,
-                    self._input_layer.width, self._input_layer.height))
+        self._dwg = svgwrite.Drawing(
+            size=(bbox[2] - bbox[0], bbox[3] - bbox[1]),
+            viewBox='%d %d %d %d' % (
+                bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]
+            ),
+        )
+        if layer.is_group():
+            self.create_group(layer, self._dwg)
         else:
-            self._dwg = svgwrite.Drawing(
-                size=(self.width, self.height),
-                viewBox="0 0 {} {}".format(self.width, self.height))
+            self._dwg.add(self.convert_layer(layer))
 
-        # if self.text_mode in ('image', 'image-only'):
-        #     stylesheet = '.text-text { display: none; }'
-        # elif self.text_mode in ('text', 'text-only'):
-        #     stylesheet = '.text-image { display: none; }'
-        # self._dwg.defs.add(self._dwg.style(stylesheet))
-
-        # Add layers.
-        if self._input_layer:
-            self._dwg.add(self.convert_layer(self._input_layer))
-        else:
-            self.create_group(self._psd, element=self._dwg)
-            empty_psd = len(self._psd.layers) == 0
-            if self.embed_preview or empty_psd:
-                self._dwg.add(self.create_preview(hidden=not empty_psd))
-
+        # Layerless PSDImage.
+        if (
+            isinstance(layer, PSDImage) and len(layer) == 0 and
+            layer.has_preview()
+        ):
+            self._dwg.add(self._dwg.image(
+                self._get_image_href(layer.topil()),
+                insert=(0, 0),
+                size=(layer.width, layer.height),
+                debug=False
+            ))
         return self._save_svg()
 
     @property
