@@ -55,7 +55,7 @@ class ChromiumRasterizer(BaseRasterizer):
         options.add_argument("default-background-color FFFFFF00")
         self.driver = webdriver.Chrome(
             executable_path=executable_path,
-            chrome_options=options)
+            options=options)
         self.dpi = dpi
         send(self.driver,
              "Emulation.setDefaultBackgroundColorOverride",
