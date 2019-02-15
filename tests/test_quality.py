@@ -7,7 +7,7 @@ import imagehash
 import numpy as np
 import psd2svg
 import psd2svg.rasterizer
-from psd_tools import PSDImage
+from psd_tools2 import PSDImage
 
 FIXTURES = [
     p for p in glob(
@@ -36,10 +36,10 @@ def rasterizer():
 @pytest.mark.parametrize('psd_file', EASY_CASES)
 def test_quality(rasterizer, tmpdir, psd_file):
     svg_file = os.path.join(tmpdir.dirname, "output.svg")
-    psd = PSDImage.load(psd_file)
+    psd = PSDImage.open(psd_file)
     if not psd.has_preview():
         pytest.skip('psd file does not have a preview, skipping tests')
-    preview = psd.as_PIL()
+    preview = psd.compose()
     rendered = rasterizer.rasterize_from_string(psd2svg.psd2svg(psd))
     assert preview.width == rendered.width
     assert preview.height == rendered.height
@@ -48,4 +48,4 @@ def test_quality(rasterizer, tmpdir, psd_file):
     error_count = np.sum(
         np.bitwise_xor(preview_hash.hash, rendered_hash.hash))
     error_rate = error_count / float(preview_hash.hash.size)
-    assert error_rate <= 0.11
+    assert error_rate <= 0.125
