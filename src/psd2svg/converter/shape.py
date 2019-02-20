@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
-from psd_tools2.constants import TaggedBlockID
+from psd_tools.constants import TaggedBlockID
 from psd2svg.converter.constants import BLEND_MODE
 
 

@@ -5,8 +5,8 @@ import hashlib
 import io
 from logging import getLogger
 import os
-from psd_tools2 import PSDImage
-from psd_tools2.api.layers import Layer
+from psd_tools import PSDImage
+from psd_tools.api.layers import Layer
 from psd2svg.storage import get_storage
 import xml.dom.minidom as minidom
 

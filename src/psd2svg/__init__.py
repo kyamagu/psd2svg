@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import svgwrite
-from psd_tools2 import PSDImage
+from psd_tools import PSDImage
 from psd2svg.converter.adjustments import AdjustmentsConverter
 from psd2svg.converter.core import LayerConverter
 from psd2svg.converter.effects import EffectsConverter

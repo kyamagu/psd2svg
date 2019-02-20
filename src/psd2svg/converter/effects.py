@@ -3,8 +3,8 @@ from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import numpy as np
 import svgwrite
-from psd_tools2.constants import TaggedBlockID
-from psd_tools2.api.effects import (
+from psd_tools.constants import TaggedBlockID
+from psd_tools.api.effects import (
     OuterGlow, InnerGlow, DropShadow, InnerShadow, ColorOverlay,
     PatternOverlay, GradientOverlay, BevelEmboss, Satin, Stroke
 )

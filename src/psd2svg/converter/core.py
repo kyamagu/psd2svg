@@ -2,9 +2,9 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import svgwrite
-from psd_tools2.api.layers import AdjustmentLayer, FillLayer, ShapeLayer
-from psd_tools2.api.pil_io import convert_pattern_to_pil
-from psd_tools2.constants import TaggedBlockID, DescriptorClassID
+from psd_tools.api.layers import AdjustmentLayer, FillLayer, ShapeLayer
+from psd_tools.api.pil_io import convert_pattern_to_pil
+from psd_tools.constants import TaggedBlockID, DescriptorClassID
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
 from psd2svg.utils.color import cmyk2rgb
