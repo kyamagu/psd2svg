@@ -7,7 +7,7 @@ import imagehash
 import numpy as np
 import psd2svg
 import psd2svg.rasterizer
-from psd_tools2 import PSDImage
+from psd_tools import PSDImage
 
 FIXTURES = [
     p for p in glob(

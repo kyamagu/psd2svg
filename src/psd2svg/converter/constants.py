@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-from psd_tools2.constants import BlendMode
+from psd_tools.constants import BlendMode
 
 # https://helpx.adobe.com/photoshop/using/blending-modes.html
 BLEND_MODE = {

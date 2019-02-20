@@ -5,7 +5,7 @@ import os
 import pytest
 import io
 from glob import glob
-from psd_tools2 import PSDImage
+from psd_tools import PSDImage
 from psd2svg import psd2svg
 
 FIXTURES = [

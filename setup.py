@@ -47,7 +47,7 @@ setup(
         'pillow',
         'svgwrite',
         'numpy',
-        'psd-tools2>=1.8.7',
+        'psd-tools>=1.8.8',
         'future',
     ],
     extras_require = {
