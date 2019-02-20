@@ -1,7 +1,7 @@
 PSD2SVG
 =======
 
-PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
+PSD to SVG converter based on `psd-tools`_ and `svgwrite`_.
 
 .. image:: https://img.shields.io/pypi/v/psd2svg.svg
    :target: https://pypi.python.org/pypi/psd2svg
@@ -11,7 +11,7 @@ PSD to SVG converter based on `psd-tools2`_ and `svgwrite`_.
    :alt: Build Status
    :target: https://travis-ci.org/kyamagu/psd2svg
 
-.. _`psd-tools2`: https://github.com/kyamagu/psd-tools
+.. _`psd-tools`: https://github.com/psd-tools/psd-tools
 
 .. _`svgwrite`: https://github.com/mozman/svgwrite
 
