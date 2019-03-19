@@ -4,7 +4,7 @@ from logging import getLogger
 import svgwrite
 from psd_tools.api.layers import AdjustmentLayer, FillLayer, ShapeLayer
 from psd_tools.api.pil_io import convert_pattern_to_pil
-from psd_tools.constants import TaggedBlockID, DescriptorClassID
+from psd_tools.constants import TaggedBlockID
 from psd2svg.converter.constants import BLEND_MODE
 from psd2svg.utils.xml import safe_utf8
 from psd2svg.utils.color import cmyk2rgb
@@ -226,13 +226,14 @@ class LayerConverter(object):
 
         :rtype: str
         """
-        if color.classID == DescriptorClassID(b'RGBC'):
+        assert color is not None
+        if color.classID == b'RGBC':
             return 'rgb(%d,%d,%d)' % tuple(map(int, color.values()))
-        elif color.classID == DescriptorClassID(b'Grsc'):
+        elif color.classID == (b'Grsc'):
             return 'rgb({0},{0},{0})'.format(
                 [int(255 * x) for x in color.values()][0]
             )
-        elif color.classID == DescriptorClassID(b'CMYC'):
+        elif color.classID == b'CMYC':
             return 'rgb(%d,%d,%d)' % tuple(*map(int, cmyk2rgb(color.values)))
         else:
             logger.warning('Unsupported color: {}'.format(color))
@@ -265,7 +266,7 @@ class LayerConverter(object):
         return element
 
     def create_gradient(self, setting, size):
-        if setting['Type'].enum.value == b'Lnr ':
+        if setting['Type'].enum == b'Lnr ':
             theta = np.radians(-setting['Angl'].value)
             start = np.array([size[0] * np.cos(theta - np.pi),
                               size[1] * np.sin(theta - np.pi)])
@@ -280,7 +281,7 @@ class LayerConverter(object):
 
             element = self._dwg.defs.add(svgwrite.gradients.LinearGradient(
                 start=start, end=end))
-        elif setting['Type'].enum.value == b'Rdl ':
+        elif setting['Type'].enum == b'Rdl ':
             element = self._dwg.defs.add(svgwrite.gradients.RadialGradient(
                 center=None, r=.5))
         else:
