@@ -500,13 +500,13 @@ class EffectsConverter(object):
         filt['class'] = 'stroke'
         flood = filt.feFlood(result='frfxFlood')
         # TODO: Implement gradient or pattern fill
-        if effect.fill_type == 'solid-color':
+        if effect.fill_type == 'SolidColor':
             flood['flood-color'] = self.create_solid_color(
                 effect.value['Clr ']
             )
-        elif effect.fill_type == 'pattern-overlay':
+        elif effect.fill_type == 'Pattern':
             logger.warning("Pattern stroke not implemented")
-        elif effect.fill_type == 'gradient-overlay':
+        elif effect.fill_type == 'Gradient':
             logger.warning("Gradient stroke not implemented")
             grad = effect.value['Grad']
             if 'Clrs' in grad:
