@@ -1,6 +1,5 @@
 language: python
 python: 3.6
-sudo: false
 branches:
     only:
         - master
@@ -29,15 +28,10 @@ git:
 before_install:
     - echo -e "machine github.com\n login 30cba336a070ec8129202e78b5b1cf9b9d73237d" >> ~/.netrc
     - git lfs pull
+    - apt-get install -y chromium-chromedriver
 
 install:
     - pip install -U pip wheel tox
-
-before_script:
-    - wget https://chromedriver.storage.googleapis.com/2.35/chromedriver_linux64.zip
-    - unzip chromedriver_linux64.zip
-    - sudo chmod +x chromedriver
-    - sudo cp chromedriver /usr/local/bin
 
 script: tox
 
