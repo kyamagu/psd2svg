@@ -57,9 +57,9 @@ class ChromiumRasterizer(BaseRasterizer):
             executable_path=executable_path,
             options=options)
         self.dpi = dpi
-        send(self.driver,
-             "Emulation.setDefaultBackgroundColorOverride",
-             {'color': {'r': 255, 'g': 255, 'b': 255, 'a': 0}}
+        self.driver.execute_cdp_cmd(
+            "Emulation.setDefaultBackgroundColorOverride",
+            {'color': {'r': 255, 'g': 255, 'b': 255, 'a': 0}}
         )
 
     def __del__(self):
