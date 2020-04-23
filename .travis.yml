@@ -20,6 +20,7 @@ addons:
             - libfreetype6-dev
             - liblcms2-dev
             - libffi-dev
+            - chromium-chromedriver
     chrome: stable
 
 git:
@@ -28,7 +29,6 @@ git:
 before_install:
     - echo -e "machine github.com\n login 30cba336a070ec8129202e78b5b1cf9b9d73237d" >> ~/.netrc
     - git lfs pull
-    - apt-get install -y chromium-chromedriver
 
 install:
     - pip install -U pip wheel tox
