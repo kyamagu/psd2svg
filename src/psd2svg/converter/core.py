@@ -249,7 +249,7 @@ class LayerConverter(object):
             logger.error('Pattern data not found')
             return self._dwg.defs.add(svgwrite.pattern.Pattern())
 
-        image = convert_pattern_to_pil(pattern, self._psd.version)
+        image = convert_pattern_to_pil(pattern)
         element = self._dwg.defs.add(svgwrite.pattern.Pattern(
             width=image.width,
             height=image.height,
