@@ -18,6 +18,7 @@ HARD_CASES = [
     os.path.join(os.path.dirname(__file__), 'fixtures', p) for p in [
         "advanced-blending.psd",
         "layer_params.psd",
+        "layer_comps.psd",
         "gray0.psd",  # Seems the preview image is inaccurate.
         # "clipping-mask2.psd",  # Very close, but fails.
     ]
@@ -39,7 +40,7 @@ def test_quality(rasterizer, tmpdir, psd_file):
     psd = PSDImage.open(psd_file)
     if not psd.has_preview():
         pytest.skip('psd file does not have a preview, skipping tests')
-    preview = psd.compose()
+    preview = psd.composite()
     rendered = rasterizer.rasterize_from_string(psd2svg.psd2svg(psd))
     assert preview.width == rendered.width
     assert preview.height == rendered.height

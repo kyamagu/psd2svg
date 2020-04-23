@@ -102,6 +102,8 @@ class SVGWriter(object):
         return xml_tree.toprettyxml(indent='  ')
 
     def _get_image_href(self, image, fmt='png', icc_profile=None):
+        if image.mode == 'CMYK':
+            image = image.convert('RGB')
         with io.BytesIO() as output:
             image.save(output, format=fmt, icc_profile=icc_profile)
             encoded_image = output.getvalue()

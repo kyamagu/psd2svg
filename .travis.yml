@@ -1,6 +1,5 @@
 language: python
 python: 3.6
-sudo: false
 branches:
     only:
         - master
@@ -21,6 +20,7 @@ addons:
             - libfreetype6-dev
             - liblcms2-dev
             - libffi-dev
+            - chromium-chromedriver
     chrome: stable
 
 git:
@@ -32,12 +32,6 @@ before_install:
 
 install:
     - pip install -U pip wheel tox
-
-before_script:
-    - wget https://chromedriver.storage.googleapis.com/2.35/chromedriver_linux64.zip
-    - unzip chromedriver_linux64.zip
-    - sudo chmod +x chromedriver
-    - sudo cp chromedriver /usr/local/bin
 
 script: tox
 

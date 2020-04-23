@@ -344,7 +344,7 @@ class EffectsConverter(object):
         shadow['opacity'] = effect.shadow_opacity / 100.0
         self.add_blend_mode(shadow, effect.shadow_mode)
         filt['class'] = 'bevel-emboss shadow'
-        if effect.bevel_style == 'inner-bevel':
+        if effect.bevel_style == b'InrB':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
                 stdDeviation=effect.size / 2.0,
                 **{'color-interpolation-filters': 'sRGB'})
@@ -362,7 +362,7 @@ class EffectsConverter(object):
                 values="0 0 0 0 {:g} 0 0 0 0 {:g} "
                        "0 0 0 0 {:g} -1.0 0 0 0 1.0".format(*color))
             filt.feComposite('color-shadow', in2='SourceAlpha', operator='in')
-        elif effect.bevel_style == 'emboss':
+        elif effect.bevel_style == b'ebbl':
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
@@ -394,7 +394,7 @@ class EffectsConverter(object):
         highlight['opacity'] = effect.highlight_opacity / 100.0
         self.add_blend_mode(highlight, effect.highlight_mode)
         filt['class'] = 'bevel-emboss highlight'
-        if effect.bevel_style == 'inner-bevel':
+        if effect.bevel_style == b'InrB':
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
                 stdDeviation=effect.size / 2.0,
                 **{'color-interpolation-filters': 'sRGB'})
@@ -408,7 +408,7 @@ class EffectsConverter(object):
             light['lighting-color'] = self.create_solid_color(
                 effect.highlight_color)
             filt.feComposite('highlight', in2='SourceAlpha', operator='in')
-        elif effect.bevel_style == 'emboss':
+        elif effect.bevel_style == b'ebbl':
             filt['x'], filt['y'] = '-10%', '-10%'
             filt['width'], filt['height'] = '120%', '120%'
             blur = filt.feGaussianBlur('SourceAlpha', result='blur',
@@ -500,13 +500,13 @@ class EffectsConverter(object):
         filt['class'] = 'stroke'
         flood = filt.feFlood(result='frfxFlood')
         # TODO: Implement gradient or pattern fill
-        if effect.fill_type == 'solid-color':
+        if effect.fill_type == b'SClr':
             flood['flood-color'] = self.create_solid_color(
                 effect.value['Clr ']
             )
-        elif effect.fill_type == 'pattern-overlay':
+        elif effect.fill_type == b'patternFill':
             logger.warning("Pattern stroke not implemented")
-        elif effect.fill_type == 'gradient-overlay':
+        elif effect.fill_type == b'Grdf':
             logger.warning("Gradient stroke not implemented")
             grad = effect.value['Grad']
             if 'Clrs' in grad:
