@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 import svgwrite
+from svgwrite.extensions import Inkscape
 from psd_tools import PSDImage
 from psd2svg.converter.adjustments import AdjustmentsConverter
 from psd2svg.converter.core import LayerConverter
@@ -27,9 +28,11 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
     input_url - url, file-like object, PSDImage, or any of its layer.
     output_url - url or file-like object to export svg. if None, return data.
     export_resource - use dataURI to embed bitmap (default True)
+    mode - (default 'default')
     """
-    def __init__(self, resource_path=None):
+    def __init__(self, resource_path=None, mode='default'):
         self.resource_path = resource_path
+        self.mode = mode
 
     def reset(self):
         """Reset the converter."""
@@ -55,6 +58,8 @@ class PSD2SVG(AdjustmentsConverter, EffectsConverter, LayerConverter,
                 bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]
             ),
         )
+        if self.mode == 'inkscape':
+            self._inkscape = Inkscape(self._dwg)
         if layer.is_group():
             self.create_group(layer, self._dwg)
         else:

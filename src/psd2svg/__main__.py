@@ -20,6 +20,8 @@ def main():
         '--rasterizer', metavar='METHOD', default='chromium', type=str,
         help='Specify which rasterizer to use. default chromium.')
     parser.add_argument(
+        '--mode', metavar='MODE', type=str, default='default')
+    parser.add_argument(
         '--loglevel', metavar='LEVEL', default='WARNING',
         help='Logging level, default WARNING')
     args = parser.parse_args()
@@ -32,11 +34,13 @@ def main():
         from psd2svg.rasterizer import create_rasterizer
         rasterizer = create_rasterizer(args.rasterizer)
         svg_file = prefix + ".svg"
-        psd2svg(args.input, svg_file, resource_path=args.resource_path)
+        psd2svg(args.input, svg_file, resource_path=args.resource_path,
+            mode=args.mode)
         image = rasterizer.rasterize(svg_file)
         image.save(args.output)
     else:
-        psd2svg(args.input, args.output, resource_path=args.resource_path)
+        psd2svg(args.input, args.output, resource_path=args.resource_path,
+            mode=args.mode)
 
 
 if __name__ == '__main__':
