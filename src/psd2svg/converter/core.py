@@ -206,6 +206,8 @@ class LayerConverter(object):
         if layer.opacity < 255.0:
             element['opacity'] = layer.opacity / 255.0
         self.add_blend_mode(element, layer.blend_mode)
+        if layer.is_group():
+            self.add_isolation(element, layer.blend_mode)
         return element
 
     def add_blend_mode(self, element, blend_mode):
@@ -216,6 +218,22 @@ class LayerConverter(object):
                 element['style'] += 'mix-blend-mode: {};'.format(blend_mode)
             else:
                 element['style'] = 'mix-blend-mode: {};'.format(blend_mode)
+
+    def add_isolation(self, element, blend_mode):
+        """
+        Add isolation to a group.
+        
+        1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
+        2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
+        3. Other blending modes also isolate the group,
+        and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
+        """
+        blend_mode = BLEND_MODE.get(blend_mode, 'pass through')
+        if blend_mode == 'normal':
+            if 'style' in element.attribs:
+                element['style'] += 'isolation: isolate;'
+            else:
+                element['style'] = 'isolation: isolate;'
 
     def create_solid_color(self, color):
         """
