@@ -66,7 +66,10 @@ class LayerConverter(object):
     def create_group(self, group, container=None):
         """Create and fill in a new group element."""
         if not container:
-            container = self._dwg.g()
+            if self.mode == 'inkscape':
+                container = self._inkscape.layer()
+            else:
+                container = self._dwg.g()
         for layer in group:
             element = self.convert_layer(layer)
             if not element:
@@ -199,10 +202,16 @@ class LayerConverter(object):
 
     def add_attributes(self, layer, element):
         """Add layer attributes such as blending or visibility options."""
-        element.set_desc(title=safe_utf8(layer.name))
+        if self.mode == 'inkscape':
+            element['inkscape:label'] = safe_utf8(layer.name)
+        else:
+            element.set_desc(title=safe_utf8(layer.name))
         element['class'] = 'psd-layer {}'.format(layer.kind)
         if not layer.visible:
-            element['visibility'] = 'hidden'
+            if self.mode == 'inkscape':
+                element['display'] = 'none'
+            else:
+                element['visibility'] = 'hidden'
         if layer.opacity < 255.0:
             element['opacity'] = layer.opacity / 255.0
         self.add_blend_mode(element, layer.blend_mode)
