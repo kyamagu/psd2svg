@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Inkscape rasterizer module.
 
@@ -7,7 +6,6 @@ Prerequisite:
     sudo apt-get install -y inkscape
 
 """
-from __future__ import absolute_import, unicode_literals
 
 from PIL import Image
 import logging

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 from psd2svg.converter.constants import JUSTIFICATIONS
 from psd2svg.utils.color import cmyk2rgb

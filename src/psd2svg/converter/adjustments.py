@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 from psd_tools.constants import TaggedBlockID
 from psd2svg.utils.xml import safe_utf8

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Chromium-based rasterizer module.
 
@@ -7,7 +6,6 @@ Prerequisite:
     sudo apt-get install -y chromedriver chromium
 
 """
-from __future__ import absolute_import, unicode_literals
 
 from selenium import webdriver
 from PIL import Image

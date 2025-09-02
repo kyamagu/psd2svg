@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Batik-based rasterizer module.
 
@@ -18,7 +17,6 @@ Deb package:
 
 
 """
-from __future__ import absolute_import, unicode_literals
 
 from PIL import Image
 import logging

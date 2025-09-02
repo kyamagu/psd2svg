@@ -1,6 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
-from builtins import str
 import os
 import pytest
 import io
