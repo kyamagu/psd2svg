@@ -1,19 +1,20 @@
 from logging import getLogger
-import svgwrite
-from psd_tools.api.layers import AdjustmentLayer, FillLayer, ShapeLayer
-from psd_tools.api.pil_io import convert_pattern_to_pil
-from psd_tools.constants import TaggedBlockID
-from psd2svg.converter.constants import BLEND_MODE
-from psd2svg.utils.xml import safe_utf8
-from psd2svg.utils.color import cmyk2rgb
+from typing import Any, Optional, Union
+
 import numpy as np
+import svgwrite
+from psd_tools.api.layers import AdjustmentLayer, FillLayer, Layer, ShapeLayer
+from psd_tools.api.pil_io import convert_pattern_to_pil
+
+from psd2svg.converter.constants import BLEND_MODE
+from psd2svg.utils.color import cmyk2rgb
+from psd2svg.utils.xml import safe_utf8
 
 logger = getLogger(__name__)
 
 
-class LayerConverter(object):
-
-    def convert_layer(self, layer):
+class LayerConverter:
+    def convert_layer(self, layer: Layer) -> Optional[svgwrite.base.BaseElement]:
         """
         Convert the given layer.
 
@@ -42,26 +43,28 @@ class LayerConverter(object):
             # element = self.create_adjustment(layer)
         else:
             # Empty layer.
-            logger.info('Skipping %s' % layer)
+            logger.info("Skipping %s" % layer)
             return None
 
         element = self.add_attributes(layer, element)
         if layer.has_mask() and not layer.mask.disabled:
             mask_element = self.create_mask(layer)
             if mask_element:
-                element['mask'] = mask_element.get_funciri()
+                element["mask"] = mask_element.get_funciri()
 
-        if layer.has_vector_mask() and layer.kind != 'shape':
+        if layer.has_vector_mask() and layer.kind != "shape":
             clippath = self._dwg.defs.add(self._dwg.clipPath())
             clippath.add(self.create_path(layer))
-            element['clip-path'] = clippath.get_funciri()
+            element["clip-path"] = clippath.get_funciri()
 
         element = self.add_effects(layer, element)
 
         # Clipping is in group, because the parent is not accessible...
         return element
 
-    def create_group(self, group, container=None):
+    def create_group(
+        self, group: Layer, container: Optional[svgwrite.container.Group] = None
+    ) -> svgwrite.container.Group:
         """Create and fill in a new group element."""
         if not container:
             container = self._dwg.g()
@@ -77,79 +80,101 @@ class LayerConverter(object):
 
         return container
 
-    def create_image(self, layer):
+    def create_image(self, layer: Layer) -> svgwrite.image.Image:
         """Create an image element."""
         element = self._dwg.image(
             self._get_image_href(layer.topil()),
             insert=(layer.left, layer.top),
             size=(layer.width, layer.height),
-            debug=False)  # To disable attribute validation.
+            debug=False,
+        )  # To disable attribute validation.
         return element
 
-    def create_path(self, layer):
+    def create_path(
+        self, layer: Layer
+    ) -> Union[svgwrite.path.Path, svgwrite.elementfactory.Use]:
         """Create a path element."""
         path = self._dwg.path(d=self.generate_path(layer.vector_mask))
         if layer.vector_mask.initial_fill_rule:
-            element = self._dwg.defs.add(self._dwg.rect(
-                insert=(self._psd.bbox[0], self._psd.bbox[1]),
-                size=(self._psd.bbox[2] - self._psd.bbox[0],
-                      self._psd.bbox[3] - self._psd.bbox[1])))
+            element = self._dwg.defs.add(
+                self._dwg.rect(
+                    insert=(self._psd.bbox[0], self._psd.bbox[1]),
+                    size=(
+                        self._psd.bbox[2] - self._psd.bbox[0],
+                        self._psd.bbox[3] - self._psd.bbox[1],
+                    ),
+                )
+            )
             mask = self._dwg.defs.add(self._dwg.mask())
-            mask.add(self._dwg.rect(
-                insert=(self._psd.bbox[0], self._psd.bbox[1]),
-                size=(self._psd.bbox[2] - self._psd.bbox[0],
-                      self._psd.bbox[3] - self._psd.bbox[1]),
-                fill='white'))
-            path['fill'] = 'black'
-            path['clip-rule'] = 'evenodd'
+            mask.add(
+                self._dwg.rect(
+                    insert=(self._psd.bbox[0], self._psd.bbox[1]),
+                    size=(
+                        self._psd.bbox[2] - self._psd.bbox[0],
+                        self._psd.bbox[3] - self._psd.bbox[1],
+                    ),
+                    fill="white",
+                )
+            )
+            path["fill"] = "black"
+            path["clip-rule"] = "evenodd"
             mask.add(path)
-            element['mask'] = mask.get_funciri()
+            element["mask"] = mask.get_funciri()
             use = self._dwg.use(element.get_iri())
             return use
         else:
-            path['fill-rule'] = 'evenodd'
+            path["fill-rule"] = "evenodd"
             return path
 
-    def create_rect(self, layer):
+    def create_rect(self, layer: Layer) -> svgwrite.shapes.Rect:
         """Create a shape or adjustment element."""
         if layer.bbox != (0, 0, 0, 0):
             element = self._dwg.rect(
-                insert=(layer.left, layer.top),
-                size=(layer.width, layer.height))
+                insert=(layer.left, layer.top), size=(layer.width, layer.height)
+            )
         else:
             element = self._dwg.rect(
                 insert=(self._psd.header[0], self._psd.header[1]),
-                size=(self._psd.bbox[2] - self._psd.bbox[0],
-                      self._psd.bbox[3] - self._psd.bbox[1]))
-        element['fill'] = 'none'
+                size=(
+                    self._psd.bbox[2] - self._psd.bbox[0],
+                    self._psd.bbox[3] - self._psd.bbox[1],
+                ),
+            )
+        element["fill"] = "none"
         return element
 
-    def create_mask(self, layer):
+    def create_mask(self, layer: Layer) -> Optional[svgwrite.masking.Mask]:
         """Create a mask."""
-        if (
-            not layer.has_mask() or
-            layer.mask.width == 0 or layer.mask.height == 0
-        ):
+        if not layer.has_mask() or layer.mask.width == 0 or layer.mask.height == 0:
             return None
 
         # In SVG, mask needs a default rect.
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
             viewbox = (0, 0, self.width, self.height)
-        mask_element = self._dwg.defs.add(self._dwg.mask(
-            size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1])))
-        mask_element.add(self._dwg.rect(
-            insert=(viewbox[0], viewbox[1]),
-            size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]),
-            fill='rgb({0},{0},{0})'.format(layer.mask.background_color)))
-        mask_element.add(self._dwg.image(
-            self._get_image_href(layer.mask.topil()),
-            size=(layer.mask.width, layer.mask.height),
-            insert=(layer.mask.left, layer.mask.top)))
-        mask_element['color-interpolation'] = 'sRGB'
+        mask_element = self._dwg.defs.add(
+            self._dwg.mask(size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]))
+        )
+        mask_element.add(
+            self._dwg.rect(
+                insert=(viewbox[0], viewbox[1]),
+                size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]),
+                fill=f"rgb({layer.mask.background_color},{layer.mask.background_color},{layer.mask.background_color})",
+            )
+        )
+        mask_element.add(
+            self._dwg.image(
+                self._get_image_href(layer.mask.topil()),
+                size=(layer.mask.width, layer.mask.height),
+                insert=(layer.mask.left, layer.mask.top),
+            )
+        )
+        mask_element["color-interpolation"] = "sRGB"
         return mask_element
 
-    def create_clipping(self, layer, clip_element):
+    def create_clipping(
+        self, layer: Layer, clip_element: svgwrite.base.BaseElement
+    ) -> svgwrite.container.Group:
         """Create clipped elements."""
         # Create a mask for this clip element.
         if isinstance(clip_element, svgwrite.path.Path):
@@ -157,83 +182,89 @@ class LayerConverter(object):
             use = self._dwg.use(clip_element.get_iri())
             clippath.add(use)
             element = self._dwg.g()
-            element['clip-path'] = clippath.get_funciri()
+            element["clip-path"] = clippath.get_funciri()
         else:
             mask = self._dwg.defs.add(self._dwg.mask())
             use = self._dwg.use(clip_element.get_iri())
-            use['filter'] = self._get_white_filter().get_funciri()
+            use["filter"] = self._get_white_filter().get_funciri()
             mask.add(use)
-            mask['color-interpolation'] = 'sRGB'
+            mask["color-interpolation"] = "sRGB"
             element = self._dwg.g(mask=mask.get_funciri())
 
-        element['class'] = 'psd-clipping'
+        element["class"] = "psd-clipping"
         for child_layer in layer.clip_layers:
             clipped_element = self.convert_layer(child_layer)
             if clipped_element:
                 element.add(clipped_element)
         return element
 
-    def create_fill(self, layer):
+    def create_fill(self, layer: Layer) -> svgwrite.shapes.Rect:
         element = self.create_rect(layer)
         self.add_fill(layer, element)
         return element
 
-    def add_fill(self, layer, element):
+    def add_fill(
+        self, layer: Layer, element: svgwrite.base.BaseElement
+    ) -> svgwrite.base.BaseElement:
         """Add fill attribute to the given element."""
-        if 'SOLID_COLOR_SHEET_SETTING' in layer.tagged_blocks:
-            setting = layer.tagged_blocks.get_data(
-                'SOLID_COLOR_SHEET_SETTING'
-            )
-            element['fill'] = self.create_solid_color(setting['Clr '])
-        elif 'PATTERN_FILL_SETTING' in layer.tagged_blocks:
-            setting = layer.tagged_blocks.get_data('PATTERN_FILL_SETTING')
+        if "SOLID_COLOR_SHEET_SETTING" in layer.tagged_blocks:
+            setting = layer.tagged_blocks.get_data("SOLID_COLOR_SHEET_SETTING")
+            element["fill"] = self.create_solid_color(setting["Clr "])
+        elif "PATTERN_FILL_SETTING" in layer.tagged_blocks:
+            setting = layer.tagged_blocks.get_data("PATTERN_FILL_SETTING")
             pattern_element = self.create_pattern(setting)
-            element['fill'] = pattern_element.get_funciri()
-        elif 'GRADIENT_FILL_SETTING' in layer.tagged_blocks:
-            setting = layer.tagged_blocks.get_data('GRADIENT_FILL_SETTING')
+            element["fill"] = pattern_element.get_funciri()
+        elif "GRADIENT_FILL_SETTING" in layer.tagged_blocks:
+            setting = layer.tagged_blocks.get_data("GRADIENT_FILL_SETTING")
             gradient = self.create_gradient(setting, layer.size)
-            element['fill'] = gradient.get_funciri()
+            element["fill"] = gradient.get_funciri()
         return element
 
-    def add_attributes(self, layer, element):
+    def add_attributes(
+        self, layer: Layer, element: svgwrite.base.BaseElement
+    ) -> svgwrite.base.BaseElement:
         """Add layer attributes such as blending or visibility options."""
         element.set_desc(title=safe_utf8(layer.name))
-        element['class'] = 'psd-layer {}'.format(layer.kind)
+        element["class"] = f"psd-layer {layer.kind}"
         if not layer.visible:
-            element['visibility'] = 'hidden'
+            element["visibility"] = "hidden"
         if layer.opacity < 255.0:
-            element['opacity'] = layer.opacity / 255.0
+            element["opacity"] = layer.opacity / 255.0
         self.add_blend_mode(element, layer.blend_mode)
         if layer.is_group():
             self.add_isolation(element, layer.blend_mode)
         return element
 
-    def add_blend_mode(self, element, blend_mode):
+    def add_blend_mode(
+        self, element: svgwrite.base.BaseElement, blend_mode: Any
+    ) -> None:
         """Set blending option to the element."""
-        blend_mode = BLEND_MODE.get(blend_mode, 'normal')
-        if blend_mode != 'normal':
-            if 'style' in element.attribs:
-                element['style'] += 'mix-blend-mode: {};'.format(blend_mode)
+        blend_mode = BLEND_MODE.get(blend_mode, "normal")
+        if blend_mode != "normal":
+            if "style" in element.attribs:
+                element["style"] += f"mix-blend-mode: {blend_mode};"
             else:
-                element['style'] = 'mix-blend-mode: {};'.format(blend_mode)
+                element["style"] = f"mix-blend-mode: {blend_mode};"
 
-    def add_isolation(self, element, blend_mode):
+    def add_isolation(
+        self, element: svgwrite.base.BaseElement, blend_mode: Any
+    ) -> None:
         """
         Add isolation to a group.
-        
+
         1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
         2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
         3. Other blending modes also isolate the group,
         and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
         """
-        blend_mode = BLEND_MODE.get(blend_mode, 'pass through')
-        if blend_mode == 'normal':
-            if 'style' in element.attribs:
-                element['style'] += 'isolation: isolate;'
+        blend_mode = BLEND_MODE.get(blend_mode, "pass through")
+        if blend_mode == "normal":
+            if "style" in element.attribs:
+                element["style"] += "isolation: isolate;"
             else:
-                element['style'] = 'isolation: isolate;'
+                element["style"] = "isolation: isolate;"
 
-    def create_solid_color(self, color):
+    def create_solid_color(self, color: Any) -> str:
         """
         Create a fill attribute.
 
@@ -243,49 +274,57 @@ class LayerConverter(object):
         :rtype: str
         """
         assert color is not None
-        if color.classID == b'RGBC':
-            return 'rgb(%d,%d,%d)' % tuple(map(int, color.values()))
-        elif color.classID == (b'Grsc'):
-            return 'rgb({0},{0},{0})'.format(
-                [int(255 * x) for x in color.values()][0]
-            )
-        elif color.classID == b'CMYC':
-            return 'rgb(%d,%d,%d)' % tuple(*map(int, cmyk2rgb(color.values)))
+        if color.classID == b"RGBC":
+            return "rgb(%d,%d,%d)" % tuple(map(int, color.values()))
+        elif color.classID == (b"Grsc"):
+            return "rgb({0},{0},{0})".format([int(255 * x) for x in color.values()][0])
+        elif color.classID == b"CMYC":
+            return "rgb(%d,%d,%d)" % tuple(*map(int, cmyk2rgb(color.values)))
         else:
-            logger.warning('Unsupported color: {}'.format(color))
-            return 'rgba(0,0,0,0)'
+            logger.warning(f"Unsupported color: {color}")
+            return "rgba(0,0,0,0)"
 
-    def create_pattern(self, setting, insert=(0, 0)):
+    def create_pattern(
+        self, setting: Any, insert: tuple[int, int] = (0, 0)
+    ) -> svgwrite.pattern.Pattern:
         """Create a pattern element."""
-        pattern_id = setting['Ptrn']['Idnt'].value.strip('\x00')
+        pattern_id = setting["Ptrn"]["Idnt"].value.strip("\x00")
         pattern = self._psd._get_pattern(pattern_id)
-        phase = (0, 0)  #setting.phase
-        scale = 100.  #setting.scale.value  # TODO: Check unit
+        phase = (0, 0)  # setting.phase
+        scale = 100.0  # setting.scale.value  # TODO: Check unit
         if not pattern:
-            logger.error('Pattern data not found')
+            logger.error("Pattern data not found")
             return self._dwg.defs.add(svgwrite.pattern.Pattern())
 
         image = convert_pattern_to_pil(pattern)
-        element = self._dwg.defs.add(svgwrite.pattern.Pattern(
-            width=image.width,
-            height=image.height,
-            patternUnits='userSpaceOnUse',
-            patternContentUnits='userSpaceOnUse',
-            patternTransform='translate({},{}) scale({})'.format(
-                insert[0] + phase[0], insert[1] + phase[1], scale / 100.0),
-        ))
-        element.add(self._dwg.image(
-            self._get_image_href(image),
-            insert=(0, 0),
-            size=(image.width, image.height),
-        ))
+        element = self._dwg.defs.add(
+            svgwrite.pattern.Pattern(
+                width=image.width,
+                height=image.height,
+                patternUnits="userSpaceOnUse",
+                patternContentUnits="userSpaceOnUse",
+                patternTransform=f"translate({insert[0] + phase[0]},{insert[1] + phase[1]}) scale({scale / 100.0})",
+            )
+        )
+        element.add(
+            self._dwg.image(
+                self._get_image_href(image),
+                insert=(0, 0),
+                size=(image.width, image.height),
+            )
+        )
         return element
 
-    def create_gradient(self, setting, size):
-        if setting['Type'].enum == b'Lnr ':
-            theta = np.radians(-setting['Angl'].value)
-            start = np.array([size[0] * np.cos(theta - np.pi),
-                              size[1] * np.sin(theta - np.pi)])
+    def create_gradient(
+        self, setting: Any, size: tuple[int, int]
+    ) -> Optional[
+        Union[svgwrite.gradients.LinearGradient, svgwrite.gradients.RadialGradient]
+    ]:
+        if setting["Type"].enum == b"Lnr ":
+            theta = np.radians(-setting["Angl"].value)
+            start = np.array(
+                [size[0] * np.cos(theta - np.pi), size[1] * np.sin(theta - np.pi)]
+            )
             end = np.array([size[0] * np.cos(theta), size[1] * np.sin(theta)])
             r = 1.0 * np.max(np.abs(start))
 
@@ -295,39 +334,41 @@ class LayerConverter(object):
             start = [np.around(x, decimals=6) for x in start]
             end = [np.around(x, decimals=6) for x in end]
 
-            element = self._dwg.defs.add(svgwrite.gradients.LinearGradient(
-                start=start, end=end))
-        elif setting['Type'].enum == b'Rdl ':
-            element = self._dwg.defs.add(svgwrite.gradients.RadialGradient(
-                center=None, r=.5))
+            element = self._dwg.defs.add(
+                svgwrite.gradients.LinearGradient(start=start, end=end)
+            )
+        elif setting["Type"].enum == b"Rdl ":
+            element = self._dwg.defs.add(
+                svgwrite.gradients.RadialGradient(center=None, r=0.5)
+            )
         else:
-            logger.warning('Unsupported gradient type %s' % (setting['Type']))
+            logger.warning("Unsupported gradient type %s" % (setting["Type"]))
             return None
 
-        gradient = setting.get('Grad')
-        if not gradient.get('Clrs'):
-            logger.warning("Unsupported gradient type %s".format(gradient))
+        gradient = setting.get("Grad")
+        if not gradient.get("Clrs"):
+            logger.warning("Unsupported gradient type %s")
             return element
 
         # Interpolate color and opacity for both points.
-        cp = np.array([x['Lctn'].value / 4096.0 for x in gradient['Clrs']])
-        op = np.array([x['Lctn'].value / 4096.0 for x in gradient['Trns']])
-        c_items = np.array([
-            tuple(z.value for z in x['Clr '].values())
-            for x in gradient['Clrs']
-        ]).transpose()
-        o_items = np.array([x['Opct'].value / 100.0
-                            for x in gradient['Trns']])  # TODO: Check unit.
+        cp = np.array([x["Lctn"].value / 4096.0 for x in gradient["Clrs"]])
+        op = np.array([x["Lctn"].value / 4096.0 for x in gradient["Trns"]])
+        c_items = np.array(
+            [tuple(z.value for z in x["Clr "].values()) for x in gradient["Clrs"]]
+        ).transpose()
+        o_items = np.array(
+            [x["Opct"].value / 100.0 for x in gradient["Trns"]]
+        )  # TODO: Check unit.
 
         # Remove duplicate points.
         index = np.concatenate((np.diff(cp) > 0, [True]))
         if np.any(np.logical_not(index)):
-            logger.warning('Duplicate gradient color stop: {}'.format(cp))
+            logger.warning(f"Duplicate gradient color stop: {cp}")
         cp = cp[index]
         c_items = c_items[:, index]
         index = np.concatenate((np.diff(op) > 0, [True]))
         if np.any(np.logical_not(index)):
-            logger.warning('Duplicate gradient opacity stop: {}'.format(op))
+            logger.warning(f"Duplicate gradient opacity stop: {op}")
         op = op[index]
         o_items = o_items[index]
 
@@ -340,21 +381,19 @@ class LayerConverter(object):
             o_items = np.array(list(o_items) + list(o_items))
 
         # Reverse if specified.
-        if setting.get('Rvrs'):
+        if setting.get("Rvrs"):
             cp = 1.0 - cp[::-1]
             op = 1.0 - op[::-1]
             c_items = c_items[:, ::-1]
             o_items = o_items[::-1]
 
         mp = np.unique(np.concatenate((cp, op)))
-        fc = np.stack([
-            np.interp(mp, cp, c_items[index, :])
-            for index in range(3)
-        ])
+        fc = np.stack([np.interp(mp, cp, c_items[index, :]) for index in range(3)])
         fo = np.interp(mp, op, o_items)
 
         for index in range(len(mp)):
             color = tuple(fc[:, index].astype(np.uint8).tolist())
-            element.add_stop_color(offset=mp[index], opacity=fo[index],
-                                   color='rgb{}'.format(color))
+            element.add_stop_color(
+                offset=mp[index], opacity=fo[index], color=f"rgb{color}"
+            )
         return element

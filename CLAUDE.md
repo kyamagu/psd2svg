@@ -6,8 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Development and Testing
 - `uv run --extra test pytest` - Run tests with uv
+- `uv run --extra test mypy src/` - Run type checking with mypy
+- `uv run --extra test ruff check src/` - Run linting with ruff
+- `uv run --extra test ruff format src/` - Format code with ruff
 - `uv sync --extra test` - Install with test dependencies
 - `uv run pytest` - Run tests (after sync)
+- `uv run mypy src/` - Run type checking (after sync)
+- `uv run ruff check src/` - Run linting (after sync)
+- `uv run ruff format src/` - Format code (after sync)
 
 ### Building and Installation
 - `uv sync` - Install dependencies
@@ -56,7 +62,11 @@ The package follows a modular converter architecture with multiple inheritance:
 - `svgwrite` - SVG generation
 - `pillow` - Image processing
 - `numpy` - Numerical operations
-- `future` - Python 2/3 compatibility
+
+### Code Quality
+- **Type hints**: Full type annotation coverage with mypy support
+- **Linting**: Ruff for fast linting and formatting
+- **Python 3.9+**: Modern Python with no legacy compatibility code
 
 ### Limitations
 - SVG 1.1 doesn't support all Photoshop blending modes
