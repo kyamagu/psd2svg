@@ -45,6 +45,12 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "imagehash",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

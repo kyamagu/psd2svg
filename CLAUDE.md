@@ -5,12 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development and Testing
-- `pytest` - Run tests
-- `pip install -e .` - Install in development mode
+- `uv run --extra test pytest` - Run tests with uv
+- `uv sync --extra test` - Install with test dependencies
+- `uv run pytest` - Run tests (after sync)
 
 ### Building and Installation
-- `pip install -e .` - Install in development mode
-- `python -m build` - Build distribution packages
+- `uv sync` - Install dependencies
+- `uv build` - Build distribution packages
+- `pip install -e .` - Install in development mode (fallback)
 
 ### Command Line Usage
 - `psd2svg input.psd output.svg` - Convert PSD to SVG
