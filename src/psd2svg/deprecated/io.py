@@ -10,11 +10,13 @@ from PIL import Image
 from psd_tools import PSDImage
 from psd_tools.api.layers import Layer
 
+from psd2svg.deprecated.base import ConverterProtocol
+
 logger = getLogger(__name__)
 
 
 class PSDReader:
-    def _set_input(self, input_data: Union[str, IO, PSDImage, Layer]) -> None:
+    def _set_input(self: ConverterProtocol, input_data: Union[str, IO, PSDImage, Layer]) -> None:
         if hasattr(input_data, "read"):
             self._load_stream(input_data)
         elif hasattr(input_data, "topil"):
@@ -22,18 +24,18 @@ class PSDReader:
         else:
             self._load_file(input_data)
 
-    def _load_file(self, filepath: str) -> None:
+    def _load_file(self: ConverterProtocol, filepath: str) -> None:
         logger.debug(f"Opening {filepath}")
         with open(filepath, "rb") as f:
             self._load_stream(f)
         self._input = filepath
 
-    def _load_stream(self, stream: IO) -> None:
+    def _load_stream(self: ConverterProtocol, stream: IO) -> None:
         self._input = None
         self._psd = PSDImage.open(stream)
         self._layer = self._psd
 
-    def _load_psd(self, psd: Union[PSDImage, Layer]) -> None:
+    def _load_psd(self: ConverterProtocol, psd: Union[PSDImage, Layer]) -> None:
         self._input = None
         self._layer = psd
         while psd.parent is not None:
@@ -42,7 +44,7 @@ class PSDReader:
 
 
 class SVGWriter:
-    def _set_output(self, output_data: Optional[Union[str, IO]]) -> None:
+    def _set_output(self: ConverterProtocol, output_data: Optional[Union[str, IO]]) -> None:
         # IO object.
         self._resource_dir = None
         if not output_data:
@@ -94,14 +96,14 @@ class SVGWriter:
         with io.StringIO() as f:
             # svgwrite's pretty option is not compatible with Python 2.7
             # unicode. Here we manually encode utf-8.
-            self._dwg.write(f, pretty=False)
+            self.dwg.write(f, pretty=False)
             xml_string = f.getvalue().encode("utf-8")
 
         xml_tree = minidom.parseString(xml_string)
         return xml_tree.toprettyxml(indent="  ")
 
     def _get_image_href(
-        self, image: Image.Image, fmt: str = "png", icc_profile: Optional[bytes] = None
+        self: ConverterProtocol, image: Image.Image, fmt: str = "png", icc_profile: Optional[bytes] = None
     ) -> str:
         if image.mode == "CMYK":
             image = image.convert("RGB")

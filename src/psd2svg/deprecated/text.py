@@ -4,7 +4,8 @@ from typing import Any, Optional
 import svgwrite
 from psd_tools.api.layers import Layer
 
-from psd2svg.converter.constants import JUSTIFICATIONS
+from psd2svg.deprecated.base import ConverterProtocol
+from psd2svg.deprecated.constants import JUSTIFICATIONS
 from psd2svg.utils.color import cmyk2rgb
 from psd2svg.utils.xml import safe_utf8
 
@@ -12,12 +13,12 @@ logger = getLogger(__name__)
 
 
 class TextConverter:
-    def _get_text(self, layer: Layer) -> Optional[svgwrite.text.Text]:
+    def _get_text(self: ConverterProtocol, layer: Layer) -> Optional[svgwrite.text.Text]:
         text_info = _get_text_info(layer)
         if not text_info:
             return None
 
-        text = self._dwg.text("", insert=(0, 0))
+        text = self.dwg.text("", insert=(0, 0))
         text["font-size"] = 0  # To discard whitespace between spans.
         text["text-anchor"] = "middle"
 
@@ -48,7 +49,7 @@ class TextConverter:
 
                 value = safe_utf8(rspans[index]).replace(" ", "\u00a0")
                 # Whitespace workaround, because newline is ignored.
-                tspan = self._dwg.tspan(value)
+                tspan = self.dwg.tspan(value)
                 if newline:
                     if text_info["direction"]:
                         tspan["y"] = 0

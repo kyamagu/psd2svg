@@ -1,11 +1,13 @@
 import argparse
 import logging
-import os
 
-from psd2svg import psd2svg
+from psd_tools import PSDImage
+
+from psd2svg import Converter
 
 
-def main() -> None:
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Convert PSD file to SVG")
     parser.add_argument(
         "input", metavar="INPUT", type=str, help="Input PSD file path or URL"
@@ -16,22 +18,14 @@ def main() -> None:
         type=str,
         nargs="?",
         default=".",
-        help="Output file or directory. When directory is specified, filename"
-        " is automatically inferred from input",
+        help="Output file.",
     )
     parser.add_argument(
-        "--resource-path",
+        "--images-path",
         metavar="PATH",
         type=str,
         default=None,
-        help="Resource path relative to output.",
-    )
-    parser.add_argument(
-        "--rasterizer",
-        metavar="METHOD",
-        default="chromium",
-        type=str,
-        help="Specify which rasterizer to use. default chromium.",
+        help="Path to images directory relative to output.",
     )
     parser.add_argument(
         "--loglevel",
@@ -39,21 +33,22 @@ def main() -> None:
         default="WARNING",
         help="Logging level, default WARNING",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main() -> None:
+    """Main function to convert PSD to SVG or raster image."""
+    args = parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(), "WARNING"))
 
-    prefix, ext = os.path.splitext(args.output)
-    if ext.lower() in (".png", ".jpg", ".jpeg", ".gif.tiff"):
-        from psd2svg.rasterizer import create_rasterizer
-
-        rasterizer = create_rasterizer(args.rasterizer)
-        svg_file = prefix + ".svg"
-        psd2svg(args.input, svg_file, resource_path=args.resource_path)
-        image = rasterizer.rasterize(svg_file)
-        image.save(args.output)
+    psdimage = PSDImage.open(args.input)
+    converter = Converter(psdimage)
+    converter.build()
+    if args.images_path:
+        converter.export_images(args.images_path)
     else:
-        psd2svg(args.input, args.output, resource_path=args.resource_path)
+        converter.embed_images()
+    converter.save(args.output)
 
 
 if __name__ == "__main__":

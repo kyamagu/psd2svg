@@ -1,4 +1,4 @@
-from logging import getLogger
+import logging
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -18,10 +18,12 @@ from psd_tools.api.effects import (
 from psd_tools.api.layers import Layer
 from psd_tools.constants import TaggedBlockID
 
-logger = getLogger(__name__)
+from psd2svg.deprecated.base import ConverterProtocol
+
+logger = logging.getLogger(__name__)
 
 
-class EffectsConverter:
+class EffectsConverter(ConverterProtocol):
     def add_effects(
         self, layer: Layer, element: svgwrite.base.BaseElement
     ) -> Union[svgwrite.base.BaseElement, svgwrite.container.Group]:
@@ -40,7 +42,7 @@ class EffectsConverter:
             #     element['opacity'] = layer.opacity / 255.0 * fill_opacity
             return element
         else:
-            container = self._dwg.g()
+            container = self.dwg.g()
             container["class"] = "psd-effects"
             # Move class annotation.
             if "class" in element.attribs:
@@ -52,7 +54,7 @@ class EffectsConverter:
                     container.add(child)
             for child in container.elements:
                 element.elements.remove(child)
-            self._dwg.defs.add(element)
+            self.dwg.defs.add(element)
 
         # Outer effects.
         for effect in layer.effects:
@@ -69,7 +71,7 @@ class EffectsConverter:
             blend_mode = layer.blend_mode
 
         # Add the original.
-        use = self._dwg.use(element.get_iri(), opacity=fill_opacity)
+        use = self.dwg.use(element.get_iri(), opacity=fill_opacity)
         use["class"] = "layer-effect original"
         container.add(use)
 
@@ -136,11 +138,11 @@ class EffectsConverter:
         if layer.width == 0 or layer.height == 0:
             logger.warning("Fill effect to empty layer.")
 
-        mask_element = self._dwg.defs.add(
-            self._dwg.mask(size=(layer.width, layer.height))
+        mask_element = self.dwg.defs.add(
+            self.dwg.mask(size=(layer.width, layer.height))
         )
         mask_element["color-interpolation"] = "sRGB"
-        use = mask_element.add(self._dwg.use(element.get_iri()))
+        use = mask_element.add(self.dwg.use(element.get_iri()))
         use["filter"] = self._get_white_filter().get_funciri()
         return mask_element
 
@@ -152,7 +154,7 @@ class EffectsConverter:
         blend_mode: Optional[Any],
     ) -> svgwrite.shapes.Rect:
         """Create a color overlay."""
-        element = self._dwg.rect(
+        element = self.dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
             fill=self.create_solid_color(effect.value["Clr "]),
@@ -170,7 +172,7 @@ class EffectsConverter:
     ) -> svgwrite.shapes.Rect:
         """Create a pattern overlay."""
         pattern = self.create_pattern(effect.value, (layer.left, layer.top))
-        element = self._dwg.rect(
+        element = self.dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
             fill=pattern.get_funciri(),
@@ -188,7 +190,7 @@ class EffectsConverter:
     ) -> svgwrite.shapes.Rect:
         """Create a gradient overlay."""
         gradient = self.create_gradient(effect.value, (layer.width, layer.height))
-        element = self._dwg.rect(
+        element = self.dwg.rect(
             size=(layer.width, layer.height),
             insert=(layer.left, layer.top),
             fill=gradient.get_funciri() if gradient else "none",
@@ -221,8 +223,8 @@ class EffectsConverter:
         radius = effect.distance
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
-        filt = self._dwg.defs.add(
-            self._dwg.filter(x="-50%", y="-50%", size=("200%", "200%"))
+        filt = self.dwg.defs.add(
+            self.dwg.filter(x="-50%", y="-50%", size=("200%", "200%"))
         )
         filt["class"] = "drop-shadow"
 
@@ -242,7 +244,7 @@ class EffectsConverter:
             "drshFlood", in2="drshBlurA", operator="in", result="drshShadow"
         )
 
-        shadow = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        shadow = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         shadow["class"] = "layer-effect dropshadow"
         self.add_blend_mode(shadow, effect.blend_mode)
         return shadow
@@ -253,8 +255,8 @@ class EffectsConverter:
         """Create an outer glow effect."""
         blur = effect.size
         spread = effect.choke / 100.0
-        filt = self._dwg.defs.add(
-            self._dwg.filter(x="-50%", y="-50%", size=("200%", "200%"))
+        filt = self.dwg.defs.add(
+            self.dwg.filter(x="-50%", y="-50%", size=("200%", "200%"))
         )
         filt["class"] = "outerglow"
 
@@ -293,7 +295,7 @@ class EffectsConverter:
             "orglShadow", in2="SourceAlpha", operator="out", result="orglShadowA"
         )
 
-        glow = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        glow = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         glow["class"] = "layer-effect outer-glow"
         self.add_blend_mode(glow, effect.blend_mode)
         return glow
@@ -312,7 +314,7 @@ class EffectsConverter:
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "inner-shadow"
         flood = filt.feFlood(result="irshFlood")
         flood["flood-color"] = self.create_solid_color(effect.value["Clr "])
@@ -331,7 +333,7 @@ class EffectsConverter:
             "irshBlur", in2="SourceAlpha", operator="in", result="irshShadow"
         )
 
-        shadow = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        shadow = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         shadow["class"] = "layer-effect inner-shadow"
         self.add_blend_mode(shadow, blend_mode if blend_mode else effect.blend_mode)
         return shadow
@@ -348,7 +350,7 @@ class EffectsConverter:
         spread = effect.choke / 100.0
 
         # Real inner glow needs distance transform.
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "inner-glow"
         flood = filt.feFlood(result="irglFlood")
         # TODO: Gradient fill
@@ -376,7 +378,7 @@ class EffectsConverter:
             "irglBlur", in2="irglAlpha", operator="in", result="irglShadow"
         )
 
-        glow = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        glow = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         glow["class"] = "layer-effect inner-glow"
         self.add_blend_mode(glow, blend_mode if blend_mode else effect.blend_mode)
         return glow
@@ -388,8 +390,8 @@ class EffectsConverter:
         # In SVG, bevel and emboss need to be split into two elements.
 
         # Shadow.
-        filt = self._dwg.defs.add(self._dwg.filter())
-        shadow = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        filt = self.dwg.defs.add(self.dwg.filter())
+        shadow = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         shadow["class"] = "layer-effect bevel-emboss shadow"
         shadow["opacity"] = effect.shadow_opacity / 100.0
         self.add_blend_mode(shadow, effect.shadow_mode)
@@ -447,8 +449,8 @@ class EffectsConverter:
             logger.warning(f"Bevel style not implemented: {effect.bevel_style}")
 
         # Highlight.
-        filt = self._dwg.defs.add(self._dwg.filter())
-        highlight = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        filt = self.dwg.defs.add(self.dwg.filter())
+        highlight = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         highlight["class"] = "layer-effect bevel-emboss highlight"
         highlight["opacity"] = effect.highlight_opacity / 100.0
         self.add_blend_mode(highlight, effect.highlight_mode)
@@ -491,7 +493,7 @@ class EffectsConverter:
         else:
             logger.warning(f"Bevel style not implemented: {effect.bevel_style}")
 
-        container = self._dwg.g()
+        container = self.dwg.g()
         container.add(shadow)
         container.add(highlight)
         container["class"] = "layer-effect bevel-emboss"
@@ -517,7 +519,7 @@ class EffectsConverter:
         dx = -radius * np.cos(np.radians(angle))
         dy = radius * np.sin(np.radians(angle))
 
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "satin"
         filt.feOffset("SourceAlpha", result="shape1", dx=dx, dy=dy)
         filt.feOffset("SourceAlpha", result="shape2", dx=-dx, dy=-dy)
@@ -549,7 +551,7 @@ class EffectsConverter:
         )
         filt.feComposite("blur", in2="SourceAlpha", operator="in")
 
-        satin = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        satin = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         satin["class"] = "layer-effect satin"
         satin["opacity"] = effect.opacity / 100.0
 
@@ -563,7 +565,7 @@ class EffectsConverter:
         radius = int(effect.size)  # TODO: Check unit.
         style = effect.position
 
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "stroke"
         flood = filt.feFlood(result="frfxFlood")
         # TODO: Implement gradient or pattern fill
@@ -611,14 +613,14 @@ class EffectsConverter:
             )
             filt.feComposite("frfxFlood", in2="frfxMorph", operator="in")
 
-        stroke = self._dwg.use(element.get_iri(), filter=filt.get_funciri())
+        stroke = self.dwg.use(element.get_iri(), filter=filt.get_funciri())
         stroke["class"] = "layer-effect stroke"
         self.add_blend_mode(stroke, effect.blend_mode)
         return stroke
 
     def _get_white_filter(self, color: str = "white") -> svgwrite.filters.Filter:
         if not self._white_filter:
-            self._white_filter = self._dwg.defs.add(self._dwg.filter())
+            self._white_filter = self.dwg.defs.add(self.dwg.filter())
             self._white_filter["class"] = "white-filter"
             if color == "white":
                 self._white_filter.feColorMatrix(
@@ -636,7 +638,7 @@ class EffectsConverter:
 
     def _get_identity_filter(self) -> svgwrite.filters.Filter:
         if not self._identity_filter:
-            self._identity_filter = self._dwg.defs.add(self._dwg.filter())
+            self._identity_filter = self.dwg.defs.add(self.dwg.filter())
             self._identity_filter["class"] = "identify-filter"
             transfer = self._identity_filter.feComponentTransfer("SourceGraphic")
             transfer["color-interpolation"] = "sRGB"

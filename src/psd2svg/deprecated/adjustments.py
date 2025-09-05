@@ -1,13 +1,15 @@
-from logging import getLogger
+import logging
 from typing import Any, Optional
 
 import numpy as np
 import svgwrite
 from psd_tools.api.layers import AdjustmentLayer, Layer
+from psd_tools.constants import Tag
 
+from psd2svg.deprecated.base import ConverterProtocol
 from psd2svg.utils.xml import safe_utf8
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 """
@@ -68,7 +70,7 @@ In SVG::
 """
 
 
-class AdjustmentsConverter:
+class AdjustmentsConverter(ConverterProtocol):
     def create_adjustment(self, layer: AdjustmentLayer) -> svgwrite.container.Group:
         if layer.kind == "coloroverlay":
             logger.warning(f"Not implemented {layer}")
@@ -111,12 +113,12 @@ class AdjustmentsConverter:
         else:
             logger.error(f"Unknown adjustment {layer}")
 
-        return self._dwg.g()
+        return self.dwg.g()
 
     def create_blackwhite(
         self, adjustment: AdjustmentLayer
     ) -> svgwrite.container.Group:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt.feColorMatrix(
             "SourceImage",
             type="matrix",
@@ -126,7 +128,7 @@ class AdjustmentsConverter:
             "0.333 0.333 0.333 0 0 "
             "0 0 0 1 0 ",
         )
-        container = self._dwg.g(filter=filt.get_funciri())
+        container = self.dwg.g(filter=filt.get_funciri())
         return container
 
     def add_brightnesscontrast(
@@ -137,9 +139,9 @@ class AdjustmentsConverter:
     def _get_adjustments(self, layer: Layer) -> Optional[svgwrite.container.Group]:
         target = None
         blocks = dict(layer._record.tagged_blocks)
-        for key in set.union(TaggedBlock._ADJUSTMENT_KEYS, TaggedBlock._FILL_KEYS):
+        for key in set.union(Tag._ADJUSTMENT_KEYS, Tag._FILL_KEYS):
             if key in blocks:
-                target = self._dwg.g()
+                target = self.dwg.g()
                 target["class"] = "adjustment"
 
         if b"brit" in blocks:
@@ -243,7 +245,7 @@ class AdjustmentsConverter:
     def _add_brightness(
         self, items: Any, cged: Optional[dict[bytes, Any]], layer: Layer
     ) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "brightness"
         result = "brightness"
         if cged:
@@ -273,7 +275,7 @@ class AdjustmentsConverter:
         return filt.get_funciri()
 
     def _add_exposure(self, items: Any, layer: Layer) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "exposure"
         exposure = 2 ** (items.exposure / 2)  # [-20, 20]
         gamma = -np.log(items.gamma) + 1.0  # [9.99,0.01]
@@ -289,7 +291,7 @@ class AdjustmentsConverter:
         return filt.get_funciri()
 
     def _add_levels(self, items: Any, layer: Layer) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "levels"
         result = "levels"
         transfer = filt.feComponentTransfer(result=result)
@@ -305,7 +307,7 @@ class AdjustmentsConverter:
         return filt.get_funciri()
 
     def _add_huesaturation(self, items: Any, layer: Layer) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "hue-saturation"
         result = "hsl"
         hue = items.master[0]
@@ -329,7 +331,7 @@ class AdjustmentsConverter:
         return filt.get_funciri()
 
     def _add_vibrance(self, items: Any, layer: Layer) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "vibrance"
         items = dict(items.descriptor.items)
         vibrance = items.get(b"vibrance", None)
@@ -352,7 +354,7 @@ class AdjustmentsConverter:
         return filt.get_funciri()
 
     def _add_curves(self, items: Any, layer: Layer) -> str:
-        filt = self._dwg.defs.add(self._dwg.filter())
+        filt = self.dwg.defs.add(self.dwg.filter())
         filt["class"] = "curves"
         result = "curves"
         transfer = filt.feComponentTransfer(result=result)

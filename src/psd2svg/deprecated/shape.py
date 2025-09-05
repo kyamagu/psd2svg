@@ -5,12 +5,14 @@ from typing import Any, Union
 import svgwrite
 from psd_tools.api.layers import Layer
 
+from psd2svg.deprecated.base import ConverterProtocol
+
 logger = getLogger(__name__)
 
 
 class ShapeConverter:
     def generate_path(
-        self, vector_mask: Any, command: str = "C"
+        self: ConverterProtocol, vector_mask: Any, command: str = "C"
     ) -> Generator[Union[str, float], None, None]:
         """Sequence generator for SVG path constructor."""
 
@@ -47,7 +49,7 @@ class ShapeConverter:
                 yield "Z"
 
     def add_stroke_style(
-        self, layer: Layer, element: svgwrite.base.BaseElement
+        self: ConverterProtocol, layer: Layer, element: svgwrite.base.BaseElement
     ) -> svgwrite.base.BaseElement:
         """Add stroke style to the path element."""
         if not layer.has_stroke():
@@ -58,19 +60,19 @@ class ShapeConverter:
             return element
 
         if stroke.line_alignment == "inner":
-            clippath = self._dwg.defs.add(self._dwg.clipPath())
+            clippath = self.dwg.defs.add(self.dwg.clipPath())
             clippath["class"] = "psd-stroke stroke-inner"
-            clippath.add(self._dwg.path(self.generate_path(layer.vector_mask)))
+            clippath.add(self.dwg.path(self.generate_path(layer.vector_mask)))
             element["stroke-width"] = stroke.line_width.value * 2
             element["clip-path"] = clippath.get_funciri()
         # elif stroke.line_alignment == 'outer':
-        #     mask = self._dwg.defs.add(self._dwg.mask())
+        #     mask = self.dwg.defs.add(self.dwg.mask())
         #     mask['class'] = 'psd-stroke stroke-outside'
-        #     mask.add(self._dwg.rect(
+        #     mask.add(self.dwg.rect(
         #         insert=(layer.left, layer.top),
         #         size=(layer.width, layer.height),
         #         fill='white'))
-        #     mask.add(self._dwg.path(
+        #     mask.add(self.dwg.path(
         #         self.generate_path(layer.vector_mask), fill='black'))
         #     element['stroke-width'] = stroke.line_width * 2
         #     element['mask'] = mask.get_funciri()
@@ -107,7 +109,7 @@ class ShapeConverter:
         return element
 
     def add_stroke_content_style(
-        self, layer: Layer, element: svgwrite.base.BaseElement
+        self: ConverterProtocol, layer: Layer, element: svgwrite.base.BaseElement
     ) -> svgwrite.base.BaseElement:
         """Add stroke content (fill) style to the path element."""
         if not layer.has_stroke_content():

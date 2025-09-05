@@ -6,14 +6,15 @@ import svgwrite
 from psd_tools.api.layers import AdjustmentLayer, FillLayer, Layer, ShapeLayer
 from psd_tools.api.pil_io import convert_pattern_to_pil
 
-from psd2svg.converter.constants import BLEND_MODE
+from psd2svg.deprecated.base import ConverterProtocol
+from psd2svg.deprecated.constants import BLEND_MODE
 from psd2svg.utils.color import cmyk2rgb
 from psd2svg.utils.xml import safe_utf8
 
 logger = getLogger(__name__)
 
 
-class LayerConverter:
+class LayerConverter(ConverterProtocol):
     def convert_layer(self, layer: Layer) -> Optional[svgwrite.base.BaseElement]:
         """
         Convert the given layer.
@@ -53,7 +54,7 @@ class LayerConverter:
                 element["mask"] = mask_element.get_funciri()
 
         if layer.has_vector_mask() and layer.kind != "shape":
-            clippath = self._dwg.defs.add(self._dwg.clipPath())
+            clippath = self.dwg.defs.add(self.dwg.clipPath())
             clippath.add(self.create_path(layer))
             element["clip-path"] = clippath.get_funciri()
 
@@ -67,7 +68,7 @@ class LayerConverter:
     ) -> svgwrite.container.Group:
         """Create and fill in a new group element."""
         if not container:
-            container = self._dwg.g()
+            container = self.dwg.g()
         for layer in group:
             element = self.convert_layer(layer)
             if not element:
@@ -82,7 +83,7 @@ class LayerConverter:
 
     def create_image(self, layer: Layer) -> svgwrite.image.Image:
         """Create an image element."""
-        element = self._dwg.image(
+        element = self.dwg.image(
             self._get_image_href(layer.topil()),
             insert=(layer.left, layer.top),
             size=(layer.width, layer.height),
@@ -94,24 +95,24 @@ class LayerConverter:
         self, layer: Layer
     ) -> Union[svgwrite.path.Path, svgwrite.elementfactory.Use]:
         """Create a path element."""
-        path = self._dwg.path(d=self.generate_path(layer.vector_mask))
+        path = self.dwg.path(d=self.generate_path(layer.vector_mask))
         if layer.vector_mask.initial_fill_rule:
-            element = self._dwg.defs.add(
-                self._dwg.rect(
-                    insert=(self._psd.bbox[0], self._psd.bbox[1]),
+            element = self.dwg.defs.add(
+                self.dwg.rect(
+                    insert=(self.psd.bbox[0], self.psd.bbox[1]),
                     size=(
-                        self._psd.bbox[2] - self._psd.bbox[0],
-                        self._psd.bbox[3] - self._psd.bbox[1],
+                        self.psd.bbox[2] - self.psd.bbox[0],
+                        self.psd.bbox[3] - self.psd.bbox[1],
                     ),
                 )
             )
-            mask = self._dwg.defs.add(self._dwg.mask())
+            mask = self.dwg.defs.add(self.dwg.mask())
             mask.add(
-                self._dwg.rect(
-                    insert=(self._psd.bbox[0], self._psd.bbox[1]),
+                self.dwg.rect(
+                    insert=(self.psd.bbox[0], self.psd.bbox[1]),
                     size=(
-                        self._psd.bbox[2] - self._psd.bbox[0],
-                        self._psd.bbox[3] - self._psd.bbox[1],
+                        self.psd.bbox[2] - self.psd.bbox[0],
+                        self.psd.bbox[3] - self.psd.bbox[1],
                     ),
                     fill="white",
                 )
@@ -120,7 +121,7 @@ class LayerConverter:
             path["clip-rule"] = "evenodd"
             mask.add(path)
             element["mask"] = mask.get_funciri()
-            use = self._dwg.use(element.get_iri())
+            use = self.dwg.use(element.get_iri())
             return use
         else:
             path["fill-rule"] = "evenodd"
@@ -129,15 +130,15 @@ class LayerConverter:
     def create_rect(self, layer: Layer) -> svgwrite.shapes.Rect:
         """Create a shape or adjustment element."""
         if layer.bbox != (0, 0, 0, 0):
-            element = self._dwg.rect(
+            element = self.dwg.rect(
                 insert=(layer.left, layer.top), size=(layer.width, layer.height)
             )
         else:
-            element = self._dwg.rect(
-                insert=(self._psd.header[0], self._psd.header[1]),
+            element = self.dwg.rect(
+                insert=(self.psd.header[0], self.psd.header[1]),
                 size=(
-                    self._psd.bbox[2] - self._psd.bbox[0],
-                    self._psd.bbox[3] - self._psd.bbox[1],
+                    self.psd.bbox[2] - self.psd.bbox[0],
+                    self.psd.bbox[3] - self.psd.bbox[1],
                 ),
             )
         element["fill"] = "none"
@@ -152,18 +153,18 @@ class LayerConverter:
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
             viewbox = (0, 0, self.width, self.height)
-        mask_element = self._dwg.defs.add(
-            self._dwg.mask(size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]))
+        mask_element = self.dwg.defs.add(
+            self.dwg.mask(size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]))
         )
         mask_element.add(
-            self._dwg.rect(
+            self.dwg.rect(
                 insert=(viewbox[0], viewbox[1]),
                 size=(viewbox[2] - viewbox[0], viewbox[3] - viewbox[1]),
                 fill=f"rgb({layer.mask.background_color},{layer.mask.background_color},{layer.mask.background_color})",
             )
         )
         mask_element.add(
-            self._dwg.image(
+            self.dwg.image(
                 self._get_image_href(layer.mask.topil()),
                 size=(layer.mask.width, layer.mask.height),
                 insert=(layer.mask.left, layer.mask.top),
@@ -178,18 +179,18 @@ class LayerConverter:
         """Create clipped elements."""
         # Create a mask for this clip element.
         if isinstance(clip_element, svgwrite.path.Path):
-            clippath = self._dwg.defs.add(self._dwg.clipPath())
-            use = self._dwg.use(clip_element.get_iri())
+            clippath = self.dwg.defs.add(self.dwg.clipPath())
+            use = self.dwg.use(clip_element.get_iri())
             clippath.add(use)
-            element = self._dwg.g()
+            element = self.dwg.g()
             element["clip-path"] = clippath.get_funciri()
         else:
-            mask = self._dwg.defs.add(self._dwg.mask())
-            use = self._dwg.use(clip_element.get_iri())
+            mask = self.dwg.defs.add(self.dwg.mask())
+            use = self.dwg.use(clip_element.get_iri())
             use["filter"] = self._get_white_filter().get_funciri()
             mask.add(use)
             mask["color-interpolation"] = "sRGB"
-            element = self._dwg.g(mask=mask.get_funciri())
+            element = self.dwg.g(mask=mask.get_funciri())
 
         element["class"] = "psd-clipping"
         for child_layer in layer.clip_layers:
@@ -289,15 +290,15 @@ class LayerConverter:
     ) -> svgwrite.pattern.Pattern:
         """Create a pattern element."""
         pattern_id = setting["Ptrn"]["Idnt"].value.strip("\x00")
-        pattern = self._psd._get_pattern(pattern_id)
+        pattern = self.psd._get_pattern(pattern_id)
         phase = (0, 0)  # setting.phase
         scale = 100.0  # setting.scale.value  # TODO: Check unit
         if not pattern:
             logger.error("Pattern data not found")
-            return self._dwg.defs.add(svgwrite.pattern.Pattern())
+            return self.dwg.defs.add(svgwrite.pattern.Pattern())
 
         image = convert_pattern_to_pil(pattern)
-        element = self._dwg.defs.add(
+        element = self.dwg.defs.add(
             svgwrite.pattern.Pattern(
                 width=image.width,
                 height=image.height,
@@ -307,7 +308,7 @@ class LayerConverter:
             )
         )
         element.add(
-            self._dwg.image(
+            self.dwg.image(
                 self._get_image_href(image),
                 insert=(0, 0),
                 size=(image.width, image.height),
@@ -334,11 +335,11 @@ class LayerConverter:
             start = [np.around(x, decimals=6) for x in start]
             end = [np.around(x, decimals=6) for x in end]
 
-            element = self._dwg.defs.add(
+            element = self.dwg.defs.add(
                 svgwrite.gradients.LinearGradient(start=start, end=end)
             )
         elif setting["Type"].enum == b"Rdl ":
-            element = self._dwg.defs.add(
+            element = self.dwg.defs.add(
                 svgwrite.gradients.RadialGradient(center=None, r=0.5)
             )
         else:
