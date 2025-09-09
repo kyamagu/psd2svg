@@ -46,6 +46,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(
             "svg",
+            xmlns=svg_utils.NAMESPACE,
             width=psdimage.width,
             height=psdimage.height,
             viewBox=f"0 0 {psdimage.width} {psdimage.height}",
