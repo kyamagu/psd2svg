@@ -8,6 +8,8 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+NAMESPACE = "http://www.w3.org/2000/svg"
+
 
 def create_node(
     tag: str,
@@ -19,7 +21,7 @@ def create_node(
     **kwargs: Any,
 ) -> ET.Element:
     """Create an XML node with attributes."""
-    node = ET.Element(tag, attrib={k: str(v) for k, v in kwargs.items()})
+    node = ET.Element(tag, attrib={k: str(v) for k, v in kwargs.items() if v})
     if class_:
         node.set("class", class_)
     if text:
@@ -66,3 +68,11 @@ def encode_data_uri(image: Image.Image, format: str = "PNG") -> str:
         image.save(buffer, format=format)
         base64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
     return f"data:image/{format.lower()};base64,{base64_data}"
+
+
+def add_style(node: ET.Element, key: str, value: Any) -> None:
+    """Add a CSS property to an XML node."""
+    if "style" in node.attrib:
+        node.set("style", f"{node.get('style')}; {key}: {value}")
+    else:
+        node.set("style", f"{key}: {value}")

@@ -2,9 +2,11 @@ import logging
 from xml.etree import ElementTree as ET
 
 from psd_tools.api import layers
+from psd_tools.constants import BlendMode
 
+from psd2svg.core import svg_utils
 from psd2svg.core.base import ConverterProtocol
-from psd2svg.core.svg_utils import create_node
+from psd2svg.core.constants import BLEND_MODE
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +32,17 @@ class LayerConverter(ConverterProtocol):
         }
         # Default handler is a plain pixel layer.
         handler = registry.get(type(layer), self.add_pixel)
-        return handler(layer)
+        node = handler(layer)
+        if node is not None:
+            self.add_attributes(layer, node)
+        return node
 
     def add_group(self, group: layers.Group) -> ET.Element | None:
         """Add a group layer to the svg document."""
         previous = self.current  # type: ignore
-        group_node = create_node("g", parent=previous, class_="group", title=group.name)
+        group_node = svg_utils.create_node(
+            "g", parent=previous, class_="group", title=group.name
+        )
         self.current = group_node
         for child in group:
             self.add_layer(child)
@@ -47,9 +54,9 @@ class LayerConverter(ConverterProtocol):
         if not layer.has_pixels():
             logger.debug(f"Layer '{layer.name}' has no pixels.")
             return None
-        
-        self.images.append(layer.composite())
-        return create_node(
+
+        self.images.append(layer.topil().convert("RGBA"))
+        return svg_utils.create_node(
             "image",
             parent=self.current,
             x=layer.left,
@@ -59,3 +66,11 @@ class LayerConverter(ConverterProtocol):
             class_=layer.kind,
             title=layer.name,
         )
+
+    def add_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Add common attributes to a layer node."""
+        if layer.opacity < 255:
+            node.set("opacity", f"{layer.opacity / 255:.2g}")
+        blend_mode = BLEND_MODE[layer.blend_mode]
+        if blend_mode != "normal":
+            svg_utils.add_style(node, "mix-blend-mode", blend_mode)

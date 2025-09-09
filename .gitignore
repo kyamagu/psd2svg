@@ -198,4 +198,5 @@ Temporary Items
 .ruff_cache/
 .claude/
 
+tmp/
 *.ipynb
