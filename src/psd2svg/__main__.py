@@ -1,8 +1,6 @@
 import argparse
 import logging
 
-from psd_tools import PSDImage
-
 from psd2svg import Converter
 
 
@@ -40,15 +38,7 @@ def main() -> None:
     """Main function to convert PSD to SVG or raster image."""
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(), "WARNING"))
-
-    psdimage = PSDImage.open(args.input)
-    converter = Converter(psdimage)
-    converter.build()
-    if args.images_path:
-        converter.export_images(args.images_path)
-    else:
-        converter.embed_images()
-    converter.save(args.output)
+    Converter.convert(args.input, args.output, args.images_path)
 
 
 if __name__ == "__main__":
