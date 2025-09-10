@@ -64,7 +64,7 @@ class ShapeConverter(ConverterProtocol):
         self: ConverterProtocol,
         vector_mask: VectorMask,
         command: str = "C",
-        number_format: str = "%.2g",
+        number_format: str = "%g",
     ) -> str:
         """Sequence generator for SVG path constructor."""
 
