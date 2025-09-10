@@ -1,7 +1,7 @@
 import logging
 from xml.etree import ElementTree as ET
 
-from psd_tools.api import layers
+from psd_tools.api import adjustments, layers
 
 from psd2svg.core import svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -33,7 +33,7 @@ class LayerConverter(ConverterProtocol):
             # TODO: Support more layer types here.
             layers.Group: self.add_group,
             layers.AdjustmentLayer: self.add_adjustment,
-            layers.FillLayer: self.add_fill,
+            adjustments.SolidColorFill: self.add_fill,
             layers.ShapeLayer: self.add_shape,
             # layers.TypeLayer: self.add_type,
             layers.PixelLayer: self.add_pixel,

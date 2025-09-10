@@ -1,7 +1,7 @@
 import logging
 import xml.etree.ElementTree as ET
 
-from psd_tools.api import layers
+from psd_tools.api import adjustments, layers
 from psd_tools.api.shape import VectorMask
 from psd_tools.constants import Tag
 from psd_tools.psd.descriptor import Descriptor
@@ -25,9 +25,21 @@ class ShapeConverter(ConverterProtocol):
             self.set_stroke(layer, node)
         return node
 
-    def add_fill(self, layer: layers.FillLayer) -> ET.Element | None:
+    def add_fill(self, layer: adjustments.SolidColorFill) -> ET.Element | None:
         """Add fill node to the given element."""
-        node = self.create_rect(layer)
+        logger.debug(f"Adding fill layer: '{layer.name}'")
+        viewbox = layer.bbox
+        if viewbox == (0, 0, 0, 0):
+            viewbox = (0, 0, self.psd.width, self.psd.height)
+        node = svg_utils.create_node(
+            "rect",
+            parent=self.current,
+            x=viewbox[0],
+            y=viewbox[1],
+            width=viewbox[2] - viewbox[0],
+            height=viewbox[3] - viewbox[1],
+            title=layer.name,
+        )
         self.set_fill(layer, node)
         return node
 
@@ -38,7 +50,10 @@ class ShapeConverter(ConverterProtocol):
             return None
 
         path = svg_utils.create_node(
-            "path", parent=self.current, d=self.generate_path(layer.vector_mask)
+            "path",
+            parent=self.current,
+            d=self.generate_path(layer.vector_mask),
+            title=layer.name,
         )
         if layer.vector_mask.initial_fill_rule:
             logger.warning("Initial fill rule (inverted mask) is not supported yet.")
@@ -95,19 +110,6 @@ class ShapeConverter(ConverterProtocol):
                     yield "Z"
 
         return " ".join(str(x) for x in _do_generate())
-
-    def create_rect(self, layer: layers.Layer) -> ET.Element:
-        """Create a rectangle node."""
-        viewbox = layer.bbox
-        if viewbox == (0, 0, 0, 0):
-            viewbox = (0, 0, self.psd.width, self.psd.height)
-        return svg_utils.create_node(
-            "rect",
-            x=viewbox[0],
-            y=viewbox[1],
-            width=viewbox[2] - viewbox[0],
-            height=viewbox[3] - viewbox[1],
-        )
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set fill attribute to the given element."""
