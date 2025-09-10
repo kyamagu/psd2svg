@@ -28,14 +28,14 @@ class InkscapeRasterizer(BaseRasterizer):
         self.executable_path = executable_path
 
     def rasterize(
-        self, url: str, size: Optional[Tuple[int, int]] = None, format: str = "png"
+        self, url: str, size: Optional[Tuple[int, int]] = None, format: str = "png", **kwargs: Any
     ) -> Image.Image:
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = os.path.join(tempdir, f"output.{format}")
             cmd = [os.path.abspath(url), "-e", output_file, "-bFFFFFF", "-y", "0"]
             if size:
-                cmd += ["-w", size[0], "-h", size[1]]
-            proc = subprocess.check_call(
+                cmd += ["-w", str(size[0]), "-h", str(size[1])]
+            subprocess.check_call(
                 [self.executable_path, "-z"] + cmd, stdout=sys.stdout, stderr=sys.stdout
             )
             assert os.path.exists(output_file)

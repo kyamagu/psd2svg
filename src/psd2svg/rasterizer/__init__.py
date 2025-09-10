@@ -5,10 +5,14 @@ from .base_rasterizer import BaseRasterizer
 
 
 def create_rasterizer(
-    name: str = "chromium", *args: Any, **kwargs: Any
+    name: str = "resvg", *args: Any, **kwargs: Any
 ) -> BaseRasterizer:
     module_name = f"psd2svg.rasterizer.{name.lower()}_rasterizer"
-    class_name = f"{name.capitalize()}Rasterizer"
-    cls = getattr(import_module(module_name), class_name)
-    assert cls is not None, f"Invalid class name: {class_name}"
+    try:
+        module = import_module(module_name)
+        cls = getattr(module, f"{name.capitalize()}Rasterizer")
+    except (ImportError, AttributeError):
+        raise RuntimeError(f"Invalid rasterizer name: {name}")
+    if cls is None:
+        raise RuntimeError(f"Invalid class name: {name}")
     return cls(*args, **kwargs)

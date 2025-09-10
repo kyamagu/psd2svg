@@ -13,7 +13,7 @@ import math
 import os
 import re
 from io import BytesIO
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from PIL import Image
 from selenium import webdriver

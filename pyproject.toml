@@ -27,9 +27,10 @@ classifiers = [
 ]
 dependencies = [
     "pillow",
-    "svgwrite", 
+    "svgwrite",
     "numpy",
     "psd-tools>=1.10",
+    "resvg-py>=0.2.3",
 ]
 
 [dependency-groups]
