@@ -46,7 +46,10 @@ class ShapeConverter(ConverterProtocol):
         return path
 
     def generate_path(
-        self: ConverterProtocol, vector_mask: VectorMask, command: str = "C"
+        self: ConverterProtocol,
+        vector_mask: VectorMask,
+        command: str = "C",
+        number_format: str = "%.2g",
     ) -> str:
         """Sequence generator for SVG path constructor."""
 
@@ -60,7 +63,7 @@ class ShapeConverter(ConverterProtocol):
 
                 # Initial point.
                 yield "M"
-                yield "%g,%g" % (
+                yield (number_format + "," + number_format) % (
                     path[0].anchor[1] * self.psd.width,
                     path[0].anchor[0] * self.psd.height,
                 )
@@ -75,15 +78,15 @@ class ShapeConverter(ConverterProtocol):
                 # Rest of the points.
                 yield command
                 for p1, p2 in points:
-                    yield "%g,%g" % (
+                    yield (number_format + "," + number_format) % (
                         p1.leaving[1] * self.psd.width,
                         p1.leaving[0] * self.psd.height,
                     )
-                    yield "%g,%g" % (
+                    yield (number_format + "," + number_format) % (
                         p2.preceding[1] * self.psd.width,
                         p2.preceding[0] * self.psd.height,
                     )
-                    yield "%g,%g" % (
+                    yield (number_format + "," + number_format) % (
                         p2.anchor[1] * self.psd.width,
                         p2.anchor[0] * self.psd.height,
                     )
@@ -92,7 +95,7 @@ class ShapeConverter(ConverterProtocol):
                     yield "Z"
 
         return " ".join(str(x) for x in _do_generate())
-    
+
     def create_rect(self, layer: layers.Layer) -> ET.Element:
         """Create a rectangle node."""
         viewbox = layer.bbox
@@ -146,22 +149,23 @@ class ShapeConverter(ConverterProtocol):
         else:
             logger.warning(f"Unsupported color: {color}")
             return "transparent"
-        
 
     def set_stroke(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add stroke style to the path node."""
         if not layer.has_stroke() or not layer.stroke.enabled:
             return
-        
+
         stroke = layer.stroke
         if stroke.line_alignment == "inner":
-            clippath = svg_utils.create_node("clipPath", parent=self.current, id=self.auto_id("clip_"))
+            clippath = svg_utils.create_node(
+                "clipPath", parent=self.current, id=self.auto_id("clip_")
+            )
             path = self.generate_path(layer.vector_mask)
             svg_utils.create_node("path", d=path, parent=clippath)
             svg_utils.set_attribute(node, "stroke-width", stroke.line_width * 2)
             svg_utils.set_attribute(node, "clip-path", svg_utils.get_funciri(clippath))
 
-        elif stroke.line_alignment == 'outer':
+        elif stroke.line_alignment == "outer":
             logger.warning("Outer stroke is not supported yet.")
             # TODO: Implement outer stroke.
         else:
@@ -174,7 +178,9 @@ class ShapeConverter(ConverterProtocol):
             logger.warning("Gradient stroke is not supported yet.")
             # TODO: Implement gradient stroke.
         elif stroke.content.classID == b"solidColorLayer":
-            svg_utils.set_attribute(node, "stroke", self.create_solid_color(stroke.content[Klass.Color]))
+            svg_utils.set_attribute(
+                node, "stroke", self.create_solid_color(stroke.content[Klass.Color])
+            )
 
         if not stroke.fill_enabled:
             svg_utils.set_attribute(node, "fill", "transparent")
@@ -183,8 +189,15 @@ class ShapeConverter(ConverterProtocol):
         svg_utils.set_attribute(node, "stroke-linecap", stroke.line_cap_type)
         svg_utils.set_attribute(node, "stroke-linejoin", stroke.line_join_type)
         if stroke.line_dash_set:
-            svg_utils.set_attribute(node, "stroke-dasharray", ",".join(
-                [str(float(x.value) * stroke.line_width) for x in stroke.line_dash_set]
-            ))
+            svg_utils.set_attribute(
+                node,
+                "stroke-dasharray",
+                ",".join(
+                    [
+                        str(float(x.value) * stroke.line_width)
+                        for x in stroke.line_dash_set
+                    ]
+                ),
+            )
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
