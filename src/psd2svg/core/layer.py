@@ -33,7 +33,6 @@ class LayerConverter(ConverterProtocol):
             # TODO: Support more layer types here.
             layers.Artboard: self.add_group,
             layers.Group: self.add_group,
-            layers.AdjustmentLayer: self.add_adjustment,
             adjustments.SolidColorFill: self.add_fill,
             layers.ShapeLayer: self.add_shape,
             # layers.TypeLayer: self.add_type,

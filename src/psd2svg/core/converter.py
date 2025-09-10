@@ -21,7 +21,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
         from psd2svg.core.converter import Converter
 
         Converter.convert("example.psd", "output.svg")
-    
+
     Example usage:
 
         from psd_tools import PSDImage
@@ -32,7 +32,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
         converter.build()
         converter.embed_images()  # or converter.export_images("output/image_%02d")
         svg_string = converter.export()
-    
+
     """
 
     def __init__(self, psdimage: PSDImage) -> None:
@@ -59,6 +59,19 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
     def build(self) -> None:
         """Build the SVG structure and internally store the result."""
         assert self.psd is not None, "PSD image is not set."
+        
+        if len(self.psd) == 0 and self.psd.has_preview():
+            # Special case: No layers, just a flat image.
+            svg_utils.create_node(
+                "image",
+                parent=self.current,
+                width=self.psd.width,
+                height=self.psd.height,
+            )
+            self.images.append(self.psd.composite())
+            return
+        
+        # General case: Process all layers.
         for layer in self.psd:
             self.add_layer(layer)
 
@@ -95,7 +108,9 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
             svg_utils.write(self.svg, f)
 
     @classmethod
-    def convert(cls, input_path: str, output_path: str, images_path: str | None = None) -> None:
+    def convert(
+        cls, input_path: str, output_path: str, images_path: str | None = None
+    ) -> None:
         """Convenience method to convert a PSD file to SVG."""
         psdimage = PSDImage.open(input_path)
         converter = Converter(psdimage)
