@@ -72,7 +72,6 @@ class LayerConverter(ConverterProtocol):
             y=layer.top,
             width=layer.width,
             height=layer.height,
-            class_=layer.kind,
             title=layer.name,
         )
 
@@ -96,6 +95,7 @@ class LayerConverter(ConverterProtocol):
             svg_utils.add_style(node, "isolation", "isolate")
 
         self.set_mask(layer, node)
+        svg_utils.add_class(node, layer.kind)
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
         """Set blend mode style to the node."""
@@ -148,5 +148,5 @@ class LayerConverter(ConverterProtocol):
             width=layer.mask.width,
             height=layer.mask.height,
         )
-        target.set("mask", f"url(#{node.get('id')})")
+        target.set("mask", svg_utils.get_funciri(node))
         return node

@@ -79,7 +79,25 @@ def add_style(node: ET.Element, key: str, value: Any) -> None:
     else:
         node.set("style", f"{key}: {value}")
 
+def add_class(node: ET.Element, class_name: str) -> None:
+    """Add a class to an XML node."""
+    if "class" in node.attrib:
+        classes = node.get("class", "").split()
+        if class_name not in classes:
+            classes.append(class_name)
+            node.set("class", " ".join(classes))
+    else:
+        node.set("class", class_name)
+
 
 def set_attribute(node: ET.Element, key: str, value: Any) -> None:
     """Add an attribute to an XML node."""
     node.set(key, str(value))
+
+
+def get_funciri(node: ET.Element) -> str:
+    """Get a funciri string for the given node."""
+    id_ = node.get("id")
+    if not id_:
+        raise ValueError("Node must have an 'id' attribute to get funciri.")
+    return f"url(#{id_})"

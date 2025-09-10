@@ -113,7 +113,6 @@ class ShapeConverter(ConverterProtocol):
             setting = layer.tagged_blocks.get_data(Tag.SOLID_COLOR_SHEET_SETTING)
             color = self.create_solid_color(setting[Klass.Color])
             svg_utils.set_attribute(node, "fill", color)
-            logger.debug(f"Fill color: {color}")
         elif Tag.PATTERN_FILL_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.PATTERN_FILL_SETTING)
             logger.warning(f"Pattern fill is not supported yet: {setting}")
@@ -122,7 +121,6 @@ class ShapeConverter(ConverterProtocol):
             logger.warning(f"Gradient fill is not supported yet: {setting}")
         elif Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
-            logger.debug(f"Fill content data: {content_data}")
             if Klass.Color in content_data:
                 color = self.create_solid_color(content_data[Klass.Color])
                 svg_utils.set_attribute(node, "fill", color)
@@ -161,7 +159,7 @@ class ShapeConverter(ConverterProtocol):
             path = self.generate_path(layer.vector_mask)
             svg_utils.create_node("path", d=path, parent=clippath)
             svg_utils.set_attribute(node, "stroke-width", stroke.line_width * 2)
-            svg_utils.set_attribute(node, "clip-path", clippath.get("id", ""))
+            svg_utils.set_attribute(node, "clip-path", svg_utils.get_funciri(clippath))
 
         elif stroke.line_alignment == 'outer':
             logger.warning("Outer stroke is not supported yet.")
