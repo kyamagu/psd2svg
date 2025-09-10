@@ -2,6 +2,7 @@ import logging
 from xml.etree import ElementTree as ET
 
 from psd_tools.api import adjustments, layers
+from psd_tools.constants import BlendMode
 
 from psd2svg.core import svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -46,11 +47,11 @@ class LayerConverter(ConverterProtocol):
             self.set_attributes(layer, node)
         return node
 
-    def add_group(self, group: layers.Group) -> ET.Element | None:
+    def add_group(self, group: layers.Artboard | layers.Group) -> ET.Element | None:
         """Add a group layer to the svg document."""
         previous = self.current  # type: ignore
         group_node = svg_utils.create_node(
-            "g", parent=previous, class_="group", title=group.name
+            "g", parent=previous, class_=group.kind, title=group.name
         )
         self.current = group_node
         for child in group:
@@ -80,28 +81,29 @@ class LayerConverter(ConverterProtocol):
         if layer.opacity < 255:
             node.set("opacity", f"{layer.opacity / 255:.2g}")
 
-        blend_mode = BLEND_MODE[layer.blend_mode]
-        if blend_mode not in ("normal", "pass-through"):
-            svg_utils.add_style(node, "mix-blend-mode", blend_mode)
-
-        """
-        Add isolation to a group.
-        1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
-        2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
-        3. Other blending modes also isolate the group,
-        and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
-        """
-        if layer.is_group() and blend_mode != "pass-through":
-            svg_utils.add_style(node, "isolation", "isolate")
-
+        self.set_blend_mode(layer.blend_mode, node)
+        self.set_isolation(layer, node)
         self.set_mask(layer, node)
-        svg_utils.add_class(node, layer.kind)
+
+        svg_utils.add_class(node, layer.kind)  # Keep the layer type as class.
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
         """Set blend mode style to the node."""
         blend_mode = BLEND_MODE[psd_mode]
         if blend_mode not in ("normal", "pass-through"):
             svg_utils.add_style(node, "mix-blend-mode", blend_mode)
+
+    def set_isolation(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Add isolation to a group.
+
+        NOTE:
+          1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
+          2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
+          3. Other blending modes also isolate the group,
+             and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
+        """
+        if layer.is_group() and layer.blend_mode != BlendMode.PASS_THROUGH:
+            svg_utils.add_style(node, "isolation", "isolate")
 
     def set_mask(self, layer: layers.Layer, target: ET.Element) -> ET.Element | None:
         """Add a mask to a layer node."""

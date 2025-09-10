@@ -19,6 +19,8 @@ class ShapeConverter(ConverterProtocol):
 
     def add_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
         """Add a shape layer to the svg document."""
+
+        # TODO: Identify live shapes (rectangle, ellipse, line, polygon) instead of path.
         node = self.create_path(layer)
         if node is not None:
             self.set_fill(layer, node)
