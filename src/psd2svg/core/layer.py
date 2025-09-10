@@ -32,17 +32,18 @@ class LayerConverter(ConverterProtocol):
         registry = {
             # TODO: Support more layer types here.
             layers.Group: self.add_group,
-            # layers.AdjustmentLayer: self.add_adjustment,
-            # layers.ShapeLayer: self.add_shape,
+            layers.AdjustmentLayer: self.add_adjustment,
+            layers.FillLayer: self.add_fill,
+            layers.ShapeLayer: self.add_shape,
             # layers.TypeLayer: self.add_type,
             layers.PixelLayer: self.add_pixel,
         }
-        # Default handler is a plain pixel layer.
-        handler = registry.get(type(layer), self.add_pixel)
-        node = handler(layer)
+        # Default layer_fn is a plain pixel layer.
+        layer_fn = registry.get(type(layer), self.add_pixel)
+        node = layer_fn(layer)
         if node is not None:
-            self.add_attributes(layer, node)
-            self.add_mask(layer, node)
+            # TODO: Node-less layers, e.g. adjustment.
+            self.set_attributes(layer, node)
         return node
 
     def add_group(self, group: layers.Group) -> ET.Element | None:
@@ -75,15 +76,34 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
         )
 
-    def add_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
-        """Add common attributes to a layer node."""
+    def set_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Set common attributes to a layer node."""
         if layer.opacity < 255:
             node.set("opacity", f"{layer.opacity / 255:.2g}")
+
         blend_mode = BLEND_MODE[layer.blend_mode]
-        if blend_mode != "normal":
+        if blend_mode not in ("normal", "pass-through"):
             svg_utils.add_style(node, "mix-blend-mode", blend_mode)
 
-    def add_mask(self, layer: layers.Layer, target: ET.Element) -> ET.Element | None:
+        """
+        Add isolation to a group.
+        1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
+        2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
+        3. Other blending modes also isolate the group,
+        and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
+        """
+        if layer.is_group() and blend_mode != "pass-through":
+            svg_utils.add_style(node, "isolation", "isolate")
+
+        self.set_mask(layer, node)
+
+    def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
+        """Set blend mode style to the node."""
+        blend_mode = BLEND_MODE[psd_mode]
+        if blend_mode not in ("normal", "pass-through"):
+            svg_utils.add_style(node, "mix-blend-mode", blend_mode)
+
+    def set_mask(self, layer: layers.Layer, target: ET.Element) -> ET.Element | None:
         """Add a mask to a layer node."""
         if (
             not layer.has_mask()
@@ -104,9 +124,9 @@ class LayerConverter(ConverterProtocol):
             "mask", parent=self.current, id=self.auto_id("mask_")
         )
         # TODO: Check layer mask attributes.
-        # node["color-interpolation"] = "sRGB"
+        # node.set("color-interpolation", "sRGB")
 
-        # If the mask has a background color, add a white rectangle first.
+        # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
             svg_utils.create_node(
                 "rect",
@@ -117,7 +137,7 @@ class LayerConverter(ConverterProtocol):
                 height=viewbox[3] - viewbox[1],
                 fill="white",
             )
-        
+
         # Mask image.
         self.images.append(layer.mask.topil().convert("L"))
         svg_utils.create_node(

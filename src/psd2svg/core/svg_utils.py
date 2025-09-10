@@ -6,6 +6,8 @@ from typing import Any, Optional
 
 from PIL import Image
 
+from psd2svg.utils.xml import safe_utf8
+
 logger = logging.getLogger(__name__)
 
 NAMESPACE = "http://www.w3.org/2000/svg"
@@ -25,11 +27,11 @@ def create_node(
     if class_:
         node.set("class", class_)
     if text:
-        node.text = text
+        node.text = safe_utf8(text)
     if title:
-        create_node("title", parent=node, text=title)
+        create_node("title", parent=node, text=safe_utf8(title))
     if desc:
-        create_node("desc", parent=node, text=desc)
+        create_node("desc", parent=node, text=safe_utf8(desc))
     if parent is not None:
         parent.append(node)
     return node
@@ -76,3 +78,8 @@ def add_style(node: ET.Element, key: str, value: Any) -> None:
         node.set("style", f"{node.get('style')}; {key}: {value}")
     else:
         node.set("style", f"{key}: {value}")
+
+
+def set_attribute(node: ET.Element, key: str, value: Any) -> None:
+    """Add an attribute to an XML node."""
+    node.set(key, str(value))

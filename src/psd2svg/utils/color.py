@@ -1,13 +1,14 @@
-from collections.abc import Sequence
-from logging import getLogger
-from typing import Tuple
+import logging
+from typing import Sequence
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-def cmyk2rgb(cmyk: Sequence[float]) -> Tuple[float, float, float]:
+def cmyk2rgb(values: Sequence[float]) -> tuple[float, float, float]:
+    """Convert CMYK color to RGB color."""
+    assert len(values) == 4
     return (
-        2.55 * (1.0 - cmyk[0]) * (1.0 - cmyk[3]),
-        2.55 * (1.0 - cmyk[1]) * (1.0 - cmyk[3]),
-        2.55 * (1.0 - cmyk[2]) * (1.0 - cmyk[3]),
+        2.55 * (1.0 - values[0]) * (1.0 - values[3]),
+        2.55 * (1.0 - values[1]) * (1.0 - values[3]),
+        2.55 * (1.0 - values[2]) * (1.0 - values[3]),
     )

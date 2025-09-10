@@ -13,7 +13,7 @@ class AdjustmentConverter(ConverterProtocol):
 
     def add_adjustment(self, layer: layers.AdjustmentLayer) -> ET.Element | None:
         """Add an adjustment layer to the svg document."""
-        logger.info("Adding adjustment layer: %s", layer.name)
+        logger.info("Adjustment layer is unsupported yet: %s", layer.name)
         return None
         # # Handle different types of adjustment layers.
         # adjustment_type = type(layer.adjustment)

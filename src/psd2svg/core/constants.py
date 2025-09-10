@@ -5,7 +5,7 @@ from psd_tools.constants import BlendMode
 # https://helpx.adobe.com/photoshop/using/blending-modes.html
 BLEND_MODE: dict[Union[BlendMode, str], str] = {
     # Layer modes.
-    BlendMode.PASS_THROUGH: "normal",
+    BlendMode.PASS_THROUGH: "pass-through",
     BlendMode.NORMAL: "normal",
     BlendMode.DISSOLVE: "normal",
     BlendMode.DARKEN: "darken",
