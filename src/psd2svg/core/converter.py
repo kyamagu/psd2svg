@@ -9,7 +9,7 @@ from psd2svg.core.adjustment import AdjustmentConverter
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.shape import ShapeConverter
 from psd2svg.core.type import TypeConverter
-from psd2svg.utils.xml import seq2str
+from psd2svg.core.svg_utils import seq2str
 
 logger = logging.getLogger(__name__)
 

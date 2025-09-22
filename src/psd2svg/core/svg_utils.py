@@ -1,16 +1,45 @@
 import base64
 import logging
+import re
 import xml.etree.ElementTree as ET
 from io import BytesIO
+from re import Pattern
 from typing import Any, Optional
 
 from PIL import Image
 
-from psd2svg.utils.xml import safe_utf8, num2str, seq2str
-
 logger = logging.getLogger(__name__)
 
 NAMESPACE = "http://www.w3.org/2000/svg"
+
+ILLEGAL_XML_RE: Pattern[str] = re.compile(
+    "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
+)
+
+DEFAULT_FLOAT_FORMAT = ".2g"
+
+
+def safe_utf8(text: str) -> str:
+    """Remove illegal XML characters from text."""
+    return ILLEGAL_XML_RE.sub(" ", text)
+
+
+def num2str(num: int | float | bool, format = DEFAULT_FLOAT_FORMAT) -> str:
+    """Convert a number to a string, using the specified format for floats."""
+    if isinstance(num, bool):
+        return "true" if num else "false"
+    if isinstance(num, int):
+        return str(num)
+    if isinstance(num, float):
+        if num.is_integer():
+            return str(int(num))
+        return format % num
+    raise ValueError(f"Unsupported type: {type(num)}")
+
+
+def seq2str(seq: list[int | float | bool], sep = ",", format = DEFAULT_FLOAT_FORMAT) -> str:
+    """Convert a sequence of numbers to a string, using the specified format for floats."""
+    return sep.join(num2str(n, format) for n in seq)
 
 
 def create_node(

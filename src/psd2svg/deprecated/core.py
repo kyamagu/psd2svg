@@ -9,7 +9,7 @@ from psd_tools.api.pil_io import convert_pattern_to_pil
 from psd2svg.deprecated.base import ConverterProtocol
 from psd2svg.deprecated.constants import BLEND_MODE
 from psd2svg.utils.color import cmyk2rgb
-from psd2svg.utils.xml import safe_utf8
+from psd2svg.core.svg_utils import safe_utf8
 
 logger = getLogger(__name__)
 

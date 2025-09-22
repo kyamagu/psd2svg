@@ -7,7 +7,7 @@ from psd_tools.api.layers import AdjustmentLayer, Layer
 from psd_tools.constants import Tag
 
 from psd2svg.deprecated.base import ConverterProtocol
-from psd2svg.utils.xml import safe_utf8
+from psd2svg.core.svg_utils import safe_utf8
 
 logger = logging.getLogger(__name__)
 
