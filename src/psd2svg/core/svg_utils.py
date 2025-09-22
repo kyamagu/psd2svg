@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from PIL import Image
 
-from psd2svg.utils.xml import safe_utf8
+from psd2svg.utils.xml import safe_utf8, num2str, seq2str
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,11 @@ def create_node(
     **kwargs: Any,
 ) -> ET.Element:
     """Create an XML node with attributes."""
-    node = ET.Element(tag, attrib={k: str(v) for k, v in kwargs.items() if v})
+    node = ET.Element(tag)
     if class_:
         node.set("class", class_)
+    for key, value in kwargs.items():
+        set_attribute(node, key, value)
     if text:
         node.text = safe_utf8(text)
     if title:
@@ -92,7 +94,12 @@ def add_class(node: ET.Element, class_name: str) -> None:
 
 def set_attribute(node: ET.Element, key: str, value: Any) -> None:
     """Add an attribute to an XML node."""
-    node.set(key, str(value))
+    if isinstance(value, (int, float, bool)):
+        node.set(key, num2str(value))
+    elif isinstance(value, list) and all(isinstance(v, (int, float, bool)) for v in value):
+        node.set(key, seq2str(value))
+    else:
+        node.set(key, str(value))
 
 
 def get_funciri(node: ET.Element) -> str:

@@ -9,6 +9,7 @@ from psd2svg.core.adjustment import AdjustmentConverter
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.shape import ShapeConverter
 from psd2svg.core.type import TypeConverter
+from psd2svg.utils.xml import seq2str
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
             xmlns=svg_utils.NAMESPACE,
             width=psdimage.width,
             height=psdimage.height,
-            viewBox=f"0 0 {psdimage.width} {psdimage.height}",
+            viewBox=seq2str([0, 0, psdimage.width, psdimage.height], sep=" "),
         )
         self.images: list[Image.Image] = []  # Store PIL images here.
 
@@ -77,6 +78,8 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
 
     def embed_images(self) -> None:
         """Embed images as base64 data URIs."""
+
+        # TODO: Make sure the order of <image> nodes matches self.images.
         nodes = self.svg.findall(".//image")
         if len(nodes) != len(self.images):
             raise RuntimeError("Number of <image> nodes and images do not match.")
@@ -90,6 +93,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
 
+        # TODO: Make sure the order of <image> nodes matches self.images.
         nodes = self.svg.findall(".//image")
         if len(nodes) != len(self.images):
             raise RuntimeError("Number of <image> nodes and images do not match.")

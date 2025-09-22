@@ -79,7 +79,7 @@ class LayerConverter(ConverterProtocol):
     def set_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set common attributes to a layer node."""
         if layer.opacity < 255:
-            node.set("opacity", f"{layer.opacity / 255:.2g}")
+            node.set("opacity", layer.opacity / 255)
 
         self.set_blend_mode(layer.blend_mode, node)
         self.set_isolation(layer, node)

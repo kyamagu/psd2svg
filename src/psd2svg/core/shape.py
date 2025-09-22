@@ -172,6 +172,7 @@ class ShapeConverter(ConverterProtocol):
         elif stroke.line_alignment == "outer":
             logger.warning("Outer stroke is not supported yet.")
             # TODO: Implement outer stroke.
+            svg_utils.set_attribute(node, "stroke-width", stroke.line_width)
         else:
             svg_utils.set_attribute(node, "stroke-width", stroke.line_width)
 
@@ -196,12 +197,7 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(
                 node,
                 "stroke-dasharray",
-                ",".join(
-                    [
-                        str(float(x.value) * stroke.line_width)
-                        for x in stroke.line_dash_set
-                    ]
-                ),
+                [float(x.value) * stroke.line_width for x in stroke.line_dash_set],
             )
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
