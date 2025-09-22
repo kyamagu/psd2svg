@@ -27,7 +27,6 @@ classifiers = [
 ]
 dependencies = [
     "pillow",
-    "svgwrite",
     "numpy",
     "psd-tools>=1.10",
     "resvg-py>=0.2.3",
@@ -36,7 +35,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
-    "imagehash",
     "mypy",
     "ruff",
     "ipykernel>=6.30.1",
