@@ -79,7 +79,7 @@ class LayerConverter(ConverterProtocol):
     def set_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set common attributes to a layer node."""
         if layer.opacity < 255:
-            node.set("opacity", layer.opacity / 255)
+            svg_utils.set_attribute(node, "opacity", layer.opacity / 255)
 
         self.set_blend_mode(layer.blend_mode, node)
         self.set_isolation(layer, node)
@@ -126,7 +126,7 @@ class LayerConverter(ConverterProtocol):
             "mask", parent=self.current, id=self.auto_id("mask_")
         )
         # TODO: Check layer mask attributes.
-        # node.set("color-interpolation", "sRGB")
+        # svg_utils.set_attribute(node, "color-interpolation", "sRGB")
 
         # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
@@ -150,5 +150,5 @@ class LayerConverter(ConverterProtocol):
             width=layer.mask.width,
             height=layer.mask.height,
         )
-        target.set("mask", svg_utils.get_funciri(node))
+        svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(node))
         return node

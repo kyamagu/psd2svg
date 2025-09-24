@@ -57,7 +57,7 @@ class ShapeConverter(ConverterProtocol):
         )
         if layer.vector_mask.initial_fill_rule:
             logger.warning("Initial fill rule (inverted mask) is not supported yet.")
-        path.set("fill-rule", "evenodd")
+        svg_utils.set_attribute(path, "fill-rule", "evenodd")
         return path
 
     def generate_path(

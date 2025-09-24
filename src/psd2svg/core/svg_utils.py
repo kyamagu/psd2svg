@@ -33,7 +33,7 @@ def num2str(num: int | float | bool, format = DEFAULT_FLOAT_FORMAT) -> str:
     if isinstance(num, float):
         if num.is_integer():
             return str(int(num))
-        return format % num
+        return f"%{format}" % num
     raise ValueError(f"Unsupported type: {type(num)}")
 
 
