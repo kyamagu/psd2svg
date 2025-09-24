@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import psd_tools
+from PIL.Image import Image
 
 from psd2svg.rasterizer import create_rasterizer
 
@@ -23,19 +24,36 @@ def check_quality(psdimage: psd_tools.PSDImage, svg: str, metric: str) -> float:
     assert rasterized.height == original.height
     assert rasterized.mode == original.mode
 
-    rasterized_array = np.array(rasterized, dtype=np.float32) / 255.0
-    original_array = np.array(original, dtype=np.float32) / 255.0
-    score = compare_raster_images(original_array, rasterized_array, metric=metric)
+    score = compare_raster_images(original, rasterized, metric=metric)
     return score
 
 
 def compare_raster_images(
-    input1: np.ndarray, input2: np.ndarray, metric: str = "MSE"
+    input1: np.ndarray | Image, input2: np.ndarray | Image, metric: str = "MSE"
 ) -> float:
     """Compare two raster images in numpy array format."""
 
-    assert input1.shape == input2.shape, "Input images must have the same shape."
-    assert input1.dtype == input2.dtype, "Input images must have the same data type."
+    if isinstance(input1, Image) and isinstance(input2, Image):
+        if input1.mode != input2.mode:
+            logger.info("Converting image mode: %s -> %s", input2.mode, input1.mode)
+            input2 = input2.convert(input1.mode)
+    if isinstance(input1, Image):
+        input1 = np.array(input1, dtype=np.float32) / 255.0
+    if isinstance(input2, Image):
+        input2 = np.array(input2, dtype=np.float32) / 255.0
+
+    assert input1.shape == input2.shape, (
+        "Input images must have the same shape: {} vs {}".format(
+            input1.shape,
+            input2.shape,
+        )
+    )
+    assert input1.dtype == input2.dtype, (
+        "Input images must have the same data type: {} vs {}".format(
+            input1.dtype,
+            input2.dtype,
+        )
+    )
 
     if input1.dtype == np.uint8:
         input1 = input1.astype(np.float32) / 255.0
