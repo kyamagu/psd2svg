@@ -87,7 +87,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
             data_uri = svg_utils.encode_data_uri(image)
             node.set("href", data_uri)
 
-    def export_images(self, output_prefix: str = "images/") -> None:
+    def export_images(self, output_prefix: str = "images/", image_format: str = "webp") -> None:
         """Export images to the specified directory."""
         dirname = os.path.dirname(output_prefix)
         if dirname and not os.path.exists(dirname):
@@ -98,7 +98,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
         if len(nodes) != len(self.images):
             raise RuntimeError("Number of <image> nodes and images do not match.")
         for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
-            filepath = "{}{:02d}.png".format(output_prefix, i)
+            filepath = "{}{:02d}.{}".format(output_prefix, i, image_format.lower())
             image.save(filepath)
             node.set("href", filepath)
 
