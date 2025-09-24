@@ -44,7 +44,7 @@ class LayerConverter(ConverterProtocol):
         node = layer_fn(layer)
         if node is not None:
             # TODO: Node-less layers, e.g. adjustment.
-            self.set_attributes(layer, node)
+            self.set_layer_attributes(layer, node)
         return node
 
     def add_group(self, group: layers.Artboard | layers.Group) -> ET.Element | None:
@@ -76,8 +76,8 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
         )
 
-    def set_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
-        """Set common attributes to a layer node."""
+    def set_layer_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Set common layer attributes to a layer node."""
         if layer.opacity < 255:
             svg_utils.set_attribute(node, "opacity", layer.opacity / 255)
 
