@@ -1,9 +1,10 @@
+import contextlib
 import xml.etree.ElementTree as ET
-from typing import Protocol
+from typing import Iterator, Protocol
 
 from PIL import Image
 from psd_tools import PSDImage
-from psd_tools.api import layers
+from psd_tools.api import effects, layers
 
 
 class ConverterProtocol(Protocol):
@@ -21,5 +22,11 @@ class ConverterProtocol(Protocol):
     def add_adjustment(self, layer: layers.AdjustmentLayer) -> ET.Element | None: ...
     def add_type(self, layer: layers.TypeLayer) -> ET.Element | None: ...
     def add_fill(self, layer: layers.FillLayer) -> ET.Element | None: ...
+    @contextlib.contextmanager
+    def add_clipping_target(
+        self, layer: layers.Layer | layers.Group
+    ) -> Iterator[None]: ...
+
+    def add_stroke_filter(self, effect: effects.Stroke) -> ET.Element: ...
 
     def auto_id(self, prefix: str = "") -> str: ...

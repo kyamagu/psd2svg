@@ -1,6 +1,7 @@
 import logging
 from xml.etree import ElementTree as ET
 
+from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
 from psd_tools.constants import BlendMode
 
@@ -54,10 +55,22 @@ class LayerConverter(ConverterProtocol):
             "g", parent=previous, class_=group.kind, title=group.name
         )
         self.current = group_node
-        for child in group:
-            self.add_layer(child)
+        self._add_children(group)
         self.current = previous
         return group_node
+
+    def _add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
+        """Add child layers to the current node."""
+        for layer in group:
+            if layer.has_clip_layers():
+                with self.add_clipping_target(layer):
+                    for clip_layer in layer.clip_layers:
+                        self.add_layer(clip_layer)
+            elif layer.clipping_layer:
+                continue
+            else:
+                # Regular layer.
+                self.add_layer(layer)
 
     def add_pixel(self, layer: layers.Layer) -> ET.Element | None:
         """Add a general pixel-based layer to the svg document."""

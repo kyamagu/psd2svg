@@ -131,9 +131,14 @@ def set_attribute(node: ET.Element, key: str, value: Any) -> None:
         node.set(key, str(value))
 
 
-def get_funciri(node: ET.Element) -> str:
-    """Get a funciri string for the given node."""
+def get_uri(node: ET.Element) -> str:
+    """Get an uri string for the given node."""
     id_ = node.get("id")
     if not id_:
-        raise ValueError("Node must have an 'id' attribute to get funciri.")
-    return f"url(#{id_})"
+        raise ValueError("Node must have an 'id' attribute to get uri.")
+    return f"#{id_}"
+
+
+def get_funciri(node: ET.Element) -> str:
+    """Get a funciri string for the given node."""
+    return f"url({get_uri(node)})"

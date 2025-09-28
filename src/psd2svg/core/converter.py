@@ -1,11 +1,13 @@
 import logging
 import os
+import xml.etree.ElementTree as ET
 
 from PIL import Image
 from psd_tools import PSDImage
 
 from psd2svg.core import svg_utils
 from psd2svg.core.adjustment import AdjustmentConverter
+from psd2svg.core.effects import EffectConverter
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.shape import ShapeConverter
 from psd2svg.core.type import TypeConverter
@@ -14,7 +16,9 @@ from psd2svg.core.svg_utils import seq2str
 logger = logging.getLogger(__name__)
 
 
-class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConverter):
+class Converter(
+    AdjustmentConverter, LayerConverter, ShapeConverter, TypeConverter, EffectConverter
+):
     """Converter main class.
 
     Example usage:
@@ -60,7 +64,7 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
     def build(self) -> None:
         """Build the SVG structure and internally store the result."""
         assert self.psd is not None, "PSD image is not set."
-        
+
         if len(self.psd) == 0 and self.psd.has_preview():
             # Special case: No layers, just a flat image.
             svg_utils.create_node(
@@ -71,10 +75,8 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
             )
             self.images.append(self.psd.composite())
             return
-        
-        # General case: Process all layers.
-        for layer in self.psd:
-            self.add_layer(layer)
+
+        self._add_children(self.psd)
 
     def embed_images(self) -> None:
         """Embed images as base64 data URIs."""
@@ -87,7 +89,9 @@ class Converter(AdjustmentConverter, LayerConverter, ShapeConverter, TypeConvert
             data_uri = svg_utils.encode_data_uri(image)
             node.set("href", data_uri)
 
-    def export_images(self, output_prefix: str = "images/", image_format: str = "webp") -> None:
+    def export_images(
+        self, output_prefix: str = "images/", image_format: str = "webp"
+    ) -> None:
         """Export images to the specified directory."""
         dirname = os.path.dirname(output_prefix)
         if dirname and not os.path.exists(dirname):
