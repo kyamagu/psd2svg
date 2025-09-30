@@ -152,7 +152,7 @@ class LayerConverter(ConverterProtocol):
                 y=viewbox[1],
                 width=viewbox[2] - viewbox[0],
                 height=viewbox[3] - viewbox[1],
-                fill="white",
+                fill="#ffffff",
             )
 
         # Mask image.
