@@ -34,10 +34,10 @@ class ShapeConverter(ConverterProtocol):
                 node = svg_utils.create_node(
                     "rect",
                     parent=self.current,
-                    x=shape.bbox[0],
-                    y=shape.bbox[1],
-                    width=shape.bbox[2] - shape.bbox[0],
-                    height=shape.bbox[3] - shape.bbox[1],
+                    x=int(shape.bbox[0]),
+                    y=int(shape.bbox[1]),
+                    width=int(shape.bbox[2] - shape.bbox[0]),
+                    height=int(shape.bbox[3] - shape.bbox[1]),
                     title=layer.name,
                 )
             elif isinstance(shape, RoundedRectangle):
@@ -50,10 +50,10 @@ class ShapeConverter(ConverterProtocol):
                 node = svg_utils.create_node(
                     "rect",
                     parent=self.current,
-                    x=shape.bbox[0],
-                    y=shape.bbox[1],
-                    width=shape.bbox[2] - shape.bbox[0],
-                    height=shape.bbox[3] - shape.bbox[1],
+                    x=int(shape.bbox[0]),
+                    y=int(shape.bbox[1]),
+                    width=int(shape.bbox[2] - shape.bbox[0]),
+                    height=int(shape.bbox[3] - shape.bbox[1]),
                     rx=rx,
                     ry=ry,
                     title=layer.name,
@@ -66,8 +66,8 @@ class ShapeConverter(ConverterProtocol):
                 node = svg_utils.create_node(
                     "ellipse",
                     parent=self.current,
-                    cx=cx,
-                    cy=cy,
+                    cx=int(cx),
+                    cy=int(cy),
                     rx=rx,
                     ry=ry,
                     title=layer.name,
@@ -182,7 +182,7 @@ class ShapeConverter(ConverterProtocol):
         svg_utils.set_attribute(mask, "mask-type", "alpha")
         with self.set_current(mask):
             target = self.add_layer(layer)
-            
+
         if target is None:
             raise ValueError(
                 "Failed to create clipping target for layer: %s", layer.name
@@ -240,7 +240,6 @@ class ShapeConverter(ConverterProtocol):
         self: ConverterProtocol,
         vector_mask: VectorMask,
         command: str = "C",
-        number_format: str = "%g",
     ) -> str:
         """Sequence generator for SVG path constructor."""
 
@@ -254,9 +253,11 @@ class ShapeConverter(ConverterProtocol):
 
                 # Initial point.
                 yield "M"
-                yield (number_format + "," + number_format) % (
-                    path[0].anchor[1] * self.psd.width,
-                    path[0].anchor[0] * self.psd.height,
+                yield ",".join(
+                    [
+                        svg_utils.num2str(path[0].anchor[1] * self.psd.width),
+                        svg_utils.num2str(path[0].anchor[0] * self.psd.height),
+                    ]
                 )
 
                 # Closed path or open path
@@ -269,17 +270,23 @@ class ShapeConverter(ConverterProtocol):
                 # Rest of the points.
                 yield command
                 for p1, p2 in points:
-                    yield (number_format + "," + number_format) % (
-                        p1.leaving[1] * self.psd.width,
-                        p1.leaving[0] * self.psd.height,
+                    yield ",".join(
+                        [
+                            svg_utils.num2str(p1.leaving[1] * self.psd.width),
+                            svg_utils.num2str(p1.leaving[0] * self.psd.height),
+                        ]
                     )
-                    yield (number_format + "," + number_format) % (
-                        p2.preceding[1] * self.psd.width,
-                        p2.preceding[0] * self.psd.height,
+                    yield ",".join(
+                        [
+                            svg_utils.num2str(p2.preceding[1] * self.psd.width),
+                            svg_utils.num2str(p2.preceding[0] * self.psd.height),
+                        ]
                     )
-                    yield (number_format + "," + number_format) % (
-                        p2.anchor[1] * self.psd.width,
-                        p2.anchor[0] * self.psd.height,
+                    yield ",".join(
+                        [
+                            svg_utils.num2str(p2.anchor[1] * self.psd.width),
+                            svg_utils.num2str(p2.anchor[0] * self.psd.height),
+                        ]
                     )
 
                 if path.is_closed():
@@ -316,7 +323,8 @@ class ShapeConverter(ConverterProtocol):
         stroke = layer.stroke
         if stroke.line_alignment != "center":
             logger.warning("Inner or outer stroke is not supported yet.")
-        svg_utils.set_attribute(node, "stroke-width", stroke.line_width)
+        if stroke.line_width != 1.0:
+            svg_utils.set_attribute(node, "stroke-width", stroke.line_width)
 
         if stroke.content.name == "patternoverlay":
             logger.warning("Pattern stroke is not supported yet.")

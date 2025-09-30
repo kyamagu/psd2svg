@@ -16,7 +16,7 @@ ILLEGAL_XML_RE: Pattern[str] = re.compile(
     "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
 )
 
-DEFAULT_FLOAT_FORMAT = ".2g"
+DEFAULT_FLOAT_FORMAT = ".1f"
 
 
 def safe_utf8(text: str) -> str:
