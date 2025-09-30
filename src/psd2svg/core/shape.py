@@ -72,7 +72,7 @@ class ShapeConverter(ConverterProtocol):
                     ry=ry,
                     title=layer.name,
                 )
-            # # Line shape is not supported, as this can be an arrow and fill is not applied.
+            # # Line shape is not supported, as this can be an arrow. <line> or <marker>.
             # elif isinstance(shape, Line):
             #     node = svg_utils.create_node(
             #         "line",
@@ -111,16 +111,15 @@ class ShapeConverter(ConverterProtocol):
     @contextlib.contextmanager
     def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
         """Context manager to handle clipping target."""
-        parent = self.current
         if isinstance(layer, layers.ShapeLayer):
-            self.current, path = self.add_clip_path(layer)
-            yield
-            self.current = parent
+            parent, path = self.add_clip_path(layer)
+            with self.set_current(parent):
+                yield
             self.add_clip_path_stroke(layer, path)
         else:
-            self.current, target = self.add_clip_mask(layer)
-            yield
-            self.current = parent
+            parent, target = self.add_clip_mask(layer)
+            with self.set_current(parent):
+                yield
             self.add_clip_mask_stroke(layer, target)
 
     def add_clip_path(self, layer: layers.ShapeLayer) -> tuple[ET.Element, ET.Element]:
@@ -135,10 +134,8 @@ class ShapeConverter(ConverterProtocol):
             "clipPath", parent=self.current, id=self.auto_id("clip_")
         )
 
-        parent = self.current
-        self.current = clip_path
-        shape = self._create_shape(layer)
-        self.current = parent
+        with self.set_current(clip_path):
+            shape = self._create_shape(layer)
 
         if shape is None:
             raise ValueError(
@@ -183,10 +180,9 @@ class ShapeConverter(ConverterProtocol):
             "mask", parent=self.current, id=self.auto_id("mask_")
         )
         svg_utils.set_attribute(mask, "mask-type", "alpha")
-        parent = self.current
-        self.current = mask
-        target = self.add_layer(layer)
-        self.current = parent
+        with self.set_current(mask):
+            target = self.add_layer(layer)
+            
         if target is None:
             raise ValueError(
                 "Failed to create clipping target for layer: %s", layer.name

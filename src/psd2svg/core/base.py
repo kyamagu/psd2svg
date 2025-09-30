@@ -30,3 +30,13 @@ class ConverterProtocol(Protocol):
     def add_stroke_filter(self, effect: effects.Stroke) -> ET.Element: ...
 
     def auto_id(self, prefix: str = "") -> str: ...
+
+    @contextlib.contextmanager
+    def set_current(self, node: ET.Element) -> Iterator[None]:
+        """Set the current node for the converter."""
+        previous = self.current
+        self.current = node
+        try:
+            yield
+        finally:
+            self.current = previous

@@ -50,13 +50,11 @@ class LayerConverter(ConverterProtocol):
 
     def add_group(self, group: layers.Artboard | layers.Group) -> ET.Element | None:
         """Add a group layer to the svg document."""
-        previous = self.current  # type: ignore
         group_node = svg_utils.create_node(
-            "g", parent=previous, class_=group.kind, title=group.name
+            "g", parent=self.current, class_=group.kind, title=group.name
         )
-        self.current = group_node
-        self._add_children(group)
-        self.current = previous
+        with self.set_current(group_node):
+            self._add_children(group)
         return group_node
 
     def _add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
