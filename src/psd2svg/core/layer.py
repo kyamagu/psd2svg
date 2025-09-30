@@ -119,7 +119,7 @@ class LayerConverter(ConverterProtocol):
           3. Other blending modes also isolate the group,
              and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
         """
-        if layer.is_group() and layer.blend_mode != BlendMode.PASS_THROUGH:
+        if isinstance(layer, layers.Group) and layer.blend_mode != BlendMode.PASS_THROUGH:
             svg_utils.add_style(node, "isolation", "isolate")
 
     def set_mask(self, layer: layers.Layer, target: ET.Element) -> ET.Element | None:
