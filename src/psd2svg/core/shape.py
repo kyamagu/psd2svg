@@ -224,11 +224,10 @@ class ShapeConverter(ConverterProtocol):
                 filter=svg_utils.get_funciri(filter),
             )
 
-    def create_path(self, layer: layers.Layer) -> ET.Element | None:
+    def create_path(self, layer: layers.Layer) -> ET.Element:
         """Create a path element."""
         if not layer.has_vector_mask():
-            logger.warning("Layer has no vector mask: %s", layer.name)
-            return None
+            raise ValueError("Layer has no vector mask: %s", layer.name)
 
         path = svg_utils.create_node(
             "path",
