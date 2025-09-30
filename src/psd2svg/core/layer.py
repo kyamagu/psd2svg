@@ -62,7 +62,11 @@ class LayerConverter(ConverterProtocol):
     def _add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
         """Add child layers to the current node."""
         for layer in group:
-            if layer.has_clip_layers():
+            if (
+                layer.has_clip_layers()
+                and layer.is_visible()
+                and any(clip_layer.is_visible() for clip_layer in layer.clip_layers)
+            ):
                 with self.add_clipping_target(layer):
                     for clip_layer in layer.clip_layers:
                         self.add_layer(clip_layer)
