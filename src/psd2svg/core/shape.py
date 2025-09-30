@@ -4,9 +4,9 @@ import xml.etree.ElementTree as ET
 from typing import Iterator
 
 from psd_tools.api import adjustments, layers
-from psd_tools.api.shape import VectorMask
+from psd_tools.api.shape import VectorMask, Rectangle, RoundedRectangle, Ellipse, Line
 from psd_tools.constants import Tag
-from psd_tools.terminology import Klass
+from psd_tools.terminology import Klass, Enum
 
 from psd2svg.core import color_utils, svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -19,12 +19,75 @@ class ShapeConverter(ConverterProtocol):
 
     def add_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
         """Add a shape layer to the svg document."""
-
-        # TODO: Identify live shapes (rectangle, ellipse, line, polygon) instead of path.
-        node = self.create_path(layer)
+        node = self._create_shape(layer)
         if node is not None:
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
+        return node
+
+    def _create_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
+        if layer.has_origination():
+            if len(layer.origination) > 1:
+                logger.warning("Multiple origination shapes are not supported yet.")
+            shape = layer.origination[0]
+            if isinstance(shape, Rectangle):
+                node = svg_utils.create_node(
+                    "rect",
+                    parent=self.current,
+                    x=shape.bbox[0],
+                    y=shape.bbox[1],
+                    width=shape.bbox[2] - shape.bbox[0],
+                    height=shape.bbox[3] - shape.bbox[1],
+                    title=layer.name,
+                )
+            elif isinstance(shape, RoundedRectangle):
+                rx = (
+                    float(shape.radii[b"topRight"]) + float(shape.radii[b"bottomRight"])
+                ) / 2
+                ry = (
+                    float(shape.radii[b"topRight"]) + float(shape.radii[b"topLeft"])
+                ) / 2
+                node = svg_utils.create_node(
+                    "rect",
+                    parent=self.current,
+                    x=shape.bbox[0],
+                    y=shape.bbox[1],
+                    width=shape.bbox[2] - shape.bbox[0],
+                    height=shape.bbox[3] - shape.bbox[1],
+                    rx=rx,
+                    ry=ry,
+                    title=layer.name,
+                )
+            elif isinstance(shape, Ellipse):
+                cx = (shape.bbox[0] + shape.bbox[2]) / 2
+                cy = (shape.bbox[1] + shape.bbox[3]) / 2
+                rx = (shape.bbox[2] - shape.bbox[0]) / 2
+                ry = (shape.bbox[3] - shape.bbox[1]) / 2
+                node = svg_utils.create_node(
+                    "ellipse",
+                    parent=self.current,
+                    cx=cx,
+                    cy=cy,
+                    rx=rx,
+                    ry=ry,
+                    title=layer.name,
+                )
+            # # Line shape is not supported, as this can be an arrow and fill is not applied.
+            # elif isinstance(shape, Line):
+            #     node = svg_utils.create_node(
+            #         "line",
+            #         parent=self.current,
+            #         x1=shape.line_start[Enum.Horizontal],
+            #         y1=shape.line_start[Enum.Vertical],
+            #         x2=shape.line_end[Enum.Horizontal],
+            #         y2=shape.line_end[Enum.Vertical],
+            #         title=layer.name,
+            #     )
+            else:
+                logger.debug(f"Unsupported shape type: {type(shape)}: {shape._data}")
+                node = self.create_path(layer)
+        else:
+            node = self.create_path(layer)
         return node
 
     def add_fill(self, layer: adjustments.SolidColorFill) -> ET.Element | None:
@@ -46,9 +109,7 @@ class ShapeConverter(ConverterProtocol):
         return node
 
     @contextlib.contextmanager
-    def add_clipping_target(
-        self, layer: layers.Layer | layers.Group
-    ) -> Iterator[None]:
+    def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
         """Context manager to handle clipping target."""
         parent = self.current
         if isinstance(layer, layers.ShapeLayer):
@@ -73,37 +134,41 @@ class ShapeConverter(ConverterProtocol):
         clip_path = svg_utils.create_node(
             "clipPath", parent=self.current, id=self.auto_id("clip_")
         )
-        path = svg_utils.create_node(
-            "path",
-            parent=clip_path,
-            d=self.generate_path(layer.vector_mask),
-            title=layer.name,
-            id=self.auto_id("path_"),
-        )
 
-        # Creeate a <use> element to reference the path object for filling.
+        parent = self.current
+        self.current = clip_path
+        shape = self._create_shape(layer)
+        self.current = parent
+
+        if shape is None:
+            raise ValueError(
+                "Failed to create clipping shape for layer: %s", layer.name
+            )
+        svg_utils.set_attribute(shape, "id", self.auto_id("shape_"))
+
+        # Creeate a <use> element to reference the shape object for filling.
         use = svg_utils.create_node(
             "use",
             parent=self.current,
-            href=svg_utils.get_uri(path),
+            href=svg_utils.get_uri(shape),
         )
         self.set_fill(layer, use)
 
         # Create a group with the clipping path applied.
         group = svg_utils.create_node("g", parent=self.current)
         svg_utils.set_attribute(group, "clip-path", svg_utils.get_funciri(clip_path))
-        return group, path
+        return group, shape
 
-    def add_clip_path_stroke(self, layer: layers.ShapeLayer, path: ET.Element) -> None:
+    def add_clip_path_stroke(self, layer: layers.ShapeLayer, shape: ET.Element) -> None:
         """Add stroke to the clipping path."""
-        # Creeate a <use> element to reference the path object for stroke effect.
+        # Creeate a <use> element to reference the shape object for stroke effect.
         if not layer.has_stroke() or not layer.stroke.enabled:
             return
 
         use = svg_utils.create_node(
             "use",
             parent=self.current,
-            href=svg_utils.get_uri(path),
+            href=svg_utils.get_uri(shape),
         )
         svg_utils.set_attribute(use, "fill", "transparent")
         self.set_stroke(layer, use)

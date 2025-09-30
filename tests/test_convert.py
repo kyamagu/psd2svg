@@ -56,3 +56,26 @@ def test_clipping(psd_file: str, quality: float) -> None:
     score = compute_conversion_quality(psdimage, "MSE")
     logging.info(f"MSE for {psd_file}: {score} vs. {quality}")
     assert score < quality, f"MSE is too high: {score} vs. {quality}"
+
+
+@pytest.mark.parametrize("psd_file", [
+    "shapes/triangle-2.psd",
+    "shapes/custom-1.psd",
+    "shapes/ellipse-1.psd",
+    "shapes/ellipse-2.psd",
+    "shapes/line-1.psd",
+    "shapes/line-2.psd",
+    "shapes/polygon-1.psd",
+    "shapes/polygon-2.psd",
+    "shapes/rectangle-1.psd",
+    "shapes/rectangle-2.psd",
+    "shapes/star-1.psd",
+    "shapes/star-2.psd",
+    "shapes/triangle-1.psd",
+])
+def test_shapes(psd_file: str) -> None:
+    """Test conversion quality in the raster format."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.05, f"MSE is too high: {score}"
