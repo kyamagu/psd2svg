@@ -20,6 +20,7 @@ def cmyk2rgb(values: Sequence[float]) -> tuple[float, float, float]:
 def descriptor2hex(desc: Descriptor, fallback: str = "transparent") -> str:
     """Convert a color descriptor to an RGB hex string."""
     if desc.classID == Klass.RGBColor:
+        # TODO: Float colors?
         r = desc.get(Enum.Red, 0)
         g = desc.get(Enum.Green, 0)
         b = desc.get(Enum.Blue, 0)

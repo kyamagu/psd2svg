@@ -56,6 +56,10 @@ def create_node(
     if class_:
         node.set("class", class_)
     for key, value in kwargs.items():
+        if value is None:
+            continue
+        key = key.rstrip("_")  # allow trailing underscore for keywords
+        key = key.replace("_", "-")  # convert underscores to hyphens
         set_attribute(node, key, value)
     if text:
         node.text = safe_utf8(text)
@@ -135,7 +139,7 @@ def get_uri(node: ET.Element) -> str:
     """Get an uri string for the given node."""
     id_ = node.get("id")
     if not id_:
-        raise ValueError("Node must have an 'id' attribute to get uri.")
+        raise ValueError(f"Node must have an 'id' attribute to get uri: {node}")
     return f"#{id_}"
 
 
