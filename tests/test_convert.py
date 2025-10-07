@@ -58,24 +58,57 @@ def test_clipping(psd_file: str, quality: float) -> None:
     assert score < quality, f"MSE is too high: {score} vs. {quality}"
 
 
-@pytest.mark.parametrize("psd_file", [
-    "shapes/triangle-2.psd",
-    "shapes/custom-1.psd",
-    "shapes/ellipse-1.psd",
-    "shapes/ellipse-2.psd",
-    "shapes/line-1.psd",
-    "shapes/line-2.psd",
-    "shapes/polygon-1.psd",
-    "shapes/polygon-2.psd",
-    "shapes/rectangle-1.psd",
-    "shapes/rectangle-2.psd",
-    "shapes/star-1.psd",
-    "shapes/star-2.psd",
-    "shapes/triangle-1.psd",
-])
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "shapes/triangle-2.psd",
+        "shapes/custom-1.psd",
+        "shapes/ellipse-1.psd",
+        "shapes/ellipse-2.psd",
+        "shapes/line-1.psd",
+        "shapes/line-2.psd",
+        "shapes/polygon-1.psd",
+        "shapes/polygon-2.psd",
+        "shapes/rectangle-1.psd",
+        "shapes/rectangle-2.psd",
+        "shapes/star-1.psd",
+        "shapes/star-2.psd",
+        "shapes/triangle-1.psd",
+    ],
+)
 def test_shapes(psd_file: str) -> None:
     """Test conversion quality in the raster format."""
     psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
     score = compute_conversion_quality(psdimage, "MSE")
     logging.info(f"MSE for {psd_file}: {score}")
     assert score < 0.05, f"MSE is too high: {score}"
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "effects/color-overlay-1.psd",
+        "effects/color-overlay-2.psd",
+        pytest.param(
+            "effects/color-overlay-3.psd",
+            marks=pytest.mark.xfail(reason="Outset stroke is not supported."),
+        ),
+        "effects/color-overlay-4.psd",
+        "effects/drop-shadow-1.psd",
+        "effects/drop-shadow-2.psd",
+        "effects/drop-shadow-3.psd",
+        "effects/drop-shadow-4.psd",
+        pytest.param(
+            "effects/drop-shadow-5.psd",
+            marks=pytest.mark.xfail(reason="Morphology filter is limited."),
+        ),
+        "effects/outer-glow-1.psd",
+        "effects/outer-glow-2.psd",
+    ],
+)
+def test_effects(psd_file: str) -> None:
+    """Test conversion quality in the raster format."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.01, f"MSE is too high: {score}"

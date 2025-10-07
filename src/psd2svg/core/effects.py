@@ -1,4 +1,5 @@
 import logging
+import math
 import xml.etree.ElementTree as ET
 
 from psd_tools.api import effects, layers
@@ -28,7 +29,7 @@ class EffectConverter(ConverterProtocol):
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
-    
+
     def add_raster_color_overlay_effect(
         self, effect: effects.ColorOverlay, target: ET.Element
     ) -> ET.Element:
@@ -157,7 +158,7 @@ class EffectConverter(ConverterProtocol):
             )
         else:
             raise ValueError(f"Unsupported stroke position: {effect.position}")
-        
+
         # Fill type is always color for raster layers.
         svg_utils.create_node(
             "feFlood",
@@ -206,6 +207,88 @@ class EffectConverter(ConverterProtocol):
 
         # TODO: Check position, phase, and offset.
         if effect.position != Enum.CenteredFrame:
-            logger.warning("Only centered stroke position is supported in SVG: {effect}")
+            position = Enum(effect.position)  # For validation.
+            logger.warning(
+                f"Only centered stroke position is supported in SVG: {position.name}"
+            )
 
         return use
+
+    def apply_drop_shadow_effect(
+        self,
+        layer: layers.Layer,
+        target: ET.Element,
+        insert_before_target: bool = False,
+    ) -> None:
+        """Apply drop shadow effect to the current element."""
+        effect_list = list(layer.effects.find("dropshadow", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.DropShadow)
+            use = self.add_raster_drop_shadow_effect(effect, target)
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+            if insert_before_target:
+                # Push the target element after the <use> element.
+                self.current.remove(target)
+                self.current.append(target)
+
+    def add_raster_drop_shadow_effect(
+        self, effect: effects.DropShadow, target: ET.Element
+    ) -> ET.Element:
+        """Add a drop shadow filter to the SVG document."""
+        filter = svg_utils.create_node(
+            "filter",
+            parent=self.current,
+            id=self.auto_id("dropshadow_"),
+            x="-25%",
+            y="-25%",
+            width="150%",
+            height="150%",
+        )
+        choke = float(effect.choke)
+        size = float(effect.size)
+        svg_utils.create_node(
+            "feMorphology",
+            parent=filter,
+            operator="dilate",
+            radius=choke / 100.0 * size,
+            in_="SourceAlpha",
+        )
+        svg_utils.create_node(
+            "feGaussianBlur",
+            parent=filter,
+            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+        )
+        dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
+        svg_utils.create_node(
+            "feOffset",
+            parent=filter,
+            dx=dx,
+            dy=dy,
+            result="SHADOW",
+        )
+        svg_utils.create_node(
+            "feFlood",
+            parent=filter,
+            flood_color=color_utils.descriptor2hex(effect.color),
+            flood_opacity=effect.opacity / 100.0,
+        )
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="in",
+            in2="SHADOW",
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
+
+
+def polar_to_cartesian(angle: float, distance: float) -> tuple[float, float]:
+    """Convert the polar coordinate to dx and dy."""
+    angle_rad = angle * math.pi / 180.0
+    return -distance * math.cos(angle_rad), distance * math.sin(angle_rad)

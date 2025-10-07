@@ -1,9 +1,10 @@
 from typing import Union
 
 from psd_tools.constants import BlendMode
+from psd_tools.terminology import Enum
 
 # https://helpx.adobe.com/photoshop/using/blending-modes.html
-BLEND_MODE: dict[Union[BlendMode, str], str] = {
+BLEND_MODE: dict[Union[BlendMode, bytes], str] = {
     # Layer modes.
     BlendMode.PASS_THROUGH: "pass-through",
     BlendMode.NORMAL: "normal",
@@ -33,35 +34,32 @@ BLEND_MODE: dict[Union[BlendMode, str], str] = {
     BlendMode.SATURATION: "saturation",
     BlendMode.COLOR: "color",
     BlendMode.LUMINOSITY: "luminosity",
-    # psd-tools API modes.
-    "pass through": "normal",
-    "dissolve": "normal",
-    "darken": "darken",
-    "multiply": "multiply",
-    "color burn": "color-burn",
-    "linear burn": "plus-darker",
-    "darker color": "darken",
-    "lighten": "lighten",
-    "screen": "screen",
-    "color dodge": "color-dodge",
-    "linear dodge": "plus-lighter",
-    "lighter color": "lighten",
-    "overlay": "overlay",
-    "soft light": "soft-light",
-    "hard light": "hard-light",
-    "vivid light": "lighten",
-    "linear light": "darken",
-    "pin light": "normal",
-    "hard mix": "normal",
-    "difference": "difference",
-    "exclusion": "exclusion",
-    "subtract": "difference",
-    "divide": "difference",
-    "hue": "hue",
-    "saturation": "saturation",
-    "color": "color",
-    "luminosity": "luminosity",
     # Descriptor values.
-    "linearnormaldodge": "plus-lighter",
-    "linearnormalburn": "plus-darker",
+    Enum.Normal: "normal",
+    Enum.Dissolve: "normal",
+    Enum.Darken: "darken",
+    Enum.Multiply: "multiply",
+    Enum.ColorBurn: "color-burn",
+    b"linearBurn": "plus-darker",
+    # darker-color?
+    Enum.Lighten: "lighten",
+    Enum.Screen: "screen",
+    Enum.ColorDodge: "color-dodge",
+    b"linearDodge": "plus-lighter",
+    # lighter-color?
+    Enum.Overlay: "overlay",
+    Enum.SoftLight: "soft-light",
+    Enum.HardLight: "hard-light",
+    # vivid-light?
+    # linear-light?
+    # pin-light?
+    # hard-mix?
+    Enum.Difference: "difference",
+    Enum.Exclusion: "exclusion",
+    Enum.Subtract: "difference",
+    # divide?
+    Enum.Hue: "hue",
+    Enum.Saturation: "saturation",
+    Enum.Color: "color",
+    Enum.Luminosity: "luminosity",
 }

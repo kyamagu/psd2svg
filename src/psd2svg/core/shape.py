@@ -24,6 +24,8 @@ class ShapeConverter(ConverterProtocol):
             defs = svg_utils.create_node("defs", parent=self.current)
             with self.set_current(defs):
                 node = self._create_shape(layer, id=self.auto_id("shape_"))
+
+            self.apply_drop_shadow_effect(layer, node)
             use = self.apply_vector_fill(layer, node)
             self.apply_color_overlay_effect(layer, node)
             self.apply_vector_stroke(layer, node)
@@ -54,6 +56,7 @@ class ShapeConverter(ConverterProtocol):
                     id=self.auto_id("fill_"),
                     title=layer.name,
                 )
+            self.apply_drop_shadow_effect(layer, node)
             use = self.apply_vector_fill(layer, node)
             self.apply_color_overlay_effect(layer, node)
             return use
@@ -186,6 +189,7 @@ class ShapeConverter(ConverterProtocol):
         with self.set_current(clip_path):
             target = self._create_shape(layer, id=self.auto_id("shape_"))
 
+        self.apply_drop_shadow_effect(layer, target)
         self.apply_vector_fill(layer, target)
         self.apply_color_overlay_effect(layer, target)
 
@@ -238,11 +242,12 @@ class ShapeConverter(ConverterProtocol):
         if "id" not in target.attrib:
             target.set("id", self.auto_id("cliptarget_"))
 
+        self.apply_drop_shadow_effect(layer, target)
         # Create a <use> element to reference the target object.
-        use = svg_utils.create_node(
+        svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)
         )
-        self.apply_color_overlay_effect(layer, use)
+        self.apply_color_overlay_effect(layer, target)
 
         # Create a group with the clipping mask applied.
         group = svg_utils.create_node(
@@ -330,10 +335,6 @@ class ShapeConverter(ConverterProtocol):
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set fill attribute to the given element."""
-        if layer.name == "長方形 3":
-            logger.info(f"Debugging layer: {layer}")
-            print(layer.tagged_blocks)
-
         if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
             if Klass.Color in content_data:

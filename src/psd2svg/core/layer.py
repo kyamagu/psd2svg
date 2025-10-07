@@ -1,3 +1,4 @@
+from email.mime import image
 import logging
 from xml.etree import ElementTree as ET
 
@@ -62,6 +63,8 @@ class LayerConverter(ConverterProtocol):
         # TODO: Filter effects on groups.
         with self.set_current(group_node):
             self._add_children(group)
+        
+        self.apply_drop_shadow_effect(group, group_node, insert_before_target=True)
         self.apply_color_overlay_effect(group, group_node)
         self.apply_stroke_effect(group, group_node)
         return group_node
@@ -97,6 +100,7 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
             id=self.auto_id("image_") if layer.has_effects() else None,
         )
+        self.apply_drop_shadow_effect(layer, image, insert_before_target=True)
         self.apply_color_overlay_effect(layer, image)
         self.apply_stroke_effect(layer, image)
         return image
