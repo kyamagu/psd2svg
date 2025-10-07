@@ -26,6 +26,7 @@ class ShapeConverter(ConverterProtocol):
                 node = self._create_shape(layer, id=self.auto_id("shape_"))
 
             self.apply_drop_shadow_effect(layer, node)
+            self.apply_outer_glow_effect(layer, node)
             use = self.apply_vector_fill(layer, node)
             self.apply_color_overlay_effect(layer, node)
             self.apply_vector_stroke(layer, node)
@@ -57,6 +58,7 @@ class ShapeConverter(ConverterProtocol):
                     title=layer.name,
                 )
             self.apply_drop_shadow_effect(layer, node)
+            self.apply_outer_glow_effect(layer, node)
             use = self.apply_vector_fill(layer, node)
             self.apply_color_overlay_effect(layer, node)
             return use
@@ -190,6 +192,7 @@ class ShapeConverter(ConverterProtocol):
             target = self._create_shape(layer, id=self.auto_id("shape_"))
 
         self.apply_drop_shadow_effect(layer, target)
+        self.apply_outer_glow_effect(layer, target)
         self.apply_vector_fill(layer, target)
         self.apply_color_overlay_effect(layer, target)
 
@@ -243,6 +246,7 @@ class ShapeConverter(ConverterProtocol):
             target.set("id", self.auto_id("cliptarget_"))
 
         self.apply_drop_shadow_effect(layer, target)
+        self.apply_outer_glow_effect(layer, target)
         # Create a <use> element to reference the target object.
         svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)

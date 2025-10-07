@@ -51,23 +51,24 @@ class LayerConverter(ConverterProtocol):
             self.set_layer_attributes(layer, node)
         return node
 
-    def add_group(self, group: layers.Artboard | layers.Group) -> ET.Element:
+    def add_group(self, layer: layers.Artboard | layers.Group) -> ET.Element:
         """Add a group layer to the svg document."""
-        group_node = svg_utils.create_node(
+        node = svg_utils.create_node(
             "g",
             parent=self.current,
-            class_=group.kind,
-            title=group.name,
-            id=self.auto_id("group_") if group.has_effects() else None,
+            class_=layer.kind,
+            title=layer.name,
+            id=self.auto_id("group_") if layer.has_effects() else None,
         )
         # TODO: Filter effects on groups.
-        with self.set_current(group_node):
-            self._add_children(group)
+        with self.set_current(node):
+            self._add_children(layer)
         
-        self.apply_drop_shadow_effect(group, group_node, insert_before_target=True)
-        self.apply_color_overlay_effect(group, group_node)
-        self.apply_stroke_effect(group, group_node)
-        return group_node
+        self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
+        self.apply_outer_glow_effect(layer, node, insert_before_target=True)
+        self.apply_color_overlay_effect(layer, node)
+        self.apply_stroke_effect(layer, node)
+        return node
 
     def _add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
         """Add child layers to the current node."""
@@ -90,7 +91,7 @@ class LayerConverter(ConverterProtocol):
             return None
         self.images.append(layer.topil().convert("RGBA"))
 
-        image = svg_utils.create_node(
+        node = svg_utils.create_node(
             "image",
             parent=self.current,
             x=layer.left,
@@ -100,10 +101,11 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
             id=self.auto_id("image_") if layer.has_effects() else None,
         )
-        self.apply_drop_shadow_effect(layer, image, insert_before_target=True)
-        self.apply_color_overlay_effect(layer, image)
-        self.apply_stroke_effect(layer, image)
-        return image
+        self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
+        self.apply_outer_glow_effect(layer, node, insert_before_target=True)
+        self.apply_color_overlay_effect(layer, node)
+        self.apply_stroke_effect(layer, node)
+        return node
 
     def set_layer_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set common layer attributes to a layer node."""

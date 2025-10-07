@@ -40,6 +40,12 @@ class ConverterProtocol(Protocol):
         target: ET.Element,
         insert_before_target: bool = False,
     ) -> None: ...
+    def apply_outer_glow_effect(
+        self,
+        layer: layers.Layer,
+        target: ET.Element,
+        insert_before_target: bool = False,
+    ) -> None: ...
     def apply_color_overlay_effect(
         self, layer: layers.Layer, target: ET.Element
     ) -> None: ...

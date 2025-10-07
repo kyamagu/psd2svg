@@ -236,6 +236,9 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.DropShadow, target: ET.Element
     ) -> ET.Element:
         """Add a drop shadow filter to the SVG document."""
+        choke = float(effect.choke)
+        size = float(effect.size)
+        # TODO: Adjust the width and height based on size.
         filter = svg_utils.create_node(
             "filter",
             parent=self.current,
@@ -245,8 +248,6 @@ class EffectConverter(ConverterProtocol):
             width="150%",
             height="150%",
         )
-        choke = float(effect.choke)
-        size = float(effect.size)
         svg_utils.create_node(
             "feMorphology",
             parent=filter,
@@ -278,6 +279,74 @@ class EffectConverter(ConverterProtocol):
             parent=filter,
             operator="in",
             in2="SHADOW",
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
+
+    def apply_outer_glow_effect(
+        self,
+        layer: layers.Layer,
+        target: ET.Element,
+        insert_before_target: bool = False,
+    ) -> None:
+        """Apply outer glow effect to the current element."""
+        effect_list = list(layer.effects.find("outerglow", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.OuterGlow)
+            use = self.add_raster_outer_glow_effect(effect, target)
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+            if insert_before_target:
+                # Push the target element after the <use> element.
+                self.current.remove(target)
+                self.current.append(target)
+
+    def add_raster_outer_glow_effect(
+        self, effect: effects.OuterGlow, target: ET.Element
+    ) -> ET.Element:
+        """Add an outer glow filter to the SVG document."""
+        choke = float(effect.choke)
+        size = float(effect.size)
+        # TODO: Adjust the width and height based on size.
+        filter = svg_utils.create_node(
+            "filter",
+            parent=self.current,
+            id=self.auto_id("outerglow_"),
+            x="-25%",
+            y="-25%",
+            width="150%",
+            height="150%",
+        )
+        svg_utils.create_node(
+            "feMorphology",
+            parent=filter,
+            operator="dilate",
+            radius=choke / 100.0 * size,
+            in_="SourceAlpha",
+        )
+        # TODO: Adjust the opacity, as the rendering quality differs.
+        svg_utils.create_node(
+            "feGaussianBlur",
+            parent=filter,
+            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+            result="GLOW",
+        )
+        svg_utils.create_node(
+            "feFlood",
+            parent=filter,
+            flood_color=color_utils.descriptor2hex(effect.color),
+            flood_opacity=effect.opacity / 100.0,
+        )
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="in",
+            in2="GLOW",
         )
         use = svg_utils.create_node(
             "use",
