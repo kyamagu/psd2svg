@@ -49,7 +49,7 @@ def compare_raster_images(
 
     if isinstance(input1, Image) and isinstance(input2, Image):
         if input1.mode != input2.mode:
-            logger.info("Converting image mode: %s -> %s", input2.mode, input1.mode)
+            logger.debug("Converting image mode: %s -> %s", input2.mode, input1.mode)
             input2 = input2.convert(input1.mode)
     if isinstance(input1, Image):
         input1 = np.array(input1, dtype=np.float32) / 255.0
