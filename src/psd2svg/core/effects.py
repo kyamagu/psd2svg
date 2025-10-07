@@ -37,7 +37,7 @@ class EffectConverter(ConverterProtocol):
         SVG does not allow coloring a raster image directly, so we create a filter.
         """
         filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("filter_")
+            "filter", parent=self.current, id=self.auto_id("coloroverlay_")
         )
         svg_utils.create_node(
             "feFlood",
@@ -94,6 +94,7 @@ class EffectConverter(ConverterProtocol):
 
         SVG does not allow stroking a raster image directly, so we create a filter.
         """
+        logger.debug(f"Adding raster stroke effect: {effect}")
         filter = svg_utils.create_node(
             "filter", parent=self.current, id=self.auto_id("stroke_")
         )
@@ -204,5 +205,7 @@ class EffectConverter(ConverterProtocol):
             svg_utils.set_attribute(use, "stroke-width", float(effect.size))
 
         # TODO: Check position, phase, and offset.
+        if effect.position != Enum.CenteredFrame:
+            logger.warning("Only centered stroke position is supported in SVG: {effect}")
 
         return use
