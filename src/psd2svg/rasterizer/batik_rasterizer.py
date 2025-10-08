@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Batik-based rasterizer module.
 
@@ -18,50 +17,62 @@ Deb package:
 
 
 """
-from __future__ import absolute_import, unicode_literals
 
-from PIL import Image
 import logging
 import os
 import subprocess
-from psd2svg.utils import temporary_directory
+import tempfile
+from typing import Any, Optional
+
+from PIL import Image
+
 from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
 
 logger = logging.getLogger(__name__)
 
-BATIK_PATH = os.environ.get(
-    'BATIK_PATH', "/usr/share/java/batik-rasterizer.jar"
-)
+BATIK_PATH: str = os.environ.get("BATIK_PATH", "/usr/share/java/batik-rasterizer.jar")
+
 
 class BatikRasterizer(BaseRasterizer):
     """Batik rasterizer."""
 
-    def __init__(self, jar_path=None, **kwargs):
+    def __init__(self, jar_path: Optional[str] = None, **kwargs: Any) -> None:
         self.jar_path = jar_path if jar_path else BATIK_PATH
         assert os.path.exists(self.jar_path)
 
-    def rasterize(self, url, size=None, format="png"):
-        with temporary_directory() as d:
+    def rasterize(
+        self,
+        url: str,
+        size: Optional[tuple[int, int]] = None,
+        format: str = "png",
+        **kwargs: Any,
+    ) -> Image.Image:
+        with tempfile.TemporaryDirectory() as d:
             basename, ext = os.path.splitext(os.path.basename(url))
-            output_file = os.path.join(d, "{}.{}".format(basename, format))
+            output_file = os.path.join(d, f"{basename}.{format}")
             cmd = [
-                "java", "-Djava.awt.headless=true",
-                "-jar", self.jar_path,
-                "-bg", "0.255.255.255",
-                "-m", "image/{}".format(format),
-                "-d", d,
-                "{}".format(url),
+                "java",
+                "-Djava.awt.headless=true",
+                "-jar",
+                self.jar_path,
+                "-bg",
+                "0.255.255.255",
+                "-m",
+                f"image/{format}",
+                "-d",
+                d,
+                f"{url}",
             ]
-            if size:
-                cmd += ["-w", size[0], "-h", size[1]]
-            proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+            if size is not None:
+                cmd += ["-w", f"{size[0]}", "-h", f"{size[1]}"]
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
             try:
                 assert os.path.exists(output_file)
                 rasterized = Image.open(output_file)
             except:
-                logger.error("{}\n{}{}".format(" ".join(cmd), stdout, stderr))
+                logger.error(
+                    "{}\n{}{}".format(" ".join(cmd), stdout.decode(), stderr.decode())
+                )
                 raise
             return self.composite_background(rasterized)

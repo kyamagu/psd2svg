@@ -1,42 +1,114 @@
-from __future__ import absolute_import, unicode_literals
-
-from builtins import str
+import logging
 import os
+
+import psd_tools
 import pytest
-import io
-from glob import glob
-from psd_tools import PSDImage
-from psd2svg import psd2svg
 
-FIXTURES = [
-    p for p in glob(
-        os.path.join(os.path.dirname(__file__), 'fixtures', '*.psd'))
-    ]
+from psd2svg import Converter
+from psd2svg.eval import compute_conversion_quality
 
-@pytest.mark.parametrize('psd_file', FIXTURES)
-def test_convert(tmpdir, psd_file):
-    psd2svg(psd_file, tmpdir.dirname)
+from .conftest import ALL, TYPES, FILLS, get_fixture
 
 
-@pytest.mark.parametrize('psd_file', FIXTURES[0:1])
-def test_input_io(tmpdir, psd_file):
-    with open(psd_file, "rb") as f:
-        assert isinstance(psd2svg(f), str)
+@pytest.mark.parametrize("psd_file", ALL)
+def test_convert(tmpdir, psd_file: str) -> None:
+    """Test converting PSD files to SVG."""
+
+    input_path = get_fixture(psd_file)
+    output_path = tmpdir.dirname + "/output.svg"
+    images_path = tmpdir.dirname + "/images"
+    Converter.convert(input_path, output_path, images_path)
+    assert os.path.exists(output_path)
 
 
-@pytest.mark.parametrize('psd_file', FIXTURES[0:1])
-def test_input_psd(tmpdir, psd_file):
-    psd = PSDImage.open(psd_file)
-    psd2svg(psd)
+@pytest.mark.parametrize("psd_file", TYPES + FILLS)
+def test_quality(psd_file: str) -> None:
+    """Test conversion quality in the raster format."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.05, f"MSE is too high: {score}"
 
 
-@pytest.mark.parametrize('psd_file', FIXTURES[2:3])
-def test_input_layer(tmpdir, psd_file):
-    psd = PSDImage.open(psd_file)
-    assert psd2svg(psd[0]).startswith("<")
+@pytest.mark.parametrize(
+    "psd_file, quality",
+    [
+        pytest.param(
+            "clipping/group-with-clip-stroke-effect.psd",
+            0.02,
+            marks=pytest.mark.xfail(reason="Stroke effect is inaccurate."),
+        ),
+        pytest.param("clipping/group-with-clip-stroke.psd", 0.02),
+        pytest.param(
+            "clipping/pixel-with-clip-stroke-effect.psd",
+            0.02,
+            marks=pytest.mark.xfail(reason="Stroke effect is inaccurate."),
+        ),
+        pytest.param("clipping/shape-with-clip-stroke-effect.psd", 0.02),
+        pytest.param("clipping/shape-with-clip-stroke.psd", 0.02),
+        pytest.param("clipping/shape-with-clip2-stroke.psd", 0.02),
+        pytest.param("clipping/shape-with-invisible-clip.psd", 0.02),
+    ],
+)
+def test_clipping(psd_file: str, quality: float) -> None:
+    """Test converting PSD files with clipping masks to SVG."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score} vs. {quality}")
+    assert score < quality, f"MSE is too high: {score} vs. {quality}"
 
 
-@pytest.mark.parametrize('psd_file', FIXTURES[0:1])
-def test_output_io(tmpdir, psd_file):
-    with io.StringIO() as f:
-        assert f == psd2svg(psd_file, f)
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "shapes/triangle-2.psd",
+        "shapes/custom-1.psd",
+        "shapes/ellipse-1.psd",
+        "shapes/ellipse-2.psd",
+        "shapes/line-1.psd",
+        "shapes/line-2.psd",
+        "shapes/polygon-1.psd",
+        "shapes/polygon-2.psd",
+        "shapes/rectangle-1.psd",
+        "shapes/rectangle-2.psd",
+        "shapes/star-1.psd",
+        "shapes/star-2.psd",
+        "shapes/triangle-1.psd",
+    ],
+)
+def test_shapes(psd_file: str) -> None:
+    """Test conversion quality in the raster format."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.05, f"MSE is too high: {score}"
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "effects/color-overlay-1.psd",
+        "effects/color-overlay-2.psd",
+        pytest.param(
+            "effects/color-overlay-3.psd",
+            marks=pytest.mark.xfail(reason="Outset stroke is not supported."),
+        ),
+        "effects/color-overlay-4.psd",
+        "effects/drop-shadow-1.psd",
+        "effects/drop-shadow-2.psd",
+        "effects/drop-shadow-3.psd",
+        "effects/drop-shadow-4.psd",
+        pytest.param(
+            "effects/drop-shadow-5.psd",
+            marks=pytest.mark.xfail(reason="Morphology filter is limited."),
+        ),
+        "effects/outer-glow-1.psd",
+        "effects/outer-glow-2.psd",
+    ],
+)
+def test_effects(psd_file: str) -> None:
+    """Test conversion quality in the raster format."""
+    psdimage = psd_tools.PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.01, f"MSE is too high: {score}"

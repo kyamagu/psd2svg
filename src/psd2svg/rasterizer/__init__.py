@@ -1,11 +1,18 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 from importlib import import_module
+from typing import Any
+
+from .base_rasterizer import BaseRasterizer
 
 
-def create_rasterizer(name="chromium", *args, **kwargs):
-    module_name = "psd2svg.rasterizer.{}_rasterizer".format(name.lower())
-    class_name = "{}Rasterizer".format(name.capitalize())
-    cls = getattr(import_module(module_name), class_name)
-    assert cls is not None, "Invalid class name: {}".format(class_name)
+def create_rasterizer(
+    name: str = "resvg", *args: Any, **kwargs: Any
+) -> BaseRasterizer:
+    module_name = f"psd2svg.rasterizer.{name.lower()}_rasterizer"
+    try:
+        module = import_module(module_name)
+        cls = getattr(module, f"{name.capitalize()}Rasterizer")
+    except (ImportError, AttributeError):
+        raise RuntimeError(f"Invalid rasterizer name: {name}")
+    if cls is None:
+        raise RuntimeError(f"Invalid class name: {name}")
     return cls(*args, **kwargs)
