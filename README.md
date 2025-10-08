@@ -1,6 +1,6 @@
 # PSD2SVG
 
-PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools) and [svgwrite](https://github.com/mozman/svgwrite).
+PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools).
 
 [![PyPI Version](https://img.shields.io/pypi/v/psd2svg.svg)](https://pypi.python.org/pypi/psd2svg)
 
@@ -12,7 +12,7 @@ Use `pip` to install:
 pip install psd2svg
 ```
 
-## Usage
+## Usage (v0.2.0)
 
 The package comes with a command-line tool:
 
@@ -43,7 +43,7 @@ psd2svg input.psd svg/ --resource-path=../png/
 # => svg/input.svg, png/xxx1.png, ...
 ```
 
-## API
+## API (v0.2.0)
 
 The package contains high-level conversion function `psd2svg`:
 

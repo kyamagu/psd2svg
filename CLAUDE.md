@@ -24,33 +24,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The package follows a modular converter architecture with multiple inheritance:
 
 - **Main Converter (`Converter` class)**: Inherits from multiple converter mixins:
-  - `AdjustmentsConverter` - Handles adjustment layers
-  - `EffectsConverter` - Processes layer effects
+  - `AdjustmentConverter` - Handles adjustment layers
+  - `EffectConverter` - Processes layer effects
   - `LayerConverter` - Core layer conversion logic
-  - `PSDReader` - Handles input from various sources (files, URLs, streams)
   - `ShapeConverter` - Converts vector shapes
-  - `SVGWriter` - Handles SVG output generation
-  - `TextConverter` - Processes text layers
+  - `TypeConverter` - Processes typographic layers
 
 ### Key Components
 
-**Converter Pipeline** (`src/psd2svg/converter/`):
-- `core.py` - Main layer conversion logic, handles different layer types
-- `io.py` - Input/output handling for files, URLs, and storage backends
-- `shape.py` - Vector shape processing
-- `text.py` - Text layer rendering
-- `effects.py` - Layer effects and blending modes
-- `adjustments.py` - Color adjustments (mostly unimplemented)
+**Core** (`src/psd2svg/core/`): Core converter implementations.
 
 **Rasterizers** (`src/psd2svg/rasterizer/`):
 - `base_rasterizer.py` - Abstract base class
+- `resvg_rasterizer.py` - Resvg-based renderer
 - `chromium_rasterizer.py` - Chrome/Chromium-based rendering
 - `batik_rasterizer.py` - Apache Batik renderer  
 - `inkscape_rasterizer.py` - Inkscape-based rendering
 
+**Deprecated** (`src/psd2svg/deprecated`): Old implementation that depends on `svgwrite`.
+
 ### Dependencies
-- `psd-tools>=1.10.0` - PSD file parsing
-- `svgwrite` - SVG generation
+- `psd-tools>=1.10.13` - PSD file parsing
 - `pillow` - Image processing
 - `numpy` - Numerical operations
 
