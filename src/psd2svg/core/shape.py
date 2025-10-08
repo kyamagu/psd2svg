@@ -26,7 +26,7 @@ class ShapeConverter(ConverterProtocol):
                 node = self.create_shape(
                     layer,
                     title=layer.name,
-                    id=self.auto_id("shape_"),
+                    id=self.auto_id("shape"),
                 )
             self.apply_drop_shadow_effect(layer, node)
             self.apply_outer_glow_effect(layer, node)
@@ -63,7 +63,7 @@ class ShapeConverter(ConverterProtocol):
                     y=viewbox[1],
                     width=viewbox[2] - viewbox[0],
                     height=viewbox[3] - viewbox[1],
-                    id=self.auto_id("fill_"),
+                    id=self.auto_id("fill"),
                     title=layer.name,
                 )
             self.apply_drop_shadow_effect(layer, node)
@@ -276,11 +276,11 @@ class ShapeConverter(ConverterProtocol):
 
         # Create a clipping path definition.
         clip_path = svg_utils.create_node(
-            "clipPath", parent=self.current, id=self.auto_id("clip_")
+            "clipPath", parent=self.current, id=self.auto_id("clip")
         )
         with self.set_current(clip_path):
             target = self.create_shape(
-                layer, title=layer.name, id=self.auto_id("shape_")
+                layer, title=layer.name, id=self.auto_id("shape")
             )
 
         self.apply_drop_shadow_effect(layer, target)
@@ -332,7 +332,7 @@ class ShapeConverter(ConverterProtocol):
 
         # Create a clipping mask definition.
         mask = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask_"), mask_type="alpha"
+            "mask", parent=self.current, id=self.auto_id("mask"), mask_type="alpha"
         )
         with self.set_current(mask):
             target = self.add_layer(layer)
@@ -342,7 +342,7 @@ class ShapeConverter(ConverterProtocol):
                 "Failed to create clipping target for layer: %s", layer.name
             )
         if "id" not in target.attrib:
-            target.set("id", self.auto_id("cliptarget_"))
+            target.set("id", self.auto_id("cliptarget"))
 
         self.apply_drop_shadow_effect(layer, target)
         self.apply_outer_glow_effect(layer, target)

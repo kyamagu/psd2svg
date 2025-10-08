@@ -8,6 +8,7 @@ from psd_tools.constants import BlendMode
 from psd2svg.core import svg_utils
 from psd2svg.core.base import ConverterProtocol
 from psd2svg.core.constants import BLEND_MODE
+from psd2svg.core.counter import AutoCounter
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,13 @@ logger = logging.getLogger(__name__)
 class LayerConverter(ConverterProtocol):
     """Main layer converter mixin."""
 
-    _id_counter = 0
+    _id_counter: AutoCounter | None = None
 
     def auto_id(self, prefix: str = "") -> str:
         """Generate a unique ID for SVG elements."""
-        self._id_counter += 1
-        return f"{prefix}{self._id_counter:g}"
+        if self._id_counter is None:
+            self._id_counter = AutoCounter()
+        return self._id_counter.get_id(prefix)
 
     def add_layer(self, layer: layers.Layer) -> ET.Element | None:
         """Add a layer to the svg document."""
@@ -50,7 +52,7 @@ class LayerConverter(ConverterProtocol):
             parent=self.current,
             class_=layer.kind,
             title=layer.name,
-            id=self.auto_id("group_") if layer.has_effects() else None,
+            id=self.auto_id("group") if layer.has_effects() else None,
         )
         with self.set_current(node):
             self.add_children(layer)
@@ -94,7 +96,7 @@ class LayerConverter(ConverterProtocol):
             width=layer.width,
             height=layer.height,
             title=layer.name,
-            id=self.auto_id("image_") if layer.has_effects() else None,
+            id=self.auto_id("image") if layer.has_effects() else None,
         )
         self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
         self.apply_outer_glow_effect(layer, node, insert_before_target=True)
@@ -160,7 +162,7 @@ class LayerConverter(ConverterProtocol):
 
         # Create the mask node.
         node = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask_")
+            "mask", parent=self.current, id=self.auto_id("mask")
         )
         # TODO: Check layer mask attributes.
         # svg_utils.set_attribute(node, "color-interpolation", "sRGB")

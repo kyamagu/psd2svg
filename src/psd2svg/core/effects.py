@@ -38,7 +38,7 @@ class EffectConverter(ConverterProtocol):
         SVG does not allow coloring a raster image directly, so we create a filter.
         """
         filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("coloroverlay_")
+            "filter", parent=self.current, id=self.auto_id("coloroverlay")
         )
         svg_utils.create_node(
             "feFlood",
@@ -97,7 +97,7 @@ class EffectConverter(ConverterProtocol):
         """
         logger.debug(f"Adding raster stroke effect: {effect}")
         filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("stroke_")
+            "filter", parent=self.current, id=self.auto_id("stroke")
         )
 
         # Create stroke area using morphology and composite.
@@ -242,7 +242,7 @@ class EffectConverter(ConverterProtocol):
         filter = svg_utils.create_node(
             "filter",
             parent=self.current,
-            id=self.auto_id("dropshadow_"),
+            id=self.auto_id("dropshadow"),
             x="-25%",
             y="-25%",
             width="150%",
@@ -316,7 +316,7 @@ class EffectConverter(ConverterProtocol):
         filter = svg_utils.create_node(
             "filter",
             parent=self.current,
-            id=self.auto_id("outerglow_"),
+            id=self.auto_id("outerglow"),
         )
         # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
         svg_utils.create_node(
