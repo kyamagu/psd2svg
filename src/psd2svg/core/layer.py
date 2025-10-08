@@ -1,4 +1,3 @@
-from email.mime import image
 import logging
 from xml.etree import ElementTree as ET
 
@@ -31,10 +30,6 @@ class LayerConverter(ConverterProtocol):
             return None
         logger.debug(f"Adding layer: '{layer.name}' ({layer.kind})")
 
-        if layer.has_effects():
-            logger.debug(f"Layer '{layer.name}' has effects: {layer.effects}")
-            # TODO: Handle effects for raster layers.
-
         # Simple registry-based dispatch.
         registry = {
             # TODO: Support more layer types here.
@@ -46,10 +41,7 @@ class LayerConverter(ConverterProtocol):
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
-        node = layer_fn(layer)
-        if node is not None:
-            self.set_layer_attributes(layer, node)
-        return node
+        return layer_fn(layer)
 
     def add_group(self, layer: layers.Artboard | layers.Group) -> ET.Element:
         """Add a group layer to the svg document."""
@@ -60,17 +52,21 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
             id=self.auto_id("group_") if layer.has_effects() else None,
         )
-        # TODO: Filter effects on groups.
         with self.set_current(node):
-            self._add_children(layer)
+            self.add_children(layer)
         
         self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
         self.apply_outer_glow_effect(layer, node, insert_before_target=True)
         self.apply_color_overlay_effect(layer, node)
+        self.apply_inner_shadow_effect(layer, node)
+        self.apply_inner_glow_effect(layer, node)
+        self.apply_satin_effect(layer, node)
+        self.apply_bevel_emboss_effect(layer, node)
         self.apply_stroke_effect(layer, node)
+        self.set_layer_attributes(layer, node)
         return node
 
-    def _add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
+    def add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
         """Add child layers to the current node."""
         for layer in group:
             if layer.clipping or not layer.is_visible():
@@ -90,7 +86,6 @@ class LayerConverter(ConverterProtocol):
             logger.debug(f"Layer '{layer.name}' has no pixels.")
             return None
         self.images.append(layer.topil().convert("RGBA"))
-
         node = svg_utils.create_node(
             "image",
             parent=self.current,
@@ -104,7 +99,12 @@ class LayerConverter(ConverterProtocol):
         self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
         self.apply_outer_glow_effect(layer, node, insert_before_target=True)
         self.apply_color_overlay_effect(layer, node)
+        self.apply_inner_shadow_effect(layer, node)
+        self.apply_inner_glow_effect(layer, node)
+        self.apply_satin_effect(layer, node)
+        self.apply_bevel_emboss_effect(layer, node)
         self.apply_stroke_effect(layer, node)
+        self.set_layer_attributes(layer, node)
         return node
 
     def set_layer_attributes(self, layer: layers.Layer, node: ET.Element) -> None:

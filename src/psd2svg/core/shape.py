@@ -23,21 +23,30 @@ class ShapeConverter(ConverterProtocol):
             # We need to split the shape definition and effects.
             defs = svg_utils.create_node("defs", parent=self.current)
             with self.set_current(defs):
-                node = self._create_shape(layer, id=self.auto_id("shape_"))
-
+                node = self.create_shape(
+                    layer,
+                    title=layer.name,
+                    id=self.auto_id("shape_"),
+                )
             self.apply_drop_shadow_effect(layer, node)
             self.apply_outer_glow_effect(layer, node)
-            use = self.apply_vector_fill(layer, node)
+            use = self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_color_overlay_effect(layer, node)
+            self.apply_gradient_overlay_effect(layer, node)
+            self.apply_pattern_overlay_effect(layer, node)
+            self.apply_inner_shadow_effect(layer, node)
+            self.apply_inner_glow_effect(layer, node)
+            self.apply_satin_effect(layer, node)
+            self.apply_bevel_emboss_effect(layer, node)
             self.apply_vector_stroke(layer, node)
             self.apply_stroke_effect(layer, node)
-            # NOTE: Prevent set_layer_attributes from overriding these.
-            return use
+            self.set_layer_attributes(layer, use)
         else:
-            node = self._create_shape(layer)
+            node = self.create_shape(layer, title=layer.name)
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
-            return node
+            self.set_layer_attributes(layer, node)
+        return node
 
     def add_fill(self, layer: adjustments.SolidColorFill) -> ET.Element | None:
         """Add fill node to the given element."""
@@ -59,8 +68,17 @@ class ShapeConverter(ConverterProtocol):
                 )
             self.apply_drop_shadow_effect(layer, node)
             self.apply_outer_glow_effect(layer, node)
-            use = self.apply_vector_fill(layer, node)
+            use = self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_color_overlay_effect(layer, node)
+            self.apply_gradient_overlay_effect(layer, node)
+            self.apply_pattern_overlay_effect(layer, node)
+            self.apply_inner_shadow_effect(layer, node)
+            self.apply_inner_glow_effect(layer, node)
+            self.apply_satin_effect(layer, node)
+            self.apply_bevel_emboss_effect(layer, node)
+            self.apply_vector_stroke(layer, node)
+            self.apply_stroke_effect(layer, node)
+            self.set_layer_attributes(layer, use)
             return use
         else:
             node = svg_utils.create_node(
@@ -73,24 +91,25 @@ class ShapeConverter(ConverterProtocol):
                 title=layer.name,
             )
             self.set_fill(layer, node)
-            return node
+            self.set_layer_attributes(layer, node)
+        return node
 
-    def _create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
+    def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
         if layer.has_origination():
             if len(layer.origination) > 1:
                 logger.warning("Multiple origination shapes are not supported yet.")
             origination = layer.origination[0]
             if isinstance(origination, Rectangle):
                 node = self.create_origination_rectangle(
-                    origination, title=layer.name, **attrib
+                    origination, **attrib
                 )
             elif isinstance(origination, RoundedRectangle):
                 node = self.create_origination_rounded_rectangle(
-                    origination, title=layer.name, **attrib
+                    origination, **attrib
                 )
             elif isinstance(origination, Ellipse):
                 node = self.create_origination_ellipse(
-                    origination, title=layer.name, **attrib
+                    origination, **attrib
                 )
             # # Line shape is not supported, as this can be an arrow. <line> or <marker>.
             # elif isinstance(shape, Line):
@@ -101,7 +120,6 @@ class ShapeConverter(ConverterProtocol):
             #         y1=shape.line_start[Enum.Vertical],
             #         x2=shape.line_end[Enum.Horizontal],
             #         y2=shape.line_end[Enum.Vertical],
-            #         title=layer.name,
             #     )
             else:
                 logger.debug(
@@ -166,102 +184,6 @@ class ShapeConverter(ConverterProtocol):
             **attrib,
         )
 
-    @contextlib.contextmanager
-    def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
-        """Context manager to handle clipping target."""
-        if isinstance(layer, layers.ShapeLayer):
-            with self.add_clip_path(layer):
-                yield
-        else:
-            with self.add_clip_mask(layer):
-                yield
-
-    @contextlib.contextmanager
-    def add_clip_path(self, layer: layers.ShapeLayer) -> Iterator[None]:
-        """Add a clipping path and associated elements."""
-
-        # TODO: Support live shapes (layer origination).
-        if not layer.has_vector_mask():
-            raise ValueError("Layer has no vector mask: %s", layer.name)
-
-        # Create a clipping path definition.
-        clip_path = svg_utils.create_node(
-            "clipPath", parent=self.current, id=self.auto_id("clip_")
-        )
-        with self.set_current(clip_path):
-            target = self._create_shape(layer, id=self.auto_id("shape_"))
-
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
-        self.apply_vector_fill(layer, target)
-        self.apply_color_overlay_effect(layer, target)
-
-        # Create a group with the clipping path applied.
-        group = svg_utils.create_node(
-            "g", parent=self.current, clip_path=svg_utils.get_funciri(clip_path)
-        )
-        with self.set_current(group):
-            yield  # Yield to the context block.
-
-        # TODO: Inner filter effects on clipping path.
-        self.apply_vector_stroke(layer, target)
-        self.apply_stroke_effect(layer, target)
-
-    def apply_vector_fill(self, layer: layers.Layer, target: ET.Element) -> ET.Element:
-        """Apply fill effects to the target element."""
-        # TODO: Check if the layer has fill.
-        use = svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target)
-        )
-        self.set_fill(layer, use)
-        return use
-
-    def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
-        """Apply stroke effects to the target element."""
-        if layer.has_stroke() and layer.stroke.enabled:
-            use = svg_utils.create_node(
-                "use",
-                parent=self.current,
-                href=svg_utils.get_uri(target),
-                fill="transparent",
-            )
-            self.set_stroke(layer, use)
-
-    @contextlib.contextmanager
-    def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
-        """Add a clipping mask and associated elements."""
-
-        # Create a clipping mask definition.
-        mask = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask_"), mask_type="alpha"
-        )
-        with self.set_current(mask):
-            target = self.add_layer(layer)  # TODO: Check attributes for later <use>.
-
-        if target is None:
-            raise ValueError(
-                "Failed to create clipping target for layer: %s", layer.name
-            )
-        if "id" not in target.attrib:
-            target.set("id", self.auto_id("cliptarget_"))
-
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
-        # Create a <use> element to reference the target object.
-        svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target)
-        )
-        self.apply_color_overlay_effect(layer, target)
-
-        # Create a group with the clipping mask applied.
-        group = svg_utils.create_node(
-            "g", parent=self.current, mask=svg_utils.get_funciri(mask)
-        )
-        with self.set_current(group):
-            yield  # Yield to the context block.
-
-        self.apply_stroke_effect(layer, target)
-
     def create_path(self, layer: layers.Layer, **attrib) -> ET.Element:
         """Create a path element."""
         if not layer.has_vector_mask():
@@ -271,7 +193,6 @@ class ShapeConverter(ConverterProtocol):
             "path",
             parent=self.current,
             d=self.generate_path(layer.vector_mask),
-            title=layer.name,
             **attrib,
         )
         if layer.vector_mask.initial_fill_rule:
@@ -336,6 +257,116 @@ class ShapeConverter(ConverterProtocol):
                     yield "Z"
 
         return " ".join(str(x) for x in _do_generate())
+
+    @contextlib.contextmanager
+    def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
+        """Context manager to handle clipping target."""
+        if isinstance(layer, layers.ShapeLayer):
+            with self.add_clip_path(layer):
+                yield
+        else:
+            with self.add_clip_mask(layer):
+                yield
+
+    @contextlib.contextmanager
+    def add_clip_path(self, layer: layers.ShapeLayer) -> Iterator[None]:
+        """Add a clipping path and associated elements."""
+        if not layer.has_vector_mask():
+            raise ValueError("Layer has no vector mask: %s", layer.name)
+
+        # Create a clipping path definition.
+        clip_path = svg_utils.create_node(
+            "clipPath", parent=self.current, id=self.auto_id("clip_")
+        )
+        with self.set_current(clip_path):
+            target = self.create_shape(
+                layer, title=layer.name, id=self.auto_id("shape_")
+            )
+
+        self.apply_drop_shadow_effect(layer, target)
+        self.apply_outer_glow_effect(layer, target)
+        use = self.apply_vector_fill(layer, target)  # main filled shape.
+        self.apply_color_overlay_effect(layer, target)
+        self.apply_gradient_overlay_effect(layer, target)
+        self.apply_pattern_overlay_effect(layer, target)
+        self.apply_inner_shadow_effect(layer, target)
+        self.apply_inner_glow_effect(layer, target)
+        self.apply_satin_effect(layer, target)
+        self.apply_bevel_emboss_effect(layer, target)
+
+        # Create a group with the clipping path applied.
+        group = svg_utils.create_node(
+            "g", parent=self.current, clip_path=svg_utils.get_funciri(clip_path)
+        )
+        with self.set_current(group):
+            yield  # Yield to the context block.
+
+        # TODO: Inner filter effects on clipping path.
+        self.apply_vector_stroke(layer, target)
+        self.apply_stroke_effect(layer, target)
+        self.set_layer_attributes(layer, use)
+
+    def apply_vector_fill(self, layer: layers.Layer, target: ET.Element) -> ET.Element:
+        """Apply fill effects to the target element."""
+        # TODO: Check if the layer has fill.
+        use = svg_utils.create_node(
+            "use", parent=self.current, href=svg_utils.get_uri(target)
+        )
+        self.set_fill(layer, use)
+        return use
+
+    def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
+        """Apply stroke effects to the target element."""
+        if layer.has_stroke() and layer.stroke.enabled:
+            use = svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(target),
+                fill="transparent",
+            )
+            self.set_stroke(layer, use)
+
+    @contextlib.contextmanager
+    def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
+        """Add a clipping mask and associated elements."""
+
+        # Create a clipping mask definition.
+        mask = svg_utils.create_node(
+            "mask", parent=self.current, id=self.auto_id("mask_"), mask_type="alpha"
+        )
+        with self.set_current(mask):
+            target = self.add_layer(layer)
+
+        if target is None:
+            raise ValueError(
+                "Failed to create clipping target for layer: %s", layer.name
+            )
+        if "id" not in target.attrib:
+            target.set("id", self.auto_id("cliptarget_"))
+
+        self.apply_drop_shadow_effect(layer, target)
+        self.apply_outer_glow_effect(layer, target)
+        # Create a <use> element to reference the target object.
+        use = svg_utils.create_node(
+            "use", parent=self.current, href=svg_utils.get_uri(target)
+        )
+        self.apply_color_overlay_effect(layer, target)
+        self.apply_gradient_overlay_effect(layer, target)
+        self.apply_pattern_overlay_effect(layer, target)
+        self.apply_inner_shadow_effect(layer, target)
+        self.apply_inner_glow_effect(layer, target)
+        self.apply_satin_effect(layer, target)
+        self.apply_bevel_emboss_effect(layer, target)
+
+        # Create a group with the clipping mask applied.
+        group = svg_utils.create_node(
+            "g", parent=self.current, mask=svg_utils.get_funciri(mask)
+        )
+        with self.set_current(group):
+            yield  # Yield to the context block.
+
+        self.apply_stroke_effect(layer, target)
+        self.set_layer_attributes(layer, use)
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set fill attribute to the given element."""

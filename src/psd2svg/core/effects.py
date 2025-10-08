@@ -317,23 +317,19 @@ class EffectConverter(ConverterProtocol):
             "filter",
             parent=self.current,
             id=self.auto_id("outerglow_"),
-            x="-25%",
-            y="-25%",
-            width="150%",
-            height="150%",
         )
+        # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
         svg_utils.create_node(
             "feMorphology",
             parent=filter,
             operator="dilate",
-            radius=choke / 100.0 * size,
+            radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
             in_="SourceAlpha",
         )
-        # TODO: Adjust the opacity, as the rendering quality differs.
         svg_utils.create_node(
             "feGaussianBlur",
             parent=filter,
-            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+            stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
             result="GLOW",
         )
         svg_utils.create_node(
@@ -355,6 +351,54 @@ class EffectConverter(ConverterProtocol):
             filter=svg_utils.get_funciri(filter),
         )
         return use
+
+    def apply_gradient_overlay_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("gradientoverlay", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.GradientOverlay)
+            logger.warning("Gradient overlay effect is not supported yet.")
+
+    def apply_pattern_overlay_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("patternoverlay", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.PatternOverlay)
+            logger.warning("Pattern overlay effect is not supported yet.")
+
+    def apply_inner_shadow_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("innershadow", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.InnerShadow)
+            logger.warning("Inner shadow effect is not supported yet.")
+
+    def apply_inner_glow_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("innerglow", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.InnerGlow)
+            logger.warning("Inner glow effect is not supported yet.")
+
+    def apply_satin_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("satin", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.Satin)
+            logger.warning("Satin effect is not supported yet.")
+
+    def apply_bevel_emboss_effect(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        effect_list = list(layer.effects.find("bevelemboss", enabled=True))
+        for effect in reversed(effect_list):
+            assert isinstance(effect, effects.BevelEmboss)
+            logger.warning("Bevel emboss effect is not supported yet.")
 
 
 def polar_to_cartesian(angle: float, distance: float) -> tuple[float, float]:

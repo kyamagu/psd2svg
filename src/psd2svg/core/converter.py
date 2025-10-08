@@ -76,7 +76,7 @@ class Converter(
             self.images.append(self.psd.composite())
             return
 
-        self._add_children(self.psd)
+        self.add_children(self.psd)
 
     def embed_images(self) -> None:
         """Embed images as base64 data URIs."""
