@@ -20,10 +20,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
+### Public API
+- **`SVGDocument`**: Main class for working with SVG documents and their resources
+- **`convert()`**: Convenience function for simple PSD to SVG conversions
+
 ### Core Structure
 The package follows a modular converter architecture with multiple inheritance:
 
-- **Main Converter (`Converter` class)**: Inherits from multiple converter mixins:
+- **Internal Converter (`Converter` class)**: Inherits from multiple converter mixins:
   - `AdjustmentConverter` - Handles adjustment layers
   - `EffectConverter` - Processes layer effects
   - `LayerConverter` - Core layer conversion logic
@@ -32,16 +36,19 @@ The package follows a modular converter architecture with multiple inheritance:
 
 ### Key Components
 
-**Core** (`src/psd2svg/core/`): Core converter implementations.
+**Core** (`src/psd2svg/core/`): Core converter implementations (internal).
+
+**Public Modules** (`src/psd2svg/`):
+- `svg_document.py` - SVGDocument class and convert() function
+- `svg_utils.py` - SVG manipulation utilities
+- `image_utils.py` - Image encoding/decoding utilities
 
 **Rasterizers** (`src/psd2svg/rasterizer/`):
 - `base_rasterizer.py` - Abstract base class
-- `resvg_rasterizer.py` - Resvg-based renderer
+- `resvg_rasterizer.py` - Resvg-based renderer (recommended)
 - `chromium_rasterizer.py` - Chrome/Chromium-based rendering
-- `batik_rasterizer.py` - Apache Batik renderer  
+- `batik_rasterizer.py` - Apache Batik renderer
 - `inkscape_rasterizer.py` - Inkscape-based rendering
-
-**Deprecated** (`src/psd2svg/deprecated`): Old implementation that depends on `svgwrite`.
 
 ### Dependencies
 - `psd-tools>=1.10.13` - PSD file parsing

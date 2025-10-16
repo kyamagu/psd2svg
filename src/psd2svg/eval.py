@@ -1,34 +1,17 @@
 import logging
 
 import numpy as np
-import psd_tools
+from psd_tools import PSDImage
 from PIL.Image import Image
 
-from psd2svg.core.converter import Converter
-from psd2svg.rasterizer import create_rasterizer
+from psd2svg import SVGDocument
 
 logger = logging.getLogger(__name__)
 
 
-def compute_conversion_quality(psdimage: psd_tools.PSDImage, metric: str) -> float:
+def compute_conversion_quality(psdimage: PSDImage, metric: str) -> float:
     """Test conversion quality in the raster format."""
-
-    # Convert PSD to SVG.
-    converter = Converter(psdimage)
-    converter.build()
-    converter.embed_images()
-    svg = converter.export()
-
-    # Check quality.
-    return compute_raster_quality(psdimage, svg, metric)
-
-
-def compute_raster_quality(psdimage: psd_tools.PSDImage, svg: str, metric: str) -> float:
-    """Test conversion quality in the raster format."""
-
-    # Rasterize SVG and compare with original PSD.
-    rasterizer = create_rasterizer()
-    rasterized = rasterizer.rasterize_from_string(svg)
+    rasterized = SVGDocument.from_psd(psdimage).rasterize()
     original = psdimage.composite()
     if original.mode != "RGBA":
         original = original.convert("RGBA")

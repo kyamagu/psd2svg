@@ -8,8 +8,9 @@ from psd_tools.api.shape import VectorMask, Rectangle, RoundedRectangle, Ellipse
 from psd_tools.constants import Tag
 from psd_tools.terminology import Klass
 
-from psd2svg.core import color_utils, svg_utils
+from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
+from psd2svg import svg_utils
 
 logger = logging.getLogger(__name__)
 

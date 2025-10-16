@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from psd2svg import Converter
+from psd2svg import convert
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,7 +38,7 @@ def main() -> None:
     """Main function to convert PSD to SVG or raster image."""
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(), "WARNING"))
-    Converter.convert(args.input, args.output, args.images_path)
+    convert(args.input, args.output, args.images_path)
 
 
 if __name__ == "__main__":

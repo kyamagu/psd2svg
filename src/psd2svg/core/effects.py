@@ -5,8 +5,9 @@ import xml.etree.ElementTree as ET
 from psd_tools.api import effects, layers
 from psd_tools.terminology import Enum
 
-from psd2svg.core import svg_utils, color_utils
+from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
+from psd2svg import svg_utils
 
 logger = logging.getLogger(__name__)
 

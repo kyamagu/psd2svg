@@ -5,7 +5,7 @@ from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
 from psd_tools.constants import BlendMode
 
-from psd2svg.core import svg_utils
+from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 from psd2svg.core.constants import BLEND_MODE
 from psd2svg.core.counter import AutoCounter
