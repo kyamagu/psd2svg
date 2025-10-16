@@ -35,29 +35,30 @@ BLEND_MODE: dict[Union[BlendMode, bytes], str] = {
     BlendMode.COLOR: "color",
     BlendMode.LUMINOSITY: "luminosity",
     # Descriptor values.
+    # TODO: Check bytes values.
     Enum.Normal: "normal",
     Enum.Dissolve: "normal",
     Enum.Darken: "darken",
     Enum.Multiply: "multiply",
     Enum.ColorBurn: "color-burn",
     b"linearBurn": "plus-darker",
-    # darker-color?
+    b"darkerColor": "darken",
     Enum.Lighten: "lighten",
     Enum.Screen: "screen",
     Enum.ColorDodge: "color-dodge",
     b"linearDodge": "plus-lighter",
-    # lighter-color?
+    b"lighterColor": "lighten",
     Enum.Overlay: "overlay",
     Enum.SoftLight: "soft-light",
     Enum.HardLight: "hard-light",
-    # vivid-light?
-    # linear-light?
-    # pin-light?
-    # hard-mix?
+    b'vividLight': "lighten",
+    b'linearLight': "darken",
+    b'pinLight': "normal",
+    b'hardMix': "normal",
     Enum.Difference: "difference",
     Enum.Exclusion: "exclusion",
     Enum.Subtract: "difference",
-    # divide?
+    b"divide": "difference",
     Enum.Hue: "hue",
     Enum.Saturation: "saturation",
     Enum.Color: "color",
