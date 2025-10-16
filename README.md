@@ -43,43 +43,80 @@ psd2svg input.psd svg/ --resource-path=../png/
 # => svg/input.svg, png/xxx1.png, ...
 ```
 
-## API (v0.2.0)
+## API
 
-The package contains high-level conversion function `psd2svg`:
+### Simple conversion
+
+The package provides a simple `convert()` function for quick conversions:
 
 ```python
-from psd2svg import psd2svg
+from psd2svg import convert
 
-# File IO.
-psd2svg('path/to/input.psd', 'path/to/output/')
+# Convert PSD to SVG with embedded images
+convert('input.psd', 'output.svg')
 
-# Stream IO.
-with open('input.psd', 'rb') as fi:
-    with open('output.svg', 'w') as fo:
-        psd2svg(fi, fo)
-
-# psd_tools IO.
-from psd_tools import PSDImage
-psd = PSDImage.load('path/to/input.psd')
-svg = psd2svg(psd)
-print(svg)
-
-# Additionally, individual layers can be directly rendered.
-layer_svg = psd2svg(psd[3])
-print(layer_svg)
+# Convert PSD to SVG with external images
+convert('input.psd', 'output.svg', image_prefix='images/img_')
+# => output.svg, images/img_01.webp, images/img_02.webp, ...
 ```
 
-The package also has rasterizer module to convert SVG to PIL Image:
+### SVGDocument API
+
+For more control, use the `SVGDocument` class:
 
 ```python
+from psd_tools import PSDImage
+from psd2svg import SVGDocument
+
+# Create from PSDImage
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# Save to file with embedded images
+document.save("output.svg", embed_images=True)
+
+# Save to file with external images
+document.save("output.svg", image_prefix="images/img_", image_format="png")
+
+# Get as string
+svg_string = document.tostring(embed_images=True)
+print(svg_string)
+
+# Rasterize to PIL Image (requires resvg or other rasterizer)
+image = document.rasterize()
+image.save('output.png')
+
+# Export and load back
+exported = document.export()
+document = SVGDocument.load(exported["svg"], exported["images"])
+```
+
+### Rasterization
+
+The package includes rasterizer support to convert SVG to PIL Image:
+
+```python
+from psd2svg import SVGDocument
+
+document = SVGDocument.from_psd(psdimage)
+
+# Built-in rasterize method (uses resvg by default)
+image = document.rasterize()
+
+# Or use rasterizer directly
 from psd2svg.rasterizer import create_rasterizer
 
-rasterizer = create_rasterizer()
-image = rasterizer.rasterize(svg)
-image.save('path/to/output.png')
+rasterizer = create_rasterizer('resvg')  # or 'chromium', 'batik', 'inkscape'
+svg_string = document.tostring(embed_images=True)
+image = rasterizer.rasterize_from_string(svg_string)
+image.save('output.png')
 ```
 
-The rasterizer requires one of Selenium + ChromeDriver, Apache Batik, or Inkscape. Make sure to install them beforehand.
+Rasterizers require external dependencies:
+- `resvg`: Recommended, fast and accurate (install via `cargo install resvg`)
+- `chromium`: Requires Selenium + ChromeDriver
+- `batik`: Requires Apache Batik
+- `inkscape`: Requires Inkscape
 
 ## Test
 
