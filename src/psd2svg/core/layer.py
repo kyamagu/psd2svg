@@ -125,6 +125,9 @@ class LayerConverter(ConverterProtocol):
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
         """Set blend mode style to the node."""
+        if psd_mode not in BLEND_MODE:
+            logger.warning(f"Unsupported blend mode: {psd_mode!r}")
+            return
         blend_mode = BLEND_MODE[psd_mode]
         if blend_mode not in ("normal", "pass-through"):
             svg_utils.add_style(node, "mix-blend-mode", blend_mode)
