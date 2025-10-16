@@ -41,8 +41,6 @@ The package follows a modular converter architecture with multiple inheritance:
 - `batik_rasterizer.py` - Apache Batik renderer  
 - `inkscape_rasterizer.py` - Inkscape-based rendering
 
-**Deprecated** (`src/psd2svg/deprecated`): Old implementation that depends on `svgwrite`.
-
 ### Dependencies
 - `psd-tools>=1.10.13` - PSD file parsing
 - `pillow` - Image processing

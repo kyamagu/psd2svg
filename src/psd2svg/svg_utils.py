@@ -1,12 +1,9 @@
-import base64
 import logging
 import re
 import xml.etree.ElementTree as ET
-from io import BytesIO
 from re import Pattern
 from typing import Any, Optional
 
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -96,15 +93,6 @@ def write(node: ET.Element, file: Any, indent: str = "  ") -> None:
     tree = ET.ElementTree(node)
     ET.indent(tree, space=indent)
     tree.write(file, encoding="unicode", xml_declaration=False)
-
-
-def encode_data_uri(image: Image.Image, format: str = "PNG") -> str:
-    """Encode a PIL image as a base64 data URI."""
-
-    with BytesIO() as buffer:
-        image.save(buffer, format=format)
-        base64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return f"data:image/{format.lower()};base64,{base64_data}"
 
 
 def add_style(node: ET.Element, key: str, value: Any) -> None:

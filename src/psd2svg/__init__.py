@@ -1,3 +1,3 @@
-from psd2svg.core.converter import Converter
+from psd2svg.svg_document import SVGDocument, convert
 
-__all__ = ["Converter"]
+__all__ = ["SVGDocument", "convert"]
