@@ -5,8 +5,9 @@ from typing import Iterator
 
 from psd_tools.api import adjustments, layers
 from psd_tools.api.shape import VectorMask, Rectangle, RoundedRectangle, Ellipse
+from psd_tools.psd.descriptor import Descriptor
 from psd_tools.constants import Tag
-from psd_tools.terminology import Klass
+from psd_tools.terminology import Klass, Key, Enum, Unit
 
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
@@ -87,17 +88,11 @@ class ShapeConverter(ConverterProtocol):
                 logger.warning("Multiple origination shapes are not supported yet.")
             origination = layer.origination[0]
             if isinstance(origination, Rectangle):
-                node = self.create_origination_rectangle(
-                    origination, **attrib
-                )
+                node = self.create_origination_rectangle(origination, **attrib)
             elif isinstance(origination, RoundedRectangle):
-                node = self.create_origination_rounded_rectangle(
-                    origination, **attrib
-                )
+                node = self.create_origination_rounded_rectangle(origination, **attrib)
             elif isinstance(origination, Ellipse):
-                node = self.create_origination_ellipse(
-                    origination, **attrib
-                )
+                node = self.create_origination_ellipse(origination, **attrib)
             # # Line shape is not supported, as this can be an arrow. <line> or <marker>.
             # elif isinstance(shape, Line):
             #     node = svg_utils.create_node(
@@ -358,7 +353,9 @@ class ShapeConverter(ConverterProtocol):
             logger.warning(f"Pattern fill is not supported yet: {setting}")
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)
-            logger.warning(f"Gradient fill is not supported yet: {setting}")
+            gradient = self.add_gradient(setting)
+            if gradient is not None:
+                svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
 
@@ -404,3 +401,68 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dasharray", line_dash_set)
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
+
+    def add_gradient(self, setting: Descriptor) -> ET.Element | None:
+        """Add gradient definition to the SVG document."""
+        logger.debug(f"Adding gradient: {setting}")
+
+        if setting[Key.Type].enum != Enum.Linear:
+            logger.warning("Only linear gradient is supported yet.")
+            return None
+
+        # TODO: Support <radialGradient>.
+
+        node = svg_utils.create_node(
+            "linearGradient", parent=self.current, id=self.auto_id("gradient")
+        )
+
+        angle = setting[Key.Angle]
+        if angle.unit != Unit.Angle:
+            logger.warning(f"Unsupported angle unit: {angle.unit}")
+        if angle.value != 0:
+            rotation = -angle.value
+            svg_utils.set_attribute(
+                node,
+                "gradientTransform",
+                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+            )
+
+        # Insert color and opacity stops.
+        color_stops = {
+            int(stop[Key.Location]): stop[Key.Color]
+            for stop in setting[Key.Gradient][Key.Colors]
+        }
+        opacity_stops = {
+            int(stop[Key.Location]): stop[Key.Opacity]
+            for stop in setting[Key.Gradient][Key.Transparency]
+        }
+        stop_keys = set(color_stops.keys()) | set(opacity_stops.keys())
+        for location in sorted(stop_keys):
+            offset = location / 4096.0
+            if location not in color_stops:
+                logger.warning(f"No color stop found at location: {location}")
+                stop_color = None
+            else:
+                stop_color = color_utils.descriptor2hex(color_stops[location])
+            if location not in opacity_stops:
+                logger.warning(f"No opacity stop found at location: {location}")
+            else:
+                stop_opacity = opacity_stops[location] / 100.0
+
+            svg_utils.create_node(
+                "stop",
+                parent=node,
+                offset=f"{offset:.0%}",
+                stop_color=stop_color,
+                stop_opacity=stop_opacity,
+            )
+
+        # TODO: Midpoint support?
+        if any(
+            stop[Key.Midpoint] != 50 for stop in setting[Key.Gradient][Key.Colors]
+        ) or any(
+            stop[Key.Midpoint] != 50 for stop in setting[Key.Gradient][Key.Transparency]
+        ):
+            logger.warning("Gradient midpoint is not supported yet.")
+
+        return node

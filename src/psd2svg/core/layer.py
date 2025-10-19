@@ -38,6 +38,7 @@ class LayerConverter(ConverterProtocol):
             layers.Artboard: self.add_group,
             layers.Group: self.add_group,
             adjustments.SolidColorFill: self.add_fill,
+            adjustments.GradientFill: self.add_fill,
             layers.ShapeLayer: self.add_shape,
             # layers.TypeLayer: self.add_type,
         }
