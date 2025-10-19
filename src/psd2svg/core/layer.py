@@ -57,13 +57,8 @@ class LayerConverter(ConverterProtocol):
         with self.set_current(node):
             self.add_children(layer)
         
-        self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
-        self.apply_outer_glow_effect(layer, node, insert_before_target=True)
-        self.apply_color_overlay_effect(layer, node)
-        self.apply_inner_shadow_effect(layer, node)
-        self.apply_inner_glow_effect(layer, node)
-        self.apply_satin_effect(layer, node)
-        self.apply_bevel_emboss_effect(layer, node)
+        self.apply_background_effects(layer, node, insert_before_target=True)
+        self.apply_overlay_effects(layer, node)
         self.apply_stroke_effect(layer, node)
         self.set_layer_attributes(layer, node)
         return node
@@ -98,13 +93,8 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
             id=self.auto_id("image") if layer.has_effects() else None,
         )
-        self.apply_drop_shadow_effect(layer, node, insert_before_target=True)
-        self.apply_outer_glow_effect(layer, node, insert_before_target=True)
-        self.apply_color_overlay_effect(layer, node)
-        self.apply_inner_shadow_effect(layer, node)
-        self.apply_inner_glow_effect(layer, node)
-        self.apply_satin_effect(layer, node)
-        self.apply_bevel_emboss_effect(layer, node)
+        self.apply_background_effects(layer, node, insert_before_target=True)
+        self.apply_overlay_effects(layer, node)
         self.apply_stroke_effect(layer, node)
         self.set_layer_attributes(layer, node)
         return node

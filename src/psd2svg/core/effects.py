@@ -15,6 +15,25 @@ logger = logging.getLogger(__name__)
 class EffectConverter(ConverterProtocol):
     """Effect converter mixin."""
 
+    def apply_background_effects(
+        self, layer: layers.Layer, target: ET.Element, insert_before_target: bool = True
+    ) -> None:
+        """Apply background effects to the target element."""
+        self.apply_drop_shadow_effect(layer, target, insert_before_target=insert_before_target)
+        self.apply_outer_glow_effect(layer, target, insert_before_target=insert_before_target)
+        
+    def apply_overlay_effects(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None:
+        """Apply overlay effects to the target element."""
+        self.apply_color_overlay_effect(layer, target)
+        self.apply_gradient_overlay_effect(layer, target)
+        self.apply_pattern_overlay_effect(layer, target)
+        self.apply_inner_shadow_effect(layer, target)
+        self.apply_inner_glow_effect(layer, target)
+        self.apply_satin_effect(layer, target)
+        self.apply_bevel_emboss_effect(layer, target)
+
     def apply_color_overlay_effect(
         self, layer: layers.Layer, target: ET.Element
     ) -> None:

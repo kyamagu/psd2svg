@@ -35,6 +35,12 @@ class ConverterProtocol(Protocol):
     ) -> Iterator[None]: ...
 
     # Layer effects
+    def apply_background_effects(
+        self, layer: layers.Layer, target: ET.Element, insert_before_target: bool = True
+    ) -> None: ...
+    def apply_overlay_effects(
+        self, layer: layers.Layer, target: ET.Element
+    ) -> None: ...
     def apply_drop_shadow_effect(
         self,
         layer: layers.Layer,
@@ -62,14 +68,13 @@ class ConverterProtocol(Protocol):
     def apply_inner_glow_effect(
         self, layer: layers.Layer, target: ET.Element
     ) -> None: ...
-    def apply_satin_effect(
-        self, layer: layers.Layer, target: ET.Element
-    ) -> None: ...
+    def apply_satin_effect(self, layer: layers.Layer, target: ET.Element) -> None: ...
     def apply_bevel_emboss_effect(
         self, layer: layers.Layer, target: ET.Element
     ) -> None: ...
     def apply_stroke_effect(self, layer: layers.Layer, target: ET.Element) -> None: ...
 
+    # Utilities
     def auto_id(self, prefix: str = "") -> str: ...
 
     @contextlib.contextmanager

@@ -29,17 +29,10 @@ class ShapeConverter(ConverterProtocol):
                     title=layer.name,
                     id=self.auto_id("shape"),
                 )
-            self.apply_drop_shadow_effect(layer, node)
-            self.apply_outer_glow_effect(layer, node)
+            self.apply_background_effects(layer, node, insert_before_target=False)
             use = self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_color_overlay_effect(layer, node)
-            self.apply_gradient_overlay_effect(layer, node)
-            self.apply_pattern_overlay_effect(layer, node)
-            self.apply_inner_shadow_effect(layer, node)
-            self.apply_inner_glow_effect(layer, node)
-            self.apply_satin_effect(layer, node)
-            self.apply_bevel_emboss_effect(layer, node)
-            self.apply_vector_stroke(layer, node)
+            self.apply_overlay_effects(layer, node)
+            self.apply_vector_stroke(layer, node)  # main stroke.
             self.apply_stroke_effect(layer, node)
             self.set_layer_attributes(layer, use)
         else:
@@ -67,16 +60,9 @@ class ShapeConverter(ConverterProtocol):
                     id=self.auto_id("fill"),
                     title=layer.name,
                 )
-            self.apply_drop_shadow_effect(layer, node)
-            self.apply_outer_glow_effect(layer, node)
+            self.apply_background_effects(layer, node, insert_before_target=False)
             use = self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_color_overlay_effect(layer, node)
-            self.apply_gradient_overlay_effect(layer, node)
-            self.apply_pattern_overlay_effect(layer, node)
-            self.apply_inner_shadow_effect(layer, node)
-            self.apply_inner_glow_effect(layer, node)
-            self.apply_satin_effect(layer, node)
-            self.apply_bevel_emboss_effect(layer, node)
+            self.apply_overlay_effects(layer, node)
             self.apply_vector_stroke(layer, node)
             self.apply_stroke_effect(layer, node)
             self.set_layer_attributes(layer, use)
@@ -284,17 +270,9 @@ class ShapeConverter(ConverterProtocol):
                 layer, title=layer.name, id=self.auto_id("shape")
             )
 
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
+        self.apply_background_effects(layer, target, insert_before_target=False)
         use = self.apply_vector_fill(layer, target)  # main filled shape.
-        self.apply_color_overlay_effect(layer, target)
-        self.apply_gradient_overlay_effect(layer, target)
-        self.apply_pattern_overlay_effect(layer, target)
-        self.apply_inner_shadow_effect(layer, target)
-        self.apply_inner_glow_effect(layer, target)
-        self.apply_satin_effect(layer, target)
-        self.apply_bevel_emboss_effect(layer, target)
-
+        self.apply_overlay_effects(layer, target)
         # Create a group with the clipping path applied.
         group = svg_utils.create_node(
             "g", parent=self.current, clip_path=svg_utils.get_funciri(clip_path)
@@ -345,19 +323,12 @@ class ShapeConverter(ConverterProtocol):
         if "id" not in target.attrib:
             target.set("id", self.auto_id("cliptarget"))
 
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
+        self.apply_background_effects(layer, target, insert_before_target=False)
         # Create a <use> element to reference the target object.
         use = svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)
         )
-        self.apply_color_overlay_effect(layer, target)
-        self.apply_gradient_overlay_effect(layer, target)
-        self.apply_pattern_overlay_effect(layer, target)
-        self.apply_inner_shadow_effect(layer, target)
-        self.apply_inner_glow_effect(layer, target)
-        self.apply_satin_effect(layer, target)
-        self.apply_bevel_emboss_effect(layer, target)
+        self.apply_overlay_effects(layer, target)
 
         # Create a group with the clipping mask applied.
         group = svg_utils.create_node(
