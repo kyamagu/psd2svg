@@ -19,12 +19,14 @@ class EffectConverter(ConverterProtocol):
         self, layer: layers.Layer, target: ET.Element, insert_before_target: bool = True
     ) -> None:
         """Apply background effects to the target element."""
-        self.apply_drop_shadow_effect(layer, target, insert_before_target=insert_before_target)
-        self.apply_outer_glow_effect(layer, target, insert_before_target=insert_before_target)
-        
-    def apply_overlay_effects(
-        self, layer: layers.Layer, target: ET.Element
-    ) -> None:
+        self.apply_drop_shadow_effect(
+            layer, target, insert_before_target=insert_before_target
+        )
+        self.apply_outer_glow_effect(
+            layer, target, insert_before_target=insert_before_target
+        )
+
+    def apply_overlay_effects(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply overlay effects to the target element."""
         self.apply_color_overlay_effect(layer, target)
         self.apply_gradient_overlay_effect(layer, target)
@@ -378,7 +380,67 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("gradientoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.GradientOverlay)
-            logger.warning("Gradient overlay effect is not supported yet.")
+
+            if isinstance(layer, layers.ShapeLayer):
+                use = self.add_vector_gradient_overlay_effect(effect, target)
+            else:
+                use = self.add_raster_gradient_overlay_effect(effect, target)
+
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+
+    def add_raster_gradient_overlay_effect(
+        self, effect: effects.GradientOverlay, target: ET.Element
+    ) -> ET.Element:
+        logger.warning("Raster gradient overlay effect is not supported yet.")
+        return target
+
+    def add_vector_gradient_overlay_effect(
+        self, effect: effects.GradientOverlay, target: ET.Element
+    ) -> ET.Element:
+        assert effect.value.classID == Enum.GradientFill
+        gradient = self.add_gradient(effect.gradient)
+        if gradient is None:
+            return target
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            fill=svg_utils.get_funciri(gradient),
+        )
+        # Gradient transformations
+        if effect.reversed:
+            svg_utils.append_attribute(gradient, "gradientTransform", "scale(-1 -1)")
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", "translate(-1 -1)"
+            )
+        if effect.scale != 100.0:
+            scale = effect.scale / 100.0
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", "translate(0.5 0.5)"
+            )
+            svg_utils.append_attribute(
+                gradient,
+                "gradientTransform",
+                f"scale({scale:.0f} {scale:.0f})",
+            )
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", "translate(-0.5 -0.5)"
+            )
+        if effect.angle != 0.0:
+            rotation = -effect.angle
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", "translate(0.5 0.5)"
+            )
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", f"rotate({rotation:.0f})"
+            )
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", "translate(-0.5 -0.5)"
+            )
+        if effect.opacity != 100.0:
+            svg_utils.set_attribute(use, "opacity", effect.opacity / 100.0)
+        return use
 
     def apply_pattern_overlay_effect(
         self, layer: layers.Layer, target: ET.Element
@@ -396,17 +458,13 @@ class EffectConverter(ConverterProtocol):
             assert isinstance(effect, effects.InnerShadow)
             logger.warning("Inner shadow effect is not supported yet.")
 
-    def apply_inner_glow_effect(
-        self, layer: layers.Layer, target: ET.Element
-    ) -> None:
+    def apply_inner_glow_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         effect_list = list(layer.effects.find("innerglow", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.InnerGlow)
             logger.warning("Inner glow effect is not supported yet.")
 
-    def apply_satin_effect(
-        self, layer: layers.Layer, target: ET.Element
-    ) -> None:
+    def apply_satin_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         effect_list = list(layer.effects.find("satin", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.Satin)

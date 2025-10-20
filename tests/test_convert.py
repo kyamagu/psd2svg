@@ -94,6 +94,8 @@ def test_shapes(psd_file: str) -> None:
             marks=pytest.mark.xfail(reason="Outset stroke is not supported."),
         ),
         "effects/color-overlay-4.psd",
+        "effects/gradient-overlay-3.psd",
+        "effects/gradient-overlay-4.psd",
         "effects/drop-shadow-1.psd",
         "effects/drop-shadow-2.psd",
         "effects/drop-shadow-3.psd",

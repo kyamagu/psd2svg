@@ -352,9 +352,23 @@ class ShapeConverter(ConverterProtocol):
             setting = layer.tagged_blocks.get_data(Tag.PATTERN_FILL_SETTING)
             logger.warning(f"Pattern fill is not supported yet: {setting}")
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
+            # classID is null for gradient fill setting.
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)
-            gradient = self.add_gradient(setting)
+            if setting[Key.Type].enum != Enum.Linear:
+                logger.warning("Only linear gradient is supported yet.")
+                return
+            gradient = self.add_gradient(setting[Key.Gradient])
+            angle = setting[Key.Angle]
+            if angle.unit != Unit.Angle:
+                logger.warning(f"Unsupported angle unit: {angle.unit}")
             if gradient is not None:
+                if angle.value != 0:
+                    rotation = -angle.value
+                    svg_utils.set_attribute(
+                        gradient,
+                        "gradientTransform",
+                        f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+                    )
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
@@ -402,39 +416,22 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
 
-    def add_gradient(self, setting: Descriptor) -> ET.Element | None:
+    def add_gradient(self, gradient: Descriptor) -> ET.Element | None:
         """Add gradient definition to the SVG document."""
-        logger.debug(f"Adding gradient: {setting}")
-
-        if setting[Key.Type].enum != Enum.Linear:
-            logger.warning("Only linear gradient is supported yet.")
-            return None
-
+        logger.debug(f"Adding gradient: {gradient}")
+        assert gradient.classID == Klass.Gradient
         # TODO: Support <radialGradient>.
-
         node = svg_utils.create_node(
             "linearGradient", parent=self.current, id=self.auto_id("gradient")
         )
 
-        angle = setting[Key.Angle]
-        if angle.unit != Unit.Angle:
-            logger.warning(f"Unsupported angle unit: {angle.unit}")
-        if angle.value != 0:
-            rotation = -angle.value
-            svg_utils.set_attribute(
-                node,
-                "gradientTransform",
-                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
-            )
-
         # Insert color and opacity stops.
         color_stops = {
-            int(stop[Key.Location]): stop[Key.Color]
-            for stop in setting[Key.Gradient][Key.Colors]
+            int(stop[Key.Location]): stop[Key.Color] for stop in gradient[Key.Colors]
         }
         opacity_stops = {
             int(stop[Key.Location]): stop[Key.Opacity]
-            for stop in setting[Key.Gradient][Key.Transparency]
+            for stop in gradient[Key.Transparency]
         }
         stop_keys = set(color_stops.keys()) | set(opacity_stops.keys())
         for location in sorted(stop_keys):
@@ -442,10 +439,12 @@ class ShapeConverter(ConverterProtocol):
             if location not in color_stops:
                 logger.warning(f"No color stop found at location: {location}")
                 stop_color = None
+                # TODO: Get interpolated color
             else:
                 stop_color = color_utils.descriptor2hex(color_stops[location])
             if location not in opacity_stops:
                 logger.warning(f"No opacity stop found at location: {location}")
+                # TODO: Get interpolated opacity
             else:
                 stop_opacity = opacity_stops[location] / 100.0
 
@@ -458,11 +457,9 @@ class ShapeConverter(ConverterProtocol):
             )
 
         # TODO: Midpoint support?
-        if any(
-            stop[Key.Midpoint] != 50 for stop in setting[Key.Gradient][Key.Colors]
-        ) or any(
-            stop[Key.Midpoint] != 50 for stop in setting[Key.Gradient][Key.Transparency]
+        if any(stop[Key.Midpoint] != 50 for stop in gradient[Key.Colors]) or any(
+            stop[Key.Midpoint] != 50 for stop in gradient[Key.Transparency]
         ):
-            logger.warning("Gradient midpoint is not supported yet.")
+            logger.warning("Gradient midpoint is not supported.")
 
         return node
