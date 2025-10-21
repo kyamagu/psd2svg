@@ -5,8 +5,9 @@ from typing import Iterator
 
 from psd_tools.api import adjustments, layers
 from psd_tools.api.shape import VectorMask, Rectangle, RoundedRectangle, Ellipse
+from psd_tools.psd.descriptor import Descriptor
 from psd_tools.constants import Tag
-from psd_tools.terminology import Klass
+from psd_tools.terminology import Klass, Key, Enum, Unit
 
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
@@ -29,17 +30,10 @@ class ShapeConverter(ConverterProtocol):
                     title=layer.name,
                     id=self.auto_id("shape"),
                 )
-            self.apply_drop_shadow_effect(layer, node)
-            self.apply_outer_glow_effect(layer, node)
+            self.apply_background_effects(layer, node, insert_before_target=False)
             use = self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_color_overlay_effect(layer, node)
-            self.apply_gradient_overlay_effect(layer, node)
-            self.apply_pattern_overlay_effect(layer, node)
-            self.apply_inner_shadow_effect(layer, node)
-            self.apply_inner_glow_effect(layer, node)
-            self.apply_satin_effect(layer, node)
-            self.apply_bevel_emboss_effect(layer, node)
-            self.apply_vector_stroke(layer, node)
+            self.apply_overlay_effects(layer, node)
+            self.apply_vector_stroke(layer, node)  # main stroke.
             self.apply_stroke_effect(layer, node)
             self.set_layer_attributes(layer, use)
         else:
@@ -67,16 +61,9 @@ class ShapeConverter(ConverterProtocol):
                     id=self.auto_id("fill"),
                     title=layer.name,
                 )
-            self.apply_drop_shadow_effect(layer, node)
-            self.apply_outer_glow_effect(layer, node)
+            self.apply_background_effects(layer, node, insert_before_target=False)
             use = self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_color_overlay_effect(layer, node)
-            self.apply_gradient_overlay_effect(layer, node)
-            self.apply_pattern_overlay_effect(layer, node)
-            self.apply_inner_shadow_effect(layer, node)
-            self.apply_inner_glow_effect(layer, node)
-            self.apply_satin_effect(layer, node)
-            self.apply_bevel_emboss_effect(layer, node)
+            self.apply_overlay_effects(layer, node)
             self.apply_vector_stroke(layer, node)
             self.apply_stroke_effect(layer, node)
             self.set_layer_attributes(layer, use)
@@ -101,17 +88,11 @@ class ShapeConverter(ConverterProtocol):
                 logger.warning("Multiple origination shapes are not supported yet.")
             origination = layer.origination[0]
             if isinstance(origination, Rectangle):
-                node = self.create_origination_rectangle(
-                    origination, **attrib
-                )
+                node = self.create_origination_rectangle(origination, **attrib)
             elif isinstance(origination, RoundedRectangle):
-                node = self.create_origination_rounded_rectangle(
-                    origination, **attrib
-                )
+                node = self.create_origination_rounded_rectangle(origination, **attrib)
             elif isinstance(origination, Ellipse):
-                node = self.create_origination_ellipse(
-                    origination, **attrib
-                )
+                node = self.create_origination_ellipse(origination, **attrib)
             # # Line shape is not supported, as this can be an arrow. <line> or <marker>.
             # elif isinstance(shape, Line):
             #     node = svg_utils.create_node(
@@ -284,17 +265,9 @@ class ShapeConverter(ConverterProtocol):
                 layer, title=layer.name, id=self.auto_id("shape")
             )
 
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
+        self.apply_background_effects(layer, target, insert_before_target=False)
         use = self.apply_vector_fill(layer, target)  # main filled shape.
-        self.apply_color_overlay_effect(layer, target)
-        self.apply_gradient_overlay_effect(layer, target)
-        self.apply_pattern_overlay_effect(layer, target)
-        self.apply_inner_shadow_effect(layer, target)
-        self.apply_inner_glow_effect(layer, target)
-        self.apply_satin_effect(layer, target)
-        self.apply_bevel_emboss_effect(layer, target)
-
+        self.apply_overlay_effects(layer, target)
         # Create a group with the clipping path applied.
         group = svg_utils.create_node(
             "g", parent=self.current, clip_path=svg_utils.get_funciri(clip_path)
@@ -345,19 +318,12 @@ class ShapeConverter(ConverterProtocol):
         if "id" not in target.attrib:
             target.set("id", self.auto_id("cliptarget"))
 
-        self.apply_drop_shadow_effect(layer, target)
-        self.apply_outer_glow_effect(layer, target)
+        self.apply_background_effects(layer, target, insert_before_target=False)
         # Create a <use> element to reference the target object.
         use = svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)
         )
-        self.apply_color_overlay_effect(layer, target)
-        self.apply_gradient_overlay_effect(layer, target)
-        self.apply_pattern_overlay_effect(layer, target)
-        self.apply_inner_shadow_effect(layer, target)
-        self.apply_inner_glow_effect(layer, target)
-        self.apply_satin_effect(layer, target)
-        self.apply_bevel_emboss_effect(layer, target)
+        self.apply_overlay_effects(layer, target)
 
         # Create a group with the clipping mask applied.
         group = svg_utils.create_node(
@@ -386,8 +352,24 @@ class ShapeConverter(ConverterProtocol):
             setting = layer.tagged_blocks.get_data(Tag.PATTERN_FILL_SETTING)
             logger.warning(f"Pattern fill is not supported yet: {setting}")
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
+            # classID is null for gradient fill setting.
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)
-            logger.warning(f"Gradient fill is not supported yet: {setting}")
+            if setting[Key.Type].enum != Enum.Linear:
+                logger.warning("Only linear gradient is supported yet.")
+                return
+            gradient = self.add_gradient(setting[Key.Gradient])
+            angle = setting[Key.Angle]
+            if angle.unit != Unit.Angle:
+                logger.warning(f"Unsupported angle unit: {angle.unit}")
+            if gradient is not None:
+                if angle.value != 0:
+                    rotation = -angle.value
+                    svg_utils.set_attribute(
+                        gradient,
+                        "gradientTransform",
+                        f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+                    )
+                svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
 
@@ -433,3 +415,51 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dasharray", line_dash_set)
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
+
+    def add_gradient(self, gradient: Descriptor) -> ET.Element:
+        """Add gradient definition to the SVG document."""
+        logger.debug(f"Adding gradient: {gradient}")
+        assert gradient.classID == Klass.Gradient
+        # TODO: Support <radialGradient>.
+        node = svg_utils.create_node(
+            "linearGradient", parent=self.current, id=self.auto_id("gradient")
+        )
+
+        # Insert color and opacity stops.
+        color_stops = {
+            int(stop[Key.Location]): stop[Key.Color] for stop in gradient[Key.Colors]
+        }
+        opacity_stops = {
+            int(stop[Key.Location]): stop[Key.Opacity]
+            for stop in gradient[Key.Transparency]
+        }
+        stop_keys = set(color_stops.keys()) | set(opacity_stops.keys())
+        for location in sorted(stop_keys):
+            offset = location / 4096.0
+            if location not in color_stops:
+                logger.warning(f"No color stop found at location: {location}")
+                stop_color = None
+                # TODO: Get interpolated color
+            else:
+                stop_color = color_utils.descriptor2hex(color_stops[location])
+            if location not in opacity_stops:
+                logger.warning(f"No opacity stop found at location: {location}")
+                # TODO: Get interpolated opacity
+            else:
+                stop_opacity = opacity_stops[location] / 100.0
+
+            svg_utils.create_node(
+                "stop",
+                parent=node,
+                offset=f"{offset:.0%}",
+                stop_color=stop_color,
+                stop_opacity=stop_opacity,
+            )
+
+        # TODO: Midpoint support?
+        if any(stop[Key.Midpoint] != 50 for stop in gradient[Key.Colors]) or any(
+            stop[Key.Midpoint] != 50 for stop in gradient[Key.Transparency]
+        ):
+            logger.warning("Gradient midpoint is not supported.")
+
+        return node

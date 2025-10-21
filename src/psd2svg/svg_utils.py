@@ -122,6 +122,15 @@ def set_attribute(node: ET.Element, key: str, value: Any) -> None:
     else:
         node.set(key, str(value))
 
+def append_attribute(node: ET.Element, key: str, value: Any) -> None:
+    """Append a value to an existing attribute of an XML node."""
+    if key in node.attrib:
+        existing_value = node.get(key, "")
+        new_value = f"{existing_value} {value}"
+        node.set(key, new_value)
+    else:
+        set_attribute(node, key, value)
+
 
 def get_uri(node: ET.Element) -> str:
     """Get an uri string for the given node."""
