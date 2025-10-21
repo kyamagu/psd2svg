@@ -51,6 +51,8 @@ class EffectConverter(ConverterProtocol):
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
 
     def add_raster_color_overlay_effect(
         self, effect: effects.ColorOverlay, target: ET.Element
@@ -66,7 +68,6 @@ class EffectConverter(ConverterProtocol):
             "feFlood",
             parent=filter,
             flood_color=color_utils.descriptor2hex(effect.color),
-            flood_opacity=effect.opacity / 100.0,
         )
         svg_utils.create_node(
             "feComposite",
@@ -86,15 +87,12 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.ColorOverlay, target: ET.Element
     ) -> ET.Element:
         """Add a color overlay effect to the current element using vector path."""
-        use = svg_utils.create_node(
+        return svg_utils.create_node(
             "use",
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill=color_utils.descriptor2hex(effect.color),
         )
-        if effect.opacity != 100.0:
-            svg_utils.set_attribute(use, "opacity", effect.opacity / 100.0)
-        return use
 
     def apply_stroke_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply stroke effects to the target element."""
@@ -104,8 +102,11 @@ class EffectConverter(ConverterProtocol):
 
             if isinstance(layer, layers.ShapeLayer):
                 use = self.add_vector_stroke_effect(effect, target)
+                # Vector stroke has stroke-opacity attribute.
             else:
                 use = self.add_raster_stroke_effect(effect, target)
+                if effect.opacity != 100.0:
+                    self.set_opacity(effect.opacity / 100.0, use)
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
@@ -186,7 +187,6 @@ class EffectConverter(ConverterProtocol):
             "feFlood",
             parent=filter,
             flood_color=color_utils.descriptor2hex(effect.color),
-            flood_opacity=effect.opacity / 100.0,
         )
         svg_utils.create_node(
             "feComposite",
@@ -249,6 +249,8 @@ class EffectConverter(ConverterProtocol):
             use = self.add_raster_drop_shadow_effect(effect, target)
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
             if insert_before_target:
                 # Push the target element after the <use> element.
                 self.current.remove(target)
@@ -294,7 +296,6 @@ class EffectConverter(ConverterProtocol):
             "feFlood",
             parent=filter,
             flood_color=color_utils.descriptor2hex(effect.color),
-            flood_opacity=effect.opacity / 100.0,
         )
         svg_utils.create_node(
             "feComposite",
@@ -323,6 +324,8 @@ class EffectConverter(ConverterProtocol):
             use = self.add_raster_outer_glow_effect(effect, target)
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
             if insert_before_target:
                 # Push the target element after the <use> element.
                 self.current.remove(target)
@@ -358,7 +361,6 @@ class EffectConverter(ConverterProtocol):
             "feFlood",
             parent=filter,
             flood_color=color_utils.descriptor2hex(effect.color),
-            flood_opacity=effect.opacity / 100.0,
         )
         svg_utils.create_node(
             "feComposite",
@@ -380,6 +382,11 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("gradientoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.GradientOverlay)
+            if effect.type != Enum.Linear:
+                logger.warning(
+                    f"Only linear gradient overlay is supported: {effect.type}"
+                )
+                continue
 
             if isinstance(layer, layers.ShapeLayer):
                 use = self.add_vector_gradient_overlay_effect(effect, target)
@@ -388,59 +395,84 @@ class EffectConverter(ConverterProtocol):
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
 
     def add_raster_gradient_overlay_effect(
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
-        logger.warning("Raster gradient overlay effect is not supported yet.")
-        return target
+        assert effect.value.classID == Enum.GradientFill
+        gradient = self.add_gradient(effect.gradient)
+        self.set_gradient_transform(gradient, effect)
+        # feFlood does not support fill with gradient, so we use feImage and feComposite.
+        defs = svg_utils.create_node("defs", parent=self.current)
+        rect = svg_utils.create_node(
+            "rect",
+            parent=defs,
+            id=self.auto_id("gradientfill"),
+            x=target.get("x", "0"),
+            y=target.get("y", "0"),
+            width=target.get("width", "100%"),
+            height=target.get("height", "100%"),
+            fill=svg_utils.get_funciri(gradient),
+        )
+        filter = svg_utils.create_node(
+            "filter", parent=self.current, id=self.auto_id("gradientoverlay")
+        )
+        svg_utils.create_node(
+            "feImage",
+            parent=filter,
+            href=svg_utils.get_uri(rect),
+        )
+        svg_utils.create_node(
+            "feComposite",
+            in2="SourceAlpha",
+            operator="in",
+            parent=filter,
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
 
     def add_vector_gradient_overlay_effect(
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
         assert effect.value.classID == Enum.GradientFill
         gradient = self.add_gradient(effect.gradient)
-        if gradient is None:
-            return target
-        use = svg_utils.create_node(
+        self.set_gradient_transform(gradient, effect)
+        return svg_utils.create_node(
             "use",
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill=svg_utils.get_funciri(gradient),
         )
-        # Gradient transformations
+
+    def set_gradient_transform(
+        self, gradient: ET.Element, effect: effects.GradientOverlay
+    ) -> None:
+        """Set gradient transformations based on the effect properties."""
         if effect.reversed:
-            svg_utils.append_attribute(gradient, "gradientTransform", "scale(-1 -1)")
             svg_utils.append_attribute(
-                gradient, "gradientTransform", "translate(-1 -1)"
+                gradient, "gradientTransform", "scale(-1 -1) translate(-1 -1)"
             )
         if effect.scale != 100.0:
             scale = effect.scale / 100.0
             svg_utils.append_attribute(
-                gradient, "gradientTransform", "translate(0.5 0.5)"
-            )
-            svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                f"scale({scale:.0f} {scale:.0f})",
-            )
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", "translate(-0.5 -0.5)"
+                f"translate(0.5 0.5) scale({scale:.0f} {scale:.0f}) translate(-0.5 -0.5)",
             )
         if effect.angle != 0.0:
             rotation = -effect.angle
             svg_utils.append_attribute(
-                gradient, "gradientTransform", "translate(0.5 0.5)"
+                gradient,
+                "gradientTransform",
+                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
             )
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", f"rotate({rotation:.0f})"
-            )
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", "translate(-0.5 -0.5)"
-            )
-        if effect.opacity != 100.0:
-            svg_utils.set_attribute(use, "opacity", effect.opacity / 100.0)
-        return use
 
     def apply_pattern_overlay_effect(
         self, layer: layers.Layer, target: ET.Element

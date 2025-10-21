@@ -416,7 +416,7 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
 
-    def add_gradient(self, gradient: Descriptor) -> ET.Element | None:
+    def add_gradient(self, gradient: Descriptor) -> ET.Element:
         """Add gradient definition to the SVG document."""
         logger.debug(f"Adding gradient: {gradient}")
         assert gradient.classID == Klass.Gradient
