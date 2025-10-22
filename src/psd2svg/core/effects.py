@@ -557,7 +557,67 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("innerglow", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.InnerGlow)
-            logger.warning("Inner glow effect is not supported yet.")
+            use = self.add_raster_inner_glow_effect(effect, target)
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
+
+    def add_raster_inner_glow_effect(
+        self, effect: effects.InnerGlow, target: ET.Element
+    ) -> ET.Element:
+        """Add an inner glow filter to the SVG document."""
+        # TODO: Support different glow types.
+        if effect.glow_type != Enum.SoftMatte:
+            logger.warning(
+                f"Only softer inner glow is supported: {effect.glow_type}"
+            )
+        choke = float(effect.choke)
+        size = float(effect.size)
+        # TODO: Adjust the width and height based on size.
+        filter = svg_utils.create_node(
+            "filter",
+            parent=self.current,
+            id=self.auto_id("innerglow"),
+        )
+        # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
+        svg_utils.create_node(
+            "feMorphology",
+            parent=filter,
+            operator="erode",
+            radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
+            in_="SourceAlpha",
+        )
+        svg_utils.create_node(
+            "feGaussianBlur",
+            parent=filter,
+            stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
+            result="GLOW",
+        )
+        svg_utils.create_node(
+            "feFlood",
+            parent=filter,
+            flood_color=color_utils.descriptor2hex(effect.color),
+        )
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="out" if effect.glow_source == Enum.EdgeGlow else "in",
+            in2="GLOW",
+        )
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="in",
+            in2="SourceAlpha",
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
 
     def apply_satin_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         effect_list = list(layer.effects.find("satin", enabled=True))
