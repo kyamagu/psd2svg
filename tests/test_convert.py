@@ -110,6 +110,9 @@ def test_shapes(psd_file: str) -> None:
         "effects/inner-shadow-2.psd",
         "effects/outer-glow-1.psd",
         "effects/outer-glow-2.psd",
+        "effects/inner-glow-1.psd",
+        "effects/inner-glow-2.psd",
+        "effects/inner-glow-3.psd",
     ],
 )
 def test_effects(psd_file: str) -> None:
