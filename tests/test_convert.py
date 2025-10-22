@@ -106,6 +106,7 @@ def test_shapes(psd_file: str) -> None:
             "effects/drop-shadow-5.psd",
             marks=pytest.mark.xfail(reason="Morphology filter is limited."),
         ),
+        "effects/drop-shadow-6.psd",
         "effects/inner-shadow-1.psd",
         "effects/inner-shadow-2.psd",
         "effects/outer-glow-1.psd",

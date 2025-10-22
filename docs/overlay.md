@@ -72,3 +72,28 @@ In any case, the generic rendering procedure for a single layer could be the fol
 2. Fill
 3. Clipping or filter effects for color
 4. Stroke
+
+## Effects on strokes
+
+When a shape layer does not have fill, effects do not render correctly if we naively split the shape definition, because stroke becomes the only shape. The following result will be incorrect for the filter, because the `<rect>` by default will have black fill.
+
+```xml
+<defs>
+  <rect id="shape" />
+  <filter id="filter" />
+</defs>
+<use href="#shape" filter="url(#filter)">
+<use href="#shape" fill="transparent" />
+<use href="#shape" fill="transparent" stroke="red" >
+```
+
+This should be avoided by explicitly stating the fill is transparent in the definition.
+
+```xml
+<defs>
+  <rect id="shape" fill="transparent" stroke-width="1" />
+  <filter id="filter" />
+</defs>
+<use href="#shape" filter="url(#filter)">
+<use href="#shape" fill="transparent" stroke="red" >
+```
