@@ -30,6 +30,13 @@ class ShapeConverter(ConverterProtocol):
                     title=layer.name,
                     id=self.auto_id("shape"),
                 )
+
+            # We need to set stroke for the shape here when fill is transparent.
+            # Otherwise, effects won't use the correct alpha.
+            if layer.has_stroke() and layer.stroke.enabled and not layer.stroke.fill_enabled:
+                svg_utils.set_attribute(node, "fill", "transparent")
+                self.set_stroke(layer, node)
+
             self.apply_background_effects(layer, node, insert_before_target=False)
             use = self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_overlay_effects(layer, node)
@@ -291,14 +298,14 @@ class ShapeConverter(ConverterProtocol):
 
     def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply stroke effects to the target element."""
-        if layer.has_stroke() and layer.stroke.enabled:
-            use = svg_utils.create_node(
-                "use",
-                parent=self.current,
-                href=svg_utils.get_uri(target),
-                fill="transparent",
-            )
-            self.set_stroke(layer, use)
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            fill="transparent",
+        )
+        self.set_stroke(layer, use)
+        # TODO: Check if we already set stroke.
 
     @contextlib.contextmanager
     def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
@@ -336,10 +343,12 @@ class ShapeConverter(ConverterProtocol):
         self.set_layer_attributes(layer, use)
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
-        """Set fill attribute to the given element."""
+        """Set fill attribute to the given element."""            
         if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
-            if Klass.Color in content_data:
+            if not content_data.get(b"fillEnabled", True):
+                svg_utils.set_attribute(node, "fill", "transparent")
+            elif Klass.Color in content_data:
                 color = color_utils.descriptor2hex(content_data[Klass.Color])
                 svg_utils.set_attribute(node, "fill", color)
             else:
