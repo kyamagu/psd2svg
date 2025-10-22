@@ -488,7 +488,70 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("innershadow", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.InnerShadow)
-            logger.warning("Inner shadow effect is not supported yet.")
+            use = self.add_raster_inner_shadow_effect(effect, target)
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
+
+    def add_raster_inner_shadow_effect(
+            self, effect: effects.InnerShadow, target: ET.Element
+        ) -> ET.Element:
+        """Add an inner shadow filter to the SVG document."""
+        logger.debug(f"Adding raster inner shadow effect: {effect}")
+        choke = float(effect.choke)
+        size = float(effect.size)
+        filter = svg_utils.create_node(
+            "filter",
+            parent=self.current,
+            id=self.auto_id("innershadow"),
+        )
+        svg_utils.create_node(
+            "feMorphology",
+            parent=filter,
+            operator="erode",
+            radius=choke / 100.0 * size,
+            in_="SourceAlpha",
+        )
+        svg_utils.create_node(
+            "feGaussianBlur",
+            parent=filter,
+            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+        )
+        dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
+        svg_utils.create_node(
+            "feOffset",
+            parent=filter,
+            dx=dx,
+            dy=dy,
+            result="SHADOW",
+        )
+        svg_utils.create_node(
+            "feFlood",
+            parent=filter,
+            flood_color=color_utils.descriptor2hex(effect.color),
+        )
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="out",
+            in2="SHADOW",
+        )
+        # Restrict the shadow to the inside of the original shape.
+        svg_utils.create_node(
+            "feComposite",
+            parent=filter,
+            operator="in",
+            in2="SourceAlpha",
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
+        
 
     def apply_inner_glow_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         effect_list = list(layer.effects.find("innerglow", enabled=True))
