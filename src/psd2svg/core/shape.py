@@ -343,12 +343,12 @@ class ShapeConverter(ConverterProtocol):
         self.set_layer_attributes(layer, use)
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
-        """Set fill attribute to the given element."""            
-        if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
+        """Set fill attribute to the given element."""
+        if layer.has_stroke() and not layer.stroke.fill_enabled:
+            svg_utils.set_attribute(node, "fill", "transparent")
+        elif Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
-            if not content_data.get(b"fillEnabled", True):
-                svg_utils.set_attribute(node, "fill", "transparent")
-            elif Klass.Color in content_data:
+            if Klass.Color in content_data:
                 color = color_utils.descriptor2hex(content_data[Klass.Color])
                 svg_utils.set_attribute(node, "fill", color)
             else:
