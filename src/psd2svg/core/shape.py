@@ -33,7 +33,11 @@ class ShapeConverter(ConverterProtocol):
 
             # We need to set stroke for the shape here when fill is transparent.
             # Otherwise, effects won't use the correct alpha.
-            if layer.has_stroke() and layer.stroke.enabled and not layer.stroke.fill_enabled:
+            if (
+                layer.has_stroke()
+                and layer.stroke.enabled
+                and not layer.stroke.fill_enabled
+            ):
                 svg_utils.set_attribute(node, "fill", "transparent")
                 self.set_stroke(layer, node)
 
@@ -348,7 +352,7 @@ class ShapeConverter(ConverterProtocol):
         if layer.has_stroke() and not layer.stroke.fill_enabled:
             svg_utils.set_attribute(node, "fill", "transparent")
             return
-        
+
         # Shapes have the following tagged blocks for fill content.
         if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
@@ -356,17 +360,15 @@ class ShapeConverter(ConverterProtocol):
                 color = color_utils.descriptor2hex(content_data[Key.Color])
                 svg_utils.set_attribute(node, "fill", color)
             elif Key.Gradient in content_data:
-                if content_data[Key.Type].enum != Enum.Linear:
-                    logger.warning("Only linear gradient is supported yet.")
-                    return
-                gradient = self.add_linear_gradient(content_data[Key.Gradient])
+                gradient = self.add_gradient_definition(content_data)
                 if gradient is not None:
-                    self.set_gradient_setting(content_data, gradient)
-                    svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
+                    svg_utils.set_attribute(
+                        node, "fill", svg_utils.get_funciri(gradient)
+                    )
             else:
                 logger.warning(f"Unsupported fill content: {content_data}")
             return
-        
+
         # Fill layers have the following tagged blocks.
         if Tag.SOLID_COLOR_SHEET_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.SOLID_COLOR_SHEET_SETTING)
@@ -378,29 +380,11 @@ class ShapeConverter(ConverterProtocol):
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
             # classID is null for gradient fill setting.
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)
-            if setting[Key.Type].enum != Enum.Linear:
-                logger.warning("Only linear gradient is supported yet.")
-                return
-            gradient = self.add_linear_gradient(setting[Key.Gradient])
+            gradient = self.add_gradient_definition(setting)
             if gradient is not None:
-                self.set_gradient_setting(setting, gradient)
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
-    
-    def set_gradient_setting(self, setting: Descriptor, gradient: ET.Element) -> None:
-        """Set gradient settings such as angle to the gradient element."""
-        angle = setting[Key.Angle]
-        if angle.unit != Unit.Angle:
-            logger.warning(f"Unsupported angle unit: {angle.unit}")
-        if angle.value != 0:
-            # TODO: Support rotation for uneven aspect ratio.
-            rotation = -angle.value
-            svg_utils.set_attribute(
-                gradient,
-                "gradientTransform",
-                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
-            )
 
     def set_stroke(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add stroke style to the path node."""
@@ -445,14 +429,37 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
 
-    def add_linear_gradient(self, gradient: Descriptor) -> ET.Element:
+    def add_gradient_definition(self, descriptor: Descriptor) -> ET.Element | None:
         """Add gradient definition to the SVG document."""
-        logger.debug(f"Adding gradient: {gradient}")
-        assert gradient.classID == Klass.Gradient
-        # TODO: Support <radialGradient>.
+        if descriptor[Key.Type].enum == Enum.Linear:
+            node = self.add_linear_gradient(descriptor[Key.Gradient])
+        elif descriptor[Key.Type].enum == Enum.Radial:
+            node = self.add_radial_gradient(descriptor[Key.Gradient])
+        else:
+            logger.warning("Only linear and radial gradients are supported yet.")
+            return None
+        self.set_gradient_attributes(descriptor, node)
+        return node
+
+    def add_linear_gradient(self, gradient: Descriptor) -> ET.Element:
+        """Add linear gradient definition to the SVG document."""
         node = svg_utils.create_node(
             "linearGradient", parent=self.current, id=self.auto_id("gradient")
         )
+        self.set_gradient_stops(gradient, node)
+        return node
+
+    def add_radial_gradient(self, gradient: Descriptor) -> ET.Element:
+        """Add radial gradient definition to the SVG document."""
+        node = svg_utils.create_node(
+            "radialGradient", parent=self.current, id=self.auto_id("gradient")
+        )
+        self.set_gradient_stops(gradient, node)
+        return node
+
+    def set_gradient_stops(self, gradient: Descriptor, node: ET.Element) -> ET.Element:
+        """Set gradient stops to the given gradient element."""
+        assert gradient.classID == Klass.Gradient
 
         # Insert color and opacity stops.
         color_stops = {
@@ -492,3 +499,20 @@ class ShapeConverter(ConverterProtocol):
             logger.warning("Gradient midpoint is not supported.")
 
         return node
+
+    def set_gradient_attributes(
+        self, setting: Descriptor, gradient: ET.Element
+    ) -> None:
+        """Set gradient settings such as angle to the gradient element."""
+        angle = setting[Key.Angle]
+        if angle.unit != Unit.Angle:
+            logger.warning(f"Unsupported angle unit: {angle.unit}")
+        if angle.value != 0:
+            logger.info(f"Rotation angle != 0 might be inaccurate: {angle.value}")
+            # TODO: Support rotation for uneven aspect ratio.
+            rotation = -angle.value
+            svg_utils.set_attribute(
+                gradient,
+                "gradientTransform",
+                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+            )

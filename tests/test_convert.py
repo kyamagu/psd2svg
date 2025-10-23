@@ -90,6 +90,7 @@ def test_shapes(psd_file: str) -> None:
         "paint/transparent-1.psd",
         "paint/color-1.psd",
         "paint/linear-gradient-1.psd",
+        "paint/radial-gradient-1.psd",
     ],
 )
 def test_paint(psd_file: str) -> None:
