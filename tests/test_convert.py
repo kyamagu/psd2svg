@@ -61,6 +61,7 @@ def test_clipping(psd_file: str, quality: float) -> None:
 @pytest.mark.parametrize(
     "psd_file",
     [
+        "shapes/triangle-1.psd",
         "shapes/triangle-2.psd",
         "shapes/custom-1.psd",
         "shapes/ellipse-1.psd",
@@ -71,9 +72,9 @@ def test_clipping(psd_file: str, quality: float) -> None:
         "shapes/polygon-2.psd",
         "shapes/rectangle-1.psd",
         "shapes/rectangle-2.psd",
+        "shapes/rectangle-3.psd",
         "shapes/star-1.psd",
         "shapes/star-2.psd",
-        "shapes/triangle-1.psd",
     ],
 )
 def test_shapes(psd_file: str) -> None:
