@@ -344,16 +344,31 @@ class ShapeConverter(ConverterProtocol):
 
     def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set fill attribute to the given element."""
+        # Transparent fill when stroke is enabled but fill is disabled.
         if layer.has_stroke() and not layer.stroke.fill_enabled:
             svg_utils.set_attribute(node, "fill", "transparent")
-        elif Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
+            return
+        
+        # Shapes have the following tagged blocks for fill content.
+        if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
             content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
-            if Klass.Color in content_data:
-                color = color_utils.descriptor2hex(content_data[Klass.Color])
+            if Key.Color in content_data:
+                color = color_utils.descriptor2hex(content_data[Key.Color])
                 svg_utils.set_attribute(node, "fill", color)
+            elif Key.Gradient in content_data:
+                if content_data[Key.Type].enum != Enum.Linear:
+                    logger.warning("Only linear gradient is supported yet.")
+                    return
+                gradient = self.add_linear_gradient(content_data[Key.Gradient])
+                if gradient is not None:
+                    self.set_gradient_setting(content_data, gradient)
+                    svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
             else:
                 logger.warning(f"Unsupported fill content: {content_data}")
-        elif Tag.SOLID_COLOR_SHEET_SETTING in layer.tagged_blocks:
+            return
+        
+        # Fill layers have the following tagged blocks.
+        if Tag.SOLID_COLOR_SHEET_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.SOLID_COLOR_SHEET_SETTING)
             color = color_utils.descriptor2hex(setting[Klass.Color])
             svg_utils.set_attribute(node, "fill", color)
@@ -366,21 +381,26 @@ class ShapeConverter(ConverterProtocol):
             if setting[Key.Type].enum != Enum.Linear:
                 logger.warning("Only linear gradient is supported yet.")
                 return
-            gradient = self.add_gradient(setting[Key.Gradient])
-            angle = setting[Key.Angle]
-            if angle.unit != Unit.Angle:
-                logger.warning(f"Unsupported angle unit: {angle.unit}")
+            gradient = self.add_linear_gradient(setting[Key.Gradient])
             if gradient is not None:
-                if angle.value != 0:
-                    rotation = -angle.value
-                    svg_utils.set_attribute(
-                        gradient,
-                        "gradientTransform",
-                        f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
-                    )
+                self.set_gradient_setting(setting, gradient)
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
+    
+    def set_gradient_setting(self, setting: Descriptor, gradient: ET.Element) -> None:
+        """Set gradient settings such as angle to the gradient element."""
+        angle = setting[Key.Angle]
+        if angle.unit != Unit.Angle:
+            logger.warning(f"Unsupported angle unit: {angle.unit}")
+        if angle.value != 0:
+            # TODO: Support rotation for uneven aspect ratio.
+            rotation = -angle.value
+            svg_utils.set_attribute(
+                gradient,
+                "gradientTransform",
+                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+            )
 
     def set_stroke(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add stroke style to the path node."""
@@ -425,7 +445,7 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
 
-    def add_gradient(self, gradient: Descriptor) -> ET.Element:
+    def add_linear_gradient(self, gradient: Descriptor) -> ET.Element:
         """Add gradient definition to the SVG document."""
         logger.debug(f"Adding gradient: {gradient}")
         assert gradient.classID == Klass.Gradient

@@ -402,7 +402,7 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
         assert effect.value.classID == Enum.GradientFill
-        gradient = self.add_gradient(effect.gradient)
+        gradient = self.add_linear_gradient(effect.gradient)
         self.set_gradient_transform(gradient, effect)
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = svg_utils.create_node("defs", parent=self.current)
@@ -442,7 +442,7 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
         assert effect.value.classID == Enum.GradientFill
-        gradient = self.add_gradient(effect.gradient)
+        gradient = self.add_linear_gradient(effect.gradient)
         self.set_gradient_transform(gradient, effect)
         return svg_utils.create_node(
             "use",
