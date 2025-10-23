@@ -402,7 +402,7 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
         assert effect.value.classID == Enum.GradientFill
-        gradient = self.add_gradient(effect.gradient)
+        gradient = self.add_linear_gradient(effect.gradient)
         self.set_gradient_transform(gradient, effect)
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = svg_utils.create_node("defs", parent=self.current)
@@ -442,7 +442,21 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.GradientOverlay, target: ET.Element
     ) -> ET.Element:
         assert effect.value.classID == Enum.GradientFill
-        gradient = self.add_gradient(effect.gradient)
+        if effect.type == Enum.Linear:
+            gradient = self.add_linear_gradient(effect.gradient)
+        elif effect.type == Enum.Radial:
+            gradient = self.add_radial_gradient(effect.gradient)
+        else:
+            logger.warning(
+                f"Only linear and radial gradient overlay is supported: {effect.type}"
+            )
+            # TODO: Maybe fill with solid color instead.
+            return svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(target),
+                fill="transparent",
+            )
         self.set_gradient_transform(gradient, effect)
         return svg_utils.create_node(
             "use",
@@ -495,8 +509,8 @@ class EffectConverter(ConverterProtocol):
                 self.set_opacity(effect.opacity / 100.0, use)
 
     def add_raster_inner_shadow_effect(
-            self, effect: effects.InnerShadow, target: ET.Element
-        ) -> ET.Element:
+        self, effect: effects.InnerShadow, target: ET.Element
+    ) -> ET.Element:
         """Add an inner shadow filter to the SVG document."""
         logger.debug(f"Adding raster inner shadow effect: {effect}")
         choke = float(effect.choke)
@@ -551,7 +565,6 @@ class EffectConverter(ConverterProtocol):
             filter=svg_utils.get_funciri(filter),
         )
         return use
-        
 
     def apply_inner_glow_effect(self, layer: layers.Layer, target: ET.Element) -> None:
         effect_list = list(layer.effects.find("innerglow", enabled=True))
@@ -569,9 +582,7 @@ class EffectConverter(ConverterProtocol):
         """Add an inner glow filter to the SVG document."""
         # TODO: Support different glow types.
         if effect.glow_type != Enum.SoftMatte:
-            logger.warning(
-                f"Only softer inner glow is supported: {effect.glow_type}"
-            )
+            logger.warning(f"Only softer inner glow is supported: {effect.glow_type}")
         choke = float(effect.choke)
         size = float(effect.size)
         # TODO: Adjust the width and height based on size.
