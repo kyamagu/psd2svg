@@ -406,18 +406,22 @@ class EffectConverter(ConverterProtocol):
         self.set_gradient_transform(gradient, effect)
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = svg_utils.create_node("defs", parent=self.current)
+        # Rect here should have the target size.
         rect = svg_utils.create_node(
             "rect",
             parent=defs,
             id=self.auto_id("gradientfill"),
-            x=target.get("x", "0"),
-            y=target.get("y", "0"),
             width=target.get("width", "100%"),
             height=target.get("height", "100%"),
             fill=svg_utils.get_funciri(gradient),
         )
+        # Filter origin should be set to (0, 0) instead of (-10%, -10%).
         filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("gradientoverlay")
+            "filter",
+            parent=self.current,
+            id=self.auto_id("gradientoverlay"),
+            x="0",
+            y="0",
         )
         svg_utils.create_node(
             "feImage",
