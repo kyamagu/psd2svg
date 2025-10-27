@@ -64,3 +64,36 @@ BLEND_MODE: dict[Union[BlendMode, bytes], str] = {
     Enum.Color: "color",
     Enum.Luminosity: "luminosity",
 }
+
+# Blend modes that are not accurately supported in SVG and are mapped to approximations.
+# These will trigger warnings when used.
+INACCURATE_BLEND_MODES: set[Union[BlendMode, bytes]] = {
+    # Dissolve mode uses random pixel patterns, not supported in SVG
+    BlendMode.DISSOLVE,
+    Enum.Dissolve,
+    # Linear burn uses plus-darker which has limited browser support
+    BlendMode.LINEAR_BURN,
+    b"linearBurn",
+    # Linear dodge uses plus-lighter which has limited browser support
+    BlendMode.LINEAR_DODGE,
+    b"linearDodge",
+    # Darker/Lighter Color modes compare color values, approximated with darken/lighten
+    BlendMode.DARKER_COLOR,
+    b"darkerColor",
+    BlendMode.LIGHTER_COLOR,
+    b"lighterColor",
+    # Advanced light modes approximated with simpler modes
+    BlendMode.VIVID_LIGHT,
+    b'vividLight',
+    BlendMode.LINEAR_LIGHT,
+    b'linearLight',
+    BlendMode.PIN_LIGHT,
+    b'pinLight',
+    BlendMode.HARD_MIX,
+    b'hardMix',
+    # Subtract and Divide modes approximated with difference
+    BlendMode.SUBTRACT,
+    Enum.Subtract,
+    BlendMode.DIVIDE,
+    b"divide",
+}

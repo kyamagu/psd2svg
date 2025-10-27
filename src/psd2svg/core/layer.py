@@ -7,7 +7,7 @@ from psd_tools.constants import BlendMode
 
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
-from psd2svg.core.constants import BLEND_MODE
+from psd2svg.core.constants import BLEND_MODE, INACCURATE_BLEND_MODES
 from psd2svg.core.counter import AutoCounter
 
 logger = logging.getLogger(__name__)
@@ -115,10 +115,28 @@ class LayerConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "opacity", opacity)
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
-        """Set blend mode style to the node."""
+        """Set blend mode style to the node.
+
+        Args:
+            psd_mode: The Photoshop blend mode to convert.
+            node: The XML element to apply the blend mode to.
+
+        Raises:
+            ValueError: If the blend mode is not supported.
+        """
         if psd_mode not in BLEND_MODE:
-            logger.warning(f"Unsupported blend mode: {psd_mode!r}")
-            return
+            raise ValueError(f"Unsupported blend mode: {psd_mode!r}")
+
+        # Warn if the blend mode is not accurately supported in SVG
+        if psd_mode in INACCURATE_BLEND_MODES:
+            blend_mode = BLEND_MODE[psd_mode]
+            # Format the mode name for display
+            mode_name = psd_mode.name if hasattr(psd_mode, 'name') else psd_mode.decode() if isinstance(psd_mode, bytes) else str(psd_mode)
+            logger.warning(
+                f"Blend mode '{mode_name}' is not accurately supported in SVG. "
+                f"Using approximation '{blend_mode}' instead."
+            )
+
         blend_mode = BLEND_MODE[psd_mode]
         if blend_mode not in ("normal", "pass-through"):
             svg_utils.add_style(node, "mix-blend-mode", blend_mode)
