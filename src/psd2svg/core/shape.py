@@ -4,8 +4,9 @@ import xml.etree.ElementTree as ET
 from typing import Iterator
 
 from psd_tools.api import adjustments, layers
-from psd_tools.api.shape import VectorMask, Rectangle, RoundedRectangle, Ellipse
+from psd_tools.api.shape import Rectangle, RoundedRectangle, Ellipse
 from psd_tools.psd.descriptor import Descriptor
+from psd_tools.psd.vector import Subpath
 from psd_tools.constants import Tag
 from psd_tools.terminology import Klass, Key, Enum, Unit
 
@@ -94,34 +95,95 @@ class ShapeConverter(ConverterProtocol):
         return node
 
     def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
-        if layer.has_origination():
-            if len(layer.origination) > 1:
-                logger.warning("Multiple origination shapes are not supported yet.")
-            origination = layer.origination[0]
-            if isinstance(origination, Rectangle):
-                node = self.create_origination_rectangle(origination, **attrib)
-            elif isinstance(origination, RoundedRectangle):
-                node = self.create_origination_rounded_rectangle(origination, **attrib)
-            elif isinstance(origination, Ellipse):
-                node = self.create_origination_ellipse(origination, **attrib)
-            # # Line shape is not supported, as this can be an arrow. <line> or <marker>.
-            # elif isinstance(shape, Line):
-            #     node = svg_utils.create_node(
-            #         "line",
-            #         parent=self.current,
-            #         x1=shape.line_start[Enum.Horizontal],
-            #         y1=shape.line_start[Enum.Vertical],
-            #         x2=shape.line_end[Enum.Horizontal],
-            #         y2=shape.line_end[Enum.Vertical],
-            #     )
+        """Create a shape element from the layer's vector mask or origination data."""
+        if not layer.has_vector_mask():
+            raise ValueError("Layer has no vector mask: %s", layer.name)
+
+        if len(layer.vector_mask.paths) == 1:
+            # TODO: Handle NOT OR for single path.
+            path = layer.vector_mask.paths[0]
+            return self.create_single_shape(layer, path, **attrib)
+
+        # Composite shape with multiple paths.
+        current = svg_utils.create_node(
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
+        )
+        for path in layer.vector_mask.paths:
+            previous = current
+            if path.operation == 1:  # OR
+                with self.set_current(current):
+                    # Union operation: add the shape directly.
+                    self.create_single_shape(layer, path, fill="#ffffff")
+
+            elif path.operation == 2:  # Subtract (NOT OR)
+                with self.set_current(current):
+                    if len(current) == 0:
+                        # First shape: fill white.
+                        svg_utils.create_node(
+                            "rect", fill="#ffffff", width="100%", height="100%"
+                        )
+                    # Subtract (Make a hole).
+                    self.create_single_shape(layer, path, fill="#000000")
+
+            elif path.operation == 3:  # AND
+                # Create a new mask for the AND operation.
+                if len(previous) > 0:
+                    current = svg_utils.create_node(
+                        "mask",
+                        parent=self.current,
+                        id=self.auto_id("mask"),
+                    )
+                with self.set_current(current):
+                    # Create the intersection by masking the previous shape.
+                    self.create_single_shape(
+                        layer,
+                        path,
+                        mask=svg_utils.get_funciri(previous)
+                        if len(previous) > 0
+                        else None,
+                        fill="#ffffff",
+                    )
+
+            elif path.operation == 4:  # XOR
+                logger.warning("XOR operation is not supported yet.")
             else:
-                logger.debug(
-                    f"Unsupported shape type: {type(origination)}: {origination._data}"
-                )
-                node = self.create_path(layer, **attrib)
-        else:
-            node = self.create_path(layer, **attrib)
-        return node
+                logger.error(f"Unknown path operation: {path.operation}")
+
+        return svg_utils.create_node(
+            "rect",
+            parent=self.current,
+            x=layer.left,
+            y=layer.top,
+            width=layer.width,
+            height=layer.height,
+            mask=svg_utils.get_funciri(current),
+            **attrib,
+        )
+
+    def create_single_shape(
+        self, layer: layers.ShapeLayer, path: Subpath, **attrib
+    ) -> ET.Element:
+        """Create a single shape element from the layer's vector mask or origination data."""
+        if not layer.has_vector_mask():
+            raise ValueError("Layer has no vector mask: %s", layer.name)
+
+        if layer.vector_mask.initial_fill_rule:
+            logger.warning("Initial fill rule (inverted mask) is not supported yet.")
+
+        if layer.has_origination():
+            origination = layer.origination[path.index]
+            if isinstance(origination, Rectangle):
+                return self.create_origination_rectangle(origination, **attrib)
+            elif isinstance(origination, RoundedRectangle):
+                return self.create_origination_rounded_rectangle(origination, **attrib)
+            elif isinstance(origination, Ellipse):
+                return self.create_origination_ellipse(origination, **attrib)
+            else:
+                logger.debug(f"Unsupported shape type: {origination}")
+
+        return self.create_path(path, **attrib)
 
     def create_origination_rectangle(
         self, origination: Rectangle, **attrib
@@ -167,89 +229,34 @@ class ShapeConverter(ConverterProtocol):
         cy = (origination.bbox[1] + origination.bbox[3]) / 2
         rx = (origination.bbox[2] - origination.bbox[0]) / 2
         ry = (origination.bbox[3] - origination.bbox[1]) / 2
-        return svg_utils.create_node(
-            "ellipse",
-            parent=self.current,
-            cx=int(cx),
-            cy=int(cy),
-            rx=rx,
-            ry=ry,
-            **attrib,
-        )
+        if rx == ry:
+            return svg_utils.create_node(
+                "circle",
+                parent=self.current,
+                cx=int(cx),
+                cy=int(cy),
+                r=rx,
+                **attrib,
+            )
+        else:
+            return svg_utils.create_node(
+                "ellipse",
+                parent=self.current,
+                cx=int(cx),
+                cy=int(cy),
+                rx=rx,
+                ry=ry,
+                **attrib,
+            )
 
-    def create_path(self, layer: layers.Layer, **attrib) -> ET.Element:
+    def create_path(self, path: Subpath, **attrib) -> ET.Element:
         """Create a path element."""
-        if not layer.has_vector_mask():
-            raise ValueError("Layer has no vector mask: %s", layer.name)
-
-        path = svg_utils.create_node(
+        return svg_utils.create_node(
             "path",
             parent=self.current,
-            d=self.generate_path(layer.vector_mask),
+            d=" ".join(generate_path(path, self.psd.width, self.psd.height)),
             **attrib,
         )
-        if layer.vector_mask.initial_fill_rule:
-            logger.warning("Initial fill rule (inverted mask) is not supported yet.")
-        # svg_utils.set_attribute(path, "fill-rule", "evenodd")
-        return path
-
-    def generate_path(
-        self: ConverterProtocol,
-        vector_mask: VectorMask,
-        command: str = "C",
-    ) -> str:
-        """Sequence generator for SVG path constructor."""
-
-        # TODO: Implement even-odd rule for multiple paths.
-        # first path --> show, second path --> hide, third path --> show.
-        # should be clipPath.
-        def _do_generate():
-            for path in vector_mask.paths:
-                if len(path) == 0:
-                    continue
-
-                # Initial point.
-                yield "M"
-                yield ",".join(
-                    [
-                        svg_utils.num2str(path[0].anchor[1] * self.psd.width),
-                        svg_utils.num2str(path[0].anchor[0] * self.psd.height),
-                    ]
-                )
-
-                # Closed path or open path
-                points = (
-                    zip(path, path[1:] + path[0:1])
-                    if path.is_closed()
-                    else zip(path, path[1:])
-                )
-
-                # Rest of the points.
-                yield command
-                for p1, p2 in points:
-                    yield ",".join(
-                        [
-                            svg_utils.num2str(p1.leaving[1] * self.psd.width),
-                            svg_utils.num2str(p1.leaving[0] * self.psd.height),
-                        ]
-                    )
-                    yield ",".join(
-                        [
-                            svg_utils.num2str(p2.preceding[1] * self.psd.width),
-                            svg_utils.num2str(p2.preceding[0] * self.psd.height),
-                        ]
-                    )
-                    yield ",".join(
-                        [
-                            svg_utils.num2str(p2.anchor[1] * self.psd.width),
-                            svg_utils.num2str(p2.anchor[0] * self.psd.height),
-                        ]
-                    )
-
-                if path.is_closed():
-                    yield "Z"
-
-        return " ".join(str(x) for x in _do_generate())
 
     @contextlib.contextmanager
     def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
@@ -516,3 +523,50 @@ class ShapeConverter(ConverterProtocol):
                 "gradientTransform",
                 f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
             )
+
+
+def generate_path(
+    path: Subpath, width: int, height: int, command: str = "C"
+) -> Iterator[str]:
+    """Sequence generator for SVG path constructor."""
+    if len(path) == 0:
+        return
+
+    # Initial point.
+    yield "M"
+    yield ",".join(
+        [
+            svg_utils.num2str(path[0].anchor[1] * width),
+            svg_utils.num2str(path[0].anchor[0] * height),
+        ]
+    )
+
+    # Closed path or open path
+    points = (
+        zip(path, path[1:] + path[0:1]) if path.is_closed() else zip(path, path[1:])
+    )
+
+    # Rest of the points.
+    yield command
+    for p1, p2 in points:
+        yield ",".join(
+            [
+                svg_utils.num2str(p1.leaving[1] * width),
+                svg_utils.num2str(p1.leaving[0] * height),
+            ]
+        )
+        yield ",".join(
+            [
+                svg_utils.num2str(p2.preceding[1] * width),
+                svg_utils.num2str(p2.preceding[0] * height),
+            ]
+        )
+        yield ",".join(
+            [
+                svg_utils.num2str(p2.anchor[1] * width),
+                svg_utils.num2str(p2.anchor[0] * height),
+            ]
+        )
+
+    if path.is_closed():
+        yield "Z"

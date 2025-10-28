@@ -74,6 +74,9 @@ def test_clipping(psd_file: str, quality: float) -> None:
         "shapes/rectangle-2.psd",
         "shapes/star-1.psd",
         "shapes/star-2.psd",
+        "shapes/multi-1.psd",
+        "shapes/multi-2.psd",
+        "shapes/multi-3.psd",
     ],
 )
 def test_shapes(psd_file: str) -> None:
