@@ -228,13 +228,24 @@ class ShapeConverter(ConverterProtocol):
     ) -> ET.Element:
         """Create a rounded rectangle shape from origination data."""
         bbox = get_origin_bbox(origination, reference)
+        scales = get_origin_scale(origination)
+        scale = (scales[0] + scales[1]) / 2
         rx = (
-            float(origination.radii[b"topRight"])
-            + float(origination.radii[b"bottomRight"])
-        ) / 2
+            (
+                float(origination.radii[b"topRight"])
+                + float(origination.radii[b"bottomRight"])
+            )
+            / 2
+            / scale
+        )
         ry = (
-            float(origination.radii[b"topRight"]) + float(origination.radii[b"topLeft"])
-        ) / 2
+            (
+                float(origination.radii[b"topRight"])
+                + float(origination.radii[b"topLeft"])
+            )
+            / 2
+            / scale
+        )
         return svg_utils.create_node(
             "rect",
             parent=self.current,
@@ -287,7 +298,7 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 node,
                 "transform",
-                f"translate({-reference[0]} {-reference[1]})",
+                "translate(%s)" % svg_utils.seq2str([-x for x in reference]),
             )
 
     def set_origination_transform(
@@ -311,7 +322,9 @@ class ShapeConverter(ConverterProtocol):
         )
         if matrix != (1, 0, 0, 1, 0, 0):
             svg_utils.append_attribute(
-                node, "transform", "matrix(%s)" % svg_utils.seq2str(matrix)
+                node,
+                "transform",
+                "matrix(%s)" % svg_utils.seq2str(matrix, format=".3f"),
             )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
@@ -666,3 +679,19 @@ def get_origin_bbox(
     else:
         bbox = origination.bbox
     return bbox
+
+
+def get_origin_scale(
+    origination: Rectangle | RoundedRectangle | Ellipse,
+) -> tuple[float, float]:
+    """Get the origin scale for origination data."""
+    if b"Trnf" in origination._data:
+        transform = origination._data[b"Trnf"]
+        xx = float(transform[b"xx"])
+        xy = float(transform[b"xy"])
+        yx = float(transform[b"yx"])
+        yy = float(transform[b"yy"])
+        scale_x = (xx**2 + yx**2) ** 0.5
+        scale_y = (xy**2 + yy**2) ** 0.5
+        return (scale_x, scale_y)
+    return (1.0, 1.0)
