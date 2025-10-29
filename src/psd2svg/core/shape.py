@@ -312,7 +312,7 @@ class ShapeConverter(ConverterProtocol):
                 "transform",
                 "matrix(%s)" % svg_utils.seq2str(matrix, format=".3f"),
             )
-        
+
         # Adjust the offset by the reference point.
         reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0)))
         if reference != (0.0, 0.0):
@@ -431,26 +431,34 @@ class ShapeConverter(ConverterProtocol):
         """Set fill attribute to the given element."""
         # Transparent fill when stroke is enabled but fill is disabled.
         if layer.has_stroke() and not layer.stroke.fill_enabled:
+            logger.debug("Fill is disabled; setting fill to transparent.")
             svg_utils.set_attribute(node, "fill", "transparent")
             return
 
         # Shapes have the following tagged blocks for fill content.
         if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
-            content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
-            if Key.Color in content_data:
-                color = color_utils.descriptor2hex(content_data[Key.Color])
-                svg_utils.set_attribute(node, "fill", color)
-            elif Key.Gradient in content_data:
-                gradient = self.add_gradient_definition(content_data)
-                if gradient is not None:
-                    svg_utils.set_attribute(
-                        node, "fill", svg_utils.get_funciri(gradient)
-                    )
-            else:
-                logger.warning(f"Unsupported fill content: {content_data}")
+            self.set_fill_stroke_content(layer, node)
             return
 
-        # Fill layers have the following tagged blocks.
+        # Fill layers have a dedicated tagged block.
+        self.set_fill_setting(layer, node)
+
+    def set_fill_stroke_content(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Set fill or stroke content from VECTOR_STROKE_CONTENT_DATA."""
+        content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
+        if Key.Color in content_data:
+            color = color_utils.descriptor2hex(content_data[Key.Color])
+            svg_utils.set_attribute(node, "fill", color)
+        elif Key.Gradient in content_data:
+            gradient = self.add_gradient_definition(content_data)
+            if gradient is not None:
+                svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
+        else:
+            logger.warning(f"Unsupported fill content: {content_data}")
+        self.set_fill_opacity(layer, node)
+
+    def set_fill_setting(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Set fill attribute from fill settings tagged blocks."""
         if Tag.SOLID_COLOR_SHEET_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.SOLID_COLOR_SHEET_SETTING)
             color = color_utils.descriptor2hex(setting[Klass.Color])
@@ -466,6 +474,13 @@ class ShapeConverter(ConverterProtocol):
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
             logger.debug(f"No fill information found: {layer}.")
+        self.set_fill_opacity(layer, node)
+
+    def set_fill_opacity(self, layer: layers.Layer, node: ET.Element) -> None:
+        """Set fill opacity to the given element."""
+        fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255) / 255.0
+        if fill_opacity < 1.0:
+            svg_utils.set_attribute(node, "fill-opacity", fill_opacity)
 
     def set_stroke(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add stroke style to the path node."""
@@ -585,18 +600,19 @@ class ShapeConverter(ConverterProtocol):
         self, setting: Descriptor, gradient: ET.Element
     ) -> None:
         """Set gradient settings such as angle to the gradient element."""
-        angle = setting[Key.Angle]
-        if angle.unit != Unit.Angle:
-            logger.warning(f"Unsupported angle unit: {angle.unit}")
-        if angle.value != 0:
-            logger.info(f"Rotation angle != 0 might be inaccurate: {angle.value}")
-            # TODO: Support rotation for uneven aspect ratio.
-            rotation = -angle.value
-            svg_utils.set_attribute(
-                gradient,
-                "gradientTransform",
-                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
-            )
+        if Key.Angle in setting:
+            angle = setting[Key.Angle]
+            if angle.unit != Unit.Angle:
+                logger.warning(f"Unsupported angle unit: {angle.unit}")
+            if angle.value != 0:
+                logger.info(f"Rotation angle != 0 might be inaccurate: {angle.value}")
+                # TODO: Support rotation for uneven aspect ratio.
+                rotation = -angle.value
+                svg_utils.set_attribute(
+                    gradient,
+                    "gradientTransform",
+                    f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+                )
 
 
 def generate_path(
