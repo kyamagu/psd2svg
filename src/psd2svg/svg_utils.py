@@ -2,7 +2,7 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 from re import Pattern
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def num2str(num: int | float | bool, format = DEFAULT_FLOAT_FORMAT) -> str:
     raise ValueError(f"Unsupported type: {type(num)}")
 
 
-def seq2str(seq: list[int | float | bool], sep = ",", format = DEFAULT_FLOAT_FORMAT) -> str:
+def seq2str(seq: Sequence[int | float | bool], sep = ",", format = DEFAULT_FLOAT_FORMAT) -> str:
     """Convert a sequence of numbers to a string, using the specified format for floats."""
     return sep.join(num2str(n, format) for n in seq)
 
@@ -122,11 +122,11 @@ def set_attribute(node: ET.Element, key: str, value: Any) -> None:
     else:
         node.set(key, str(value))
 
-def append_attribute(node: ET.Element, key: str, value: Any) -> None:
+def append_attribute(node: ET.Element, key: str, value: Any, separator: str = " ") -> None:
     """Append a value to an existing attribute of an XML node."""
     if key in node.attrib:
         existing_value = node.get(key, "")
-        new_value = f"{existing_value} {value}"
+        new_value = f"{existing_value}{separator}{value}"
         node.set(key, new_value)
     else:
         set_attribute(node, key, value)

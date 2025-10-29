@@ -3,6 +3,7 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import Iterator
 
+import numpy as np
 from psd_tools.api import adjustments, layers
 from psd_tools.api.shape import Rectangle, RoundedRectangle, Ellipse
 from psd_tools.psd.descriptor import Descriptor
@@ -174,61 +175,98 @@ class ShapeConverter(ConverterProtocol):
 
         if layer.has_origination():
             origination = layer.origination[path.index]
+            reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0))
             if isinstance(origination, Rectangle):
-                return self.create_origination_rectangle(origination, **attrib)
+                node = self.create_origination_rectangle(
+                    origination, reference, **attrib
+                )
+                self.set_origination_transform(origination, node)
+                self.set_reference_transform(layer, node)
             elif isinstance(origination, RoundedRectangle):
-                return self.create_origination_rounded_rectangle(origination, **attrib)
+                node = self.create_origination_rounded_rectangle(
+                    origination, reference, **attrib
+                )
+                self.set_origination_transform(origination, node)
+                self.set_reference_transform(layer, node)
             elif isinstance(origination, Ellipse):
-                return self.create_origination_ellipse(origination, **attrib)
+                node = self.create_origination_ellipse(origination, reference, **attrib)
+                self.set_origination_transform(origination, node)
+                self.set_reference_transform(layer, node)
             else:
+                # Fallback to path creation.
+                # TODO: Support line shapes.
                 logger.debug(f"Unsupported shape type: {origination}")
+                node = self.create_path(path, **attrib)
+        else:
+            node = self.create_path(path, **attrib)
 
-        return self.create_path(path, **attrib)
+        return node
 
     def create_origination_rectangle(
-        self, origination: Rectangle, **attrib
+        self,
+        origination: Rectangle,
+        reference: tuple[float, float],
+        **attrib,
     ) -> ET.Element:
         """Create a rectangle shape from origination data."""
-
+        bbox = get_origin_bbox(origination, reference)
         return svg_utils.create_node(
             "rect",
             parent=self.current,
-            x=int(origination.bbox[0]),
-            y=int(origination.bbox[1]),
-            width=int(origination.bbox[2] - origination.bbox[0]),
-            height=int(origination.bbox[3] - origination.bbox[1]),
+            x=bbox[0],
+            y=bbox[1],
+            width=bbox[2] - bbox[0],
+            height=bbox[3] - bbox[1],
             **attrib,
         )
 
     def create_origination_rounded_rectangle(
-        self, origination: RoundedRectangle, **attrib
+        self,
+        origination: RoundedRectangle,
+        reference: tuple[float, float],
+        **attrib,
     ) -> ET.Element:
         """Create a rounded rectangle shape from origination data."""
+        bbox = get_origin_bbox(origination, reference)
+        scales = get_origin_scale(origination)
+        scale = (scales[0] + scales[1]) / 2
         rx = (
-            float(origination.radii[b"topRight"])
-            + float(origination.radii[b"bottomRight"])
-        ) / 2
+            (
+                float(origination.radii[b"topRight"])
+                + float(origination.radii[b"bottomRight"])
+            )
+            / 2
+            / scale
+        )
         ry = (
-            float(origination.radii[b"topRight"]) + float(origination.radii[b"topLeft"])
-        ) / 2
+            (
+                float(origination.radii[b"topRight"])
+                + float(origination.radii[b"topLeft"])
+            )
+            / 2
+            / scale
+        )
         return svg_utils.create_node(
             "rect",
             parent=self.current,
-            x=int(origination.bbox[0]),
-            y=int(origination.bbox[1]),
-            width=int(origination.bbox[2] - origination.bbox[0]),
-            height=int(origination.bbox[3] - origination.bbox[1]),
+            x=bbox[0],
+            y=bbox[1],
+            width=bbox[2] - bbox[0],
+            height=bbox[3] - bbox[1],
             rx=rx,
             ry=ry,
             **attrib,
         )
 
-    def create_origination_ellipse(self, origination: Ellipse, **attrib) -> ET.Element:
+    def create_origination_ellipse(
+        self, origination: Ellipse, reference: tuple[float, float], **attrib
+    ) -> ET.Element:
         """Create an ellipse shape from origination data."""
-        cx = (origination.bbox[0] + origination.bbox[2]) / 2
-        cy = (origination.bbox[1] + origination.bbox[3]) / 2
-        rx = (origination.bbox[2] - origination.bbox[0]) / 2
-        ry = (origination.bbox[3] - origination.bbox[1]) / 2
+        bbox = get_origin_bbox(origination, reference)
+        cx = (bbox[0] + bbox[2]) / 2
+        cy = (bbox[1] + bbox[3]) / 2
+        rx = (bbox[2] - bbox[0]) / 2
+        ry = (bbox[3] - bbox[1]) / 2
         if rx == ry:
             return svg_utils.create_node(
                 "circle",
@@ -247,6 +285,46 @@ class ShapeConverter(ConverterProtocol):
                 rx=rx,
                 ry=ry,
                 **attrib,
+            )
+
+    def set_reference_transform(
+        self,
+        layer: layers.ShapeLayer,
+        node: ET.Element,
+    ) -> None:
+        """Set transform attribute from reference point."""
+        reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0))
+        if reference != (0, 0):
+            svg_utils.append_attribute(
+                node,
+                "transform",
+                "translate(%s)" % svg_utils.seq2str([-x for x in reference]),
+            )
+
+    def set_origination_transform(
+        self,
+        origination: Rectangle | RoundedRectangle | Ellipse,
+        node: ET.Element,
+    ) -> None:
+        """Set transform attribute from origination data."""
+        # Apply transform if available.
+        if b"Trnf" not in origination._data:
+            return
+        transform = origination._data[b"Trnf"]
+        assert transform.classID == b"Trnf"
+        matrix = (
+            float(transform[b"xx"]),
+            float(transform[b"xy"]),
+            float(transform[b"yx"]),
+            float(transform[b"yy"]),
+            float(transform[b"tx"]),
+            float(transform[b"ty"]),
+        )
+        if matrix != (1, 0, 0, 1, 0, 0):
+            svg_utils.append_attribute(
+                node,
+                "transform",
+                "matrix(%s)" % svg_utils.seq2str(matrix, format=".3f"),
             )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
@@ -570,3 +648,50 @@ def generate_path(
 
     if path.is_closed():
         yield "Z"
+
+
+def get_origin_bbox(
+    origination: Rectangle | RoundedRectangle | Ellipse,
+    reference: tuple[float, float],
+) -> tuple[float, float, float, float]:
+    """Get the origin bounding box for origination data."""
+    if b"keyOriginBoxCorners" in origination._data and b"Trnf" in origination._data:
+        # Calculate rectangle from corner points when transform is available.
+        # Corners are given in transformed space; i.e., after applying Trnf.
+        corners = origination._data[b"keyOriginBoxCorners"]
+        x1 = float(corners[b"rectangleCornerA"][b"Hrzn"])
+        y1 = float(corners[b"rectangleCornerA"][b"Vrtc"])
+        x2 = float(corners[b"rectangleCornerC"][b"Hrzn"])
+        y2 = float(corners[b"rectangleCornerC"][b"Vrtc"])
+        transform = origination._data[b"Trnf"]
+        xx = float(transform[b"xx"])
+        xy = float(transform[b"xy"])
+        yx = float(transform[b"yx"])
+        yy = float(transform[b"yy"])
+        tx = float(transform[b"tx"])
+        ty = float(transform[b"ty"])
+        # Corners are in transformed space. Invert to get original coordinates.
+        X = np.array([[x1, y1, 1], [x2, y2, 1]]).T
+        M = np.array([[xx, yx, tx], [xy, yy, ty], [0, 0, 1]])
+        # Apply inverse transform: Y = M^-1 @ X, then offset by reference point
+        Y = np.linalg.solve(M, X) + np.array([[reference[0]], [reference[1]], [0]])
+        bbox = (float(Y[0, 0]), float(Y[1, 0]), float(Y[0, 1]), float(Y[1, 1]))
+    else:
+        bbox = origination.bbox
+    return bbox
+
+
+def get_origin_scale(
+    origination: Rectangle | RoundedRectangle | Ellipse,
+) -> tuple[float, float]:
+    """Get the origin scale for origination data."""
+    if b"Trnf" in origination._data:
+        transform = origination._data[b"Trnf"]
+        xx = float(transform[b"xx"])
+        xy = float(transform[b"xy"])
+        yx = float(transform[b"yx"])
+        yy = float(transform[b"yy"])
+        scale_x = (xx**2 + yx**2) ** 0.5
+        scale_y = (xy**2 + yy**2) ** 0.5
+        return (scale_x, scale_y)
+    return (1.0, 1.0)
