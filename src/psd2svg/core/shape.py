@@ -180,18 +180,15 @@ class ShapeConverter(ConverterProtocol):
                 node = self.create_origination_rectangle(
                     origination, reference, **attrib
                 )
-                self.set_origination_transform(origination, node)
-                self.set_reference_transform(layer, node)
+                self.set_origination_transform(layer, origination, node)
             elif isinstance(origination, RoundedRectangle):
                 node = self.create_origination_rounded_rectangle(
                     origination, reference, **attrib
                 )
-                self.set_origination_transform(origination, node)
-                self.set_reference_transform(layer, node)
+                self.set_origination_transform(layer, origination, node)
             elif isinstance(origination, Ellipse):
                 node = self.create_origination_ellipse(origination, reference, **attrib)
-                self.set_origination_transform(origination, node)
-                self.set_reference_transform(layer, node)
+                self.set_origination_transform(layer, origination, node)
             else:
                 # Fallback to path creation.
                 # TODO: Support line shapes.
@@ -287,29 +284,18 @@ class ShapeConverter(ConverterProtocol):
                 **attrib,
             )
 
-    def set_reference_transform(
-        self,
-        layer: layers.ShapeLayer,
-        node: ET.Element,
-    ) -> None:
-        """Set transform attribute from reference point."""
-        reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0))
-        if reference != (0, 0):
-            svg_utils.append_attribute(
-                node,
-                "transform",
-                "translate(%s)" % svg_utils.seq2str([-x for x in reference]),
-            )
-
     def set_origination_transform(
         self,
+        layer: layers.ShapeLayer,
         origination: Rectangle | RoundedRectangle | Ellipse,
         node: ET.Element,
     ) -> None:
         """Set transform attribute from origination data."""
-        # Apply transform if available.
+        # Check if transform is available.
         if b"Trnf" not in origination._data:
             return
+
+        # Apply the transformation matrix.
         transform = origination._data[b"Trnf"]
         assert transform.classID == b"Trnf"
         matrix = (
@@ -325,6 +311,16 @@ class ShapeConverter(ConverterProtocol):
                 node,
                 "transform",
                 "matrix(%s)" % svg_utils.seq2str(matrix, format=".3f"),
+            )
+        
+        # Adjust the offset by the reference point.
+        reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0)))
+        if reference != (0.0, 0.0):
+            svg_utils.append_attribute(
+                node,
+                "transform",
+                "translate(%s)"
+                % svg_utils.seq2str((-reference[0], -reference[1]), format=".3f"),
             )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
