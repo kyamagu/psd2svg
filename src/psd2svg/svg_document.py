@@ -48,7 +48,7 @@ class SVGDocument:
     @staticmethod
     def from_psd(psdimage: PSDImage) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
-        
+
         Args:
             psdimage: PSDImage object to convert.
         """
@@ -64,7 +64,7 @@ class SVGDocument:
         indent: str = "  ",
     ) -> str:
         """Embed images as base64 data URIs.
-        
+
         Args:
             embed_images: If True, embed images as base64 data URIs.
             image_prefix: If provided, save images to files with this prefix.
@@ -83,7 +83,7 @@ class SVGDocument:
         indent: str = "  ",
     ) -> None:
         """Save the SVG to a file.
-        
+
         Args:
             filepath: Path to the output SVG file.
             embed_images: If True, embed images as base64 data URIs.
@@ -97,7 +97,7 @@ class SVGDocument:
 
     def rasterize(self, rasterizer_type: str = "resvg") -> Image.Image:
         """Rasterize the SVG document to PIL Image.
-        
+
         Args:
             rasterizer_type: Type of rasterizer to use. Default is 'resvg'.
         """
@@ -121,15 +121,13 @@ class SVGDocument:
     @classmethod
     def load(cls, svg: str, images: list[bytes]) -> "SVGDocument":
         """Load an SVGDocument from SVG content and image bytes.
-        
+
         Args:
             svg: SVG content as a string.
             images: List of image bytes corresponding to <image> nodes in the SVG.
         """
         svg_node = ET.fromstring(svg)
-        pil_images = [
-            image_utils.decode_image(img_bytes) for img_bytes in images
-        ]
+        pil_images = [image_utils.decode_image(img_bytes) for img_bytes in images]
         return SVGDocument(svg=svg_node, images=pil_images)
 
     def _handle_images(

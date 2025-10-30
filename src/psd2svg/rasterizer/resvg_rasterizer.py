@@ -25,7 +25,7 @@ class ResvgRasterizer(BaseRasterizer):
     def __init__(self, dpi: int = 0, **kwargs: Any) -> None:
         """
         Initialize the resvg rasterizer.
-        
+
         Args:
             dpi: Dots per inch for rendering. Default is 96.0.
             **kwargs: Additional arguments (unused but kept for compatibility).
@@ -37,12 +37,12 @@ class ResvgRasterizer(BaseRasterizer):
     ) -> Image.Image:
         """
         Rasterize an SVG file to a PIL Image.
-        
+
         Args:
             url: Path to the SVG file.
             size: Optional target size (width, height) in pixels.
             **kwargs: Additional arguments (unused).
-            
+
         Returns:
             PIL Image object containing the rasterized SVG.
         """
@@ -58,16 +58,16 @@ class ResvgRasterizer(BaseRasterizer):
     ) -> Image.Image:
         """
         Rasterize SVG content from a string to a PIL Image.
-        
+
         Args:
             input: SVG content as string or bytes.
             **kwargs: Additional arguments passed to rasterize.
-            
+
         Returns:
             PIL Image object containing the rasterized SVG.
         """
         # Convert bytes to string if necessary
-        svg_string = input.decode('utf-8') if isinstance(input, bytes) else input
+        svg_string = input.decode("utf-8") if isinstance(input, bytes) else input
         png_bytes = resvg_py.svg_to_bytes(svg_string=svg_string, dpi=int(self.dpi))
         image = Image.open(BytesIO(png_bytes))
         return self.composite_background(image)

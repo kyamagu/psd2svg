@@ -66,11 +66,6 @@ class ShapeConverter(ConverterProtocol):
         | adjustments.PatternFill,
     ) -> ET.Element | None:
         """Add fill node to the given element."""
-        if isinstance(layer, adjustments.PatternFill):
-            # TODO: Implement pattern fill.
-            logger.info("Pattern fill is not supported yet: '%s'", layer.name)
-            return self.add_pixel(layer)
-
         logger.debug(f"Adding fill layer: '{layer.name}'")
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
@@ -496,8 +491,13 @@ class ShapeConverter(ConverterProtocol):
             color = color_utils.descriptor2hex(setting[Klass.Color])
             svg_utils.set_attribute(node, "fill", color)
         elif Tag.PATTERN_FILL_SETTING in layer.tagged_blocks:
+            # classID is null for pattern fill setting.
             setting = layer.tagged_blocks.get_data(Tag.PATTERN_FILL_SETTING)
-            logger.warning(f"Pattern fill is not supported yet: {setting}")
+            if Enum.Pattern not in setting:
+                raise ValueError(f"No pattern found in setting: {setting}.")
+            pattern = self.add_pattern(self.psd, setting[Enum.Pattern])
+            if pattern is not None:
+                svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(pattern))
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
             # classID is null for gradient fill setting.
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)

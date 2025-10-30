@@ -33,7 +33,7 @@ def descriptor2hex(desc: Descriptor, fallback: str = "transparent") -> str:
             return f"#{r:02x}{g:02x}{b:02x}"
         else:
             raise ValueError(f"Unsupported RGB color format: {desc}")
-    
+
     if desc.classID == Klass.CMYKColor:
         c = desc.get(Enum.Cyan, 0)
         m = desc.get(Enum.Magenta, 0)
@@ -41,13 +41,13 @@ def descriptor2hex(desc: Descriptor, fallback: str = "transparent") -> str:
         k = desc.get(Enum.Black, 0)
         r, g, b = cmyk2rgb((c / 100, m / 100, y / 100, k / 100))
         return f"#{r:02x}{g:02x}{b:02x}"
-    
+
     if desc.classID == Klass.Grayscale:
         gray = desc.get(Enum.Gray, 0)
         assert isinstance(gray, float)
         gray = float2uint8(gray)
         return f"#{gray:02x}{gray:02x}{gray:02x}"
-    
+
     logger.warning("Unsupported color mode: %s", desc.classID)
     return fallback
 

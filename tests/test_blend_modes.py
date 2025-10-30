@@ -160,7 +160,7 @@ class TestBlendModeWarnings:
     def test_bytes_vivid_light_blend_mode_warning(self, converter, node, caplog):
         """Test that bytes blend mode also triggers a warning."""
         with caplog.at_level(logging.WARNING):
-            converter.set_blend_mode(b'vividLight', node)
+            converter.set_blend_mode(b"vividLight", node)
 
         assert len(caplog.records) == 1
         assert "not accurately supported" in caplog.text
