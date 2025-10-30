@@ -4,7 +4,8 @@ import xml.etree.ElementTree as ET
 from typing import Iterator
 
 import numpy as np
-from psd_tools.api import adjustments, layers
+from psd_tools import PSDImage
+from psd_tools.api import adjustments, layers, pil_io
 from psd_tools.api.shape import Rectangle, RoundedRectangle, Ellipse
 from psd_tools.psd.descriptor import Descriptor
 from psd_tools.psd.vector import Subpath
@@ -67,7 +68,7 @@ class ShapeConverter(ConverterProtocol):
             # TODO: Implement pattern fill.
             logger.info("Pattern fill is not supported yet: '%s'", layer.name)
             return self.add_pixel(layer)
-        
+
         logger.debug(f"Adding fill layer: '{layer.name}'")
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
@@ -398,6 +399,10 @@ class ShapeConverter(ConverterProtocol):
 
     def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply stroke effects to the target element."""
+        if not layer.has_stroke() or not layer.stroke.enabled:
+            logger.debug("Layer has no stroke: %s", layer.name)
+            return
+
         use = svg_utils.create_node(
             "use",
             parent=self.current,
@@ -628,6 +633,30 @@ class ShapeConverter(ConverterProtocol):
                     "gradientTransform",
                     f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
                 )
+
+    def add_pattern(self, psdimage: PSDImage, descriptor: Descriptor) -> ET.Element:
+        """Add pattern definition to the SVG document."""
+        assert descriptor.classID == Enum.Pattern
+        pattern_id = descriptor[Key.ID].value.rstrip("\x00")
+        pattern_data = psdimage._get_pattern(pattern_id)
+        if pattern_data is None:
+            raise ValueError(f"Pattern data not found: {pattern_id}")
+        image = pil_io.convert_pattern_to_pil(pattern_data)
+
+        node = svg_utils.create_node(
+            "pattern",
+            parent=self.current,
+            id=self.auto_id("pattern"),
+            width=image.width,
+            height=image.height,
+            patternUnits="userSpaceOnUse",
+        )
+        svg_utils.create_node(
+            "image", parent=node, width=image.width, height=image.height
+        )
+        # We will later fill in the href attribute when embedding images.
+        self.images.append(image)
+        return node
 
 
 def generate_path(

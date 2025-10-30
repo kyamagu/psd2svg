@@ -3,7 +3,8 @@ import math
 import xml.etree.ElementTree as ET
 
 from psd_tools.api import effects, layers
-from psd_tools.terminology import Enum
+from psd_tools.constants import Tag
+from psd_tools.terminology import Enum, Key, Klass
 
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
@@ -383,17 +384,22 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("gradientoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.GradientOverlay)
-            if effect.type not in (Enum.Linear, Enum.Radial):
+            if effect.type == Enum.Linear:
+                gradient = self.add_linear_gradient(effect.gradient)
+            elif effect.type == Enum.Radial:
+                gradient = self.add_radial_gradient(effect.gradient)
+            else:
                 logger.warning(
                     "Only linear and radial gradient overlay are supported: "
                     f"{effect.type}: '{layer.name}' ({layer.kind})"
                 )
                 continue
+            self.set_gradient_transform(gradient, effect)
 
             if isinstance(layer, layers.ShapeLayer):
-                use = self.add_vector_gradient_overlay_effect(effect, target)
+                use = self.add_vector_gradient_overlay_effect(gradient, target)
             else:
-                use = self.add_raster_gradient_overlay_effect(effect, target)
+                use = self.add_raster_gradient_overlay_effect(gradient, target)
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
@@ -401,11 +407,8 @@ class EffectConverter(ConverterProtocol):
                 self.set_opacity(effect.opacity / 100.0, use)
 
     def add_raster_gradient_overlay_effect(
-        self, effect: effects.GradientOverlay, target: ET.Element
+        self, gradient: ET.Element, target: ET.Element
     ) -> ET.Element:
-        assert effect.value.classID == Enum.GradientFill
-        gradient = self.add_linear_gradient(effect.gradient)
-        self.set_gradient_transform(gradient, effect)
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = svg_utils.create_node("defs", parent=self.current)
         # Rect here should have the target size.
@@ -445,25 +448,8 @@ class EffectConverter(ConverterProtocol):
         return use
 
     def add_vector_gradient_overlay_effect(
-        self, effect: effects.GradientOverlay, target: ET.Element
+        self, gradient: ET.Element, target: ET.Element
     ) -> ET.Element:
-        assert effect.value.classID == Enum.GradientFill
-        if effect.type == Enum.Linear:
-            gradient = self.add_linear_gradient(effect.gradient)
-        elif effect.type == Enum.Radial:
-            gradient = self.add_radial_gradient(effect.gradient)
-        else:
-            logger.warning(
-                f"Only linear and radial gradient overlay is supported: {effect.type}"
-            )
-            # TODO: Maybe fill with solid color instead.
-            return svg_utils.create_node(
-                "use",
-                parent=self.current,
-                href=svg_utils.get_uri(target),
-                fill="transparent",
-            )
-        self.set_gradient_transform(gradient, effect)
         return svg_utils.create_node(
             "use",
             parent=self.current,
@@ -500,8 +486,119 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("patternoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.PatternOverlay)
+            pattern = self.add_pattern(layer._psd, effect.pattern)
+            reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0))
+            self.set_pattern_transform(pattern, effect, reference)
+
+            if isinstance(layer, layers.ShapeLayer):
+                use = self.add_vector_pattern_overlay_effect(pattern, target)
+            else:
+                use = self.add_raster_pattern_overlay_effect(pattern, target)
+
+            if effect.blend_mode != Enum.Normal:
+                self.set_blend_mode(effect.blend_mode, use)
+            if effect.opacity != 100.0:
+                self.set_opacity(effect.opacity / 100.0, use)
+
+    def add_raster_pattern_overlay_effect(
+        self, pattern: ET.Element, target: ET.Element
+    ) -> ET.Element:
+        # feFlood does not support fill with pattern, so we use feImage and feComposite.
+        defs = svg_utils.create_node("defs", parent=self.current)
+
+        if "x" not in target.attrib or "y" not in target.attrib:
             logger.warning(
-                f"Pattern overlay effect is not supported yet: '{layer.name}' ({layer.kind})"
+                "Target element for raster pattern overlay effect "
+                "does not have 'x' or 'y' attribute. "
+                "Assuming (0, 0) as the origin."
+            )
+        # Rect here should have the target size and location.
+        rect = svg_utils.create_node(
+            "rect",
+            parent=defs,
+            id=self.auto_id("patternfill"),
+            x=target.get("x", "0"),
+            y=target.get("y", "0"),
+            width=target.get("width", "100%"),
+            height=target.get("height", "100%"),
+            fill=svg_utils.get_funciri(pattern),
+        )
+        # Filter should use the user space coordinates here.
+        filter = svg_utils.create_node(
+            "filter",
+            parent=self.current,
+            id=self.auto_id("patternoverlay"),
+            x=0,
+            y=0,
+            filterUnits="userSpaceOnUse",
+        )
+        svg_utils.create_node(
+            "feImage",
+            parent=filter,
+            href=svg_utils.get_uri(rect),
+        )
+        svg_utils.create_node(
+            "feComposite",
+            in2="SourceAlpha",
+            operator="in",
+            parent=filter,
+        )
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            filter=svg_utils.get_funciri(filter),
+        )
+        return use
+
+    def add_vector_pattern_overlay_effect(
+        self, pattern: ET.Element, target: ET.Element
+    ) -> ET.Element:
+        return svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(target),
+            fill=svg_utils.get_funciri(pattern),
+        )
+
+    def set_pattern_transform(
+        self,
+        pattern: ET.Element,
+        effect: effects.PatternOverlay,
+        reference: tuple[float, float],
+    ) -> None:
+        """Set pattern transformations based on the effect properties."""
+        if reference != (0, 0):
+            svg_utils.append_attribute(
+                pattern,
+                "patternTransform",
+                f"translate({svg_utils.seq2str(reference)})",
+            )
+        if effect.phase is not None:
+            assert effect.phase.classID == Klass.Point
+            offset = (
+                float(effect.phase[Key.Horizontal].value),
+                float(effect.phase[Key.Vertical].value),
+            )
+            if offset[0] != 0.0 or offset[1] != 0.0:
+                svg_utils.append_attribute(
+                    pattern,
+                    "patternTransform",
+                    f"translate({svg_utils.seq2str(offset)})",
+                )
+        if effect.scale != 100.0:
+            scale = effect.scale / 100.0
+            svg_utils.append_attribute(
+                pattern,
+                "patternTransform",
+                f"scale({svg_utils.num2str(scale, '.2f')})",
+            )
+        if effect.angle != 0.0:
+            rotation = -effect.angle
+            svg_utils.append_attribute(
+                pattern,
+                "patternTransform",
+                f"rotate({svg_utils.num2str(rotation)})",
             )
 
     def apply_inner_shadow_effect(

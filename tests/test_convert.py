@@ -126,6 +126,10 @@ def test_paint(psd_file: str) -> None:
         "effects/gradient-overlay-3.psd",
         "effects/gradient-overlay-4.psd",
         "effects/gradient-overlay-5.psd",
+        "effects/pattern-overlay-1.psd",  # raster pattern overlay
+        "effects/pattern-overlay-2.psd",  # raster pattern overlay with transform
+        "effects/pattern-overlay-3.psd",  # shape pattern overlay
+        "effects/pattern-overlay-4.psd",  # shape pattern overlay with transform
         "effects/drop-shadow-1.psd",
         "effects/drop-shadow-2.psd",
         "effects/drop-shadow-3.psd",
