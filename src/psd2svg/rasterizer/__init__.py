@@ -4,9 +4,7 @@ from typing import Any
 from .base_rasterizer import BaseRasterizer
 
 
-def create_rasterizer(
-    name: str = "resvg", *args: Any, **kwargs: Any
-) -> BaseRasterizer:
+def create_rasterizer(name: str = "resvg", *args: Any, **kwargs: Any) -> BaseRasterizer:
     module_name = f"psd2svg.rasterizer.{name.lower()}_rasterizer"
     try:
         module = import_module(module_name)

@@ -73,4 +73,3 @@ class Converter(
             self.images.append(self.psd.composite())
         else:
             self.add_children(self.psd)
-

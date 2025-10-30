@@ -28,7 +28,11 @@ class InkscapeRasterizer(BaseRasterizer):
         self.executable_path = executable_path
 
     def rasterize(
-        self, url: str, size: Optional[Tuple[int, int]] = None, format: str = "png", **kwargs: Any
+        self,
+        url: str,
+        size: Optional[Tuple[int, int]] = None,
+        format: str = "png",
+        **kwargs: Any,
     ) -> Image.Image:
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = os.path.join(tempdir, f"output.{format}")

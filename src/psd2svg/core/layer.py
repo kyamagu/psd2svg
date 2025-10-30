@@ -144,7 +144,7 @@ class LayerConverter(ConverterProtocol):
                 self.set_opacity(fill_opacity / 255, node)
             self.set_layer_attributes(layer, node)
         return node
-    
+
     def apply_raster_fill(self, layer: layers.Layer, node: ET.Element) -> ET.Element:
         """Add a raster main fill to the svg document."""
         use = svg_utils.create_node(

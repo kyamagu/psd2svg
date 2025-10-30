@@ -21,7 +21,7 @@ def safe_utf8(text: str) -> str:
     return ILLEGAL_XML_RE.sub(" ", text)
 
 
-def num2str(num: int | float | bool, format = DEFAULT_FLOAT_FORMAT) -> str:
+def num2str(num: int | float | bool, format=DEFAULT_FLOAT_FORMAT) -> str:
     """Convert a number to a string, using the specified format for floats."""
     if isinstance(num, bool):
         return "true" if num else "false"
@@ -34,7 +34,9 @@ def num2str(num: int | float | bool, format = DEFAULT_FLOAT_FORMAT) -> str:
     raise ValueError(f"Unsupported type: {type(num)}")
 
 
-def seq2str(seq: Sequence[int | float | bool], sep = ",", format = DEFAULT_FLOAT_FORMAT) -> str:
+def seq2str(
+    seq: Sequence[int | float | bool], sep=",", format=DEFAULT_FLOAT_FORMAT
+) -> str:
     """Convert a sequence of numbers to a string, using the specified format for floats."""
     return sep.join(num2str(n, format) for n in seq)
 
@@ -102,6 +104,7 @@ def add_style(node: ET.Element, key: str, value: Any) -> None:
     else:
         node.set("style", f"{key}: {value}")
 
+
 def add_class(node: ET.Element, class_name: str) -> None:
     """Add a class to an XML node."""
     if "class" in node.attrib:
@@ -117,12 +120,17 @@ def set_attribute(node: ET.Element, key: str, value: Any) -> None:
     """Add an attribute to an XML node."""
     if isinstance(value, (int, float, bool)):
         node.set(key, num2str(value))
-    elif isinstance(value, list) and all(isinstance(v, (int, float, bool)) for v in value):
+    elif isinstance(value, list) and all(
+        isinstance(v, (int, float, bool)) for v in value
+    ):
         node.set(key, seq2str(value))
     else:
         node.set(key, str(value))
 
-def append_attribute(node: ET.Element, key: str, value: Any, separator: str = " ") -> None:
+
+def append_attribute(
+    node: ET.Element, key: str, value: Any, separator: str = " "
+) -> None:
     """Append a value to an existing attribute of an XML node."""
     if key in node.attrib:
         existing_value = node.get(key, "")

@@ -157,3 +157,19 @@ def test_effects(psd_file: str) -> None:
     score = compute_conversion_quality(psdimage, "MSE")
     logging.info(f"MSE for {psd_file}: {score}")
     assert score < 0.01, f"MSE is too high: {score}"
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "layer-types/gradient-fill.psd",
+        "layer-types/pattern-fill.psd",
+        "layer-types/solid-color-fill.psd",
+    ],
+)
+def test_fill_layers(psd_file: str) -> None:
+    """Test conversion quality of fill layers."""
+    psdimage = PSDImage.open(get_fixture(psd_file))
+    score = compute_conversion_quality(psdimage, "MSE")
+    logging.info(f"MSE for {psd_file}: {score}")
+    assert score < 0.01, f"MSE is too high: {score}"
