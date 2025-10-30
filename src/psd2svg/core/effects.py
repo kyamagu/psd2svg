@@ -470,14 +470,16 @@ class EffectConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                f"translate(0.5 0.5) scale({scale:.0f} {scale:.0f}) translate(-0.5 -0.5)",
+                f"translate(0.5 0.5) scale({svg_utils.num2str(scale, '.2f')}) translate(-0.5 -0.5)",
             )
         if effect.angle != 0.0:
+            # TODO: Rotation actually scales with the aspect ratio of the layer.
+            logger.debug(f"Gradient rotation could be inaccurate: {effect.angle}")
             rotation = -effect.angle
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+                f"translate(0.5 0.5) rotate({svg_utils.num2str(rotation, '.2f')}) translate(-0.5 -0.5)",
             )
 
     def apply_pattern_overlay_effect(
@@ -507,7 +509,7 @@ class EffectConverter(ConverterProtocol):
         defs = svg_utils.create_node("defs", parent=self.current)
 
         if "x" not in target.attrib or "y" not in target.attrib:
-            logger.warning(
+            logger.debug(
                 "Target element for raster pattern overlay effect "
                 "does not have 'x' or 'y' attribute. "
                 "Assuming (0, 0) as the origin."
