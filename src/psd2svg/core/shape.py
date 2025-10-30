@@ -4,7 +4,8 @@ import xml.etree.ElementTree as ET
 from typing import Iterator
 
 import numpy as np
-from psd_tools.api import adjustments, layers
+from psd_tools import PSDImage
+from psd_tools.api import adjustments, layers, pil_io
 from psd_tools.api.shape import Rectangle, RoundedRectangle, Ellipse
 from psd_tools.psd.descriptor import Descriptor
 from psd_tools.psd.vector import Subpath
@@ -32,6 +33,8 @@ class ShapeConverter(ConverterProtocol):
                     title=layer.name,
                     id=self.auto_id("shape"),
                 )
+                self.set_opacity(layer.opacity / 255.0, node)
+                self.set_mask(layer, node)
 
             # We need to set stroke for the shape here when fill is transparent.
             # Otherwise, effects won't use the correct alpha.
@@ -44,12 +47,12 @@ class ShapeConverter(ConverterProtocol):
                 self.set_stroke(layer, node)
 
             self.apply_background_effects(layer, node, insert_before_target=False)
-            use = self.apply_vector_fill(layer, node)  # main filled shape.
+            self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_overlay_effects(layer, node)
             self.apply_vector_stroke(layer, node)  # main stroke.
             self.apply_stroke_effect(layer, node)
-            self.set_layer_attributes(layer, use)
         else:
+            # We can directly create the shape.
             node = self.create_shape(layer, title=layer.name)
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
@@ -67,7 +70,7 @@ class ShapeConverter(ConverterProtocol):
             # TODO: Implement pattern fill.
             logger.info("Pattern fill is not supported yet: '%s'", layer.name)
             return self.add_pixel(layer)
-        
+
         logger.debug(f"Adding fill layer: '{layer.name}'")
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
@@ -83,14 +86,16 @@ class ShapeConverter(ConverterProtocol):
                     height=viewbox[3] - viewbox[1],
                     id=self.auto_id("fill"),
                     title=layer.name,
+                    class_=layer.kind,
                 )
+                self.set_opacity(layer.opacity / 255.0, node)
+                self.set_mask(layer, node)
             self.apply_background_effects(layer, node, insert_before_target=False)
-            use = self.apply_vector_fill(layer, node)  # main filled shape.
+            self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_overlay_effects(layer, node)
             self.apply_vector_stroke(layer, node)
             self.apply_stroke_effect(layer, node)
-            self.set_layer_attributes(layer, use)
-            return use
+            return node
         else:
             node = svg_utils.create_node(
                 "rect",
@@ -369,11 +374,16 @@ class ShapeConverter(ConverterProtocol):
         )
         with self.set_current(clip_path):
             target = self.create_shape(
-                layer, title=layer.name, id=self.auto_id("shape")
+                layer,
+                title=layer.name,
+                id=self.auto_id("shape"),
+                class_=layer.kind,
             )
+            self.set_opacity(layer.opacity / 255.0, target)
+            self.set_mask(layer, target)
 
         self.apply_background_effects(layer, target, insert_before_target=False)
-        use = self.apply_vector_fill(layer, target)  # main filled shape.
+        self.apply_vector_fill(layer, target)  # main filled shape.
         self.apply_overlay_effects(layer, target)
         # Create a group with the clipping path applied.
         group = svg_utils.create_node(
@@ -385,19 +395,26 @@ class ShapeConverter(ConverterProtocol):
         # TODO: Inner filter effects on clipping path.
         self.apply_vector_stroke(layer, target)
         self.apply_stroke_effect(layer, target)
-        self.set_layer_attributes(layer, use)
 
     def apply_vector_fill(self, layer: layers.Layer, target: ET.Element) -> ET.Element:
         """Apply fill effects to the target element."""
-        # TODO: Check if the layer has fill.
+        if layer.has_stroke() and not layer.stroke.fill_enabled:
+            logger.debug(f"Fill is disabled for layer: '{layer.name}'")
+            return target
+
         use = svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)
         )
         self.set_fill(layer, use)
+        self.set_blend_mode(layer.blend_mode, use)
         return use
 
     def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply stroke effects to the target element."""
+        if not layer.has_stroke() or not layer.stroke.enabled:
+            logger.debug(f"Layer has no stroke: '{layer.name}'")
+            return
+
         use = svg_utils.create_node(
             "use",
             parent=self.current,
@@ -628,6 +645,30 @@ class ShapeConverter(ConverterProtocol):
                     "gradientTransform",
                     f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
                 )
+
+    def add_pattern(self, psdimage: PSDImage, descriptor: Descriptor) -> ET.Element:
+        """Add pattern definition to the SVG document."""
+        assert descriptor.classID == Enum.Pattern
+        pattern_id = descriptor[Key.ID].value.rstrip("\x00")
+        pattern_data = psdimage._get_pattern(pattern_id)
+        if pattern_data is None:
+            raise ValueError(f"Pattern data not found: {pattern_id}")
+        image = pil_io.convert_pattern_to_pil(pattern_data)
+
+        node = svg_utils.create_node(
+            "pattern",
+            parent=self.current,
+            id=self.auto_id("pattern"),
+            width=image.width,
+            height=image.height,
+            patternUnits="userSpaceOnUse",
+        )
+        svg_utils.create_node(
+            "image", parent=node, width=image.width, height=image.height
+        )
+        # We will later fill in the href attribute when embedding images.
+        self.images.append(image)
+        return node
 
 
 def generate_path(
