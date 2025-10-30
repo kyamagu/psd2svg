@@ -103,26 +103,51 @@ class LayerConverter(ConverterProtocol):
                 f"Layer has no pixels, skipping: '{layer.name}' ({layer.kind})."
             )
             return None
+
+        # We will later fill in the href attribute when embedding images.
         self.images.append(layer.topil().convert("RGBA"))
-        node = svg_utils.create_node(
-            "image",
-            parent=self.current,
-            x=layer.left,
-            y=layer.top,
-            width=layer.width,
-            height=layer.height,
-            title=layer.name,
-            id=self.auto_id("image") if layer.has_effects() else None,
-        )
+
         # Raster layers can have both fill opacity and overall opacity.
         fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
-        if fill_opacity < 255:
-            self.set_opacity(fill_opacity / 255, node)
 
-        self.apply_background_effects(layer, node, insert_before_target=True)
-        self.apply_overlay_effects(layer, node)
-        self.apply_stroke_effect(layer, node)
-        self.set_layer_attributes(layer, node)
+        # When the layer has effects, we need to create a separate <image> to handle fill opacity.
+        if layer.has_effects():
+            defs = svg_utils.create_node("defs", parent=self.current)
+            node = svg_utils.create_node(
+                "image",
+                parent=defs,
+                x=layer.left,
+                y=layer.top,
+                width=layer.width,
+                height=layer.height,
+                title=layer.name,
+                id=self.auto_id("image"),
+            )
+            self.apply_background_effects(layer, node, insert_before_target=False)
+            use = svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(node),
+            )
+            if fill_opacity < 255:
+                # Fill opacity only affects the main content, not to effects.
+                self.set_opacity(fill_opacity / 255, use)
+            self.set_layer_attributes(layer, use)
+            self.apply_overlay_effects(layer, node)
+            self.apply_stroke_effect(layer, node)
+        else:
+            node = svg_utils.create_node(
+                "image",
+                parent=self.current,
+                x=layer.left,
+                y=layer.top,
+                width=layer.width,
+                height=layer.height,
+                title=layer.name,
+            )
+            if fill_opacity < 255:
+                self.set_opacity(fill_opacity / 255, node)
+            self.set_layer_attributes(layer, node)
         return node
 
     def set_layer_attributes(self, layer: layers.Layer, node: ET.Element) -> None:

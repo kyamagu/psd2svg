@@ -121,6 +121,7 @@ def test_paint(psd_file: str) -> None:
             marks=pytest.mark.xfail(reason="Outset stroke is not supported."),
         ),
         "effects/color-overlay-4.psd",
+        "effects/color-overlay-5.psd",  # transparent fill opacity test
         "effects/gradient-overlay-1.psd",
         "effects/gradient-overlay-2.psd",
         "effects/gradient-overlay-3.psd",
