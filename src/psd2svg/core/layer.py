@@ -28,19 +28,37 @@ class LayerConverter(ConverterProtocol):
         """Add a layer to the svg document."""
         if not layer.is_visible():
             # TODO: Option to include hidden layers.
-            logger.debug(f"Layer '{layer.name}' is invisible.")
+            logger.debug(f"Layer '{layer.name}' ({layer.kind}) is invisible, skipping.")
             return None
         logger.debug(f"Adding layer: '{layer.name}' ({layer.kind})")
 
         # Simple registry-based dispatch.
         registry = {
-            # TODO: Support more layer types here.
             layers.Artboard: self.add_group,
             layers.Group: self.add_group,
-            adjustments.SolidColorFill: self.add_fill,
-            adjustments.GradientFill: self.add_fill,
+            layers.PixelLayer: self.add_pixel,
             layers.ShapeLayer: self.add_shape,
-            # layers.TypeLayer: self.add_type,
+            layers.SmartObjectLayer: self.add_pixel,
+            layers.TypeLayer: self.add_type,
+            adjustments.BlackAndWhite: self.add_adjustment,
+            adjustments.BrightnessContrast: self.add_adjustment,
+            adjustments.ChannelMixer: self.add_adjustment,
+            adjustments.ColorBalance: self.add_adjustment,
+            adjustments.ColorLookup: self.add_adjustment,
+            adjustments.Curves: self.add_adjustment,
+            adjustments.Exposure: self.add_adjustment,
+            adjustments.GradientFill: self.add_fill,
+            adjustments.GradientMap: self.add_adjustment,
+            adjustments.HueSaturation: self.add_adjustment,
+            adjustments.Invert: self.add_adjustment,
+            adjustments.Levels: self.add_adjustment,
+            adjustments.PatternFill: self.add_fill,
+            adjustments.PhotoFilter: self.add_adjustment,
+            adjustments.Posterize: self.add_adjustment,
+            adjustments.SelectiveColor: self.add_adjustment,
+            adjustments.SolidColorFill: self.add_fill,
+            adjustments.Threshold: self.add_adjustment,
+            adjustments.Vibrance: self.add_adjustment,
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
@@ -57,7 +75,7 @@ class LayerConverter(ConverterProtocol):
         )
         with self.set_current(node):
             self.add_children(layer)
-        
+
         self.apply_background_effects(layer, node, insert_before_target=True)
         self.apply_overlay_effects(layer, node)
         self.apply_stroke_effect(layer, node)
@@ -81,7 +99,9 @@ class LayerConverter(ConverterProtocol):
     def add_pixel(self, layer: layers.Layer) -> ET.Element | None:
         """Add a general pixel-based layer to the svg document."""
         if not layer.has_pixels():
-            logger.debug(f"Layer '{layer.name}' has no pixels.")
+            logger.warning(
+                f"Layer has no pixels, skipping: '{layer.name}' ({layer.kind})."
+            )
             return None
         self.images.append(layer.topil().convert("RGBA"))
         node = svg_utils.create_node(
@@ -131,7 +151,13 @@ class LayerConverter(ConverterProtocol):
         if psd_mode in INACCURATE_BLEND_MODES:
             blend_mode = BLEND_MODE[psd_mode]
             # Format the mode name for display
-            mode_name = psd_mode.name if hasattr(psd_mode, 'name') else psd_mode.decode() if isinstance(psd_mode, bytes) else str(psd_mode)
+            mode_name = (
+                psd_mode.name
+                if hasattr(psd_mode, "name")
+                else psd_mode.decode()
+                if isinstance(psd_mode, bytes)
+                else str(psd_mode)
+            )
             logger.warning(
                 f"Blend mode '{mode_name}' is not accurately supported in SVG. "
                 f"Using approximation '{blend_mode}' instead."
@@ -165,7 +191,7 @@ class LayerConverter(ConverterProtocol):
             or layer.mask.height == 0
         ):
             return None
-        logger.debug(f"Adding mask: '{layer.name}'")
+        logger.debug(f"Adding mask: '{layer.name}' ({layer.kind})")
 
         # Viewbox for the mask. If the mask is empty, use the full canvas.
         viewbox = layer.bbox

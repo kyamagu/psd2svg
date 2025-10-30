@@ -118,7 +118,6 @@ class EffectConverter(ConverterProtocol):
 
         SVG does not allow stroking a raster image directly, so we create a filter.
         """
-        logger.debug(f"Adding raster stroke effect: {effect}")
         filter = svg_utils.create_node(
             "filter", parent=self.current, id=self.auto_id("stroke")
         )
@@ -218,8 +217,10 @@ class EffectConverter(ConverterProtocol):
             color = color_utils.descriptor2hex(effect.color)
             svg_utils.set_attribute(use, "stroke", color)
         elif effect.pattern is not None:
+            # TODO: Implement pattern stroke.
             logger.warning("Pattern stroke is not supported yet.")
         elif effect.gradient is not None:
+            # TODO: Implement gradient stroke.
             logger.warning("Gradient stroke is not supported yet.")
 
         if effect.opacity != 100.0:
@@ -230,7 +231,7 @@ class EffectConverter(ConverterProtocol):
         # TODO: Check position, phase, and offset.
         if effect.position != Enum.CenteredFrame:
             position = Enum(effect.position)  # For validation.
-            logger.warning(
+            logger.info(
                 f"Only centered stroke position is supported in SVG: {position.name}"
             )
 
@@ -382,9 +383,10 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("gradientoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.GradientOverlay)
-            if effect.type != Enum.Linear:
+            if effect.type not in (Enum.Linear, Enum.Radial):
                 logger.warning(
-                    f"Only linear gradient overlay is supported: {effect.type}"
+                    "Only linear and radial gradient overlay are supported: "
+                    f"{effect.type}: '{layer.name}' ({layer.kind})"
                 )
                 continue
 
@@ -498,7 +500,9 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("patternoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.PatternOverlay)
-            logger.warning("Pattern overlay effect is not supported yet.")
+            logger.warning(
+                f"Pattern overlay effect is not supported yet: '{layer.name}' ({layer.kind})"
+            )
 
     def apply_inner_shadow_effect(
         self, layer: layers.Layer, target: ET.Element
@@ -638,7 +642,9 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("satin", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.Satin)
-            logger.warning("Satin effect is not supported yet.")
+            logger.warning(
+                f"Satin effect is not supported yet: '{layer.name}' ({layer.kind})"
+            )
 
     def apply_bevel_emboss_effect(
         self, layer: layers.Layer, target: ET.Element
@@ -646,7 +652,9 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("bevelemboss", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.BevelEmboss)
-            logger.warning("Bevel emboss effect is not supported yet.")
+            logger.warning(
+                f"Bevel emboss effect is not supported yet: '{layer.name}' ({layer.kind})"
+            )
 
 
 def polar_to_cartesian(angle: float, distance: float) -> tuple[float, float]:
