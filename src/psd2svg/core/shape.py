@@ -688,8 +688,12 @@ def get_origin_bbox(
         corners = origination._data[b"keyOriginBoxCorners"]
         x1 = float(corners[b"rectangleCornerA"][b"Hrzn"])
         y1 = float(corners[b"rectangleCornerA"][b"Vrtc"])
-        x2 = float(corners[b"rectangleCornerC"][b"Hrzn"])
-        y2 = float(corners[b"rectangleCornerC"][b"Vrtc"])
+        x2 = float(corners[b"rectangleCornerB"][b"Hrzn"])
+        y2 = float(corners[b"rectangleCornerB"][b"Vrtc"])
+        x3 = float(corners[b"rectangleCornerC"][b"Hrzn"])
+        y3 = float(corners[b"rectangleCornerC"][b"Vrtc"])
+        x4 = float(corners[b"rectangleCornerD"][b"Hrzn"])
+        y4 = float(corners[b"rectangleCornerD"][b"Vrtc"])
         transform = origination._data[b"Trnf"]
         xx = float(transform[b"xx"])
         xy = float(transform[b"xy"])
@@ -698,11 +702,16 @@ def get_origin_bbox(
         tx = float(transform[b"tx"])
         ty = float(transform[b"ty"])
         # Corners are in transformed space. Invert to get original coordinates.
-        X = np.array([[x1, y1, 1], [x2, y2, 1]]).T
+        X = np.array([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]]).T
         M = np.array([[xx, yx, tx], [xy, yy, ty], [0, 0, 1]])
         # Apply inverse transform: Y = M^-1 @ X, then offset by reference point
         Y = np.linalg.solve(M, X) + np.array([[reference[0]], [reference[1]], [0]])
-        bbox = (float(Y[0, 0]), float(Y[1, 0]), float(Y[0, 1]), float(Y[1, 1]))
+        bbox = (
+            float(np.min(Y[0, :])),
+            float(np.min(Y[1, :])),
+            float(np.max(Y[0, :])),
+            float(np.max(Y[1, :])),
+        )
     else:
         bbox = origination.bbox
     return bbox
