@@ -13,5 +13,5 @@ class TypeConverter(ConverterProtocol):
 
     def add_type(self, layer: layers.TypeLayer) -> ET.Element | None:
         """Add a type layer to the svg document."""
-        logger.info("Adding type layer: %s", layer.name)
-        return None
+        logger.debug(f"Type layer support is raster only: '{layer.name}' ({layer.kind})")
+        return self.add_pixel(layer)

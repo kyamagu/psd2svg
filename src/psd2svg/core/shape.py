@@ -98,7 +98,7 @@ class ShapeConverter(ConverterProtocol):
     def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
         """Create a shape element from the layer's vector mask or origination data."""
         if not layer.has_vector_mask():
-            raise ValueError("Layer has no vector mask: %s", layer.name)
+            raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
 
         if len(layer.vector_mask.paths) == 1:
             # TODO: Handle NOT OR for single path.
@@ -150,7 +150,12 @@ class ShapeConverter(ConverterProtocol):
             elif path.operation == 4:  # XOR
                 logger.warning("XOR operation is not supported yet.")
             else:
-                logger.error(f"Unknown path operation: {path.operation}")
+                logger.warning(
+                    f"Unknown path operation: {path.operation}, "
+                    f"falling back to union: '{layer.name}' ({layer.kind})"
+                )
+                with self.set_current(current):
+                    self.create_single_shape(layer, path, fill="#ffffff")
 
         return svg_utils.create_node(
             "rect",
@@ -569,13 +574,13 @@ class ShapeConverter(ConverterProtocol):
         for location in sorted(stop_keys):
             offset = location / 4096.0
             if location not in color_stops:
-                logger.warning(f"No color stop found at location: {location}")
+                logger.debug(f"No color stop found at location: {location}")
                 stop_color = None
                 # TODO: Get interpolated color
             else:
                 stop_color = color_utils.descriptor2hex(color_stops[location])
             if location not in opacity_stops:
-                logger.warning(f"No opacity stop found at location: {location}")
+                logger.debug(f"No opacity stop found at location: {location}")
                 # TODO: Get interpolated opacity
             else:
                 stop_opacity = opacity_stops[location] / 100.0
@@ -592,7 +597,7 @@ class ShapeConverter(ConverterProtocol):
         if any(stop[Key.Midpoint] != 50 for stop in gradient[Key.Colors]) or any(
             stop[Key.Midpoint] != 50 for stop in gradient[Key.Transparency]
         ):
-            logger.warning("Gradient midpoint is not supported.")
+            logger.debug("Gradient midpoint is not supported.")
 
         return node
 
