@@ -122,6 +122,8 @@ def test_paint(psd_file: str) -> None:
         ),
         "effects/color-overlay-4.psd",
         "effects/color-overlay-5.psd",  # transparent fill opacity test
+        "effects/color-overlay-6.psd",  # raster fill opacity and mask test
+        "effects/color-overlay-7.psd",  # vector fill opacity and mask test
         "effects/gradient-overlay-1.psd",
         "effects/gradient-overlay-2.psd",
         "effects/gradient-overlay-3.psd",

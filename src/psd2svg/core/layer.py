@@ -123,16 +123,11 @@ class LayerConverter(ConverterProtocol):
                 title=layer.name,
                 id=self.auto_id("image"),
             )
+            self.set_opacity(layer.opacity / 255, node)
+            self.set_mask(layer, node)
+
             self.apply_background_effects(layer, node, insert_before_target=False)
-            use = svg_utils.create_node(
-                "use",
-                parent=self.current,
-                href=svg_utils.get_uri(node),
-            )
-            if fill_opacity < 255:
-                # Fill opacity only affects the main content, not to effects.
-                self.set_opacity(fill_opacity / 255, use)
-            self.set_layer_attributes(layer, use)
+            self.apply_raster_fill(layer, node)
             self.apply_overlay_effects(layer, node)
             self.apply_stroke_effect(layer, node)
         else:
@@ -149,6 +144,19 @@ class LayerConverter(ConverterProtocol):
                 self.set_opacity(fill_opacity / 255, node)
             self.set_layer_attributes(layer, node)
         return node
+    
+    def apply_raster_fill(self, layer: layers.Layer, node: ET.Element) -> ET.Element:
+        """Add a raster main fill to the svg document."""
+        use = svg_utils.create_node(
+            "use",
+            parent=self.current,
+            href=svg_utils.get_uri(node),
+        )
+        fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
+        if fill_opacity < 255:
+            self.set_opacity(fill_opacity / 255, use)
+        self.set_blend_mode(layer.blend_mode, use)
+        return use
 
     def set_layer_attributes(self, layer: layers.Layer, node: ET.Element) -> None:
         """Set common layer attributes to a layer node."""
