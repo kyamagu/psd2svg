@@ -56,8 +56,18 @@ class ShapeConverter(ConverterProtocol):
             self.set_layer_attributes(layer, node)
         return node
 
-    def add_fill(self, layer: adjustments.SolidColorFill) -> ET.Element | None:
+    def add_fill(
+        self,
+        layer: adjustments.SolidColorFill
+        | adjustments.GradientFill
+        | adjustments.PatternFill,
+    ) -> ET.Element | None:
         """Add fill node to the given element."""
+        if isinstance(layer, adjustments.PatternFill):
+            # TODO: Implement pattern fill.
+            logger.info("Pattern fill is not supported yet: '%s'", layer.name)
+            return self.add_pixel(layer)
+        
         logger.debug(f"Adding fill layer: '{layer.name}'")
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):

@@ -3,7 +3,7 @@ from xml.etree import ElementTree as ET
 
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
-from psd_tools.constants import BlendMode
+from psd_tools.constants import BlendMode, Tag
 
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -114,6 +114,11 @@ class LayerConverter(ConverterProtocol):
             title=layer.name,
             id=self.auto_id("image") if layer.has_effects() else None,
         )
+        # Raster layers can have both fill opacity and overall opacity.
+        fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
+        if fill_opacity < 255:
+            self.set_opacity(fill_opacity / 255, node)
+
         self.apply_background_effects(layer, node, insert_before_target=True)
         self.apply_overlay_effects(layer, node)
         self.apply_stroke_effect(layer, node)
@@ -132,7 +137,11 @@ class LayerConverter(ConverterProtocol):
     def set_opacity(self, opacity: float, node: ET.Element) -> None:
         """Set opacity style to the node."""
         if opacity < 1.0:
-            svg_utils.set_attribute(node, "opacity", opacity)
+            if "opacity" in node.attrib:
+                # Combine opacities if already set.
+                existing_opacity = float(node.attrib["opacity"])
+                opacity *= existing_opacity
+            svg_utils.set_attribute(node, "opacity", svg_utils.num2str(opacity, ".2f"))
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
         """Set blend mode style to the node.

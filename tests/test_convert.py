@@ -96,6 +96,8 @@ def test_shapes(psd_file: str) -> None:
     [
         "paint/transparent-1.psd",
         "paint/color-1.psd",
+        "paint/color-2.psd",  # Fill opacity test for shape layer
+        "paint/color-3.psd",  # Fill opacity test for raster layer
         "paint/linear-gradient-1.psd",
         "paint/linear-gradient-2.psd",  # Fill opacity test
         "paint/radial-gradient-1.psd",
