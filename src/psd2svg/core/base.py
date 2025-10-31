@@ -4,7 +4,7 @@ from typing import Iterator, Protocol
 
 from PIL import Image
 from psd_tools import PSDImage
-from psd_tools.api import layers
+from psd_tools.api import adjustments, layers
 from psd_tools.psd.descriptor import Descriptor
 
 
@@ -34,10 +34,20 @@ class ConverterProtocol(Protocol):
     def add_radial_gradient(self, setting: Descriptor) -> ET.Element: ...
     def add_pattern(self, psdimage: PSDImage, descriptor: Descriptor) -> ET.Element: ...
 
-    @contextlib.contextmanager
-    def add_clipping_target(
-        self, layer: layers.Layer | layers.Group
-    ) -> Iterator[None]: ...
+    # Shape methods
+    def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element: ...
+    def apply_vector_fill(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
+    ) -> None: ...
+    def apply_vector_stroke(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
+    ) -> None: ...
+    def set_fill(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
+    ) -> None: ...
+    def set_stroke(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
+    ) -> None: ...
 
     # Layer effects
     def apply_background_effects(
@@ -81,13 +91,5 @@ class ConverterProtocol(Protocol):
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...
-
     @contextlib.contextmanager
-    def set_current(self, node: ET.Element) -> Iterator[None]:
-        """Set the current node for the converter."""
-        previous = self.current
-        self.current = node
-        try:
-            yield
-        finally:
-            self.current = previous
+    def set_current(self, node: ET.Element) -> Iterator[None]: ...

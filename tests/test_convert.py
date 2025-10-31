@@ -47,7 +47,9 @@ def test_quality(psd_file: str) -> None:
         pytest.param("clipping/shape-with-clip-stroke-effect.psd", 0.02),
         pytest.param("clipping/shape-with-clip-stroke.psd", 0.02),
         pytest.param("clipping/shape-with-clip2-stroke.psd", 0.02),
-        pytest.param("clipping/shape-with-invisible-clip.psd", 0.02),
+        pytest.param("clipping/shape-with-invisible-clip.psd", 0.01),
+        pytest.param("clipping/shape-with-blend.psd", 0.01),  # Blend mode for clipping shape layer
+        pytest.param("clipping/pixel-with-blend.psd", 0.01),  # Blend mode for clipping pixel layer
     ],
 )
 def test_clipping(psd_file: str, quality: float) -> None:
