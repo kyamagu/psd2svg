@@ -9,7 +9,7 @@ from psd_tools.api.shape import Ellipse, Rectangle, RoundedRectangle
 from psd_tools.constants import Tag
 from psd_tools.psd.descriptor import Descriptor
 from psd_tools.psd.vector import Subpath
-from psd_tools.terminology import Enum, Key, Klass, Unit
+from psd_tools.terminology import Enum, Key, Klass
 
 from psd2svg import svg_utils
 from psd2svg.core import color_utils
@@ -146,9 +146,7 @@ class ShapeConverter(ConverterProtocol):
                 self.create_single_shape(
                     layer,
                     path_group[0],
-                    mask=svg_utils.get_funciri(previous)
-                    if len(previous) > 0
-                    else None,
+                    mask=svg_utils.get_funciri(previous) if len(previous) > 0 else None,
                     fill="#ffffff",
                 )
         return current
@@ -382,6 +380,7 @@ class ShapeConverter(ConverterProtocol):
         # Apply the transformation matrix.
         transform = origination._data[b"Trnf"]
         assert transform.classID == b"Trnf"
+        reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0)))
         matrix = (
             float(transform[b"xx"]),
             float(transform[b"xy"]),
@@ -390,21 +389,26 @@ class ShapeConverter(ConverterProtocol):
             float(transform[b"tx"]),
             float(transform[b"ty"]),
         )
-        if matrix != (1, 0, 0, 1, 0, 0):
+        if matrix[:4] == (1, 0, 0, 1):
+            if matrix[4] - reference[0] == 0 and matrix[5] - reference[1] == 0:
+                # Identity matrix, no transform needed.
+                return
+            else:
+                # Simple translation
+                svg_utils.append_attribute(
+                    node,
+                    "transform",
+                    "translate(%s)" % svg_utils.seq2str(matrix[4:], format=".2g"),
+                )
+        else:
             svg_utils.append_attribute(
                 node,
                 "transform",
-                "matrix(%s)" % svg_utils.seq2str(matrix, format=".3f"),
-            )
-
-        # Adjust the offset by the reference point.
-        reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0)))
-        if reference != (0.0, 0.0):
-            svg_utils.append_attribute(
-                node,
-                "transform",
-                "translate(%s)"
-                % svg_utils.seq2str((-reference[0], -reference[1]), format=".3f"),
+                "matrix(%s) translate(%s)"
+                % (
+                    svg_utils.seq2str(matrix, format=".3g"),  # Precision for matrix
+                    svg_utils.seq2str((-reference[0], -reference[1]), format=".2g"),
+                ),
             )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
@@ -647,19 +651,36 @@ class ShapeConverter(ConverterProtocol):
         self, setting: Descriptor, gradient: ET.Element
     ) -> None:
         """Set gradient settings such as angle to the gradient element."""
-        if Key.Angle in setting:
-            angle = setting[Key.Angle]
-            if angle.unit != Unit.Angle:
-                logger.warning(f"Unsupported angle unit: {angle.unit}")
-            if angle.value != 0:
-                logger.info(f"Rotation angle != 0 might be inaccurate: {angle.value}")
-                # TODO: Support rotation for uneven aspect ratio.
-                rotation = -angle.value
-                svg_utils.set_attribute(
-                    gradient,
-                    "gradientTransform",
-                    f"translate(0.5 0.5) rotate({rotation:.0f}) translate(-0.5 -0.5)",
+        transforms = []
+        if Key.Scale in setting:
+            scale = setting[Key.Scale]  # Always UnitFloat
+            if scale.value != 100:
+                transforms.append(
+                    f"scale({svg_utils.num2str(scale.value / 100.0, '.3g')})"
                 )
+        if Key.Angle in setting:
+            angle = setting[Key.Angle]  # Always UnitFloat
+            if angle.value != 0:
+                transforms.append(f"rotate({svg_utils.num2str(-angle.value)})")
+        if transforms:
+            svg_utils.append_attribute(
+                gradient,
+                "gradientTransform",
+                "translate(0.5 0.5) " + " ".join(transforms) + " translate(-0.5 -0.5)",
+            )
+
+        if b"gradientsInterpolationMethod" in setting:
+            method = setting[b"gradientsInterpolationMethod"]
+            if method.enum == Enum.Perceptual:
+                logger.info("Perceptual gradient interpolation is not accurate.")
+            elif method.enum == Enum.Linear:
+                logger.info("Linear gradient interpolation is not accurate.")
+            elif method.enum == b"GIMs":  # Stripes
+                logger.info("Stripes gradient interpolation is not supported yet.")
+            elif method.enum == b"Gcls":  # Classic
+                pass  # Default is classic
+            elif method.enum == Key.Smooth:  # Smooth
+                logger.info("Smooth gradient interpolation is not accurate.")
 
     def add_pattern(self, psdimage: PSDImage, descriptor: Descriptor) -> ET.Element:
         """Add pattern definition to the SVG document."""
