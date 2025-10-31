@@ -65,7 +65,9 @@ def test_clipping(psd_file: str, quality: float) -> None:
     [
         "shapes/triangle-1.psd",
         "shapes/triangle-2.psd",
-        "shapes/custom-1.psd",
+        "shapes/custom-1.psd",  # Complex custom shape with a subpath
+        "shapes/custom-2.psd",  # Complex custom shape with a subpath and a mask
+        "shapes/custom-3.psd",  # Complex custom shape with composite subpaths
         "shapes/ellipse-1.psd",
         "shapes/ellipse-2.psd",
         "shapes/ellipse-3.psd",

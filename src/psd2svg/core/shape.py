@@ -1,6 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET
-from typing import Iterator
+from typing import Iterator, Literal
 
 import numpy as np
 from psd_tools import PSDImage
@@ -31,19 +31,41 @@ class ShapeConverter(ConverterProtocol):
             path = layer.vector_mask.paths[0]
             return self.create_single_shape(layer, path, **attrib)
 
+        # Group subpaths by operations.
+        subpaths: list[list[Subpath]] = []
+        for path in layer.vector_mask.paths:
+            if path.operation == -1:  # Even-odd fill rule
+                if len(subpaths) == 0:
+                    logger.warning("Even-odd fill rule without preceding path")
+                    subpaths.append([path])
+                else:
+                    subpaths[-1].append(path)
+            else:
+                subpaths.append([path])
+
+        rule: Literal["fill-rule", "clip-rule"] = (
+            "clip-rule" if self.current.tag == "clipPath" else "fill-rule"
+        )
+
+        # TODO: Use clipPath when possible.
         # Composite shape with multiple paths.
         current = svg_utils.create_node(
             "mask",
             parent=self.current,
             id=self.auto_id("mask"),
         )
-        for path in layer.vector_mask.paths:
+        for path_group in subpaths:
+            path = path_group[0]
             previous = current
-            if path.operation == 1:  # OR
+            if path.operation == 0:  # XOR
+                logger.warning("XOR operation is not supported yet.")
+            elif path.operation == 1:  # Union (OR)
                 with self.set_current(current):
                     # Union operation: add the shape directly.
-                    self.create_single_shape(layer, path, fill="#ffffff")
-
+                    if len(path_group) > 1:
+                        self.create_composite_path(path_group, rule, fill="#ffffff")
+                    else:
+                        self.create_single_shape(layer, path, fill="#ffffff")
             elif path.operation == 2:  # Subtract (NOT OR)
                 with self.set_current(current):
                     if len(current) == 0:
@@ -52,9 +74,12 @@ class ShapeConverter(ConverterProtocol):
                             "rect", fill="#ffffff", width="100%", height="100%"
                         )
                     # Subtract (Make a hole).
-                    self.create_single_shape(layer, path, fill="#000000")
+                    if len(path_group) > 1:
+                        self.create_composite_path(path_group, rule, fill="#000000")
+                    else:
+                        self.create_single_shape(layer, path, fill="#000000")
 
-            elif path.operation == 3:  # AND
+            elif path.operation == 3:  # Intersect (AND)
                 # Create a new mask for the AND operation.
                 if len(previous) > 0:
                     current = svg_utils.create_node(
@@ -64,24 +89,19 @@ class ShapeConverter(ConverterProtocol):
                     )
                 with self.set_current(current):
                     # Create the intersection by masking the previous shape.
-                    self.create_single_shape(
-                        layer,
-                        path,
-                        mask=svg_utils.get_funciri(previous)
-                        if len(previous) > 0
-                        else None,
-                        fill="#ffffff",
-                    )
-
-            elif path.operation == 4:  # XOR
-                logger.warning("XOR operation is not supported yet.")
+                    if len(path_group) > 1:
+                        self.create_composite_path(path_group, rule, fill="#ffffff")
+                    else:
+                        self.create_single_shape(
+                            layer,
+                            path,
+                            mask=svg_utils.get_funciri(previous)
+                            if len(previous) > 0
+                            else None,
+                            fill="#ffffff",
+                        )
             else:
-                logger.warning(
-                    f"Unknown path operation: {path.operation}, "
-                    f"falling back to union: '{layer.name}' ({layer.kind})"
-                )
-                with self.set_current(current):
-                    self.create_single_shape(layer, path, fill="#ffffff")
+                raise ValueError(f"Unsupported path operation: {path.operation}")
 
         return svg_utils.create_node(
             "rect",
@@ -260,6 +280,24 @@ class ShapeConverter(ConverterProtocol):
             "path",
             parent=self.current,
             d=" ".join(generate_path(path, self.psd.width, self.psd.height)),
+            **attrib,
+        )
+
+    def create_composite_path(
+        self,
+        paths: list[Subpath],
+        rule: Literal["fill-rule", "clip-rule"] = "fill-rule",
+        **attrib,
+    ) -> ET.Element:
+        """Create a composite path element."""
+        return svg_utils.create_node(
+            "path",
+            parent=self.current,
+            d=" ".join(
+                " ".join(generate_path(path, self.psd.width, self.psd.height))
+                for path in paths
+            ),
+            **{str(rule): "evenodd"},
             **attrib,
         )
 
