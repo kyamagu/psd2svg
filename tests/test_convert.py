@@ -64,7 +64,9 @@ def evaluate_quality(psd_file: str, quality: float) -> None:
         pytest.param("layer-types/artboard.psd", 0.01),
         pytest.param("layer-types/group.psd", 0.01),
         pytest.param("layer-types/pixel-layer.psd", 0.01),
-        pytest.param("layer-types/shape-layer.psd", 0.02),  # Shape layers may require a bit more tolerance
+        pytest.param(
+            "layer-types/shape-layer.psd", 0.02
+        ),  # Shape layers may require a bit more tolerance
         pytest.param("layer-types/smartobject-layer.psd", 0.01),
         pytest.param("layer-types/type-layer.psd", 0.01),
         pytest.param("layer-types/gradient-fill.psd", 0.01),
@@ -172,6 +174,12 @@ def test_paint(psd_file: str) -> None:
         "effects/gradient-overlay-3.psd",
         "effects/gradient-overlay-4.psd",
         "effects/gradient-overlay-5.psd",
+        pytest.param(
+            "effects/gradient-overlay-6.psd",  # fill layer with overlay effect
+            marks=pytest.mark.xfail(
+                reason="Gradient paint is not accurate, requires 0.02 tolerance."
+            ),
+        ),
         "effects/pattern-overlay-1.psd",  # raster pattern overlay
         "effects/pattern-overlay-2.psd",  # raster pattern overlay with transform
         "effects/pattern-overlay-3.psd",  # shape pattern overlay

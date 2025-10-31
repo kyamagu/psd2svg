@@ -307,19 +307,20 @@ class LayerConverter(ConverterProtocol):
             viewbox = (0, 0, self.psd.width, self.psd.height)
         if layer.has_effects():
             defs = svg_utils.create_node("defs", parent=self.current)
-            with self.set_current(defs):
-                node = svg_utils.create_node(
-                    "rect",
-                    x=viewbox[0],
-                    y=viewbox[1],
-                    width=viewbox[2] - viewbox[0],
-                    height=viewbox[3] - viewbox[1],
-                    id=self.auto_id("fill"),
-                    title=layer.name,
-                    class_=layer.kind,
-                )
-                self.set_opacity(layer.opacity / 255.0, node)
-                self.set_mask(layer, node)
+            node = svg_utils.create_node(
+                "rect",
+                parent=defs,
+                x=viewbox[0],
+                y=viewbox[1],
+                width=viewbox[2] - viewbox[0],
+                height=viewbox[3] - viewbox[1],
+                id=self.auto_id("fill"),
+                title=layer.name,
+                class_=layer.kind,
+            )
+            
+            self.set_opacity(layer.opacity / 255.0, node)
+            self.set_mask(layer, node)
             self.apply_background_effects(layer, node, insert_before_target=False)
             self.apply_vector_fill(layer, node)  # main filled shape.
             self.apply_overlay_effects(layer, node)
