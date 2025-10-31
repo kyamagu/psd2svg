@@ -174,12 +174,7 @@ def test_paint(psd_file: str) -> None:
         "effects/gradient-overlay-3.psd",
         "effects/gradient-overlay-4.psd",
         "effects/gradient-overlay-5.psd",
-        pytest.param(
-            "effects/gradient-overlay-6.psd",  # fill layer with overlay effect
-            marks=pytest.mark.xfail(
-                reason="Gradient paint is not accurate, requires 0.02 tolerance."
-            ),
-        ),
+        "effects/gradient-overlay-6.psd",  # fill layer with overlay effect
         "effects/pattern-overlay-1.psd",  # raster pattern overlay
         "effects/pattern-overlay-2.psd",  # raster pattern overlay with transform
         "effects/pattern-overlay-3.psd",  # shape pattern overlay
