@@ -58,48 +58,19 @@ class ShapeConverter(ConverterProtocol):
             path = path_group[0]
             previous = current
             if path.operation == 0:  # XOR
-                logger.warning("XOR operation is not supported yet.")
+                current = self.apply_xor_operation(
+                    layer, path_group, current, previous, rule
+                )
             elif path.operation == 1:  # Union (OR)
-                with self.set_current(current):
-                    # Union operation: add the shape directly.
-                    if len(path_group) > 1:
-                        self.create_composite_path(path_group, rule, fill="#ffffff")
-                    else:
-                        self.create_single_shape(layer, path, fill="#ffffff")
+                current = self.apply_union_operation(layer, path_group, current, rule)
             elif path.operation == 2:  # Subtract (NOT OR)
-                with self.set_current(current):
-                    if len(current) == 0:
-                        # First shape: fill white.
-                        svg_utils.create_node(
-                            "rect", fill="#ffffff", width="100%", height="100%"
-                        )
-                    # Subtract (Make a hole).
-                    if len(path_group) > 1:
-                        self.create_composite_path(path_group, rule, fill="#000000")
-                    else:
-                        self.create_single_shape(layer, path, fill="#000000")
-
+                current = self.apply_subtract_operation(
+                    layer, path_group, current, rule
+                )
             elif path.operation == 3:  # Intersect (AND)
-                # Create a new mask for the AND operation.
-                if len(previous) > 0:
-                    current = svg_utils.create_node(
-                        "mask",
-                        parent=self.current,
-                        id=self.auto_id("mask"),
-                    )
-                with self.set_current(current):
-                    # Create the intersection by masking the previous shape.
-                    if len(path_group) > 1:
-                        self.create_composite_path(path_group, rule, fill="#ffffff")
-                    else:
-                        self.create_single_shape(
-                            layer,
-                            path,
-                            mask=svg_utils.get_funciri(previous)
-                            if len(previous) > 0
-                            else None,
-                            fill="#ffffff",
-                        )
+                current = self.apply_intersect_operation(
+                    layer, path_group, current, previous, rule
+                )
             else:
                 raise ValueError(f"Unsupported path operation: {path.operation}")
 
@@ -113,6 +84,168 @@ class ShapeConverter(ConverterProtocol):
             mask=svg_utils.get_funciri(current),
             **attrib,
         )
+
+    def apply_union_operation(
+        self,
+        layer: layers.ShapeLayer,
+        path_group: list[Subpath],
+        current: ET.Element,
+        rule: Literal["fill-rule", "clip-rule"],
+    ) -> ET.Element:
+        """Apply Union (OR) operation to combine shapes."""
+        with self.set_current(current):
+            # Union operation: add the shape directly.
+            if len(path_group) > 1:
+                self.create_composite_path(path_group, rule, fill="#ffffff")
+            else:
+                self.create_single_shape(layer, path_group[0], fill="#ffffff")
+        return current
+
+    def apply_subtract_operation(
+        self,
+        layer: layers.ShapeLayer,
+        path_group: list[Subpath],
+        current: ET.Element,
+        rule: Literal["fill-rule", "clip-rule"],
+    ) -> ET.Element:
+        """Apply Subtract (NOT OR) operation to create holes."""
+        with self.set_current(current):
+            if len(current) == 0:
+                # First shape: fill white.
+                svg_utils.create_node(
+                    "rect", fill="#ffffff", width="100%", height="100%"
+                )
+            # Subtract (Make a hole).
+            if len(path_group) > 1:
+                self.create_composite_path(path_group, rule, fill="#000000")
+            else:
+                self.create_single_shape(layer, path_group[0], fill="#000000")
+        return current
+
+    def apply_intersect_operation(
+        self,
+        layer: layers.ShapeLayer,
+        path_group: list[Subpath],
+        current: ET.Element,
+        previous: ET.Element,
+        rule: Literal["fill-rule", "clip-rule"],
+    ) -> ET.Element:
+        """Apply Intersect (AND) operation to find overlapping regions."""
+        # Create a new mask for the AND operation.
+        if len(previous) > 0:
+            current = svg_utils.create_node(
+                "mask",
+                parent=self.current,
+                id=self.auto_id("mask"),
+            )
+        with self.set_current(current):
+            # Create the intersection by masking the previous shape.
+            if len(path_group) > 1:
+                self.create_composite_path(path_group, rule, fill="#ffffff")
+            else:
+                self.create_single_shape(
+                    layer,
+                    path_group[0],
+                    mask=svg_utils.get_funciri(previous)
+                    if len(previous) > 0
+                    else None,
+                    fill="#ffffff",
+                )
+        return current
+
+    def apply_xor_operation(
+        self,
+        layer: layers.ShapeLayer,
+        path_group: list[Subpath],
+        current: ET.Element,
+        previous: ET.Element,
+        rule: Literal["fill-rule", "clip-rule"],
+    ) -> ET.Element:
+        """Apply XOR (exclusive-or) operation using (A OR B) AND NOT (A AND B)."""
+        if len(previous) == 0:
+            # First shape: just add it directly (XOR with nothing = identity)
+            with self.set_current(current):
+                if len(path_group) > 1:
+                    self.create_composite_path(path_group, rule, fill="#ffffff")
+                else:
+                    self.create_single_shape(layer, path_group[0], fill="#ffffff")
+            return current
+
+        # Create the shape in <defs> to reuse it
+        defs = svg_utils.create_node("defs", parent=self.current)
+        shape_id = self.auto_id("shape")
+        with self.set_current(defs):
+            if len(path_group) > 1:
+                self.create_composite_path(path_group, rule, id=shape_id)
+            else:
+                self.create_single_shape(layer, path_group[0], id=shape_id)
+
+        # Create a mask for the union (A OR B)
+        union_mask = svg_utils.create_node(
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
+        )
+        # Add previous shapes to union
+        with self.set_current(union_mask):
+            svg_utils.create_node(
+                "rect",
+                parent=self.current,
+                fill="#ffffff",
+                width="100%",
+                height="100%",
+                mask=svg_utils.get_funciri(previous),
+            )
+        # Add current shape to union using <use>
+        with self.set_current(union_mask):
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=f"#{shape_id}",
+                fill="#ffffff",
+            )
+
+        # Create a mask for the intersection (A AND B)
+        intersection_mask = svg_utils.create_node(
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
+        )
+        with self.set_current(intersection_mask):
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=f"#{shape_id}",
+                fill="#ffffff",
+                mask=svg_utils.get_funciri(previous),
+            )
+
+        # Create the final XOR mask: union minus intersection
+        current = svg_utils.create_node(
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
+        )
+        with self.set_current(current):
+            # Add the union
+            svg_utils.create_node(
+                "rect",
+                parent=self.current,
+                fill="#ffffff",
+                width="100%",
+                height="100%",
+                mask=svg_utils.get_funciri(union_mask),
+            )
+            # Subtract the intersection
+            svg_utils.create_node(
+                "rect",
+                parent=self.current,
+                fill="#000000",
+                width="100%",
+                height="100%",
+                mask=svg_utils.get_funciri(intersection_mask),
+            )
+        return current
 
     def create_single_shape(
         self, layer: layers.ShapeLayer, path: Subpath, **attrib
