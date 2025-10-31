@@ -32,7 +32,7 @@ class LayerConverter(ConverterProtocol):
 
         # Simple registry-based dispatch.
         registry = {
-            layers.Artboard: self.add_group,
+            layers.Artboard: self.add_artboard,
             layers.Group: self.add_group,
             layers.PixelLayer: self.add_pixel,
             layers.ShapeLayer: self.add_shape,
@@ -70,7 +70,27 @@ class LayerConverter(ConverterProtocol):
                 svg_utils.set_attribute(node, key, value)
         return node
 
-    def add_group(self, layer: layers.Artboard | layers.Group) -> ET.Element:
+    def add_artboard(self, layer: layers.Artboard) -> ET.Element:
+        """Add an artboard layer to the svg document."""
+        node = svg_utils.create_node(
+            "svg",
+            parent=self.current,
+            class_=layer.kind,
+            title=layer.name,
+            x=layer.left,
+            y=layer.top,
+            width=layer.width,
+            height=layer.height,
+            viewBox=svg_utils.seq2str(
+                [layer.left, layer.top, layer.width, layer.height]
+            ),
+            id=self.auto_id("artboard") if layer.has_effects() else None,
+        )
+        with self.set_current(node):
+            self.add_children(layer)
+        return node
+
+    def add_group(self, layer: layers.Group) -> ET.Element:
         """Add a group layer to the svg document."""
         node = svg_utils.create_node(
             "g",
