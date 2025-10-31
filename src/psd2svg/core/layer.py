@@ -146,6 +146,7 @@ class LayerConverter(ConverterProtocol):
                 width=layer.width,
                 height=layer.height,
                 title=layer.name,
+                class_=layer.kind,
             )
             if fill_opacity < 255:
                 self.set_opacity(fill_opacity / 255, node)
@@ -184,7 +185,7 @@ class LayerConverter(ConverterProtocol):
             self.apply_stroke_effect(layer, node)
         else:
             # We can directly create the shape.
-            node = self.create_shape(layer, title=layer.name)
+            node = self.create_shape(layer, title=layer.name, class_=layer.kind)
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
             self.set_layer_attributes(layer, node)
@@ -337,8 +338,6 @@ class LayerConverter(ConverterProtocol):
         self.set_blend_mode(layer.blend_mode, node)
         self.set_isolation(layer, node)
         self.set_mask(layer, node)
-
-        svg_utils.add_class(node, layer.kind)  # Keep the layer type as class.
 
     def set_opacity(self, opacity: float, node: ET.Element) -> None:
         """Set opacity style to the node."""
