@@ -1,5 +1,7 @@
+import contextlib
 import logging
 from xml.etree import ElementTree as ET
+from typing import Iterator
 
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
@@ -8,7 +10,6 @@ from psd_tools.constants import BlendMode, Tag
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 from psd2svg.core.constants import BLEND_MODE, INACCURATE_BLEND_MODES
-from psd2svg.core.counter import AutoCounter
 
 logger = logging.getLogger(__name__)
 
@@ -16,16 +17,13 @@ logger = logging.getLogger(__name__)
 class LayerConverter(ConverterProtocol):
     """Main layer converter mixin."""
 
-    _id_counter: AutoCounter | None = None
+    def add_layer(self, layer: layers.Layer, **attrib: str) -> ET.Element | None:
+        """Add a layer to the svg document.
 
-    def auto_id(self, prefix: str = "") -> str:
-        """Generate a unique ID for SVG elements."""
-        if self._id_counter is None:
-            self._id_counter = AutoCounter()
-        return self._id_counter.get_id(prefix)
-
-    def add_layer(self, layer: layers.Layer) -> ET.Element | None:
-        """Add a layer to the svg document."""
+        Args:
+            layer: The PSD layer to add.
+            attrib: Additional attributes to set on the created node.
+        """
         if not layer.is_visible():
             # TODO: Option to include hidden layers.
             logger.debug(f"Layer '{layer.name}' ({layer.kind}) is invisible, skipping.")
@@ -62,7 +60,15 @@ class LayerConverter(ConverterProtocol):
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
-        return layer_fn(layer)
+        node = layer_fn(layer)
+        if node is not None and attrib:
+            for key, value in attrib.items():
+                if key in node.attrib:
+                    logger.info(
+                        f"Overwriting existing attribute '{key}' on layer '{layer.name}'."
+                    )
+                svg_utils.set_attribute(node, key, value)
+        return node
 
     def add_group(self, layer: layers.Artboard | layers.Group) -> ET.Element:
         """Add a group layer to the svg document."""
@@ -89,9 +95,9 @@ class LayerConverter(ConverterProtocol):
                 continue
 
             if layer.has_clip_layers(visible=True):
-                with self.add_clipping_target(layer):
+                with self.add_clipping_target(layer) as attrib:
                     for clip_layer in layer.clip_layers:
-                        self.add_layer(clip_layer)
+                        self.add_layer(clip_layer, **attrib)
             else:
                 # Regular layer.
                 self.add_layer(layer)
@@ -122,6 +128,7 @@ class LayerConverter(ConverterProtocol):
                 height=layer.height,
                 title=layer.name,
                 id=self.auto_id("image"),
+                class_=layer.kind,
             )
             self.set_opacity(layer.opacity / 255, node)
             self.set_mask(layer, node)
@@ -139,9 +146,176 @@ class LayerConverter(ConverterProtocol):
                 width=layer.width,
                 height=layer.height,
                 title=layer.name,
+                class_=layer.kind,
             )
             if fill_opacity < 255:
                 self.set_opacity(fill_opacity / 255, node)
+            self.set_layer_attributes(layer, node)
+        return node
+
+    def add_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
+        """Add a shape layer to the svg document."""
+        if layer.has_effects():
+            # We need to split the shape definition and effects.
+            defs = svg_utils.create_node("defs", parent=self.current)
+            with self.set_current(defs):
+                node = self.create_shape(
+                    layer,
+                    title=layer.name,
+                    id=self.auto_id("shape"),
+                    class_=layer.kind,
+                )
+                self.set_opacity(layer.opacity / 255.0, node)
+                self.set_mask(layer, node)
+
+            # We need to set stroke for the shape here when fill is transparent.
+            # Otherwise, effects won't use the correct alpha.
+            if (
+                layer.has_stroke()
+                and layer.stroke.enabled
+                and not layer.stroke.fill_enabled
+            ):
+                svg_utils.set_attribute(node, "fill", "transparent")
+                self.set_stroke(layer, node)
+
+            self.apply_background_effects(layer, node, insert_before_target=False)
+            self.apply_vector_fill(layer, node)  # main filled shape.
+            self.apply_overlay_effects(layer, node)
+            self.apply_vector_stroke(layer, node)  # main stroke.
+            self.apply_stroke_effect(layer, node)
+        else:
+            # We can directly create the shape.
+            node = self.create_shape(layer, title=layer.name, class_=layer.kind)
+            self.set_fill(layer, node)
+            self.set_stroke(layer, node)
+            self.set_layer_attributes(layer, node)
+        return node
+
+    @contextlib.contextmanager
+    def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[dict]:
+        """Context manager to handle clipping target."""
+        if isinstance(layer, layers.ShapeLayer):
+            with self.add_clip_path(layer) as clip_attrib:
+                yield clip_attrib
+        else:
+            with self.add_clip_mask(layer) as clip_attrib:
+                yield clip_attrib
+
+    @contextlib.contextmanager
+    def add_clip_path(self, layer: layers.ShapeLayer) -> Iterator[dict]:
+        """Add a clipping path and associated elements.
+
+        Usage:
+
+            with self.add_clip_mask(layer) as clip_attrib:
+                # Create elements inside the clipping mask.
+                for clip_layer in layer.clip_layers:
+                    self.add_layer(clip_layer, ..., **clip_attrib)
+        """
+        if not layer.has_vector_mask():
+            raise ValueError(f"Layer has no vector mask: '{layer.name}'")
+
+        # Create a clipping path definition.
+        clip_path = svg_utils.create_node(
+            "clipPath", parent=self.current, id=self.auto_id("clip")
+        )
+        with self.set_current(clip_path):
+            target = self.create_shape(
+                layer,
+                title=layer.name,
+                id=self.auto_id("shape"),
+                class_=layer.kind,
+            )
+            self.set_opacity(layer.opacity / 255.0, target)
+            self.set_mask(layer, target)
+
+        self.apply_background_effects(layer, target, insert_before_target=False)
+        self.apply_vector_fill(layer, target)  # main filled shape.
+        self.apply_overlay_effects(layer, target)
+        # Yield to the context block.
+        yield {"clip-path": svg_utils.get_funciri(clip_path)}
+        self.apply_vector_stroke(layer, target)
+        self.apply_stroke_effect(layer, target)
+
+    @contextlib.contextmanager
+    def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[dict]:
+        """Add a clipping mask and associated elements.
+
+        Usage:
+
+            with self.add_clip_mask(layer) as clip_attrib:
+                # Create elements inside the clipping mask.
+                for clip_layer in layer.clip_layers:
+                    self.add_layer(clip_layer, ..., **clip_attrib)
+        """
+
+        # Create a clipping mask definition.
+        mask = svg_utils.create_node(
+            "mask", parent=self.current, id=self.auto_id("mask"), mask_type="alpha"
+        )
+        with self.set_current(mask):
+            target = self.add_layer(layer)
+
+        if target is None:
+            raise ValueError(
+                f"Failed to create clipping target for layer: '{layer.name}'"
+            )
+        if "id" not in target.attrib:
+            target.set("id", self.auto_id("cliptarget"))
+
+        self.apply_background_effects(layer, target, insert_before_target=False)
+        # Create a <use> element to reference the target object.
+        use = svg_utils.create_node(
+            "use", parent=self.current, href=svg_utils.get_uri(target)
+        )
+        self.apply_overlay_effects(layer, target)
+        # Yield to the context block.
+        yield {"mask": svg_utils.get_funciri(mask)}
+        self.apply_stroke_effect(layer, target)
+        self.set_layer_attributes(layer, use)
+
+    def add_fill(
+        self,
+        layer: adjustments.SolidColorFill
+        | adjustments.GradientFill
+        | adjustments.PatternFill,
+    ) -> ET.Element | None:
+        """Add fill node to the given element."""
+        logger.debug(f"Adding fill layer: '{layer.name}'")
+        viewbox = layer.bbox
+        if viewbox == (0, 0, 0, 0):
+            viewbox = (0, 0, self.psd.width, self.psd.height)
+        if layer.has_effects():
+            defs = svg_utils.create_node("defs", parent=self.current)
+            with self.set_current(defs):
+                node = svg_utils.create_node(
+                    "rect",
+                    x=viewbox[0],
+                    y=viewbox[1],
+                    width=viewbox[2] - viewbox[0],
+                    height=viewbox[3] - viewbox[1],
+                    id=self.auto_id("fill"),
+                    title=layer.name,
+                    class_=layer.kind,
+                )
+                self.set_opacity(layer.opacity / 255.0, node)
+                self.set_mask(layer, node)
+            self.apply_background_effects(layer, node, insert_before_target=False)
+            self.apply_vector_fill(layer, node)  # main filled shape.
+            self.apply_overlay_effects(layer, node)
+            self.apply_vector_stroke(layer, node)
+            self.apply_stroke_effect(layer, node)
+        else:
+            node = svg_utils.create_node(
+                "rect",
+                parent=self.current,
+                x=viewbox[0],
+                y=viewbox[1],
+                width=viewbox[2] - viewbox[0],
+                height=viewbox[3] - viewbox[1],
+                title=layer.name,
+            )
+            self.set_fill(layer, node)
             self.set_layer_attributes(layer, node)
         return node
 
@@ -164,8 +338,6 @@ class LayerConverter(ConverterProtocol):
         self.set_blend_mode(layer.blend_mode, node)
         self.set_isolation(layer, node)
         self.set_mask(layer, node)
-
-        svg_utils.add_class(node, layer.kind)  # Keep the layer type as class.
 
     def set_opacity(self, opacity: float, node: ET.Element) -> None:
         """Set opacity style to the node."""

@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import xml.etree.ElementTree as ET
 from typing import Iterator
@@ -6,104 +5,21 @@ from typing import Iterator
 import numpy as np
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers, pil_io
-from psd_tools.api.shape import Rectangle, RoundedRectangle, Ellipse
+from psd_tools.api.shape import Ellipse, Rectangle, RoundedRectangle
+from psd_tools.constants import Tag
 from psd_tools.psd.descriptor import Descriptor
 from psd_tools.psd.vector import Subpath
-from psd_tools.constants import Tag
-from psd_tools.terminology import Klass, Key, Enum, Unit
+from psd_tools.terminology import Enum, Key, Klass, Unit
 
+from psd2svg import svg_utils
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
-from psd2svg import svg_utils
 
 logger = logging.getLogger(__name__)
 
 
 class ShapeConverter(ConverterProtocol):
     """Mixin for shape layers."""
-
-    def add_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
-        """Add a shape layer to the svg document."""
-        if layer.has_effects():
-            # We need to split the shape definition and effects.
-            defs = svg_utils.create_node("defs", parent=self.current)
-            with self.set_current(defs):
-                node = self.create_shape(
-                    layer,
-                    title=layer.name,
-                    id=self.auto_id("shape"),
-                )
-                self.set_opacity(layer.opacity / 255.0, node)
-                self.set_mask(layer, node)
-
-            # We need to set stroke for the shape here when fill is transparent.
-            # Otherwise, effects won't use the correct alpha.
-            if (
-                layer.has_stroke()
-                and layer.stroke.enabled
-                and not layer.stroke.fill_enabled
-            ):
-                svg_utils.set_attribute(node, "fill", "transparent")
-                self.set_stroke(layer, node)
-
-            self.apply_background_effects(layer, node, insert_before_target=False)
-            self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_overlay_effects(layer, node)
-            self.apply_vector_stroke(layer, node)  # main stroke.
-            self.apply_stroke_effect(layer, node)
-        else:
-            # We can directly create the shape.
-            node = self.create_shape(layer, title=layer.name)
-            self.set_fill(layer, node)
-            self.set_stroke(layer, node)
-            self.set_layer_attributes(layer, node)
-        return node
-
-    def add_fill(
-        self,
-        layer: adjustments.SolidColorFill
-        | adjustments.GradientFill
-        | adjustments.PatternFill,
-    ) -> ET.Element | None:
-        """Add fill node to the given element."""
-        logger.debug(f"Adding fill layer: '{layer.name}'")
-        viewbox = layer.bbox
-        if viewbox == (0, 0, 0, 0):
-            viewbox = (0, 0, self.psd.width, self.psd.height)
-        if layer.has_effects():
-            defs = svg_utils.create_node("defs", parent=self.current)
-            with self.set_current(defs):
-                node = svg_utils.create_node(
-                    "rect",
-                    x=viewbox[0],
-                    y=viewbox[1],
-                    width=viewbox[2] - viewbox[0],
-                    height=viewbox[3] - viewbox[1],
-                    id=self.auto_id("fill"),
-                    title=layer.name,
-                    class_=layer.kind,
-                )
-                self.set_opacity(layer.opacity / 255.0, node)
-                self.set_mask(layer, node)
-            self.apply_background_effects(layer, node, insert_before_target=False)
-            self.apply_vector_fill(layer, node)  # main filled shape.
-            self.apply_overlay_effects(layer, node)
-            self.apply_vector_stroke(layer, node)
-            self.apply_stroke_effect(layer, node)
-            return node
-        else:
-            node = svg_utils.create_node(
-                "rect",
-                parent=self.current,
-                x=viewbox[0],
-                y=viewbox[1],
-                width=viewbox[2] - viewbox[0],
-                height=viewbox[3] - viewbox[1],
-                title=layer.name,
-            )
-            self.set_fill(layer, node)
-            self.set_layer_attributes(layer, node)
-        return node
 
     def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
         """Create a shape element from the layer's vector mask or origination data."""
@@ -347,64 +263,23 @@ class ShapeConverter(ConverterProtocol):
             **attrib,
         )
 
-    @contextlib.contextmanager
-    def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
-        """Context manager to handle clipping target."""
-        if isinstance(layer, layers.ShapeLayer):
-            with self.add_clip_path(layer):
-                yield
-        else:
-            with self.add_clip_mask(layer):
-                yield
-
-    @contextlib.contextmanager
-    def add_clip_path(self, layer: layers.ShapeLayer) -> Iterator[None]:
-        """Add a clipping path and associated elements."""
-        if not layer.has_vector_mask():
-            raise ValueError("Layer has no vector mask: %s", layer.name)
-
-        # Create a clipping path definition.
-        clip_path = svg_utils.create_node(
-            "clipPath", parent=self.current, id=self.auto_id("clip")
-        )
-        with self.set_current(clip_path):
-            target = self.create_shape(
-                layer,
-                title=layer.name,
-                id=self.auto_id("shape"),
-                class_=layer.kind,
-            )
-            self.set_opacity(layer.opacity / 255.0, target)
-            self.set_mask(layer, target)
-
-        self.apply_background_effects(layer, target, insert_before_target=False)
-        self.apply_vector_fill(layer, target)  # main filled shape.
-        self.apply_overlay_effects(layer, target)
-        # Create a group with the clipping path applied.
-        group = svg_utils.create_node(
-            "g", parent=self.current, clip_path=svg_utils.get_funciri(clip_path)
-        )
-        with self.set_current(group):
-            yield  # Yield to the context block.
-
-        # TODO: Inner filter effects on clipping path.
-        self.apply_vector_stroke(layer, target)
-        self.apply_stroke_effect(layer, target)
-
-    def apply_vector_fill(self, layer: layers.Layer, target: ET.Element) -> ET.Element:
+    def apply_vector_fill(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
+    ) -> None:
         """Apply fill effects to the target element."""
         if layer.has_stroke() and not layer.stroke.fill_enabled:
             logger.debug(f"Fill is disabled for layer: '{layer.name}'")
-            return target
+            return
 
         use = svg_utils.create_node(
             "use", parent=self.current, href=svg_utils.get_uri(target)
         )
         self.set_fill(layer, use)
         self.set_blend_mode(layer.blend_mode, use)
-        return use
 
-    def apply_vector_stroke(self, layer: layers.Layer, target: ET.Element) -> None:
+    def apply_vector_stroke(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
+    ) -> None:
         """Apply stroke effects to the target element."""
         if not layer.has_stroke() or not layer.stroke.enabled:
             logger.debug(f"Layer has no stroke: '{layer.name}'")
@@ -419,42 +294,9 @@ class ShapeConverter(ConverterProtocol):
         self.set_stroke(layer, use)
         # TODO: Check if we already set stroke.
 
-    @contextlib.contextmanager
-    def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[None]:
-        """Add a clipping mask and associated elements."""
-
-        # Create a clipping mask definition.
-        mask = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask"), mask_type="alpha"
-        )
-        with self.set_current(mask):
-            target = self.add_layer(layer)
-
-        if target is None:
-            raise ValueError(
-                "Failed to create clipping target for layer: %s", layer.name
-            )
-        if "id" not in target.attrib:
-            target.set("id", self.auto_id("cliptarget"))
-
-        self.apply_background_effects(layer, target, insert_before_target=False)
-        # Create a <use> element to reference the target object.
-        use = svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target)
-        )
-        self.apply_overlay_effects(layer, target)
-
-        # Create a group with the clipping mask applied.
-        group = svg_utils.create_node(
-            "g", parent=self.current, mask=svg_utils.get_funciri(mask)
-        )
-        with self.set_current(group):
-            yield  # Yield to the context block.
-
-        self.apply_stroke_effect(layer, target)
-        self.set_layer_attributes(layer, use)
-
-    def set_fill(self, layer: layers.Layer, node: ET.Element) -> None:
+    def set_fill(
+        self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
+    ) -> None:
         """Set fill attribute to the given element."""
         # Transparent fill when stroke is enabled but fill is disabled.
         if layer.has_stroke() and not layer.stroke.fill_enabled:
@@ -470,7 +312,9 @@ class ShapeConverter(ConverterProtocol):
         # Fill layers have a dedicated tagged block.
         self.set_fill_setting(layer, node)
 
-    def set_fill_stroke_content(self, layer: layers.Layer, node: ET.Element) -> None:
+    def set_fill_stroke_content(
+        self, layer: layers.ShapeLayer, node: ET.Element
+    ) -> None:
         """Set fill or stroke content from VECTOR_STROKE_CONTENT_DATA."""
         content_data = layer.tagged_blocks.get_data(Tag.VECTOR_STROKE_CONTENT_DATA)
         if Key.Color in content_data:
@@ -484,7 +328,7 @@ class ShapeConverter(ConverterProtocol):
             logger.warning(f"Unsupported fill content: {content_data}")
         self.set_fill_opacity(layer, node)
 
-    def set_fill_setting(self, layer: layers.Layer, node: ET.Element) -> None:
+    def set_fill_setting(self, layer: adjustments.FillLayer, node: ET.Element) -> None:
         """Set fill attribute from fill settings tagged blocks."""
         if Tag.SOLID_COLOR_SHEET_SETTING in layer.tagged_blocks:
             setting = layer.tagged_blocks.get_data(Tag.SOLID_COLOR_SHEET_SETTING)
