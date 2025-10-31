@@ -148,12 +148,25 @@ def test_shapes(psd_file: str) -> None:
         "paint/color-3.psd",  # Fill opacity test for raster layer
         "paint/linear-gradient-1.psd",
         "paint/linear-gradient-2.psd",  # Fill opacity test
+        # Gradient interpolation methods: quality may vary.
+        "paint/linear-gradient-3-interp-classic.psd",  # Classic interpolation
+        "paint/linear-gradient-3-interp-linear.psd",  # Linear interpolation
+        "paint/linear-gradient-3-interp-perceptual.psd",  # Perceptual interpolation
+        "paint/linear-gradient-3-interp-smooth.psd",  # Smooth interpolation
+        pytest.param(
+            "paint/linear-gradient-3-interp-stripes.psd",
+            marks=pytest.mark.xfail(reason="Stripes interpolation is not supported."),
+        ),
+        # Gradient angle tests.
+        "paint/linear-gradient-3-angle-30.psd",
+        "paint/linear-gradient-3-angle-90.psd",
+        # Radial gradients.
         "paint/radial-gradient-1.psd",
     ],
 )
 def test_paint(psd_file: str) -> None:
     """Test conversion quality for painting."""
-    evaluate_quality(psd_file, 0.01)
+    evaluate_quality(psd_file, 0.005)
 
 
 @pytest.mark.parametrize(

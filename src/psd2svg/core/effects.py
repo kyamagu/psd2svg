@@ -465,21 +465,16 @@ class EffectConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 gradient, "gradientTransform", "scale(-1 -1) translate(-1 -1)"
             )
+        transforms = []  # Center-based transforms
         if effect.scale != 100.0:
-            scale = effect.scale / 100.0
-            svg_utils.append_attribute(
-                gradient,
-                "gradientTransform",
-                f"translate(0.5 0.5) scale({svg_utils.num2str(scale, '.2f')}) translate(-0.5 -0.5)",
-            )
+            transforms.append(f"scale({svg_utils.num2str(effect.scale / 100.0, '.2g')})")
         if effect.angle != 0.0:
-            # TODO: Rotation actually scales with the aspect ratio of the layer.
-            logger.debug(f"Gradient rotation could be inaccurate: {effect.angle}")
-            rotation = -effect.angle
+            transforms.append(f"rotate({svg_utils.num2str(-effect.angle, '.1g')})")
+        if transforms:
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                f"translate(0.5 0.5) rotate({svg_utils.num2str(rotation, '.2f')}) translate(-0.5 -0.5)",
+                "translate(0.5 0.5) " + " ".join(transforms) + " translate(-0.5 -0.5)",
             )
 
     def apply_pattern_overlay_effect(
