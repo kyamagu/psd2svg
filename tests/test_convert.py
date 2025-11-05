@@ -146,6 +146,16 @@ def test_shapes(psd_file: str) -> None:
         "paint/color-1.psd",
         "paint/color-2.psd",  # Fill opacity test for shape layer
         "paint/color-3.psd",  # Fill opacity test for raster layer
+    ],
+)
+def test_paint_color(psd_file: str) -> None:
+    """Test conversion quality for painting."""
+    evaluate_quality(psd_file, 0.005)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
         "paint/linear-gradient-1.psd",
         "paint/linear-gradient-2.psd",  # Fill opacity test
         # Gradient interpolation methods: quality may vary.
@@ -157,16 +167,31 @@ def test_shapes(psd_file: str) -> None:
             "paint/linear-gradient-3-interp-stripes.psd",
             marks=pytest.mark.xfail(reason="Stripes interpolation is not supported."),
         ),
-        # Gradient angle tests.
-        "paint/linear-gradient-3-angle-30.psd",
-        "paint/linear-gradient-3-angle-90.psd",
+        # Gradient alignment tests.
+        "paint/linear-gradient-3-align.psd",
+        "paint/linear-gradient-3-no-align.psd",
+        # Gradient transformation tests.
+        "paint/linear-gradient-4-00deg.psd",
+        "paint/linear-gradient-4-45deg.psd",
+        "paint/linear-gradient-4-90deg.psd",
+        "paint/linear-gradient-5-00deg.psd",
+        "paint/linear-gradient-5-45deg.psd",
+        "paint/linear-gradient-5-90deg.psd",
+        "paint/linear-gradient-6-00deg.psd",
+        "paint/linear-gradient-6-45deg.psd",
+        "paint/linear-gradient-6-90deg.psd",
+        # Offset test.
+        "paint/linear-gradient-7-offset.psd",
         # Radial gradients.
         "paint/radial-gradient-1.psd",
     ],
 )
-def test_paint(psd_file: str) -> None:
-    """Test conversion quality for painting."""
+def test_paint_gradient(psd_file: str) -> None:
+    """Test conversion quality for gradient painting."""
     evaluate_quality(psd_file, 0.005)
+
+
+# TODO: Add more tests for pattern paint.
 
 
 @pytest.mark.parametrize(
@@ -188,6 +213,7 @@ def test_paint(psd_file: str) -> None:
         "effects/gradient-overlay-4.psd",
         "effects/gradient-overlay-5.psd",
         "effects/gradient-overlay-6.psd",  # fill layer with overlay effect
+        "effects/gradient-overlay-7.psd",  # fill layer with overlay effect and offset
         "effects/pattern-overlay-1.psd",  # raster pattern overlay
         "effects/pattern-overlay-2.psd",  # raster pattern overlay with transform
         "effects/pattern-overlay-3.psd",  # shape pattern overlay
