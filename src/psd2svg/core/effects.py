@@ -471,9 +471,9 @@ class EffectConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, '.3g')} 1)")
+                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)")
                 else:
-                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, '.3g')})")
+                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})")
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -518,9 +518,9 @@ class EffectConverter(ConverterProtocol):
         scale = float(100 if effect.scale is None else effect.scale)
         if scale != 100:
             if landscape:
-                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, '.3g')})")
+                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})")
             else:
-                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, '.3g')} 1)")
+                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)")
 
         if transforms:
             # Move to the reference point, apply transforms, then move back.
@@ -528,7 +528,7 @@ class EffectConverter(ConverterProtocol):
                 svg_utils.append_attribute(
                     gradient,
                     "gradientTransform",
-                    "translate(%s)" % svg_utils.seq2str(reference, " ", ".3g"),
+                    "translate(%s)" % svg_utils.seq2str(reference, digit=4),
                 )
             svg_utils.append_attribute(
                 gradient, "gradientTransform", " ".join(transforms)
@@ -538,7 +538,7 @@ class EffectConverter(ConverterProtocol):
                     gradient,
                     "gradientTransform",
                     "translate(%s)"
-                    % svg_utils.seq2str((-reference[0], -reference[1]), " ", ".3g"),
+                    % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
                 )
 
         if b"gs99" in effect.value:
@@ -665,7 +665,7 @@ class EffectConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
-                f"scale({svg_utils.num2str(scale, '.2f')})",
+                f"scale({svg_utils.num2str(scale)})",
             )
         if effect.angle != 0.0:
             rotation = -effect.angle

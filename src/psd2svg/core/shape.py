@@ -398,7 +398,7 @@ class ShapeConverter(ConverterProtocol):
                 svg_utils.append_attribute(
                     node,
                     "transform",
-                    "translate(%s)" % svg_utils.seq2str(matrix[4:], format=".2g"),
+                    "translate(%s)" % svg_utils.seq2str(matrix[4:], digit=4),
                 )
         else:
             svg_utils.append_attribute(
@@ -406,8 +406,8 @@ class ShapeConverter(ConverterProtocol):
                 "transform",
                 "matrix(%s) translate(%s)"
                 % (
-                    svg_utils.seq2str(matrix, format=".3g"),  # Precision for matrix
-                    svg_utils.seq2str((-reference[0], -reference[1]), format=".2g"),
+                    svg_utils.seq2str(matrix, digit=4),
+                    svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
                 ),
             )
 
@@ -663,9 +663,9 @@ class ShapeConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, '.3g')} 1)")
+                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)")
                 else:
-                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, '.3g')})")
+                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})")
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -695,7 +695,7 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                "translate(%s)" % svg_utils.seq2str(offset, " ", ".3g"),
+                "translate(%s)" % svg_utils.seq2str(offset, digit=4),
             )
 
         # Apply angle, scale, and offset transforms.
@@ -710,9 +710,9 @@ class ShapeConverter(ConverterProtocol):
         scale = float(setting.get(Key.Scale, UnitFloat(100)).value)
         if scale != 100:
             if landscape:
-                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, '.3g')})")
+                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})")
             else:
-                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, '.3g')} 1)")
+                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)")
 
         if transforms:
             # Move to the reference point, apply transforms, then move back.
@@ -720,7 +720,7 @@ class ShapeConverter(ConverterProtocol):
                 svg_utils.append_attribute(
                     gradient,
                     "gradientTransform",
-                    "translate(%s)" % svg_utils.seq2str(reference, " ", ".3g"),
+                    "translate(%s)" % svg_utils.seq2str(reference, digit=4),
                 )
             svg_utils.append_attribute(
                 gradient, "gradientTransform", " ".join(transforms)
@@ -730,7 +730,7 @@ class ShapeConverter(ConverterProtocol):
                     gradient,
                     "gradientTransform",
                     "translate(%s)"
-                    % svg_utils.seq2str((-reference[0], -reference[1]), " ", ".3g"),
+                    % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
                 )
 
         if b"gradientsInterpolationMethod" in setting:

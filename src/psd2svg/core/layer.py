@@ -367,7 +367,7 @@ class LayerConverter(ConverterProtocol):
                 # Combine opacities if already set.
                 existing_opacity = float(node.attrib["opacity"])
                 opacity *= existing_opacity
-            svg_utils.set_attribute(node, "opacity", svg_utils.num2str(opacity, ".2f"))
+            svg_utils.set_attribute(node, "opacity", svg_utils.num2str(opacity))
 
     def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
         """Set blend mode style to the node.
