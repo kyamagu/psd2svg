@@ -13,7 +13,7 @@ ILLEGAL_XML_RE: Pattern[str] = re.compile(
     "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
 )
 
-DEFAULT_FLOAT_FORMAT = ".1f"
+DEFAULT_NUMBER_DIGITS = 2
 
 
 def safe_utf8(text: str) -> str:
@@ -21,7 +21,7 @@ def safe_utf8(text: str) -> str:
     return ILLEGAL_XML_RE.sub(" ", text)
 
 
-def num2str(num: int | float | bool, format=DEFAULT_FLOAT_FORMAT) -> str:
+def num2str(num: int | float | bool, digit: int = DEFAULT_NUMBER_DIGITS) -> str:
     """Convert a number to a string, using the specified format for floats."""
     if isinstance(num, bool):
         return "true" if num else "false"
@@ -30,15 +30,17 @@ def num2str(num: int | float | bool, format=DEFAULT_FLOAT_FORMAT) -> str:
     if isinstance(num, float):
         if num.is_integer():
             return str(int(num))
-        return f"%{format}" % num
+        # Format float with specified number of digits, and trim trailing zeros
+        number = f"{num:.{digit}f}"
+        return f"{number[0]}{number[1:].rstrip('0').rstrip('.')}"
     raise ValueError(f"Unsupported type: {type(num)}")
 
 
 def seq2str(
-    seq: Sequence[int | float | bool], sep=",", format=DEFAULT_FLOAT_FORMAT
+    seq: Sequence[int | float | bool], sep=",", digit: int = DEFAULT_NUMBER_DIGITS
 ) -> str:
     """Convert a sequence of numbers to a string, using the specified format for floats."""
-    return sep.join(num2str(n, format) for n in seq)
+    return sep.join(num2str(n, digit) for n in seq)
 
 
 def create_node(
