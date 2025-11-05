@@ -394,7 +394,7 @@ class EffectConverter(ConverterProtocol):
                     f"{effect.type}: '{layer.name}' ({layer.kind})"
                 )
                 continue
-            self.set_gradient_transform(gradient, effect)
+            self.set_gradient_transform(layer, gradient, effect)
 
             if isinstance(layer, layers.ShapeLayer):
                 use = self.add_vector_gradient_overlay_effect(gradient, target)
@@ -458,24 +458,101 @@ class EffectConverter(ConverterProtocol):
         )
 
     def set_gradient_transform(
-        self, gradient: ET.Element, effect: effects.GradientOverlay
+        self,
+        layer: layers.Layer,
+        gradient: ET.Element,
+        effect: effects.GradientOverlay,
     ) -> None:
         """Set gradient transformations based on the effect properties."""
-        if effect.reversed:
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", "scale(-1 -1) translate(-1 -1)"
+        transforms = []
+        if effect.aligned:
+            # Gradient aligned to layer bounds.
+            landscape = layer.width >= layer.height
+            # Adjust the object coordinates.
+            if layer.width != layer.height:
+                if landscape:
+                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, '.3g')} 1)")
+                else:
+                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, '.3g')})")
+            reference = (0.5, 0.5)
+        else:
+            # Gradient defined in user space (canvas).
+            svg_utils.set_attribute(gradient, "gradientUnits", "userSpaceOnUse")
+            landscape = self.psd.width >= self.psd.height
+            reference = (self.psd.width / 2, self.psd.height / 2)
+
+        # Set the base gradient direction based on the shorter edge.
+        if landscape:
+            # Vertical gradient.
+            svg_utils.set_attribute(gradient, "x2", "0%")
+            svg_utils.set_attribute(gradient, "y2", "100%")
+        else:
+            # Horizontal gradient.
+            svg_utils.set_attribute(gradient, "x2", "100%")
+            svg_utils.set_attribute(gradient, "y2", "0%")
+
+        # Apply phase offset.
+        if effect.offset is not None:
+            # offset is b'Pnt ' descriptor with percentage values
+            offset = (
+                effect.offset[Key.Horizontal].value / 100.0,
+                effect.offset[Key.Vertical].value / 100.0,
             )
-        transforms = []  # Center-based transforms
-        if effect.scale != 100.0:
-            transforms.append(f"scale({svg_utils.num2str(effect.scale / 100.0, '.2g')})")
-        if effect.angle != 0.0:
-            transforms.append(f"rotate({svg_utils.num2str(-effect.angle, '.1g')})")
-        if transforms:
+            if not effect.aligned:
+                offset = (offset[0] * self.psd.width, offset[1] * self.psd.height)
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                "translate(0.5 0.5) " + " ".join(transforms) + " translate(-0.5 -0.5)",
+                "translate(%s)" % svg_utils.seq2str(offset),
             )
+
+        # Apply angle, scale, and offset transforms.
+        angle = -float(effect.angle or 0)
+        if landscape:
+            angle -= 90
+        if effect.reversed:
+            angle += 180
+        if angle != 0:
+            transforms.append(f"rotate({svg_utils.num2str(angle)})")
+
+        scale = float(100 if effect.scale is None else effect.scale)
+        if scale != 100:
+            if landscape:
+                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, '.3g')})")
+            else:
+                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, '.3g')} 1)")
+
+        if transforms:
+            # Move to the reference point, apply transforms, then move back.
+            if reference != (0.0, 0.0):
+                svg_utils.append_attribute(
+                    gradient,
+                    "gradientTransform",
+                    "translate(%s)" % svg_utils.seq2str(reference, " ", ".3g"),
+                )
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", " ".join(transforms)
+            )
+            if reference != (0.0, 0.0):
+                svg_utils.append_attribute(
+                    gradient,
+                    "gradientTransform",
+                    "translate(%s)"
+                    % svg_utils.seq2str((-reference[0], -reference[1]), " ", ".3g"),
+                )
+
+        if b"gs99" in effect.value:
+            method = effect.value[b"gs99"]
+            if method.enum == Enum.Perceptual:
+                logger.info("Perceptual gradient interpolation is not accurate.")
+            elif method.enum == Enum.Linear:
+                logger.info("Linear gradient interpolation is not accurate.")
+            elif method.enum == b"GIMs":  # Stripes
+                logger.warning("Stripes gradient interpolation is not supported yet.")
+            elif method.enum == b"Gcls":  # Classic
+                pass  # Default is classic
+            elif method.enum == Key.Smooth:  # Smooth
+                logger.info("Smooth gradient interpolation is not accurate.")
 
     def apply_pattern_overlay_effect(
         self, layer: layers.Layer, target: ET.Element

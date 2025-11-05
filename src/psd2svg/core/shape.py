@@ -7,7 +7,7 @@ from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers, pil_io
 from psd_tools.api.shape import Ellipse, Rectangle, RoundedRectangle
 from psd_tools.constants import Tag
-from psd_tools.psd.descriptor import Descriptor
+from psd_tools.psd.descriptor import Descriptor, UnitFloat
 from psd_tools.psd.vector import Subpath
 from psd_tools.terminology import Enum, Key, Klass
 
@@ -496,7 +496,7 @@ class ShapeConverter(ConverterProtocol):
             color = color_utils.descriptor2hex(content_data[Key.Color])
             svg_utils.set_attribute(node, "fill", color)
         elif Key.Gradient in content_data:
-            gradient = self.add_gradient_definition(content_data)
+            gradient = self.add_gradient_definition(layer, content_data)
             if gradient is not None:
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
@@ -520,7 +520,7 @@ class ShapeConverter(ConverterProtocol):
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
             # classID is null for gradient fill setting.
             setting = layer.tagged_blocks.get_data(Tag.GRADIENT_FILL_SETTING)
-            gradient = self.add_gradient_definition(setting)
+            gradient = self.add_gradient_definition(layer, setting)
             if gradient is not None:
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
         else:
@@ -576,7 +576,9 @@ class ShapeConverter(ConverterProtocol):
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
         # TODO: stroke blend mode?
 
-    def add_gradient_definition(self, descriptor: Descriptor) -> ET.Element | None:
+    def add_gradient_definition(
+        self, layer: layers.Layer, descriptor: Descriptor
+    ) -> ET.Element | None:
         """Add gradient definition to the SVG document."""
         if descriptor[Key.Type].enum == Enum.Linear:
             node = self.add_linear_gradient(descriptor[Key.Gradient])
@@ -585,7 +587,7 @@ class ShapeConverter(ConverterProtocol):
         else:
             logger.warning("Only linear and radial gradients are supported yet.")
             return None
-        self.set_gradient_attributes(descriptor, node)
+        self.set_gradient_attributes(layer, descriptor, node)
         return node
 
     def add_linear_gradient(self, gradient: Descriptor) -> ET.Element:
@@ -648,26 +650,88 @@ class ShapeConverter(ConverterProtocol):
         return node
 
     def set_gradient_attributes(
-        self, setting: Descriptor, gradient: ET.Element
+        self, layer: layers.Layer, setting: Descriptor, gradient: ET.Element
     ) -> None:
-        """Set gradient settings such as angle to the gradient element."""
+        """Set gradient settings such as angle to the gradient element."""        
         transforms = []
-        if Key.Scale in setting:
-            scale = setting[Key.Scale]  # Always UnitFloat
-            if scale.value != 100:
-                transforms.append(
-                    f"scale({svg_utils.num2str(scale.value / 100.0, '.3g')})"
-                )
-        if Key.Angle in setting:
-            angle = setting[Key.Angle]  # Always UnitFloat
-            if angle.value != 0:
-                transforms.append(f"rotate({svg_utils.num2str(-angle.value)})")
-        if transforms:
+
+        # Coordinate system for gradient.
+        aligned = Key.Alignment not in setting or setting[Key.Alignment].value is True
+        if aligned:
+            # Gradient aligned to layer bounds.
+            landscape = layer.width >= layer.height
+            # Adjust the object coordinates.
+            if layer.width != layer.height:
+                if landscape:
+                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, '.3g')} 1)")
+                else:
+                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, '.3g')})")
+            reference = (0.5, 0.5)
+        else:
+            # Gradient defined in user space (canvas).
+            svg_utils.set_attribute(gradient, "gradientUnits", "userSpaceOnUse")
+            landscape = self.psd.width >= self.psd.height
+            reference = (self.psd.width / 2, self.psd.height / 2)
+
+        # Set the base gradient direction based on the shorter edge.
+        if landscape:
+            # Vertical gradient.
+            svg_utils.set_attribute(gradient, "x2", "0%")
+            svg_utils.set_attribute(gradient, "y2", "100%")
+        else:
+            # Horizontal gradient.
+            svg_utils.set_attribute(gradient, "x2", "100%")
+            svg_utils.set_attribute(gradient, "y2", "0%")
+
+        # Apply offset transform.
+        if Key.Offset in setting:
+            # Offset is given in percentage of layer size.
+            offset = (
+                setting[Key.Offset][Key.Horizontal].value / 100.0,
+                setting[Key.Offset][Key.Vertical].value / 100.0,
+            )
+            if not aligned:
+                offset = (offset[0] * layer._psd.width, offset[1] * layer._psd.height)
             svg_utils.append_attribute(
                 gradient,
                 "gradientTransform",
-                "translate(0.5 0.5) " + " ".join(transforms) + " translate(-0.5 -0.5)",
+                "translate(%s)" % svg_utils.seq2str(offset, " ", ".3g"),
             )
+
+        # Apply angle, scale, and offset transforms.
+        angle = -float(setting.get(Key.Angle, UnitFloat(0)).value)
+        if landscape:
+            angle -= 90
+        if Key.Reverse in setting and setting[Key.Reverse].value:
+            angle += 180
+        if angle != 0:
+            transforms.append(f"rotate({svg_utils.num2str(angle)})")
+
+        scale = float(setting.get(Key.Scale, UnitFloat(100)).value)
+        if scale != 100:
+            if landscape:
+                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, '.3g')})")
+            else:
+                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, '.3g')} 1)")
+
+        if transforms:
+            # Move to the reference point, apply transforms, then move back.
+            if reference != (0.0, 0.0):
+                svg_utils.append_attribute(
+                    gradient,
+                    "gradientTransform",
+                    "translate(%s)" % svg_utils.seq2str(reference, " ", ".3g"),
+                )
+            svg_utils.append_attribute(
+                gradient, "gradientTransform", " ".join(transforms)
+            )
+            if reference != (0.0, 0.0):
+                svg_utils.append_attribute(
+                    gradient,
+                    "gradientTransform",
+                    "translate(%s)"
+                    % svg_utils.seq2str((-reference[0], -reference[1]), " ", ".3g"),
+                )
 
         if b"gradientsInterpolationMethod" in setting:
             method = setting[b"gradientsInterpolationMethod"]
@@ -676,7 +740,7 @@ class ShapeConverter(ConverterProtocol):
             elif method.enum == Enum.Linear:
                 logger.info("Linear gradient interpolation is not accurate.")
             elif method.enum == b"GIMs":  # Stripes
-                logger.info("Stripes gradient interpolation is not supported yet.")
+                logger.warning("Stripes gradient interpolation is not supported yet.")
             elif method.enum == b"Gcls":  # Classic
                 pass  # Default is classic
             elif method.enum == Key.Smooth:  # Smooth
