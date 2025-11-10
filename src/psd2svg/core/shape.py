@@ -14,6 +14,7 @@ from psd_tools.terminology import Enum, Key, Klass
 from psd2svg import svg_utils
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
+from psd2svg.core.gradient import GradientInterpolation
 
 logger = logging.getLogger(__name__)
 
@@ -608,37 +609,14 @@ class ShapeConverter(ConverterProtocol):
 
     def set_gradient_stops(self, gradient: Descriptor, node: ET.Element) -> ET.Element:
         """Set gradient stops to the given gradient element."""
-        assert gradient.classID == Klass.Gradient
-
-        # Insert color and opacity stops.
-        color_stops = {
-            int(stop[Key.Location]): stop[Key.Color] for stop in gradient[Key.Colors]
-        }
-        opacity_stops = {
-            int(stop[Key.Location]): stop[Key.Opacity]
-            for stop in gradient[Key.Transparency]
-        }
-        stop_keys = set(color_stops.keys()) | set(opacity_stops.keys())
-        for location in sorted(stop_keys):
-            offset = location / 4096.0
-            if location not in color_stops:
-                logger.debug(f"No color stop found at location: {location}")
-                stop_color = None
-                # TODO: Get interpolated color
-            else:
-                stop_color = color_utils.descriptor2hex(color_stops[location])
-            if location not in opacity_stops:
-                logger.debug(f"No opacity stop found at location: {location}")
-                # TODO: Get interpolated opacity
-            else:
-                stop_opacity = opacity_stops[location] / 100.0
-
+        interpolator = GradientInterpolation(gradient)
+        for location, color, opacity in interpolator:
             svg_utils.create_node(
                 "stop",
                 parent=node,
-                offset=f"{offset:.0%}",
-                stop_color=stop_color,
-                stop_opacity=stop_opacity,
+                offset=f"{location:.0%}",
+                stop_color=color_utils.descriptor2hex(color),
+                stop_opacity=f"{opacity:.0%}",
             )
 
         # TODO: Midpoint support?
@@ -652,7 +630,7 @@ class ShapeConverter(ConverterProtocol):
     def set_gradient_attributes(
         self, layer: layers.Layer, setting: Descriptor, gradient: ET.Element
     ) -> None:
-        """Set gradient settings such as angle to the gradient element."""        
+        """Set gradient settings such as angle to the gradient element."""
         transforms = []
 
         # Coordinate system for gradient.
@@ -663,9 +641,13 @@ class ShapeConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)")
+                    transforms.append(
+                        f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)"
+                    )
                 else:
-                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})")
+                    transforms.append(
+                        f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})"
+                    )
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -710,9 +692,13 @@ class ShapeConverter(ConverterProtocol):
         scale = float(setting.get(Key.Scale, UnitFloat(100)).value)
         if scale != 100:
             if landscape:
-                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})")
+                transforms.append(
+                    f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})"
+                )
             else:
-                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)")
+                transforms.append(
+                    f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)"
+                )
 
         if transforms:
             # Move to the reference point, apply transforms, then move back.
