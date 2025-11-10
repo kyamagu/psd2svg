@@ -390,26 +390,25 @@ class ShapeConverter(ConverterProtocol):
             float(transform[b"tx"]),
             float(transform[b"ty"]),
         )
-        if matrix[:4] == (1, 0, 0, 1):
-            if matrix[4] - reference[0] == 0 and matrix[5] - reference[1] == 0:
-                # Identity matrix, no transform needed.
-                return
-            else:
-                # Simple translation
-                svg_utils.append_attribute(
-                    node,
-                    "transform",
-                    "translate(%s)" % svg_utils.seq2str(matrix[4:], digit=4),
-                )
-        else:
+        if (
+            matrix[:4] == (1, 0, 0, 1)
+            and matrix[4] - reference[0] == 0
+            and matrix[5] - reference[1] == 0
+        ):
+            # Identity matrix, no transform needed.
+            return
+
+        if matrix != (1, 0, 0, 1, 0, 0):
+            svg_utils.append_attribute(
+                node, "transform", "matrix(%s)" % svg_utils.seq2str(matrix, digit=4)
+            )
+
+        if reference != (0.0, 0.0):
             svg_utils.append_attribute(
                 node,
                 "transform",
-                "matrix(%s) translate(%s)"
-                % (
-                    svg_utils.seq2str(matrix, digit=4),
-                    svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
-                ),
+                "translate(%s)"
+                % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
             )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
