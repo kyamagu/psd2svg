@@ -135,7 +135,9 @@ class TestSeq2Str:
     def test_custom_separator_and_precision(self):
         """Test formatting with both custom separator and precision."""
         assert svg_utils.seq2str([0.123, 0.456], sep=" ", digit=2) == "0.12 0.46"
-        assert svg_utils.seq2str([1.111, 2.222, 3.333], sep=",", digit=1) == "1.1,2.2,3.3"
+        assert (
+            svg_utils.seq2str([1.111, 2.222, 3.333], sep=",", digit=1) == "1.1,2.2,3.3"
+        )
 
     def test_no_scientific_notation_in_sequence(self):
         """Test that no element in sequence uses scientific notation."""
@@ -212,4 +214,6 @@ class TestSvgFormatting:
         assert svg_utils.seq2str(reference, sep=" ", digit=4) == "0.5 0.5"
 
         negative_reference = (-100.5, -200.75)
-        assert svg_utils.seq2str(negative_reference, sep=" ", digit=4) == "-100.5 -200.75"
+        assert (
+            svg_utils.seq2str(negative_reference, sep=" ", digit=4) == "-100.5 -200.75"
+        )

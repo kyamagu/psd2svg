@@ -318,7 +318,7 @@ class LayerConverter(ConverterProtocol):
                 title=layer.name,
                 class_=layer.kind,
             )
-            
+
             self.set_opacity(layer.opacity / 255.0, node)
             self.set_mask(layer, node)
             self.apply_background_effects(layer, node, insert_before_target=False)

@@ -471,9 +471,13 @@ class EffectConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)")
+                    transforms.append(
+                        f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)"
+                    )
                 else:
-                    transforms.append(f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})")
+                    transforms.append(
+                        f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})"
+                    )
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -518,9 +522,13 @@ class EffectConverter(ConverterProtocol):
         scale = float(100 if effect.scale is None else effect.scale)
         if scale != 100:
             if landscape:
-                transforms.append(f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})")
+                transforms.append(
+                    f"scale(1 {svg_utils.num2str(scale / 100.0, digit=4)})"
+                )
             else:
-                transforms.append(f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)")
+                transforms.append(
+                    f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)"
+                )
 
         if transforms:
             # Move to the reference point, apply transforms, then move back.
