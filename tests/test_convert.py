@@ -239,7 +239,24 @@ def test_paint_gradient(psd_file: str) -> None:
     ],
 )
 def test_effects(psd_file: str) -> None:
-    """Test conversion quality in the raster format."""
+    """Test effects quality in the raster format."""
+    evaluate_quality(psd_file, 0.01)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "effects/stroke-1-raster-color.psd",
+        "effects/stroke-1-raster-gradient.psd",
+        "effects/stroke-1-raster-pattern.psd",
+        "effects/stroke-1-vector-color.psd",
+        "effects/stroke-1-vector-gradient.psd",
+        "effects/stroke-1-vector-pattern.psd",
+        "effects/stroke-2-vector-color.psd",  # Stroke around stroke case.
+    ],
+)
+def test_stroke_effects(psd_file: str) -> None:
+    """Test stroke effect quality in the raster format."""
     evaluate_quality(psd_file, 0.01)
 
 

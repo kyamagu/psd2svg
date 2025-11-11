@@ -4,11 +4,12 @@ import xml.etree.ElementTree as ET
 
 from psd_tools.api import effects, layers
 from psd_tools.constants import Tag
-from psd_tools.terminology import Enum, Key, Klass
+from psd_tools.psd.descriptor import UnitFloat
+from psd_tools.terminology import Enum, Key, Klass, Unit
 
+from psd2svg import svg_utils
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
-from psd2svg import svg_utils
 
 logger = logging.getLogger(__name__)
 
@@ -101,19 +102,21 @@ class EffectConverter(ConverterProtocol):
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.Stroke)
 
-            if isinstance(layer, layers.ShapeLayer):
-                use = self.add_vector_stroke_effect(effect, target)
-                # Vector stroke has stroke-opacity attribute.
-            else:
-                use = self.add_raster_stroke_effect(effect, target)
+            if not isinstance(layer, layers.ShapeLayer) or "stroke" in target.attrib:
+                # NOTE: If there is already a stroke, we need to stroke around the stroke.
+                # This case happens when there is a stroke-only shape layer.
+                use = self.add_raster_stroke_effect(layer, effect, target)
                 if effect.opacity != 100.0:
                     self.set_opacity(effect.opacity / 100.0, use)
+            else:
+                use = self.add_vector_stroke_effect(layer, effect, target)
+                # Vector stroke has stroke-opacity attribute. Skip setting opacity.
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
 
     def add_raster_stroke_effect(
-        self, effect: effects.Stroke, target: ET.Element
+        self, layer: layers.Layer, effect: effects.Stroke, target: ET.Element
     ) -> ET.Element:
         """Add a stroke filter to the SVG document.
 
@@ -182,12 +185,67 @@ class EffectConverter(ConverterProtocol):
         else:
             raise ValueError(f"Unsupported stroke position: {effect.position}")
 
-        # Fill type is always color for raster layers.
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
+        # Gradient and pattern strokes needs feImage.
+        if effect.fill_type == Enum.SolidColor:
+            svg_utils.create_node(
+                "feFlood",
+                parent=filter,
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+        elif effect.fill_type == Enum.Pattern:
+            if effect.pattern is None:
+                raise ValueError("Stroke pattern is None for pattern fill type.")
+            pattern = self.add_pattern(layer._psd, effect.pattern)
+            self.set_pattern_transform(pattern, effect, (0, 0))
+            defs = svg_utils.create_node("defs", parent=self.current)
+            rect = svg_utils.create_node(
+                "rect",
+                parent=defs,
+                id=self.auto_id("patternstroke"),
+                width="100%",
+                height="100%",
+                fill=svg_utils.get_funciri(pattern),
+            )
+            svg_utils.create_node(
+                "feImage",
+                parent=filter,
+                href=svg_utils.get_uri(rect),
+            )
+        elif effect.fill_type == Enum.GradientFill:
+            if effect.gradient is None:
+                raise ValueError("Stroke gradient is None for gradient fill type.")
+            gradient = None
+            if effect.type == Enum.Linear:
+                gradient = self.add_linear_gradient(effect.gradient)
+            elif effect.type == Enum.Radial:
+                gradient = self.add_radial_gradient(effect.gradient)
+            else:
+                logger.warning(
+                    f"Only linear and radial gradient strokes are supported: {effect}"
+                )
+                # Fallback to simple color.
+                flood_color = (
+                    color_utils.descriptor2hex(effect.color)
+                    if effect.color
+                    else "#ffffff"
+                )
+                svg_utils.create_node("feFlood", parent=filter, flood_color=flood_color)
+            if gradient is not None:
+                self.set_gradient_transform(layer, gradient, effect)
+                defs = svg_utils.create_node("defs", parent=self.current)
+                rect = svg_utils.create_node(
+                    "rect",
+                    parent=defs,
+                    id=self.auto_id("gradientstroke"),
+                    width="100%",
+                    height="100%",
+                    fill=svg_utils.get_funciri(gradient),
+                )
+                svg_utils.create_node(
+                    "feImage",
+                    parent=filter,
+                    href=svg_utils.get_uri(rect),
+                )
         svg_utils.create_node(
             "feComposite",
             parent=filter,
@@ -203,7 +261,7 @@ class EffectConverter(ConverterProtocol):
         return use
 
     def add_vector_stroke_effect(
-        self, effect: effects.Stroke, target: ET.Element
+        self, layer: layers.Layer, effect: effects.Stroke, target: ET.Element
     ) -> ET.Element:
         """Add a stroke effect to the current element using vector path."""
 
@@ -214,15 +272,31 @@ class EffectConverter(ConverterProtocol):
             fill="transparent",
         )
         # Check effect.fill_type.
-        if effect.color is not None:
+        if effect.fill_type == Enum.SolidColor:
+            if effect.color is None:
+                raise ValueError("Stroke color is None for color fill type.")
             color = color_utils.descriptor2hex(effect.color)
             svg_utils.set_attribute(use, "stroke", color)
-        elif effect.pattern is not None:
-            # TODO: Implement pattern stroke.
-            logger.warning("Pattern stroke is not supported yet.")
-        elif effect.gradient is not None:
-            # TODO: Implement gradient stroke.
-            logger.warning("Gradient stroke is not supported yet.")
+        elif effect.fill_type == Enum.Pattern:
+            if effect.pattern is None:
+                raise ValueError("Stroke pattern is None for pattern fill type.")
+            pattern = self.add_pattern(layer._psd, effect.pattern)
+            self.set_pattern_transform(pattern, effect, (0, 0))
+            svg_utils.set_attribute(use, "stroke", svg_utils.get_funciri(pattern))
+        elif effect.fill_type == Enum.GradientFill:
+            if effect.gradient is None:
+                raise ValueError("Stroke gradient is None for gradient fill type.")
+            if effect.type == Enum.Linear:
+                gradient = self.add_linear_gradient(effect.gradient)
+            elif effect.type == Enum.Radial:
+                gradient = self.add_radial_gradient(effect.gradient)
+            else:
+                logger.warning(
+                    f"Only linear and radial gradient strokes are supported: {effect}"
+                )
+                return use
+            self.set_gradient_transform(layer, gradient, effect)
+            svg_utils.set_attribute(use, "stroke", svg_utils.get_funciri(gradient))
 
         if effect.opacity != 100.0:
             svg_utils.set_attribute(use, "stroke-opacity", effect.opacity)
@@ -461,11 +535,12 @@ class EffectConverter(ConverterProtocol):
         self,
         layer: layers.Layer,
         gradient: ET.Element,
-        effect: effects.GradientOverlay,
+        effect: effects.GradientOverlay | effects.Stroke,
     ) -> None:
         """Set gradient transformations based on the effect properties."""
         transforms = []
-        if effect.aligned:
+        aligned = effect.value.get(Key.Aligned) is True
+        if aligned:
             # Gradient aligned to layer bounds.
             landscape = layer.width >= layer.height
             # Adjust the object coordinates.
@@ -502,7 +577,7 @@ class EffectConverter(ConverterProtocol):
                 effect.offset[Key.Horizontal].value / 100.0,
                 effect.offset[Key.Vertical].value / 100.0,
             )
-            if not effect.aligned:
+            if not aligned:
                 offset = (offset[0] * self.psd.width, offset[1] * self.psd.height)
             svg_utils.append_attribute(
                 gradient,
@@ -519,7 +594,7 @@ class EffectConverter(ConverterProtocol):
         if angle != 0:
             transforms.append(f"rotate({svg_utils.num2str(angle)})")
 
-        scale = float(100 if effect.scale is None else effect.scale)
+        scale = float(effect.value.get(Key.Scale, UnitFloat(Unit.Percent, 100.0)).value)
         if scale != 100:
             if landscape:
                 transforms.append(
@@ -646,7 +721,7 @@ class EffectConverter(ConverterProtocol):
     def set_pattern_transform(
         self,
         pattern: ET.Element,
-        effect: effects.PatternOverlay,
+        effect: effects.PatternOverlay | effects.Stroke,
         reference: tuple[float, float],
     ) -> None:
         """Set pattern transformations based on the effect properties."""
@@ -668,12 +743,12 @@ class EffectConverter(ConverterProtocol):
                     "patternTransform",
                     f"translate({svg_utils.seq2str(offset)})",
                 )
-        if effect.scale != 100.0:
-            scale = effect.scale / 100.0
+        scale = float(effect.value.get(Key.Scale, UnitFloat(Unit.Percent, 100.0)).value)
+        if scale != 100.0:
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
-                f"scale({svg_utils.num2str(scale)})",
+                f"scale({svg_utils.num2str(scale / 100.0)})",
             )
         if effect.angle != 0.0:
             rotation = -effect.angle
