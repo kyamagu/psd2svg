@@ -196,7 +196,7 @@ class EffectConverter(ConverterProtocol):
             if effect.pattern is None:
                 raise ValueError("Stroke pattern is None for pattern fill type.")
             pattern = self.add_pattern(layer._psd, effect.pattern)
-            self.set_pattern_transform(pattern, effect, (0, 0))
+            self.set_pattern_effect_transform(pattern, effect, (0, 0))
             defs = svg_utils.create_node("defs", parent=self.current)
             rect = svg_utils.create_node(
                 "rect",
@@ -281,7 +281,7 @@ class EffectConverter(ConverterProtocol):
             if effect.pattern is None:
                 raise ValueError("Stroke pattern is None for pattern fill type.")
             pattern = self.add_pattern(layer._psd, effect.pattern)
-            self.set_pattern_transform(pattern, effect, (0, 0))
+            self.set_pattern_effect_transform(pattern, effect, (0, 0))
             svg_utils.set_attribute(use, "stroke", svg_utils.get_funciri(pattern))
         elif effect.fill_type == Enum.GradientFill:
             if effect.gradient is None:
@@ -645,7 +645,7 @@ class EffectConverter(ConverterProtocol):
             assert isinstance(effect, effects.PatternOverlay)
             pattern = self.add_pattern(layer._psd, effect.pattern)
             reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0))
-            self.set_pattern_transform(pattern, effect, reference)
+            self.set_pattern_effect_transform(pattern, effect, reference)
 
             if isinstance(layer, layers.ShapeLayer):
                 use = self.add_vector_pattern_overlay_effect(pattern, target)
@@ -718,7 +718,7 @@ class EffectConverter(ConverterProtocol):
             fill=svg_utils.get_funciri(pattern),
         )
 
-    def set_pattern_transform(
+    def set_pattern_effect_transform(
         self,
         pattern: ET.Element,
         effect: effects.PatternOverlay | effects.Stroke,

@@ -193,7 +193,29 @@ def test_paint_gradient(psd_file: str) -> None:
     evaluate_quality(psd_file, 0.005)
 
 
-# TODO: Add more tests for pattern paint.
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "paint/pattern-1.psd",
+        "paint/pattern-2.psd",  # Transformed pattern
+    ],
+)
+def test_paint_pattern(psd_file: str) -> None:
+    """Test conversion quality for pattern painting."""
+    evaluate_quality(psd_file, 0.005)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "paint/stroke-1-color.psd",
+        "paint/stroke-1-gradient.psd",
+        "paint/stroke-1-pattern.psd",
+    ],
+)
+def test_paint_stroke(psd_file: str) -> None:
+    """Test conversion quality for stroke painting."""
+    evaluate_quality(psd_file, 0.005)
 
 
 @pytest.mark.parametrize(
