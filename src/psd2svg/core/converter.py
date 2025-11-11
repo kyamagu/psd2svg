@@ -11,6 +11,7 @@ from psd2svg.core.adjustment import AdjustmentConverter
 from psd2svg.core.counter import AutoCounter
 from psd2svg.core.effects import EffectConverter
 from psd2svg.core.layer import LayerConverter
+from psd2svg.core.paint import PaintConverter
 from psd2svg.core.shape import ShapeConverter
 from psd2svg.core.type import TypeConverter
 
@@ -18,7 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 class Converter(
-    AdjustmentConverter, LayerConverter, ShapeConverter, TypeConverter, EffectConverter
+    AdjustmentConverter,
+    LayerConverter,
+    PaintConverter,
+    ShapeConverter,
+    TypeConverter,
+    EffectConverter,
 ):
     """Converter main class.
 

@@ -40,6 +40,8 @@ class ConverterProtocol(Protocol):
 
     # Shape methods
     def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element: ...
+    
+    # Paint methods
     def apply_vector_fill(
         self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
     ) -> None: ...
