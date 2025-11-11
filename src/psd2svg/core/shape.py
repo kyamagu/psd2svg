@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class ShapeConverter(ConverterProtocol):
     """Mixin for shape layers."""
 
-    def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
+    def create_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element:
         """Create a shape element from the layer's vector mask or origination data."""
         if not layer.has_vector_mask():
             raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
@@ -398,11 +398,12 @@ class ShapeConverter(ConverterProtocol):
             # Identity matrix, no transform needed.
             return
 
+        transform_applied = False
         if matrix != (1, 0, 0, 1, 0, 0):
             svg_utils.append_attribute(
                 node, "transform", "matrix(%s)" % svg_utils.seq2str(matrix, digit=4)
             )
-
+            transform_applied = True
         if reference != (0.0, 0.0):
             svg_utils.append_attribute(
                 node,
@@ -410,6 +411,30 @@ class ShapeConverter(ConverterProtocol):
                 "translate(%s)"
                 % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
             )
+            transform_applied = True
+
+        if transform_applied and ("clip-path" in node.attrib or "mask" in node.attrib):
+            # We cannot set transform for node with clip-path or mask directly.
+            # Instead, we wrap it in a <use> element.
+            # NOTE: This interferes with mix-blend-mode isolation.
+            clip_path = node.attrib.pop("clip-path", None)
+            mask = node.attrib.pop("mask", None)
+            if "id" not in node.attrib:
+                svg_utils.set_attribute(node, "id", self.auto_id("shape"))
+            defs = svg_utils.create_node("defs", parent=self.current)
+            svg_utils.wrap_element(node, self.current, defs)
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(node),
+                mask=mask,
+                clip_path=clip_path,
+            )
+            if "style" in node.attrib and "mix-blend-mode" in node.attrib["style"]:
+                logger.warning(
+                    "Mix-blend-mode may not work correctly with transformed "
+                    "shapes using clip-path or mask."
+                )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
         """Create a path element."""
@@ -554,7 +579,9 @@ class ShapeConverter(ConverterProtocol):
 
         if stroke.content.classID == b"patternLayer":
             if Enum.Pattern not in stroke.content:
-                raise ValueError(f"No pattern found in stroke content: {stroke.content}.")
+                raise ValueError(
+                    f"No pattern found in stroke content: {stroke.content}."
+                )
             pattern = self.add_pattern(self.psd, stroke.content[Enum.Pattern])
             if pattern is not None:
                 self.set_pattern_transform(layer, stroke.content, pattern)
@@ -774,7 +801,7 @@ class ShapeConverter(ConverterProtocol):
         self, layer: layers.Layer, setting: Descriptor, pattern: ET.Element
     ) -> None:
         """Set pattern transform to the pattern element.
-        
+
         The order is likely the following in Photoshop:
 
         1. Reference point translation

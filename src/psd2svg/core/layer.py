@@ -60,17 +60,9 @@ class LayerConverter(ConverterProtocol):
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
-        node = layer_fn(layer)
-        if node is not None and attrib:
-            for key, value in attrib.items():
-                if key in node.attrib:
-                    logger.info(
-                        f"Overwriting existing attribute '{key}' on layer '{layer.name}'."
-                    )
-                svg_utils.set_attribute(node, key, value)
-        return node
+        return layer_fn(layer, **attrib)
 
-    def add_artboard(self, layer: layers.Artboard) -> ET.Element:
+    def add_artboard(self, layer: layers.Artboard, **attrib: str) -> ET.Element | None:
         """Add an artboard layer to the svg document."""
         node = svg_utils.create_node(
             "svg",
@@ -85,12 +77,13 @@ class LayerConverter(ConverterProtocol):
                 [layer.left, layer.top, layer.width, layer.height]
             ),
             id=self.auto_id("artboard") if layer.has_effects() else None,
+            **attrib,
         )
         with self.set_current(node):
             self.add_children(layer)
         return node
 
-    def add_group(self, layer: layers.Group) -> ET.Element:
+    def add_group(self, layer: layers.Group, **attrib: str) -> ET.Element | None:
         """Add a group layer to the svg document."""
         node = svg_utils.create_node(
             "g",
@@ -98,6 +91,7 @@ class LayerConverter(ConverterProtocol):
             class_=layer.kind,
             title=layer.name,
             id=self.auto_id("group") if layer.has_effects() else None,
+            **attrib,
         )
         with self.set_current(node):
             self.add_children(layer)
@@ -122,7 +116,7 @@ class LayerConverter(ConverterProtocol):
                 # Regular layer.
                 self.add_layer(layer)
 
-    def add_pixel(self, layer: layers.Layer) -> ET.Element | None:
+    def add_pixel(self, layer: layers.Layer, **attrib: str) -> ET.Element | None:
         """Add a general pixel-based layer to the svg document."""
         if not layer.has_pixels():
             logger.warning(
@@ -149,6 +143,7 @@ class LayerConverter(ConverterProtocol):
                 title=layer.name,
                 id=self.auto_id("image"),
                 class_=layer.kind,
+                **attrib,
             )
             self.set_opacity(layer.opacity / 255, node)
             self.set_mask(layer, node)
@@ -167,13 +162,14 @@ class LayerConverter(ConverterProtocol):
                 height=layer.height,
                 title=layer.name,
                 class_=layer.kind,
+                **attrib,
             )
             if fill_opacity < 255:
                 self.set_opacity(fill_opacity / 255, node)
             self.set_layer_attributes(layer, node)
         return node
 
-    def add_shape(self, layer: layers.ShapeLayer) -> ET.Element | None:
+    def add_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element | None:
         """Add a shape layer to the svg document."""
         if layer.has_effects():
             # We need to split the shape definition and effects.
@@ -184,6 +180,7 @@ class LayerConverter(ConverterProtocol):
                     title=layer.name,
                     id=self.auto_id("shape"),
                     class_=layer.kind,
+                    **attrib,
                 )
                 self.set_opacity(layer.opacity / 255.0, node)
                 self.set_mask(layer, node)
@@ -205,7 +202,9 @@ class LayerConverter(ConverterProtocol):
             self.apply_stroke_effect(layer, node)
         else:
             # We can directly create the shape.
-            node = self.create_shape(layer, title=layer.name, class_=layer.kind)
+            node = self.create_shape(
+                layer, title=layer.name, class_=layer.kind, **attrib
+            )
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
             self.set_layer_attributes(layer, node)
@@ -299,6 +298,7 @@ class LayerConverter(ConverterProtocol):
         layer: adjustments.SolidColorFill
         | adjustments.GradientFill
         | adjustments.PatternFill,
+        **attrib: str,
     ) -> ET.Element | None:
         """Add fill node to the given element."""
         logger.debug(f"Adding fill layer: '{layer.name}'")
@@ -317,6 +317,7 @@ class LayerConverter(ConverterProtocol):
                 id=self.auto_id("fill"),
                 title=layer.name,
                 class_=layer.kind,
+                **attrib,
             )
 
             self.set_opacity(layer.opacity / 255.0, node)
@@ -335,6 +336,8 @@ class LayerConverter(ConverterProtocol):
                 width=viewbox[2] - viewbox[0],
                 height=viewbox[3] - viewbox[1],
                 title=layer.name,
+                class_=layer.kind,
+                **attrib,
             )
             self.set_fill(layer, node)
             self.set_layer_attributes(layer, node)
@@ -435,10 +438,10 @@ class LayerConverter(ConverterProtocol):
 
         # Create the mask node.
         node = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask")
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
         )
-        # TODO: Check layer mask attributes.
-        # svg_utils.set_attribute(node, "color-interpolation", "sRGB")
 
         # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
@@ -462,4 +465,17 @@ class LayerConverter(ConverterProtocol):
             width=layer.mask.width,
             height=layer.mask.height,
         )
-        svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(node))
+        if "transform" in target.attrib:
+            # If the target has a transform, we cannot directly apply it to the mask.
+            if "id" not in target.attrib:
+                target.set("id", self.auto_id("masktarget"))
+            defs = svg_utils.create_node("defs", parent=self.current)
+            svg_utils.wrap_element(target, self.current, defs)
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(target),
+                mask=svg_utils.get_funciri(node),
+            )
+        else:
+            svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(node))

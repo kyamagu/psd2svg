@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 class AdjustmentConverter(ConverterProtocol):
     """Mixin for adjustment layers."""
 
-    def add_adjustment(self, layer: layers.AdjustmentLayer) -> ET.Element | None:
+    def add_adjustment(
+        self, layer: layers.AdjustmentLayer, **attrib: str
+    ) -> ET.Element | None:
         """Add an adjustment layer to the svg document."""
         logger.warning(
             f"Adjustment layer is unsupported yet: '{layer.name}' ({layer.kind})"
