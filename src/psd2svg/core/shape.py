@@ -9,7 +9,7 @@ from psd_tools.api.shape import Ellipse, Rectangle, RoundedRectangle
 from psd_tools.constants import Tag
 from psd_tools.psd.descriptor import Descriptor, UnitFloat
 from psd_tools.psd.vector import Subpath
-from psd_tools.terminology import Enum, Key, Klass
+from psd_tools.terminology import Enum, Key, Klass, Unit
 
 from psd2svg import svg_utils
 from psd2svg.core import color_utils
@@ -499,6 +499,11 @@ class ShapeConverter(ConverterProtocol):
             gradient = self.add_gradient_definition(layer, content_data)
             if gradient is not None:
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(gradient))
+        elif Enum.Pattern in content_data:
+            pattern = self.add_pattern(self.psd, content_data[Enum.Pattern])
+            if pattern is not None:
+                self.set_pattern_transform(layer, content_data, pattern)
+                svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(pattern))
         else:
             logger.warning(f"Unsupported fill content: {content_data}")
         self.set_fill_opacity(layer, node)
@@ -516,6 +521,7 @@ class ShapeConverter(ConverterProtocol):
                 raise ValueError(f"No pattern found in setting: {setting}.")
             pattern = self.add_pattern(self.psd, setting[Enum.Pattern])
             if pattern is not None:
+                self.set_pattern_transform(layer, setting, pattern)
                 svg_utils.set_attribute(node, "fill", svg_utils.get_funciri(pattern))
         elif Tag.GRADIENT_FILL_SETTING in layer.tagged_blocks:
             # classID is null for gradient fill setting.
@@ -546,15 +552,22 @@ class ShapeConverter(ConverterProtocol):
         if stroke.line_width != 1.0:
             svg_utils.set_attribute(node, "stroke-width", stroke.line_width)
 
-        if stroke.content.name == "patternoverlay":
-            logger.warning("Pattern stroke is not supported yet.")
-            # TODO: Implement pattern stroke.
-        elif stroke.content.name == "gradientoverlay":
-            logger.warning("Gradient stroke is not supported yet.")
-            # TODO: Implement gradient stroke.
+        if stroke.content.classID == b"patternLayer":
+            if Enum.Pattern not in stroke.content:
+                raise ValueError(f"No pattern found in stroke content: {stroke.content}.")
+            pattern = self.add_pattern(self.psd, stroke.content[Enum.Pattern])
+            if pattern is not None:
+                self.set_pattern_transform(layer, stroke.content, pattern)
+                svg_utils.set_attribute(node, "stroke", svg_utils.get_funciri(pattern))
+        elif stroke.content.classID == b"gradientLayer":
+            gradient = self.add_gradient_definition(layer, stroke.content)
+            if gradient is not None:
+                svg_utils.set_attribute(node, "stroke", svg_utils.get_funciri(gradient))
         elif stroke.content.classID == b"solidColorLayer":
             color = color_utils.descriptor2hex(stroke.content[Klass.Color])
             svg_utils.set_attribute(node, "stroke", color)
+        else:
+            logger.warning(f"Unsupported stroke content: {stroke.content}")
 
         if not stroke.fill_enabled:
             svg_utils.set_attribute(node, "fill", "transparent")
@@ -580,6 +593,8 @@ class ShapeConverter(ConverterProtocol):
         self, layer: layers.Layer, descriptor: Descriptor
     ) -> ET.Element | None:
         """Add gradient definition to the SVG document."""
+        if Key.Gradient not in descriptor:
+            raise ValueError(f"No gradient found in descriptor: {descriptor}")
         if descriptor[Key.Type].enum == Enum.Linear:
             node = self.add_linear_gradient(descriptor[Key.Gradient])
         elif descriptor[Key.Type].enum == Enum.Radial:
@@ -754,6 +769,49 @@ class ShapeConverter(ConverterProtocol):
         # We will later fill in the href attribute when embedding images.
         self.images.append(image)
         return node
+
+    def set_pattern_transform(
+        self, layer: layers.Layer, setting: Descriptor, pattern: ET.Element
+    ) -> None:
+        """Set pattern transform to the pattern element.
+        
+        The order is likely the following in Photoshop:
+
+        1. Reference point translation
+        2. Scale
+        3. Rotation
+        """
+        # Reference point
+        reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0))
+        if reference != (0.0, 0.0):
+            svg_utils.append_attribute(
+                pattern,
+                "patternTransform",
+                "translate(%s)" % svg_utils.seq2str(reference),
+            )
+
+        # TODO: Split the transform builder into a helper method.
+        # Scale and rotation
+        transforms = []
+
+        # TODO: Maybe check the valid values for pattern fill settings.
+        scale = (
+            float(
+                setting.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value
+            )
+            / 100.0
+        )
+        if scale != 1.0:
+            transforms.append(f"scale({svg_utils.num2str(scale, digit=4)})")
+
+        angle = -float(setting.get(Key.Angle, UnitFloat(0.0)).value)
+        if angle != 0.0:
+            transforms.append(f"rotate({svg_utils.num2str(angle, digit=4)})")
+
+        if transforms:
+            svg_utils.append_attribute(
+                pattern, "patternTransform", " ".join(transforms)
+            )
 
 
 def generate_path(
