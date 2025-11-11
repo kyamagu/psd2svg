@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class ShapeConverter(ConverterProtocol):
     """Mixin for shape layers."""
 
-    def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element:
+    def create_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element:
         """Create a shape element from the layer's vector mask or origination data."""
         if not layer.has_vector_mask():
             raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
@@ -554,7 +554,9 @@ class ShapeConverter(ConverterProtocol):
 
         if stroke.content.classID == b"patternLayer":
             if Enum.Pattern not in stroke.content:
-                raise ValueError(f"No pattern found in stroke content: {stroke.content}.")
+                raise ValueError(
+                    f"No pattern found in stroke content: {stroke.content}."
+                )
             pattern = self.add_pattern(self.psd, stroke.content[Enum.Pattern])
             if pattern is not None:
                 self.set_pattern_transform(layer, stroke.content, pattern)
@@ -774,7 +776,7 @@ class ShapeConverter(ConverterProtocol):
         self, layer: layers.Layer, setting: Descriptor, pattern: ET.Element
     ) -> None:
         """Set pattern transform to the pattern element.
-        
+
         The order is likely the following in Photoshop:
 
         1. Reference point translation
