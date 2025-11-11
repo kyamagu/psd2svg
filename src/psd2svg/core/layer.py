@@ -438,10 +438,10 @@ class LayerConverter(ConverterProtocol):
 
         # Create the mask node.
         node = svg_utils.create_node(
-            "mask", parent=self.current, id=self.auto_id("mask")
+            "mask",
+            parent=self.current,
+            id=self.auto_id("mask"),
         )
-        # TODO: Check layer mask attributes.
-        # svg_utils.set_attribute(node, "color-interpolation", "sRGB")
 
         # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
@@ -465,4 +465,17 @@ class LayerConverter(ConverterProtocol):
             width=layer.mask.width,
             height=layer.mask.height,
         )
-        svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(node))
+        if "transform" in target.attrib:
+            # If the target has a transform, we cannot directly apply it to the mask.
+            if "id" not in target.attrib:
+                target.set("id", self.auto_id("masktarget"))
+            defs = svg_utils.create_node("defs", parent=self.current)
+            svg_utils.wrap_element(target, self.current, defs)
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(target),
+                mask=svg_utils.get_funciri(node),
+            )
+        else:
+            svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(node))

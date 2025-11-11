@@ -153,3 +153,25 @@ def get_uri(node: ET.Element) -> str:
 def get_funciri(node: ET.Element) -> str:
     """Get a funciri string for the given node."""
     return f"url({get_uri(node)})"
+
+
+def wrap_element(
+    node: ET.Element, parent: ET.Element, wrapper: ET.Element
+) -> ET.Element:
+    """Wrap the given existing node in the wrapper element.
+    
+    Usage:
+        wrapper = svg_utils.create_node("g")
+        wrapped_node = svg_utils.wrap_element(node, parent, wrapper)
+
+    Args:
+        node: The XML node to be wrapped.
+        parent: The parent XML node containing the node to be wrapped.
+        wrapper: The wrapper XML node.
+    """
+    # NOTE: There is no direct way to find a parent from the node.
+    if node not in parent:
+        raise ValueError("Node is not a child of the given parent.")
+    parent.remove(node)
+    wrapper.append(node)
+    return wrapper

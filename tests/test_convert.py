@@ -145,6 +145,7 @@ def test_clipping(psd_file: str, quality: float) -> None:
         "shapes/rectangle-3.psd",
         "shapes/rectangle-4.psd",
         "shapes/rectangle-5.psd",
+        "shapes/rectangle-6-transform-mask.psd",  # Rectangle with transform and mask
         "shapes/star-1.psd",
         "shapes/star-2.psd",
         "shapes/multi-1.psd",  # Union + Subtract

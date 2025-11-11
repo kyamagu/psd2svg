@@ -419,12 +419,10 @@ class ShapeConverter(ConverterProtocol):
             # NOTE: This interferes with mix-blend-mode isolation.
             clip_path = node.attrib.pop("clip-path", None)
             mask = node.attrib.pop("mask", None)
-            defs = svg_utils.create_node("defs", parent=self.current)
-            assert node in self.current, "Node not in current parent"
-            self.current.remove(node)  # Maybe check if the node parent is current?
-            defs.append(node)
             if "id" not in node.attrib:
                 svg_utils.set_attribute(node, "id", self.auto_id("shape"))
+            defs = svg_utils.create_node("defs", parent=self.current)
+            svg_utils.wrap_element(node, self.current, defs)
             svg_utils.create_node(
                 "use",
                 parent=self.current,
