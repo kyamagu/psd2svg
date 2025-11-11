@@ -202,7 +202,9 @@ class LayerConverter(ConverterProtocol):
             self.apply_stroke_effect(layer, node)
         else:
             # We can directly create the shape.
-            node = self.create_shape(layer, title=layer.name, class_=layer.kind)
+            node = self.create_shape(
+                layer, title=layer.name, class_=layer.kind, **attrib
+            )
             self.set_fill(layer, node)
             self.set_stroke(layer, node)
             self.set_layer_attributes(layer, node)

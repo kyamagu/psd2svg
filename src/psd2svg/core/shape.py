@@ -398,11 +398,12 @@ class ShapeConverter(ConverterProtocol):
             # Identity matrix, no transform needed.
             return
 
+        transform_applied = False
         if matrix != (1, 0, 0, 1, 0, 0):
             svg_utils.append_attribute(
                 node, "transform", "matrix(%s)" % svg_utils.seq2str(matrix, digit=4)
             )
-
+            transform_applied = True
         if reference != (0.0, 0.0):
             svg_utils.append_attribute(
                 node,
@@ -410,6 +411,32 @@ class ShapeConverter(ConverterProtocol):
                 "translate(%s)"
                 % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
             )
+            transform_applied = True
+
+        if transform_applied and ("clip-path" in node.attrib or "mask" in node.attrib):
+            # We cannot set transform for node with clip-path or mask directly.
+            # Instead, we wrap it in a <use> element.
+            # NOTE: This interferes with mix-blend-mode isolation.
+            clip_path = node.attrib.pop("clip-path", None)
+            mask = node.attrib.pop("mask", None)
+            defs = svg_utils.create_node("defs", parent=self.current)
+            assert node in self.current, "Node not in current parent"
+            self.current.remove(node)  # Maybe check if the node parent is current?
+            defs.append(node)
+            if "id" not in node.attrib:
+                svg_utils.set_attribute(node, "id", self.auto_id("shape"))
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(node),
+                mask=mask,
+                clip_path=clip_path,
+            )
+            if "style" in node.attrib and "mix-blend-mode" in node.attrib["style"]:
+                logger.warning(
+                    "Mix-blend-mode may not work correctly with transformed "
+                    "shapes using clip-path or mask."
+                )
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
         """Create a path element."""
