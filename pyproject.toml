@@ -55,3 +55,12 @@ psd2svg = "psd2svg.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "psd_tools.*"
+ignore_missing_imports = true
