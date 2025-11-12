@@ -134,6 +134,8 @@ image.save('output.png')
 ### Code Quality
 
 - **Type hints**: Full type annotation coverage with mypy support
+  - TODO: Enable stricter mypy checks (`disallow_untyped_defs`, `warn_return_any`) after adding complete type annotations
+  - Current configuration ignores psd_tools import errors (lacks type stubs)
 - **Linting**: Ruff for fast linting and formatting
 - **Python 3.10+**: Modern Python with no legacy compatibility code
 - **Abstract base classes**: Proper use of ABC for interface definitions
