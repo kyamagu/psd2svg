@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "psd2svg"
-version = "0.3.0dev0"
+version = "0.3.0a1"
 description = "Convert PSD file to SVG file"
 authors = [
     { name = "Kota Yamaguchi", email = "yamaguchi_kota@cyberagent.co.jp" },
@@ -38,6 +38,12 @@ dev = [
     "mypy",
     "ruff",
     "ipykernel>=6.30.1",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+    "sphinx-autodoc-typehints>=1.25",
+    "myst-parser>=2.0",
 ]
 
 [project.urls]

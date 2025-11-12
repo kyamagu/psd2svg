@@ -12,7 +12,7 @@ Use `pip` to install:
 pip install psd2svg
 ```
 
-## Usage (v0.2.0)
+## Usage
 
 The package comes with a command-line tool:
 
@@ -27,19 +27,19 @@ psd2svg input.psd output/  # => output/input.svg
 psd2svg input.psd          # => input.svg
 ```
 
-When `--resource-path` flag is specified, all png resources are exported to the path specified by `--resource-path`:
+When `--images-path` flag is specified, all png resources are exported to the path specified by `--images-path`:
 
 ```bash
-psd2svg input.psd output.svg --resource-path .
+psd2svg input.psd output.svg --images-path .
 # => output.svg, xxx1.png, ...
 
-psd2svg input.psd output/ --resource-path .
+psd2svg input.psd output/ --images-path .
 # => output/input.svg, output/xxx1.png, ...
 
-psd2svg input.psd output/ --resource-path=resources/
+psd2svg input.psd output/ --images-path=resources/
 # => output/input.svg, output/resources/xxx1.png, ...
 
-psd2svg input.psd svg/ --resource-path=../png/
+psd2svg input.psd svg/ --images-path=../png/
 # => svg/input.svg, png/xxx1.png, ...
 ```
 
@@ -113,10 +113,45 @@ image.save('output.png')
 ```
 
 Rasterizers require external dependencies:
-- `resvg`: Recommended, fast and accurate (install via `cargo install resvg`)
-- `chromium`: Requires Selenium + ChromeDriver
+
+- `resvg`: Recommended, fast and accurate (installed by default)
+- `chromium`: Requires Selenium + ChromeDriver (also need `pip install selenium`)
 - `batik`: Requires Apache Batik
 - `inkscape`: Requires Inkscape
+
+## Documentation
+
+Comprehensive documentation is available and built with Sphinx.
+
+### Building Documentation
+
+To build the HTML documentation locally:
+
+```bash
+# Install documentation dependencies
+uv sync --group docs
+
+# Build the documentation
+uv run sphinx-build -b html docs docs/_build/html
+
+# Open the documentation in your browser
+open docs/_build/html/index.html  # macOS
+xdg-open docs/_build/html/index.html  # Linux
+start docs/_build/html/index.html  # Windows
+```
+
+The documentation includes:
+
+- **Getting Started** - Installation and quick start guide
+- **User Guide** - Comprehensive usage documentation
+- **API Reference** - Complete API documentation with examples
+- **Rasterizers Guide** - Details on all rasterizer backends
+- **Development Guide** - Contributing and development setup
+- **Limitations** - Known limitations and workarounds
+
+### Online Documentation
+
+*Coming soon: Documentation will be hosted on Read the Docs*
 
 ## Test
 
