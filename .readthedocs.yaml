@@ -13,6 +13,13 @@ build:
     post_install:
       - pip install uv
       - uv sync --all-groups
-      - uv run python -m sphinx -T -b html -d _build/doctrees -D language=en docs $READTHEDOCS_OUTPUT/html
+    build:
+      html:
+        - uv run sphinx-build -b html docs/ $READTHEDOCS_OUTPUT/html
 
-# Note: We build Sphinx manually using 'uv run' to ensure it uses the uv-managed virtual environment
+# Build documentation in the "docs/" directory with Sphinx
+sphinx:
+   configuration: docs/conf.py
+
+# Note: We override the default Sphinx build command to use 'uv run' to ensure
+# it runs within the uv-managed virtual environment where all dependencies are installed
