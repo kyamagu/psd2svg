@@ -97,43 +97,39 @@ Using Built-in Method
 
    document = SVGDocument.from_psd(psdimage)
 
-   # Rasterize using default settings (resvg)
+   # Rasterize using default settings
    image = document.rasterize()
    image.save('output.png')
 
-   # Rasterize with custom dimensions
-   image = document.rasterize(width=800, height=600)
-
-   # Rasterize with scale factor
-   image = document.rasterize(scale=2.0)  # 2x size
+   # Rasterize with custom DPI
+   image = document.rasterize(dpi=300)  # High resolution
+   image.save('output_high_res.png')
 
 Using Rasterizer Directly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   from psd2svg.rasterizer import create_rasterizer
+   from psd2svg.rasterizer import ResvgRasterizer
 
    # Create rasterizer instance
-   rasterizer = create_rasterizer('resvg')
+   rasterizer = ResvgRasterizer(dpi=96)
 
    # Rasterize from string
    svg_string = document.tostring(embed_images=True)
-   image = rasterizer.rasterize_from_string(svg_string)
+   image = rasterizer.from_string(svg_string)
    image.save('output.png')
 
    # Rasterize from file
-   image = rasterizer.rasterize('input.svg')
+   image = rasterizer.from_file('input.svg')
 
-Available Rasterizers
-~~~~~~~~~~~~~~~~~~~~~
+The Rasterizer
+~~~~~~~~~~~~~~
 
-* ``resvg`` - Recommended, fast and accurate (requires: ``cargo install resvg``)
-* ``chromium`` - Uses Chrome/Chromium (requires: Selenium + ChromeDriver)
-* ``batik`` - Apache Batik renderer (requires: Apache Batik)
-* ``inkscape`` - Inkscape-based rendering (requires: Inkscape)
+psd2svg uses **resvg** for rasterization, which provides fast and accurate rendering
+with no external dependencies beyond the resvg-py Python package.
 
-See :doc:`rasterizers` for detailed setup instructions.
+See :doc:`rasterizers` for detailed documentation and examples.
 
 The convert() Function
 ----------------------
@@ -207,7 +203,7 @@ Performance Tips
 
 1. **Use external images for large PSDs**: Embedding many large images can create huge SVG files
 2. **Choose WebP format**: Provides good quality with smaller file sizes
-3. **Use resvg for rasterization**: Fastest and most accurate rasterizer
+3. **Use appropriate DPI**: Default DPI (96) is suitable for screen display, use 300+ for print
 
 Quality Considerations
 ~~~~~~~~~~~~~~~~~~~~~~

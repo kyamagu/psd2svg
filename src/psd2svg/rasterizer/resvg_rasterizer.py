@@ -1,15 +1,12 @@
-"""
-Resvg-based rasterizer module.
+"""Resvg-based rasterizer module.
 
-Prerequisite:
-
-    pip install resvg-py
-
+This module provides SVG rasterization using the resvg library via resvg-py,
+offering fast and accurate rendering with no external dependencies.
 """
 
 import logging
 from io import BytesIO
-from typing import Any, Optional, Tuple, Union
+from typing import Union
 
 import resvg_py
 from PIL import Image
@@ -20,54 +17,70 @@ logger = logging.getLogger(__name__)
 
 
 class ResvgRasterizer(BaseRasterizer):
-    """Resvg rasterizer using resvg-py."""
+    """High-performance SVG rasterizer using resvg.
 
-    def __init__(self, dpi: int = 0, **kwargs: Any) -> None:
-        """
-        Initialize the resvg rasterizer.
+    This rasterizer uses the resvg library (via resvg-py) to convert SVG
+    documents to raster images. Resvg is a fast, accurate SVG renderer
+    written in Rust that provides excellent quality with minimal dependencies.
+
+    Example:
+        >>> rasterizer = ResvgRasterizer(dpi=96)
+        >>> image = rasterizer.from_file('input.svg')
+        >>> image.save('output.png')
+
+        >>> svg_content = '<svg>...</svg>'
+        >>> image = rasterizer.from_string(svg_content)
+        >>> image.save('output.png')
+    """
+
+    def __init__(self, dpi: int = 0) -> None:
+        """Initialize the resvg rasterizer.
 
         Args:
-            dpi: Dots per inch for rendering. Default is 96.0.
-            **kwargs: Additional arguments (unused but kept for compatibility).
+            dpi: Dots per inch for rendering. If 0 (default), uses resvg's
+                default of 96 DPI. Higher values produce larger, higher
+                resolution images (e.g., 300 DPI for print quality).
         """
         self.dpi = dpi
 
-    def rasterize(
-        self, url: str, size: Optional[Tuple[int, int]] = None, **kwargs: Any
-    ) -> Image.Image:
-        """
-        Rasterize an SVG file to a PIL Image.
+    def from_file(self, filepath: str) -> Image.Image:
+        """Rasterize an SVG file to a PIL Image.
 
         Args:
-            url: Path to the SVG file.
-            size: Optional target size (width, height) in pixels.
-            **kwargs: Additional arguments (unused).
+            filepath: Path to the SVG file to rasterize.
 
         Returns:
-            PIL Image object containing the rasterized SVG.
+            PIL Image object in RGBA mode containing the rasterized SVG.
+
+        Raises:
+            FileNotFoundError: If the SVG file does not exist.
+            ValueError: If the SVG content is invalid.
         """
-        if size:
-            # Size parameter is not supported.
-            logger.warning("Size parameter is not supported in ResvgRasterizer.")
-        png_bytes = resvg_py.svg_to_bytes(svg_path=url, dpi=int(self.dpi))
+        png_bytes = resvg_py.svg_to_bytes(svg_path=filepath, dpi=int(self.dpi))
         image = Image.open(BytesIO(png_bytes))
-        return self.composite_background(image)
+        return self._composite_background(image)
 
-    def rasterize_from_string(
-        self, input: Union[str, bytes], **kwargs: Any
-    ) -> Image.Image:
-        """
-        Rasterize SVG content from a string to a PIL Image.
+    def from_string(self, svg_content: Union[str, bytes]) -> Image.Image:
+        """Rasterize SVG content from a string to a PIL Image.
+
+        This method provides an optimized implementation that directly
+        rasterizes the SVG content without creating a temporary file.
 
         Args:
-            input: SVG content as string or bytes.
-            **kwargs: Additional arguments passed to rasterize.
+            svg_content: SVG content as string or bytes.
 
         Returns:
-            PIL Image object containing the rasterized SVG.
+            PIL Image object in RGBA mode containing the rasterized SVG.
+
+        Raises:
+            ValueError: If the SVG content is invalid.
         """
         # Convert bytes to string if necessary
-        svg_string = input.decode("utf-8") if isinstance(input, bytes) else input
+        svg_string = (
+            svg_content.decode("utf-8")
+            if isinstance(svg_content, bytes)
+            else svg_content
+        )
         png_bytes = resvg_py.svg_to_bytes(svg_string=svg_string, dpi=int(self.dpi))
         image = Image.open(BytesIO(png_bytes))
-        return self.composite_background(image)
+        return self._composite_background(image)

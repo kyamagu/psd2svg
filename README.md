@@ -82,7 +82,7 @@ document.save("output.svg", image_prefix="images/img_", image_format="png")
 svg_string = document.tostring(embed_images=True)
 print(svg_string)
 
-# Rasterize to PIL Image (requires resvg or other rasterizer)
+# Rasterize to PIL Image using resvg
 image = document.rasterize()
 image.save('output.png')
 
@@ -93,31 +93,31 @@ document = SVGDocument.load(exported["svg"], exported["images"])
 
 ### Rasterization
 
-The package includes rasterizer support to convert SVG to PIL Image:
+The package includes rasterizer support using resvg to convert SVG to PIL Image:
 
 ```python
 from psd2svg import SVGDocument
 
 document = SVGDocument.from_psd(psdimage)
 
-# Built-in rasterize method (uses resvg by default)
+# Built-in rasterize method (uses resvg)
 image = document.rasterize()
+image.save('output.png')
+
+# Rasterize with custom DPI
+image = document.rasterize(dpi=300)
+image.save('output_high_res.png')
 
 # Or use rasterizer directly
-from psd2svg.rasterizer import create_rasterizer
+from psd2svg.rasterizer import ResvgRasterizer
 
-rasterizer = create_rasterizer('resvg')  # or 'chromium', 'batik', 'inkscape'
+rasterizer = ResvgRasterizer(dpi=96)
 svg_string = document.tostring(embed_images=True)
 image = rasterizer.rasterize_from_string(svg_string)
 image.save('output.png')
 ```
 
-Rasterizers require external dependencies:
-
-- `resvg`: Recommended, fast and accurate (installed by default)
-- `chromium`: Requires Selenium + ChromeDriver (also need `pip install selenium`)
-- `batik`: Requires Apache Batik
-- `inkscape`: Requires Inkscape
+The `resvg-py` package is included as a dependency, providing fast and accurate SVG rendering with no external dependencies.
 
 ## Documentation
 

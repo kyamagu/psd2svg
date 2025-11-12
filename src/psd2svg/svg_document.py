@@ -9,7 +9,7 @@ from psd_tools import PSDImage
 
 from psd2svg import image_utils, svg_utils
 from psd2svg.core.converter import Converter
-from psd2svg.rasterizer import create_rasterizer
+from psd2svg.rasterizer import ResvgRasterizer
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +95,20 @@ class SVGDocument:
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
-    def rasterize(self, rasterizer_type: str = "resvg") -> Image.Image:
-        """Rasterize the SVG document to PIL Image.
+    def rasterize(self, dpi: int = 0) -> Image.Image:
+        """Rasterize the SVG document to PIL Image using resvg.
 
         Args:
-            rasterizer_type: Type of rasterizer to use. Default is 'resvg'.
+            dpi: Dots per inch for rendering. If 0 (default), uses resvg's
+                default of 96 DPI. Higher values produce larger, higher
+                resolution images (e.g., 300 DPI for print quality).
+
+        Returns:
+            PIL Image object in RGBA mode containing the rasterized SVG.
         """
-        rasterizer = create_rasterizer(rasterizer_type)
+        rasterizer = ResvgRasterizer(dpi=dpi)
         svg = self.tostring(embed_images=True)
-        return rasterizer.rasterize_from_string(svg)
+        return rasterizer.from_string(svg)
 
     def export(
         self,

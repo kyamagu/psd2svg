@@ -144,6 +144,7 @@ The core converter uses multiple inheritance with specialized mixins:
        AdjustmentConverter,
        EffectConverter,
        LayerConverter,
+       PaintConverter,
        ShapeConverter,
        TypeConverter,
    ):
@@ -172,13 +173,10 @@ Rasterizer Layer
 
 **Location:** ``src/psd2svg/rasterizer/``
 
-Provides multiple backends for SVG to raster image conversion:
+Provides SVG to raster image conversion using resvg:
 
 * ``base_rasterizer.py`` - Abstract base class defining the interface
-* ``resvg_rasterizer.py`` - Resvg-based renderer (recommended)
-* ``chromium_rasterizer.py`` - Chrome/Chromium-based rendering
-* ``batik_rasterizer.py`` - Apache Batik renderer
-* ``inkscape_rasterizer.py`` - Inkscape-based rendering
+* ``resvg_rasterizer.py`` - Resvg-based renderer (production-ready)
 
 Code Quality Standards
 ----------------------
@@ -362,35 +360,30 @@ Example structure:
            # Implementation here
            ...
 
-Adding a Rasterizer Backend
+Working with the Rasterizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To add a new rasterizer backend:
+The package uses resvg for SVG rasterization. The rasterizer converts SVG documents
+to PIL Images with high quality and performance.
 
-1. **Create new file** in ``src/psd2svg/rasterizer/``
-2. **Inherit from BaseRasterizer**
-3. **Implement required methods**
-4. **Register in factory function**
-5. **Add documentation** in ``docs/rasterizers.rst``
-
-Example:
+Example usage:
 
 .. code-block:: python
 
-   from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
+   from psd2svg.rasterizer import ResvgRasterizer
    from PIL import Image
 
-   class MyRasterizer(BaseRasterizer):
-       def rasterize_from_string(
-           self,
-           svg_string: str,
-           width: int | None = None,
-           height: int | None = None,
-           scale: float = 1.0,
-       ) -> Image.Image:
-           """Rasterize SVG string to PIL Image."""
-           # Implementation
-           ...
+   # Create rasterizer instance
+   rasterizer = ResvgRasterizer(dpi=96)
+
+   # Rasterize from string
+   svg_string = '<svg>...</svg>'
+   image = rasterizer.from_string(svg_string)
+   image.save('output.png')
+
+   # Rasterize from file
+   image = rasterizer.from_file('input.svg')
+   image.save('output.png')
 
 Debugging
 ---------

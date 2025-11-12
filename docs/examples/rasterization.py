@@ -2,7 +2,7 @@
 
 from psd_tools import PSDImage
 from psd2svg import SVGDocument
-from psd2svg.rasterizer import create_rasterizer
+from psd2svg.rasterizer import ResvgRasterizer
 
 # Example 1: Basic rasterization using SVGDocument
 print("Example 1: Basic rasterization")
@@ -14,37 +14,28 @@ image = document.rasterize()
 image.save("output.png")
 print("✓ Created output.png")
 
-# Example 2: Rasterization with custom dimensions
-print("\nExample 2: Custom dimensions")
+# Example 2: Rasterization with custom DPI
+print("\nExample 2: Custom DPI")
 
-# Fixed dimensions
-image_800x600 = document.rasterize(width=800, height=600)
-image_800x600.save("output_800x600.png")
-print("✓ Created 800x600 image")
+# Standard screen resolution
+image_96dpi = document.rasterize(dpi=96)
+image_96dpi.save("output_96dpi.png")
+print("✓ Created 96 DPI image")
 
-# Scale factor (2x original size)
-image_2x = document.rasterize(scale=2.0)
-image_2x.save("output_2x.png")
-print("✓ Created 2x scaled image")
+# High resolution for print
+image_300dpi = document.rasterize(dpi=300)
+image_300dpi.save("output_300dpi.png")
+print("✓ Created 300 DPI image")
 
-# Example 3: Using different rasterizer backends
-print("\nExample 3: Different rasterizer backends")
+# Example 3: Using ResvgRasterizer directly
+print("\nExample 3: Using ResvgRasterizer directly")
 svg_string = document.tostring(embed_images=True)
 
-# resvg (recommended)
-resvg = create_rasterizer("resvg")
-img_resvg = resvg.rasterize_from_string(svg_string)
+# Create rasterizer instance
+rasterizer = ResvgRasterizer(dpi=96)
+img_resvg = rasterizer.from_string(svg_string)
 img_resvg.save("output_resvg.png")
 print("✓ Rasterized with resvg")
-
-# Chromium (requires Selenium + ChromeDriver)
-try:
-    chromium = create_rasterizer("chromium")
-    img_chromium = chromium.rasterize_from_string(svg_string)
-    img_chromium.save("output_chromium.png")
-    print("✓ Rasterized with Chromium")
-except Exception as e:
-    print(f"⚠ Chromium rasterizer not available: {e}")
 
 # Example 4: Rasterizing from file
 print("\nExample 4: Rasterizing from SVG file")
@@ -53,8 +44,8 @@ print("\nExample 4: Rasterizing from SVG file")
 document.save("temp.svg", embed_images=True)
 
 # Then rasterize from file
-rasterizer = create_rasterizer("resvg")
-image = rasterizer.rasterize("temp.svg")
+rasterizer = ResvgRasterizer()
+image = rasterizer.from_file("temp.svg")
 image.save("from_file.png")
 print("✓ Rasterized from SVG file")
 
@@ -73,11 +64,13 @@ def create_thumbnail(psd_path: str, output_path: str, size: tuple[int, int]) -> 
     psdimage = PSDImage.open(psd_path)
     document = SVGDocument.from_psd(psdimage)
 
-    # Rasterize with thumbnail dimensions
-    image = document.rasterize(width=size[0], height=size[1])
+    # Rasterize first
+    image = document.rasterize()
 
     # Apply thumbnail optimization
-    image.thumbnail(size, resample=3)  # LANCZOS resampling
+    from PIL import Image
+
+    image.thumbnail(size, resample=Image.Resampling.LANCZOS)
     image.save(output_path, optimize=True)
 
 
@@ -95,13 +88,13 @@ svg_dir = Path("svg_files")
 png_dir = Path("png_output")
 png_dir.mkdir(exist_ok=True)
 
-rasterizer = create_rasterizer("resvg")
+rasterizer = ResvgRasterizer()
 
 for svg_file in svg_dir.glob("*.svg"):
     print(f"Rasterizing {svg_file.name}...")
 
     output_path = png_dir / f"{svg_file.stem}.png"
-    image = rasterizer.rasterize(str(svg_file))
+    image = rasterizer.from_file(str(svg_file))
     image.save(output_path)
 
     print(f"✓ Created {output_path}")
@@ -128,7 +121,7 @@ print("\nExample 8: High-DPI rendering")
 
 
 def render_for_retina(
-    psd_path: str, output_1x: str, output_2x: str, base_width: int
+    psd_path: str, output_1x: str, output_2x: str, base_dpi: int = 96
 ) -> None:
     """Render both 1x and 2x (Retina) versions.
 
@@ -136,45 +129,41 @@ def render_for_retina(
         psd_path: Path to PSD file
         output_1x: Path for 1x resolution output
         output_2x: Path for 2x resolution output
-        base_width: Base width in pixels
+        base_dpi: Base DPI (default 96)
     """
     psdimage = PSDImage.open(psd_path)
     document = SVGDocument.from_psd(psdimage)
 
-    # Calculate aspect ratio
-    aspect_ratio = psdimage.height / psdimage.width
-    base_height = int(base_width * aspect_ratio)
-
     # Render 1x version
-    img_1x = document.rasterize(width=base_width, height=base_height)
+    img_1x = document.rasterize(dpi=base_dpi)
     img_1x.save(output_1x)
 
     # Render 2x version
-    img_2x = document.rasterize(width=base_width * 2, height=base_height * 2)
+    img_2x = document.rasterize(dpi=base_dpi * 2)
     img_2x.save(output_2x)
 
 
-render_for_retina("input.psd", "output@1x.png", "output@2x.png", 800)
+render_for_retina("input.psd", "output@1x.png", "output@2x.png")
 print("✓ Created Retina-ready images")
 
 # Example 9: Error handling for rasterization
 print("\nExample 9: Rasterization with error handling")
 
 
-def safe_rasterize(svg_path: str, output_path: str, backend: str = "resvg") -> bool:
+def safe_rasterize(svg_path: str, output_path: str, dpi: int = 96) -> bool:
     """Safely rasterize with error handling.
 
     Args:
         svg_path: Path to SVG file
         output_path: Path to save PNG
-        backend: Rasterizer backend to use
+        dpi: DPI setting for rasterization
 
     Returns:
         True if successful, False otherwise
     """
     try:
-        rasterizer = create_rasterizer(backend)
-        image = rasterizer.rasterize(svg_path)
+        rasterizer = ResvgRasterizer(dpi=dpi)
+        image = rasterizer.from_file(svg_path)
         image.save(output_path)
         print(f"✓ Successfully rasterized {svg_path}")
         return True
@@ -185,14 +174,36 @@ def safe_rasterize(svg_path: str, output_path: str, backend: str = "resvg") -> b
 
     except Exception as e:
         print(f"✗ Rasterization failed: {e}")
-        # Try fallback to resvg if another backend failed
-        if backend != "resvg":
-            print("  Trying resvg as fallback...")
-            return safe_rasterize(svg_path, output_path, "resvg")
         return False
 
 
 # Use it
-success = safe_rasterize("input.svg", "output.png", "chromium")
+success = safe_rasterize("input.svg", "output.png", dpi=96)
+
+# Example 10: Custom image processing after rasterization
+print("\nExample 10: Custom image processing")
+from PIL import Image, ImageFilter
+
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+image = document.rasterize()
+
+# Add white background
+background = Image.new("RGB", image.size, (255, 255, 255))
+background.paste(image, (0, 0), image)
+background.save("output_white_bg.png")
+print("✓ Created image with white background")
+
+# Apply blur effect
+blurred = image.filter(ImageFilter.GaussianBlur(radius=5))
+blurred.save("output_blurred.png")
+print("✓ Created blurred image")
+
+# Resize image
+from PIL import Image
+
+resized = image.resize((800, 600), Image.Resampling.LANCZOS)
+resized.save("output_resized.png")
+print("✓ Created resized image")
 
 print("\n✓ All rasterization examples completed")
