@@ -1,296 +1,233 @@
 Rasterizers
 ===========
 
-Rasterizers convert SVG documents to raster images (PNG, JPEG, etc.). The psd2svg package supports multiple rasterizer backends.
+The psd2svg package uses resvg for converting SVG documents to raster images (PNG, JPEG, etc.).
 
 Overview
 --------
 
-The rasterizer system provides a unified interface for converting SVG to PIL Image objects using different rendering engines.
+The rasterizer system provides a high-performance interface for converting SVG to PIL Image objects using the resvg rendering engine.
 
-Available Rasterizers
----------------------
+Resvg Rasterizer
+----------------
 
-resvg (Recommended)
-~~~~~~~~~~~~~~~~~~~
-
-Fast, accurate, and pure Rust implementation.
+Fast, accurate, and pure Rust implementation via resvg-py.
 
 **Pros:**
 
 * Fastest performance
 * High accuracy
 * No browser dependencies
-* Integrated via ``resvg-py``
+* Simple installation
+* Production-ready
 
 **Installation:**
 
-The ``resvg-py`` package is included as a dependency, so no additional installation is needed.
-
-**Usage:**
-
-.. code-block:: python
-
-   from psd2svg.rasterizer import create_rasterizer
-
-   rasterizer = create_rasterizer('resvg')
-   image = rasterizer.rasterize('input.svg')
-   image.save('output.png')
-
-Chromium
-~~~~~~~~
-
-Uses Chrome or Chromium browser for rendering.
-
-**Pros:**
-
-* High-quality rendering
-* Good standards compliance
-* Handles complex SVG features
-
-**Cons:**
-
-* Requires browser installation
-* Slower than resvg
-* Requires Selenium WebDriver
-
-**Installation:**
+The ``resvg-py`` package is included as a dependency when you install psd2svg:
 
 .. code-block:: bash
 
-   # Install Selenium
-   pip install selenium
-
-   # Install ChromeDriver (or use webdriver-manager)
-   pip install webdriver-manager
+   pip install psd2svg
 
 **Usage:**
 
 .. code-block:: python
 
-   from psd2svg.rasterizer import create_rasterizer
+   from psd2svg.rasterizer import ResvgRasterizer
 
-   rasterizer = create_rasterizer('chromium')
-   image = rasterizer.rasterize('input.svg')
+   # Create rasterizer instance
+   rasterizer = ResvgRasterizer(dpi=96)
+
+   # Rasterize from file
+   image = rasterizer.from_file('input.svg')
    image.save('output.png')
 
-Batik
-~~~~~
+   # Rasterize from string
+   svg_string = '<svg>...</svg>'
+   image = rasterizer.from_string(svg_string)
+   image.save('output.png')
 
-Apache Batik SVG toolkit (Java-based).
+Using with SVGDocument
+----------------------
 
-**Pros:**
-
-* Mature and stable
-* Good SVG support
-
-**Cons:**
-
-* Requires Java installation
-* Slower performance
-* External dependency
-
-**Installation:**
-
-1. Download Apache Batik from https://xmlgraphics.apache.org/batik/
-2. Extract and set ``BATIK_PATH`` environment variable
-
-**Usage:**
+The ``SVGDocument`` class has a built-in ``rasterize()`` method that uses resvg:
 
 .. code-block:: python
 
-   import os
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
 
-   # Set Batik path
-   os.environ['BATIK_PATH'] = '/path/to/batik'
+   # Load PSD and convert to SVG
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage)
 
-   from psd2svg.rasterizer import create_rasterizer
-
-   rasterizer = create_rasterizer('batik')
-   image = rasterizer.rasterize('input.svg')
+   # Rasterize using default settings
+   image = document.rasterize()
    image.save('output.png')
 
-Inkscape
-~~~~~~~~
+   # Rasterize with custom DPI
+   image = document.rasterize(dpi=300)
+   image.save('output_high_res.png')
 
-Inkscape command-line tool.
+API Reference
+-------------
 
-**Pros:**
-
-* Excellent SVG support
-* Widely available
-
-**Cons:**
-
-* Requires Inkscape installation
-* Slower performance
-* Command-line overhead
-
-**Installation:**
-
-Download and install Inkscape from https://inkscape.org/
-
-**Usage:**
+ResvgRasterizer
+~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   from psd2svg.rasterizer import create_rasterizer
+   class ResvgRasterizer(BaseRasterizer):
+       def __init__(self, dpi: int = 0) -> None:
+           """Initialize the resvg rasterizer.
 
-   rasterizer = create_rasterizer('inkscape')
-   image = rasterizer.rasterize('input.svg')
+           Args:
+               dpi: Dots per inch for rendering. If 0 (default), uses resvg's
+                   default of 96 DPI. Higher values produce larger, higher
+                   resolution images (e.g., 300 DPI for print quality).
+           """
+
+       def from_file(self, filepath: str) -> Image.Image:
+           """Rasterize an SVG file to a PIL Image.
+
+           Args:
+               filepath: Path to the SVG file to rasterize.
+
+           Returns:
+               PIL Image object in RGBA mode containing the rasterized SVG.
+
+           Raises:
+               FileNotFoundError: If the SVG file does not exist.
+               ValueError: If the SVG content is invalid.
+           """
+
+       def from_string(self, svg_content: Union[str, bytes]) -> Image.Image:
+           """Rasterize SVG content from a string to a PIL Image.
+
+           Args:
+               svg_content: SVG content as string or bytes.
+
+           Returns:
+               PIL Image object in RGBA mode containing the rasterized SVG.
+
+           Raises:
+               ValueError: If the SVG content is invalid.
+           """
+
+Examples
+--------
+
+Basic Rasterization
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import ResvgRasterizer
+
+   rasterizer = ResvgRasterizer()
+   image = rasterizer.from_file('input.svg')
    image.save('output.png')
 
-Using Rasterizers
------------------
+High DPI Rendering
+~~~~~~~~~~~~~~~~~~
 
-Factory Function
+.. code-block:: python
+
+   from psd2svg.rasterizer import ResvgRasterizer
+
+   # Render at 300 DPI for print quality
+   rasterizer = ResvgRasterizer(dpi=300)
+   image = rasterizer.from_file('input.svg')
+   image.save('output_print.png')
+
+Batch Processing
 ~~~~~~~~~~~~~~~~
 
-The ``create_rasterizer()`` function creates rasterizer instances:
-
 .. code-block:: python
 
-   from psd2svg.rasterizer import create_rasterizer
+   from pathlib import Path
+   from psd2svg.rasterizer import ResvgRasterizer
 
-   # Create by name
-   rasterizer = create_rasterizer('resvg')
-   rasterizer = create_rasterizer('chromium')
-   rasterizer = create_rasterizer('batik')
-   rasterizer = create_rasterizer('inkscape')
+   rasterizer = ResvgRasterizer()
+   svg_dir = Path("svg_files")
+   png_dir = Path("png_output")
+   png_dir.mkdir(exist_ok=True)
 
-Rasterizing from File
-~~~~~~~~~~~~~~~~~~~~~~
+   for svg_file in svg_dir.glob("*.svg"):
+       output_path = png_dir / f"{svg_file.stem}.png"
+       image = rasterizer.from_file(str(svg_file))
+       image.save(output_path)
 
-.. code-block:: python
-
-   from psd2svg.rasterizer import create_rasterizer
-
-   rasterizer = create_rasterizer('resvg')
-
-   # Basic rasterization
-   image = rasterizer.rasterize('input.svg')
-   image.save('output.png')
-
-   # With custom dimensions
-   image = rasterizer.rasterize('input.svg', width=800, height=600)
-
-   # With scale factor
-   image = rasterizer.rasterize('input.svg', scale=2.0)
-
-Rasterizing from String
+Different Output Formats
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   from psd2svg import SVGDocument
-   from psd2svg.rasterizer import create_rasterizer
+   from psd2svg.rasterizer import ResvgRasterizer
 
-   # Get SVG as string
-   document = SVGDocument.from_psd(psdimage)
-   svg_string = document.tostring(embed_images=True)
+   rasterizer = ResvgRasterizer()
+   image = rasterizer.from_file('input.svg')
 
-   # Rasterize
-   rasterizer = create_rasterizer('resvg')
-   image = rasterizer.rasterize_from_string(svg_string)
-   image.save('output.png')
+   # PNG - lossless
+   image.save('output.png', format='PNG', optimize=True)
 
-Direct Method on SVGDocument
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # JPEG - lossy
+   image.convert('RGB').save('output.jpg', format='JPEG', quality=95)
 
-The ``SVGDocument`` class has a built-in ``rasterize()`` method that uses resvg by default:
-
-.. code-block:: python
-
-   from psd2svg import SVGDocument
-
-   document = SVGDocument.from_psd(psdimage)
-
-   # Uses resvg by default
-   image = document.rasterize()
-   image.save('output.png')
-
-   # With parameters
-   image = document.rasterize(width=1920, height=1080)
-
-Custom Rasterizer Implementation
----------------------------------
-
-You can create custom rasterizers by inheriting from ``BaseRasterizer``:
-
-.. code-block:: python
-
-   from psd2svg.rasterizer.base_rasterizer import BaseRasterizer
-   from PIL import Image
-
-   class MyRasterizer(BaseRasterizer):
-       def rasterize_from_string(
-           self,
-           svg_string: str,
-           width: int | None = None,
-           height: int | None = None,
-           scale: float = 1.0,
-       ) -> Image.Image:
-           # Implement your rendering logic
-           pass
-
-Performance Comparison
-----------------------
-
-Approximate relative performance (smaller is faster):
-
-1. **resvg**: 1x (baseline, fastest)
-2. **chromium**: 5-10x slower
-3. **batik**: 3-8x slower
-4. **inkscape**: 8-15x slower
-
-Recommendation: Use **resvg** for production use unless you have specific requirements that necessitate another backend.
+   # WebP - modern format
+   image.save('output.webp', format='WEBP', quality=90)
 
 Troubleshooting
 ---------------
 
-resvg Issues
-~~~~~~~~~~~~
+Installation Issues
+~~~~~~~~~~~~~~~~~~~
 
-If resvg fails to install:
+If resvg-py fails to install:
 
 .. code-block:: bash
 
-   # Make sure you have a compatible Python version
-   python --version  # Should be 3.10-3.14
+   # Ensure you have a compatible Python version
+   python --version  # Should be 3.10+
 
-   # Try upgrading pip
+   # Upgrade pip
    pip install --upgrade pip
 
    # Install resvg-py
    pip install resvg-py
 
-Chromium Issues
-~~~~~~~~~~~~~~~
+Resizing Output Images
+~~~~~~~~~~~~~~~~~~~~~~
 
-If Chromium rasterizer fails:
+Resvg rasterizes SVG at the intrinsic size defined in the SVG document.
+If you need specific dimensions, consider resizing the output image using PIL:
 
-1. Ensure ChromeDriver is installed and in PATH
-2. Check Chrome/Chromium version compatibility
-3. Try using ``webdriver-manager`` for automatic driver management
+.. code-block:: python
 
-.. code-block:: bash
+   from psd2svg.rasterizer import ResvgRasterizer
+   from PIL import Image
 
-   pip install webdriver-manager
+   rasterizer = ResvgRasterizer()
+   image = rasterizer.from_file('input.svg')
 
-Batik Issues
-~~~~~~~~~~~~
+   # Resize to specific dimensions
+   resized = image.resize((800, 600), Image.Resampling.LANCZOS)
+   resized.save('output_800x600.png')
 
-If Batik fails to run:
+Custom Background
+~~~~~~~~~~~~~~~~~
 
-1. Verify Java is installed: ``java -version``
-2. Check ``BATIK_PATH`` environment variable
-3. Ensure Batik JAR files are accessible
+By default, rasterized images have a transparent background. To add a custom background:
 
-Inkscape Issues
-~~~~~~~~~~~~~~~
+.. code-block:: python
 
-If Inkscape fails:
+   from psd2svg.rasterizer import ResvgRasterizer
+   from PIL import Image
 
-1. Verify Inkscape is installed: ``inkscape --version``
-2. Ensure Inkscape is in system PATH
-3. Check file permissions
+   rasterizer = ResvgRasterizer()
+   image = rasterizer.from_file('input.svg')
+
+   # Create white background
+   background = Image.new('RGB', image.size, (255, 255, 255))
+   background.paste(image, (0, 0), image)
+   background.save('output_white_bg.png')

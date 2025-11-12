@@ -23,11 +23,6 @@ SVGDocument
 Rasterizers
 -----------
 
-Factory Function
-~~~~~~~~~~~~~~~~
-
-.. autofunction:: psd2svg.rasterizer.create_rasterizer
-
 Base Rasterizer
 ~~~~~~~~~~~~~~~
 
@@ -36,23 +31,28 @@ Base Rasterizer
    :undoc-members:
    :show-inheritance:
 
-Rasterizer Implementations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Resvg Rasterizer
+~~~~~~~~~~~~~~~~
 
-The specific rasterizer implementations (ResvgRasterizer, ChromiumRasterizer, BatikRasterizer, InkscapeRasterizer)
-are not directly exposed in the public API. Use the ``create_rasterizer()`` factory function to instantiate them.
+.. autoclass:: psd2svg.rasterizer.ResvgRasterizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Example:
 
 .. code-block:: python
 
-   from psd2svg.rasterizer import create_rasterizer
+   from psd2svg.rasterizer import ResvgRasterizer
 
-   # Creates an instance of ResvgRasterizer
-   rasterizer = create_rasterizer('resvg')
+   # Create rasterizer instance
+   rasterizer = ResvgRasterizer(dpi=96)
 
-   # Creates an instance of ChromiumRasterizer
-   rasterizer = create_rasterizer('chromium')
+   # Rasterize from string
+   image = rasterizer.from_string(svg_string)
+
+   # Rasterize from file
+   image = rasterizer.from_file('input.svg')
 
 Utility Modules
 ---------------

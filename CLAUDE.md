@@ -58,25 +58,57 @@ The package follows a modular converter architecture with multiple inheritance:
 - `image_utils.py` - Image encoding/decoding utilities
 - `eval.py` - Quality evaluation utilities for testing
 
-**Rasterizers** (`src/psd2svg/rasterizer/`):
+**Rasterizer** (`src/psd2svg/rasterizer/`):
 
-- `base_rasterizer.py` - Abstract base class
-- `resvg_rasterizer.py` - Resvg-based renderer (recommended)
-- `chromium_rasterizer.py` - Chrome/Chromium-based rendering
-- `batik_rasterizer.py` - Apache Batik renderer
-- `inkscape_rasterizer.py` - Inkscape-based rendering
+- `base_rasterizer.py` - Abstract base class defining the rasterizer interface
+- `resvg_rasterizer.py` - Production-ready resvg-based renderer (only supported implementation)
+
+The rasterizer uses the resvg library via resvg-py for fast, accurate SVG to raster image conversion.
+
+### Rasterizer API
+
+The `BaseRasterizer` abstract class defines a clean interface for SVG rasterization:
+
+**Public Methods:**
+
+- `from_file(filepath: str) -> Image.Image` - Rasterize an SVG file
+- `from_string(svg_content: Union[str, bytes]) -> Image.Image` - Rasterize SVG content from string/bytes
+
+**Protected Methods:**
+
+- `_composite_background(image: Image.Image) -> Image.Image` - Utility for normalizing alpha channel
+
+**Usage Example:**
+
+```python
+from psd2svg.rasterizer import ResvgRasterizer
+
+# Create rasterizer with optional DPI setting
+rasterizer = ResvgRasterizer(dpi=96)
+
+# Rasterize from file
+image = rasterizer.from_file('input.svg')
+image.save('output.png')
+
+# Rasterize from string
+svg_content = '<svg>...</svg>'
+image = rasterizer.from_string(svg_content)
+image.save('output.png')
+```
 
 ### Dependencies
 
 - `psd-tools>=1.10.13` - PSD file parsing
 - `pillow` - Image processing
 - `numpy` - Numerical operations
+- `resvg-py` - SVG rasterization (production-ready)
 
 ### Code Quality
 
 - **Type hints**: Full type annotation coverage with mypy support
 - **Linting**: Ruff for fast linting and formatting
 - **Python 3.10+**: Modern Python with no legacy compatibility code
+- **Abstract base classes**: Proper use of ABC for interface definitions
 
 ### Limitations
 

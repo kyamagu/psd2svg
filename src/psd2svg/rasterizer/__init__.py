@@ -1,16 +1,10 @@
-from importlib import import_module
-from typing import Any
+"""Rasterizer module for converting SVG to raster images.
+
+This module provides the ResvgRasterizer for converting SVG documents
+to PIL Images using the resvg rendering engine.
+"""
 
 from .base_rasterizer import BaseRasterizer
+from .resvg_rasterizer import ResvgRasterizer
 
-
-def create_rasterizer(name: str = "resvg", *args: Any, **kwargs: Any) -> BaseRasterizer:
-    module_name = f"psd2svg.rasterizer.{name.lower()}_rasterizer"
-    try:
-        module = import_module(module_name)
-        cls = getattr(module, f"{name.capitalize()}Rasterizer")
-    except (ImportError, AttributeError):
-        raise RuntimeError(f"Invalid rasterizer name: {name}")
-    if cls is None:
-        raise RuntimeError(f"Invalid class name: {name}")
-    return cls(*args, **kwargs)
+__all__ = ["BaseRasterizer", "ResvgRasterizer"]
