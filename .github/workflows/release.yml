@@ -14,6 +14,7 @@ jobs:
       url: https://pypi.org/p/psd2svg
     permissions:
       id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
