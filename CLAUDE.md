@@ -28,6 +28,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `psd2svg input.psd output.svg` - Convert PSD to SVG
 
+## CI/CD
+
+### Automated Testing
+
+The repository uses GitHub Actions for continuous integration:
+
+- **Test Workflow** (`.github/workflows/test.yml`): Runs on every push and pull request
+  - Tests across Python 3.10, 3.11, 3.12, 3.13, and 3.14
+  - Executes linting (ruff), type checking (mypy), and unit tests (pytest)
+  - Uses uv for fast dependency management
+
+### Release Process
+
+Releases are automated via GitHub Actions:
+
+- **Release Workflow** (`.github/workflows/release.yml`): Triggered by version tags
+  - Tag format: `v*` (e.g., `v0.3.0`, `v1.0.0`)
+  - Automatically builds distribution packages
+  - Publishes to PyPI using trusted publishing (OIDC)
+  - Creates GitHub releases with auto-generated notes
+
+**To create a release:**
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+
 ## Architecture
 
 ### Public API
