@@ -224,12 +224,18 @@ class LayerConverter(ConverterProtocol):
     def add_clip_path(self, layer: layers.ShapeLayer) -> Iterator[dict]:
         """Add a clipping path and associated elements.
 
-        Usage:
+        Usage::
 
             with self.add_clip_mask(layer) as clip_attrib:
                 # Create elements inside the clipping mask.
                 for clip_layer in layer.clip_layers:
                     self.add_layer(clip_layer, ..., **clip_attrib)
+
+        Args:
+            layer: The shape layer to use as a clipping path.
+
+        Yields:
+            Dictionary with clip-path attribute to apply to clipped elements.
         """
         if not layer.has_vector_mask():
             raise ValueError(f"Layer has no vector mask: '{layer.name}'")
@@ -260,12 +266,18 @@ class LayerConverter(ConverterProtocol):
     def add_clip_mask(self, layer: layers.Layer | layers.Group) -> Iterator[dict]:
         """Add a clipping mask and associated elements.
 
-        Usage:
+        Usage::
 
             with self.add_clip_mask(layer) as clip_attrib:
                 # Create elements inside the clipping mask.
                 for clip_layer in layer.clip_layers:
                     self.add_layer(clip_layer, ..., **clip_attrib)
+
+        Args:
+            layer: The layer to use as a clipping mask.
+
+        Yields:
+            Dictionary with mask attribute to apply to clipped elements.
         """
 
         # Create a clipping mask definition.

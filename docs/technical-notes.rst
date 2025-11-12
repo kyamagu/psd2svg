@@ -1,0 +1,403 @@
+Technical Notes
+===============
+
+This section contains technical implementation notes about PSD to SVG conversion strategies.
+
+Clipping Conversion
+-------------------
+
+Clipping involves non-trivial conversion. The basic approach is to use ``<clipPath>`` or ``<mask>`` SVG elements, but Photoshop can have arbitrarily complex rendering procedures due to the presence of vector drawings or filter effects.
+
+Basic Idea
+~~~~~~~~~~
+
+Consider the following case::
+
+    [1] ShapeLayer('Star 1' size=30x29)
+    [2] +TypeLayer('B' size=22x23 clip)
+
+This can be translated to the following SVG structure:
+
+.. code-block:: xml
+
+    <path id="path0" d="M15,14.5 ..." />
+    <clipPath id="clip0">
+      <use href="#path0" />
+    </clipPath>
+    <text clip-path="url(#clip0)">B</text>
+
+If the clipping base is not a shape layer, we can instead use a mask::
+
+    [1] PixelLayer('Star 1' size=30x29)
+    [2] +TypeLayer('B' size=22x23 clip)
+
+.. code-block:: xml
+
+    <image id="image0" href="pixel.png">
+    <mask id="mask0" mask-type="alpha">
+      <use href="image0" />
+    </mask>
+    <text mask="url(#mask0)">B</text>
+
+This structure is the most basic form of translation.
+
+Styling SVG Use Element
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In SVG, the ``<use>`` element does not allow overriding the ``fill`` or ``stroke`` attributes of the referenced element. Therefore, in the following example, ``fill="transparent"`` is ignored.
+
+.. code-block:: xml
+
+    <path id="path0" d="M15,14.5 ..." fill="red" />
+    <clipPath id="clip0">
+      <use href="#path0" />
+    </clipPath>
+    <use href="#path0" fill="transparent" stroke="black" />
+
+To correctly apply drawing attributes, we instead need to do the following: prepare a plain ``<path>`` element (like a ``<symbol>``), then reference this element in the ``<use>`` element with the desired attributes.
+
+.. code-block:: xml
+
+    <clipPath id="clip0">
+      <path id="path0" d="M15,14.5 ..."/>
+    </clipPath>
+    <use href="#path0" fill="red" />
+    <use href="#path0" fill="transparent" stroke="black" />
+
+Stroke After Clipping Layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In Photoshop, stroke (both as a shape attribute and as a filter effect) is applied after all clipping layers are rendered. Consider the following example, where the first shape layer has both fill and stroke attributes enabled::
+
+    [1] ShapeLayer('Star 1' size=30x29)
+    [2] +TypeLayer('B' size=22x23 clip)
+    [3] +TypeLayer('C' size=22x23 clip)
+
+This translates to the following:
+
+.. code-block:: xml
+
+    <clipPath id="clip0">
+      <path id="path0" d="M15,14.5 ..."/>
+    </clipPath>
+    <use href="#path0" fill="red" />
+    <text clip-path="url(#clip0)">B</text>
+    <text clip-path="url(#clip0)">C</text>
+    <use href="#path0" fill="transparent" stroke="black" />
+
+Or, we can group clipping layers:
+
+.. code-block:: xml
+
+    <clipPath id="clip0">
+      <path id="path0" d="M15,14.5 ..."/>
+    </clipPath>
+    <use href="#path0" fill="red" />
+    <g clip-path="url(#clip0)">
+      <text>B</text>
+      <text>C</text>
+    </g>
+    <use href="#path0" fill="transparent" stroke="black" />
+
+There are filter effects that happen before (e.g., filling) or after (e.g., stroking) the rendering of the clipped layers.
+
+Stroke Effect on Raster Layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Photoshop can apply stroke effects to any layer, whereas SVG allows stroke only on shape or text elements. We have to emulate the stroke effect using filter effects. The following example emulates a stroke effect on a pixel layer:
+
+.. code-block:: xml
+
+    <mask id="mask0" mask-type="alpha">
+      <image id="image0" href="pixel.png">
+    </mask>
+    <use href="image0" />
+    <text mask="url(#mask0)">B</text>
+    <use href="image0" filter="url(#stroke0)">
+    <filter id="stroke0">
+      <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="thicken" />
+      <feComposite operator="out" in="thicken" in2="SourceGraphic" />
+    </filter>
+
+The SVG filter configuration depends on the stroke properties (alignment and stroke width).
+
+Regular Masks and Clipping Masks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a clipped layer has a mask, we have to group the clipping layers and apply the mask to the group.
+
+.. code-block:: xml
+
+    <mask id="mask0" mask-type="alpha">
+      <image id="image0" href="pixel.png">
+    </mask>
+    <use href="image0" />
+    <g mask="url(#mask0)">
+      <mask id="mask1" mask-type="alpha">
+        <image />
+      </mask>
+      <text mask="url(#mask1)">B</text>
+    </g>
+    <use href="image0" filter="url(#stroke0)">
+    <filter id="stroke0">
+      <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="thicken" />
+      <feComposite operator="out" in="thicken" in2="SourceGraphic" />
+    </filter>
+
+Clipping Structure Summary
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Depending on the target layer kind, we have the following structure for clipping layers.
+
+**Drawing target:**
+
+.. code-block:: xml
+
+    <!-- clip path -->
+    <clipPath id="clipPath0">
+      <path id="path0" />
+    </clipPath>
+    <!-- bottom effects like fill -->
+    <use href="#path0" fill="red" />
+    <!-- clipped layers -->
+    <g clip-path="url(#clipPath0)"></g>
+    <!-- top effects like stroke -->
+    <use href="#path0" fill="transparent" stroke="black" />
+
+**Raster target:**
+
+.. code-block:: xml
+
+    <!-- clip mask -->
+    <mask id="mask0">
+      <image id="image0" />
+    </mask>
+    <!-- bottom effects like fill -->
+    <use href="#image0" />
+    <!-- clipped layers -->
+    <g mask="url(#mask0)"></g>
+    <!-- top effects like stroke -->
+    <use href="#image0" filter="url(#filter0)" />
+    <filter id="filter0"></filter>
+
+Conversion Logic
+~~~~~~~~~~~~~~~~
+
+The requirement to implement the above conversion is the following two logic:
+
+1. Beginning of the clip section (mask or clipPath creation, fill, group)
+2. End of the clip section (stroke)
+
+This would be translated to the following conversion loop structure:
+
+.. code-block:: python
+
+    for layer in psdimage:
+        if layer.has_clip_layers():
+            self.add_clip_target_begin(layer)
+            for clip_layer in layer.clip_layers:
+                self.add_layer(clip_layer)
+            self.add_clip_target_end(layer)
+        elif layer.clipping_layer:
+            pass  # Skip clipping layers
+        else:
+            self.add_layer(layer)
+
+Overlay Filter Effects
+-----------------------
+
+Overlay effects can be thought of as adding another element on top of the original.
+
+.. code-block:: xml
+
+    <image id="image_0" />
+    <use href="#image_0" filter="url(#filter_0)" class="color_overlay" />
+    <use href="#image_0" filter="url(#filter_1)" class="color_overlay" />
+    <filter id="filter_0">
+      <feFlood flood-color="green" flood-alpha="0.5" result="flood" />
+      <feComposite in="SourceAlpha" in2="flood" operator="in" />
+    </filter>
+    <filter id="filter_1">
+      <feFlood flood-color="red" flood-alpha="0.5" result="flood" />
+      <feComposite in="SourceAlpha" in2="flood" operator="in" />
+    </filter>
+
+For simple overlays, this is equivalent to using a mask with fill.
+
+.. code-block:: xml
+
+    <mask id="mask_0" mask-type="alpha">
+      <image id="image_0">
+    </mask>
+    <use href="#image_0">
+    <rect color="green" alpha="0.5" mask="url(#mask_0)">
+    <rect color="red" alpha="0.5" mask="url(#mask_0)">
+
+Stroke Overlays
+~~~~~~~~~~~~~~~
+
+Things get complicated when there is a stroke, because the overlay must be applied before the stroke.
+
+.. code-block:: xml
+
+    <rect id="rect_0" />
+    <use href="#rect_0" fill="gray" />  <!-- fill -->
+    <use href="#rect_0" filter="url(#filter_0)" class="color_overlay" />
+    <filter id="filter_1">
+      <feFlood flood-color="red" flood-alpha="0.5" result="flood" />
+      <feComposite in="SourceAlpha" in2="flood" operator="in" />
+    </filter>
+    <use href="#rect_0" fill="transparent" stroke="black" />  <!-- stroke -->
+
+The above is equivalent to applying fill operations on geometric elements (shapes and text).
+
+.. code-block:: xml
+
+    <defs>
+      <rect id="rect_0" />
+    </defs>
+    <use href="#rect_0" fill="gray" />  <!-- fill -->
+    <use href="#rect_0" fill="red" opacity="0.5" class="color_overlay" />
+    <use href="#rect_0" fill="transparent" stroke="black" />  <!-- stroke -->
+
+Interpreting overlay effects as clipped fill layers would likely be easier to implement.
+
+.. code-block:: xml
+
+    <clipPath id="clip_0">
+      <rect id="rect_0" />
+    </clipPath>
+    <use href="#rect_0" fill="gray" />
+    <g clip-path="url(#clip_0)">
+        <use href="#rect_0" fill="red" opacity="0.5" class="color_overlay" />
+    </g>
+    <use href="#rect_0" fill="transparent" stroke="black" />
+
+Generic Rendering Procedure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In any case, the generic rendering procedure for a single layer could be the following:
+
+1. Shape definition; e.g., ``<clipPath>``, ``<mask>``, ``<defs>``
+2. Fill
+3. Clipping or filter effects for color
+4. Stroke
+
+Effects on Strokes
+~~~~~~~~~~~~~~~~~~
+
+When a shape layer does not have fill, effects do not render correctly if we naively split the shape definition, because stroke becomes the only shape. The following result will be incorrect for the filter, because the ``<rect>`` by default will have black fill.
+
+.. code-block:: xml
+
+    <defs>
+      <rect id="shape" />
+      <filter id="filter" />
+    </defs>
+    <use href="#shape" filter="url(#filter)">
+    <use href="#shape" fill="transparent" />
+    <use href="#shape" fill="transparent" stroke="red" >
+
+This should be avoided by explicitly stating the fill is transparent in the definition.
+
+.. code-block:: xml
+
+    <defs>
+      <rect id="shape" fill="transparent" stroke-width="1" />
+      <filter id="filter" />
+    </defs>
+    <use href="#shape" filter="url(#filter)">
+    <use href="#shape" fill="transparent" stroke="red" >
+
+Shape Operations
+----------------
+
+Photoshop supports boolean operations for path objects. SVG does not natively support path operations, but it is possible to reproduce path operations using ``<mask>``.
+
+The basics are:
+
+- **AND** operation is a chain of ``<mask>``
+- **OR** operation simply places multiple shape elements inside the same mask container
+- **NOT** operation is a black fill
+
+Unfortunately, strokes do not render correctly. Using ``<clipPath>`` might render strokes, but ``<clipPath>`` does not support NOT operator unless ``<path>`` element is used with ``evenodd`` rule.
+
+Union (OR)
+~~~~~~~~~~
+
+A naive approach is to render multiple shapes in order.
+
+.. code-block:: xml
+
+    <g>
+      <circle id="circle_A">
+      <circle id="circle_B">
+    </g>
+
+If we separate the shape operations from painting, we can use ``<mask>``.
+
+.. code-block:: xml
+
+    <mask id="A_or_B">
+      <circle id="circle_A" fill="#ffffff">
+      <circle id="circle_B" fill="#ffffff">
+    </mask>
+    <rect mask="url(#A_or_B)">
+
+Clip-path equivalent is the following:
+
+.. code-block:: xml
+
+    <clipPath id="A_or_B">
+      <circle id="circle_A">
+      <circle id="circle_B">
+    </clipPath>
+    <rect clip-path="url(#A_or_B)">
+
+The general conversion process would be:
+
+1. Create a ``<mask>`` container
+2. Append shapes to the current ``<mask>`` container
+3. Apply the mask to the final target (``<rect>``)
+
+Subtraction (NOT OR)
+~~~~~~~~~~~~~~~~~~~~
+
+Subtraction operation is equivalent to specifying ``fill`` to black (``#000000``).
+
+.. code-block:: xml
+
+    <mask id="A_sub_B">
+      <circle id="circle_A" fill="#ffffff" />
+      <circle id="circle_B" fill="#000000" />
+    </mask>
+    <rect mask="url(#A_sub_B)">
+
+It is not possible to directly use ``<clipPath>`` for subtraction.
+
+Intersection (AND)
+~~~~~~~~~~~~~~~~~~
+
+Intersection is a chain of masks.
+
+.. code-block:: xml
+
+    <mask id="A">
+      <circle id="circle_A" fill="#ffffff">
+    </mask>
+    <mask id="A_and_B">
+      <circle id="circle_B" fill="#ffffff" mask="url(#A)">
+    </mask>
+    <rect mask="url(#A_and_B)">
+
+The general conversion process would be:
+
+1. Create a ``<mask>`` container
+2. For each shape, create a new ``<mask>`` container with the content referencing the previous ``mask`` container
+
+XOR
+~~~
+
+XOR is a combination: ``(A OR B) AND NOT (A AND B)``.
+
+Alternative formulation of XOR is available: ``(A AND NOT B) OR (NOT A AND B)``.
