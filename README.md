@@ -3,6 +3,7 @@
 PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools).
 
 [![PyPI Version](https://img.shields.io/pypi/v/psd2svg.svg)](https://pypi.python.org/pypi/psd2svg)
+[![Documentation Status](https://readthedocs.org/projects/psd2svg/badge/?version=latest)](https://psd2svg.readthedocs.io/en/latest/?badge=latest)
 
 ## Install
 
@@ -151,7 +152,7 @@ The documentation includes:
 
 ### Online Documentation
 
-*Coming soon: Documentation will be hosted on Read the Docs*
+Full documentation is available at [psd2svg.readthedocs.io](https://psd2svg.readthedocs.io/)
 
 ## Test
 
