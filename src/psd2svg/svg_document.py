@@ -20,7 +20,7 @@ DEFAULT_IMAGE_FORMAT = "webp"
 class SVGDocument:
     """SVG document and resources.
 
-    Example usage:
+    Example usage::
 
         from psd_tools import PSDImage
         from psd2svg import SVGDocument
@@ -46,13 +46,19 @@ class SVGDocument:
     # TODO: Font handling.
 
     @staticmethod
-    def from_psd(psdimage: PSDImage) -> "SVGDocument":
+    def from_psd(psdimage: PSDImage, enable_live_shapes: bool = True) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
         Args:
             psdimage: PSDImage object to convert.
+            enable_live_shapes: Enable live shape conversion when possible.
+                Disabling live shapes results in <path> elements instead of
+                shape primitives like <rect> or <circle>. This may be more
+                accurate, but less editable.
+        Returns:
+            SVGDocument object containing the converted SVG and images.
         """
-        converter = Converter(psdimage)
+        converter = Converter(psdimage, enable_live_shapes=enable_live_shapes)
         converter.build()
         return SVGDocument(svg=converter.svg, images=converter.images)
 

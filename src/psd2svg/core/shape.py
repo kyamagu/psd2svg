@@ -11,6 +11,7 @@ Handles conversion of Photoshop vector shapes to SVG path elements:
 The module processes vector mask data from shape layers and converts
 Photoshop's knot points and control points to SVG path syntax.
 """
+
 import logging
 import xml.etree.ElementTree as ET
 from typing import Iterator, Literal
@@ -264,7 +265,7 @@ class ShapeConverter(ConverterProtocol):
         if layer.vector_mask.initial_fill_rule:
             logger.warning("Initial fill rule (inverted mask) is not supported yet.")
 
-        if layer.has_origination():
+        if self.enable_live_shapes and layer.has_origination():
             origination = layer.origination[path.index]
             reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0))
             if isinstance(origination, Rectangle):

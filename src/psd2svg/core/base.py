@@ -16,6 +16,9 @@ class ConverterProtocol(Protocol):
     current: ET.Element
     images: list[Image.Image]
 
+    # Flags to control the conversion.
+    enable_live_shapes: bool
+
     def add_layer(self, layer: layers.Layer, **attrib: str) -> ET.Element | None: ...
     def add_group(self, layer: layers.Group, **attrib: str) -> ET.Element | None: ...
     def add_pixel(self, layer: layers.Layer, **attrib: str) -> ET.Element | None: ...
@@ -40,7 +43,7 @@ class ConverterProtocol(Protocol):
 
     # Shape methods
     def create_shape(self, layer: layers.ShapeLayer, **attrib) -> ET.Element: ...
-    
+
     # Paint methods
     def apply_vector_fill(
         self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element

@@ -15,6 +15,7 @@ This module handles paint application for:
 Note layer effects also support similar paint types, but the data
 structures and descriptors are different.
 """
+
 import logging
 import xml.etree.ElementTree as ET
 

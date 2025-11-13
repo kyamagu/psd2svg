@@ -159,8 +159,8 @@ def wrap_element(
     node: ET.Element, parent: ET.Element, wrapper: ET.Element
 ) -> ET.Element:
     """Wrap the given existing node in the wrapper element.
-    
-    Usage:
+
+    Usage::
         wrapper = svg_utils.create_node("g")
         wrapped_node = svg_utils.wrap_element(node, parent, wrapper)
 
