@@ -126,6 +126,75 @@ def test_clipping(psd_file: str, quality: float) -> None:
 
 
 @pytest.mark.parametrize(
+    "psd_file, quality",
+    [
+        pytest.param("blend-modes/effect-color-burn.psd", 0.01),
+        pytest.param("blend-modes/effect-color-dodge.psd", 0.01),
+        pytest.param("blend-modes/effect-color.psd", 0.01),
+        pytest.param("blend-modes/effect-darken.psd", 0.01),
+        pytest.param("blend-modes/effect-darker-color.psd", 0.01),
+        pytest.param("blend-modes/effect-difference.psd", 0.01),
+        pytest.param("blend-modes/effect-dissolve.psd", 0.01),  # Dissolve is not supported, but MSE is low.
+        pytest.param(
+            "blend-modes/effect-divide.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Divide is not accurately supported."),
+        ),
+        pytest.param("blend-modes/effect-exclusion.psd", 0.01),
+        pytest.param("blend-modes/effect-hard-light.psd", 0.01),
+        pytest.param(
+            "blend-modes/effect-hard-mix.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Hard mix is not accurately supported."),
+        ),
+        pytest.param("blend-modes/effect-hue.psd", 0.01),
+        pytest.param("blend-modes/effect-lighten.psd", 0.01),
+        pytest.param("blend-modes/effect-lighter-color.psd", 0.01),
+        pytest.param(
+            "blend-modes/effect-linear-burn.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Linear burn is not accurately supported."),
+        ),
+        pytest.param(
+            "blend-modes/effect-linear-dodge.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Linear dodge is not accurately supported."),
+        ),
+        pytest.param(
+            "blend-modes/effect-linear-light.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Linear light is not accurately supported."),
+        ),
+        pytest.param("blend-modes/effect-luminosity.psd", 0.01),
+        pytest.param("blend-modes/effect-multiply.psd", 0.01),
+        pytest.param("blend-modes/effect-normal.psd", 0.01),
+        pytest.param("blend-modes/effect-overlay.psd", 0.01),
+        pytest.param(
+            "blend-modes/effect-pin-light.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Pin light is not accurately supported."),
+        ),
+        pytest.param("blend-modes/effect-saturation.psd", 0.01),
+        pytest.param("blend-modes/effect-screen.psd", 0.01),
+        pytest.param("blend-modes/effect-soft-light.psd", 0.01),
+        pytest.param(
+            "blend-modes/effect-subtract.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Subtract is not accurately supported."),
+        ),
+        pytest.param(
+            "blend-modes/effect-vivid-light.psd",
+            0.01,
+            marks=pytest.mark.xfail(reason="Vivid light is not accurately supported."),
+        ),
+    ],
+)
+def test_blend_mode_quality(psd_file: str, quality: float) -> None:
+    """Test conversion quality for various blend modes."""
+    evaluate_quality(psd_file, quality)
+
+
+@pytest.mark.parametrize(
     "psd_file",
     [
         "shapes/triangle-1.psd",

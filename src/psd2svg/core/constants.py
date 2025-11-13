@@ -58,7 +58,7 @@ BLEND_MODE: dict[Union[BlendMode, bytes], str] = {
     Enum.Difference: "difference",
     Enum.Exclusion: "exclusion",
     Enum.Subtract: "difference",
-    b"divide": "difference",
+    b"blendDivide": "difference",
     Enum.Hue: "hue",
     Enum.Saturation: "saturation",
     Enum.Color: "color",
@@ -95,5 +95,5 @@ INACCURATE_BLEND_MODES: set[Union[BlendMode, bytes]] = {
     BlendMode.SUBTRACT,
     Enum.Subtract,
     BlendMode.DIVIDE,
-    b"divide",
+    b"blendDivide",
 }
