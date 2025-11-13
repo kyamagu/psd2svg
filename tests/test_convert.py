@@ -118,6 +118,23 @@ def test_layer_types_quality(psd_file: str, quality: float) -> None:
                 reason="Blend-mode for transformed clipping is not supported."
             ),
         ),
+        # Tests for clipping with masks and transforms.
+        pytest.param(
+            "clipping/clipping-4-pixel-mask-with-transform-w-mask.psd",
+            0.005,
+        ),
+        pytest.param(
+            "clipping/clipping-4-pixel-mask-with-transform-wo-mask.psd",
+            0.005,
+        ),
+        pytest.param(
+            "clipping/clipping-4-shape-mask-with-transform-w-mask.psd",
+            0.005,
+        ),
+        pytest.param(
+            "clipping/clipping-4-shape-mask-with-transform-wo-mask.psd",
+            0.005,
+        ),
     ],
 )
 def test_clipping(psd_file: str, quality: float) -> None:

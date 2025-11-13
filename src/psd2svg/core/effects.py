@@ -82,6 +82,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="color-overlay-effect",
         )
         return use
 
@@ -94,6 +95,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill=color_utils.descriptor2hex(effect.color),
+            class_="color-overlay-effect",
         )
 
     def apply_stroke_effect(self, layer: layers.Layer, target: ET.Element) -> None:
@@ -257,6 +259,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="stroke-effect",
         )
         return use
 
@@ -270,6 +273,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill="transparent",
+            class_="stroke-effect",
         )
         # Check effect.fill_type.
         if effect.fill_type == Enum.SolidColor:
@@ -384,6 +388,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="drop-shadow-effect",
         )
         return use
 
@@ -449,6 +454,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="outer-glow-effect",
         )
         return use
 
@@ -518,6 +524,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="gradient-overlay-effect",
         )
         return use
 
@@ -529,6 +536,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill=svg_utils.get_funciri(gradient),
+            class_="gradient-overlay-effect",
         )
 
     def set_gradient_transform(
@@ -705,6 +713,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="pattern-overlay-effect",
         )
         return use
 
@@ -716,6 +725,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill=svg_utils.get_funciri(pattern),
+            class_="pattern-overlay-effect",
         )
 
     def set_pattern_effect_transform(
@@ -825,6 +835,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="inner-shadow-effect",
         )
         return use
 
@@ -889,6 +900,7 @@ class EffectConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
+            class_="inner-glow-effect",
         )
         return use
 
