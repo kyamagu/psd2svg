@@ -30,9 +30,9 @@ class EffectConverter(ConverterProtocol):
 
     def apply_overlay_effects(self, layer: layers.Layer, target: ET.Element) -> None:
         """Apply overlay effects to the target element."""
-        self.apply_color_overlay_effect(layer, target)
-        self.apply_gradient_overlay_effect(layer, target)
         self.apply_pattern_overlay_effect(layer, target)
+        self.apply_gradient_overlay_effect(layer, target)
+        self.apply_color_overlay_effect(layer, target)
         self.apply_inner_shadow_effect(layer, target)
         self.apply_inner_glow_effect(layer, target)
         self.apply_satin_effect(layer, target)
