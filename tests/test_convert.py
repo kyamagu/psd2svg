@@ -152,7 +152,9 @@ def test_clipping(psd_file: str, quality: float) -> None:
         pytest.param("blend-modes/effect-darken.psd", 0.01),
         pytest.param("blend-modes/effect-darker-color.psd", 0.01),
         pytest.param("blend-modes/effect-difference.psd", 0.01),
-        pytest.param("blend-modes/effect-dissolve.psd", 0.01),  # Dissolve is not supported, but MSE is low.
+        pytest.param(
+            "blend-modes/effect-dissolve.psd", 0.01
+        ),  # Dissolve is not supported, but MSE is low.
         pytest.param(
             "blend-modes/effect-divide.psd",
             0.01,
@@ -252,13 +254,21 @@ def test_enable_live_shapes_flag() -> None:
 
     converter = Converter(psdimage, enable_live_shapes=True)
     converter.build()
-    assert converter.svg.find(".//rect") is not None, "Expected <rect> element in SVG with live shapes enabled."
-    assert converter.svg.find(".//path") is None, "Did not expect <path> element in SVG with live shapes enabled."
+    assert converter.svg.find(".//rect") is not None, (
+        "Expected <rect> element in SVG with live shapes enabled."
+    )
+    assert converter.svg.find(".//path") is None, (
+        "Did not expect <path> element in SVG with live shapes enabled."
+    )
 
     converter = Converter(psdimage, enable_live_shapes=False)
     converter.build()
-    assert converter.svg.find(".//rect") is None, "Did not expect <rect> element in SVG with live shapes disabled."
-    assert converter.svg.find(".//path") is not None, "Expected <path> element in SVG with live shapes disabled."
+    assert converter.svg.find(".//rect") is None, (
+        "Did not expect <rect> element in SVG with live shapes disabled."
+    )
+    assert converter.svg.find(".//path") is not None, (
+        "Expected <path> element in SVG with live shapes disabled."
+    )
 
 
 @pytest.mark.parametrize(
@@ -380,6 +390,10 @@ def test_paint_stroke(psd_file: str) -> None:
         "effects/inner-glow-1.psd",
         "effects/inner-glow-2.psd",
         "effects/inner-glow-3.psd",
+        # Multiple overlay effects. Priority is color > gradient > pattern.
+        "effects/multiple-overlays-1-all.psd",  # All overlay effects together
+        "effects/multiple-overlays-1-no-color.psd",  # Without color overlay
+        "effects/multiple-overlays-1-duplicate-colors.psd",  # Duplicate color overlays
     ],
 )
 def test_effects(psd_file: str) -> None:
