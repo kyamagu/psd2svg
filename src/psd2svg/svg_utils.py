@@ -171,7 +171,7 @@ def wrap_element(
     """
     # NOTE: There is no direct way to find a parent from the node.
     if node not in parent:
-        raise ValueError("Node is not a child of the given parent.")
+        raise ValueError(f"Node is not a child of the given parent: {node} in {parent}")
     parent.remove(node)
     wrapper.append(node)
     return wrapper

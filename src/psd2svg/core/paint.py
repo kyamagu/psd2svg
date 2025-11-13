@@ -44,7 +44,7 @@ class PaintConverter(ConverterProtocol):
             return
 
         use = svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target)
+            "use", parent=self.current, href=svg_utils.get_uri(target), class_="fill"
         )
         self.set_fill(layer, use)
         self.set_blend_mode(layer.blend_mode, use)
@@ -62,6 +62,7 @@ class PaintConverter(ConverterProtocol):
             parent=self.current,
             href=svg_utils.get_uri(target),
             fill="transparent",
+            class_="stroke",
         )
         self.set_stroke(layer, use)
         # TODO: Check if we already set stroke.

@@ -271,15 +271,15 @@ class ShapeConverter(ConverterProtocol):
                 node = self.create_origination_rectangle(
                     origination, reference, **attrib
                 )
-                self.set_origination_transform(layer, origination, node)
+                node = self.apply_origination_transform(layer, origination, node)
             elif isinstance(origination, RoundedRectangle):
                 node = self.create_origination_rounded_rectangle(
                     origination, reference, **attrib
                 )
-                self.set_origination_transform(layer, origination, node)
+                node = self.apply_origination_transform(layer, origination, node)
             elif isinstance(origination, Ellipse):
                 node = self.create_origination_ellipse(origination, reference, **attrib)
-                self.set_origination_transform(layer, origination, node)
+                node = self.apply_origination_transform(layer, origination, node)
             else:
                 # Fallback to path creation.
                 # TODO: Support line shapes.
@@ -375,16 +375,16 @@ class ShapeConverter(ConverterProtocol):
                 **attrib,
             )
 
-    def set_origination_transform(
+    def apply_origination_transform(
         self,
         layer: layers.ShapeLayer,
         origination: Rectangle | RoundedRectangle | Ellipse,
         node: ET.Element,
-    ) -> None:
-        """Set transform attribute from origination data."""
+    ) -> ET.Element:
+        """Apply transform attribute from origination data."""
         # Check if transform is available.
         if b"Trnf" not in origination._data:
-            return
+            return node
 
         # Apply the transformation matrix.
         transform = origination._data[b"Trnf"]
@@ -404,7 +404,7 @@ class ShapeConverter(ConverterProtocol):
             and matrix[5] - reference[1] == 0
         ):
             # Identity matrix, no transform needed.
-            return
+            return node
 
         transform_applied = False
         if matrix != (1, 0, 0, 1, 0, 0):
@@ -429,20 +429,24 @@ class ShapeConverter(ConverterProtocol):
             mask = node.attrib.pop("mask", None)
             if "id" not in node.attrib:
                 svg_utils.set_attribute(node, "id", self.auto_id("shape"))
-            defs = svg_utils.create_node("defs", parent=self.current)
-            svg_utils.wrap_element(node, self.current, defs)
-            svg_utils.create_node(
+            if self.current.tag != "defs":
+                defs = svg_utils.create_node("defs", parent=self.current)
+                svg_utils.wrap_element(node, self.current, defs)
+            use = svg_utils.create_node(
                 "use",
                 parent=self.current,
                 href=svg_utils.get_uri(node),
                 mask=mask,
                 clip_path=clip_path,
+                id=self.auto_id("use"),
             )
             if "style" in node.attrib and "mix-blend-mode" in node.attrib["style"]:
                 logger.warning(
                     "Mix-blend-mode may not work correctly with transformed "
                     "shapes using clip-path or mask."
                 )
+            return use
+        return node
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
         """Create a path element."""
