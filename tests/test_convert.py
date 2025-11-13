@@ -5,6 +5,7 @@ import pytest
 from psd_tools import PSDImage
 
 from psd2svg import convert
+from psd2svg.core.converter import Converter
 from psd2svg.eval import compute_conversion_quality
 
 from .conftest import get_fixture
@@ -243,6 +244,21 @@ def test_blend_mode_quality(psd_file: str, quality: float) -> None:
 def test_shapes(psd_file: str) -> None:
     """Test conversion quality of shape layers."""
     evaluate_quality(psd_file, 0.02)
+
+
+def test_enable_live_shapes_flag() -> None:
+    """Test that disabling live shapes works."""
+    psdimage = PSDImage.open(get_fixture("shapes/rectangle-1.psd"))
+
+    converter = Converter(psdimage, enable_live_shapes=True)
+    converter.build()
+    assert converter.svg.find(".//rect") is not None, "Expected <rect> element in SVG with live shapes enabled."
+    assert converter.svg.find(".//path") is None, "Did not expect <path> element in SVG with live shapes enabled."
+
+    converter = Converter(psdimage, enable_live_shapes=False)
+    converter.build()
+    assert converter.svg.find(".//rect") is None, "Did not expect <rect> element in SVG with live shapes disabled."
+    assert converter.svg.find(".//path") is not None, "Expected <path> element in SVG with live shapes disabled."
 
 
 @pytest.mark.parametrize(

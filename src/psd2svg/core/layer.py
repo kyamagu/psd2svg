@@ -173,9 +173,12 @@ class LayerConverter(ConverterProtocol):
 
     def add_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element | None:
         """Add a shape layer to the svg document."""
-        if layer.has_effects() or (
-            # layer.origination is not None
-            # and any(b"Trnf" in o._data for o in layer.origination)
+        if (
+            layer.has_effects()
+            or (
+                # layer.origination is not None
+                # and any(b"Trnf" in o._data for o in layer.origination)
+            )
         ):
             # We need to split the shape definition and effects.
             defs = svg_utils.create_node("defs", parent=self.current)
@@ -520,6 +523,6 @@ class LayerConverter(ConverterProtocol):
             )
             svg_utils.set_attribute(use, "id", self.auto_id("use"))
             return use
-        
+
         svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(mask))
         return target
