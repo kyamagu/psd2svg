@@ -750,12 +750,12 @@ class EffectConverter(ConverterProtocol):
                 "patternTransform",
                 f"scale({svg_utils.num2str(scale / 100.0)})",
             )
-        if effect.angle != 0.0:
-            rotation = -effect.angle
+        angle = -float(effect.value.get(Key.Angle, UnitFloat(Unit.Angle, 0.0)).value)
+        if angle != 0.0:
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
-                f"rotate({svg_utils.num2str(rotation)})",
+                f"rotate({svg_utils.num2str(angle)})",
             )
 
     def apply_inner_shadow_effect(
