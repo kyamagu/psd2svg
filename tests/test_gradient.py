@@ -74,3 +74,70 @@ def test_iterator(gradient_descriptor):
     assert stops[0][2] == 1.0
     assert stops[1][0] == 1.0
     assert stops[1][2] == 0.0
+
+
+def test_duplicate_color_stops():
+    """Test that duplicate color stops at the same location don't cause division by zero."""
+    gradient = descriptor.Descriptor(classID=Klass.Gradient)
+    # Create two color stops at the same location (0.5)
+    color1 = descriptor.Descriptor(classID=Klass.ColorStop)
+    color1[Key.Color] = descriptor.Descriptor(classID=Klass.RGBColor)
+    color1[Key.Color][Key.Red] = descriptor.Integer(255)
+    color1[Key.Color][Key.Green] = descriptor.Integer(0)
+    color1[Key.Color][Key.Blue] = descriptor.Integer(0)
+    color1[Key.Location] = descriptor.Integer(2048)  # 0.5 * 4096
+    color2 = descriptor.Descriptor(classID=Klass.ColorStop)
+    color2[Key.Color] = descriptor.Descriptor(classID=Klass.RGBColor)
+    color2[Key.Color][Key.Red] = descriptor.Integer(0)
+    color2[Key.Color][Key.Green] = descriptor.Integer(255)
+    color2[Key.Color][Key.Blue] = descriptor.Integer(0)
+    color2[Key.Location] = descriptor.Integer(2048)  # Same location: 0.5 * 4096
+    gradient[Key.Colors] = descriptor.List([color1, color2])
+    # Set opacity stops (valid ones)
+    opacity1 = descriptor.Descriptor(classID=Klass.TransparencyStop)
+    opacity1[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
+    opacity1[Key.Location] = descriptor.Integer(0)
+    opacity2 = descriptor.Descriptor(classID=Klass.TransparencyStop)
+    opacity2[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
+    opacity2[Key.Location] = descriptor.Integer(4096)
+    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])
+
+    interp = GradientInterpolation(gradient)
+    # Should not raise ZeroDivisionError and should return the first color
+    color = interp.get_color(0.5)
+    assert isinstance(color, descriptor.Descriptor)
+    assert color[Key.Red] == 255
+    assert color[Key.Green] == 0
+    assert color[Key.Blue] == 0
+
+
+def test_duplicate_opacity_stops():
+    """Test that duplicate opacity stops at the same location don't cause division by zero."""
+    gradient = descriptor.Descriptor(classID=Klass.Gradient)
+    # Set color stops (valid ones)
+    color1 = descriptor.Descriptor(classID=Klass.ColorStop)
+    color1[Key.Color] = descriptor.Descriptor(classID=Klass.RGBColor)
+    color1[Key.Color][Key.Red] = descriptor.Integer(255)
+    color1[Key.Color][Key.Green] = descriptor.Integer(0)
+    color1[Key.Color][Key.Blue] = descriptor.Integer(0)
+    color1[Key.Location] = descriptor.Integer(0)
+    color2 = descriptor.Descriptor(classID=Klass.ColorStop)
+    color2[Key.Color] = descriptor.Descriptor(classID=Klass.RGBColor)
+    color2[Key.Color][Key.Red] = descriptor.Integer(0)
+    color2[Key.Color][Key.Green] = descriptor.Integer(0)
+    color2[Key.Color][Key.Blue] = descriptor.Integer(255)
+    color2[Key.Location] = descriptor.Integer(4096)
+    gradient[Key.Colors] = descriptor.List([color1, color2])
+    # Create two opacity stops at the same location (0.5)
+    opacity1 = descriptor.Descriptor(classID=Klass.TransparencyStop)
+    opacity1[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
+    opacity1[Key.Location] = descriptor.Integer(2048)  # 0.5 * 4096
+    opacity2 = descriptor.Descriptor(classID=Klass.TransparencyStop)
+    opacity2[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=50)
+    opacity2[Key.Location] = descriptor.Integer(2048)  # Same location: 0.5 * 4096
+    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])
+
+    interp = GradientInterpolation(gradient)
+    # Should not raise ZeroDivisionError and should return the first opacity
+    opacity = interp.get_opacity(0.5)
+    assert opacity == 1.0  # 100% / 100.0

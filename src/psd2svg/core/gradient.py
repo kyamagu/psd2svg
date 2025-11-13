@@ -82,6 +82,9 @@ class GradientInterpolation:
             if location <= self.color_stops[i][0]:
                 loc0, color0 = self.color_stops[i - 1]
                 loc1, color1 = self.color_stops[i]
+                # Handle duplicate stops at the same location to avoid division by zero
+                if loc1 == loc0:
+                    return color0
                 t = (location - loc0) / (loc1 - loc0)
                 # Simple linear interpolation for color channels.
                 # TODO: Midpoint support.
@@ -108,6 +111,9 @@ class GradientInterpolation:
             if location <= self.opacity_stops[i][0]:
                 loc0, op0 = self.opacity_stops[i - 1]
                 loc1, op1 = self.opacity_stops[i]
+                # Handle duplicate stops at the same location to avoid division by zero
+                if loc1 == loc0:
+                    return op0 / 100.0
                 t = (location - loc0) / (loc1 - loc0)
                 # TODO: Midpoint support.
                 interpolated_opacity = op0 + t * (op1 - op0)
