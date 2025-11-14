@@ -40,7 +40,17 @@ class ShapeConverter(ConverterProtocol):
             # TODO: Handle NOT OR for single path.
             path = layer.vector_mask.paths[0]
             return self.create_single_shape(layer, path, **attrib)
+        else:
+            return self.create_composite_shape(layer, **attrib)
 
+    def create_composite_shape(
+        self, layer: layers.ShapeLayer, **attrib: str
+    ) -> ET.Element:
+        """Create a composite shape element from multiple paths with operations.
+        
+        If the layer has a mask, it will be applied to the composite mask node,
+        creating a mask chain: layer_mask -> composite_mask -> paths.
+        """
         # Group subpaths by operations.
         subpaths: list[list[Subpath]] = []
         for path in layer.vector_mask.paths:
@@ -58,11 +68,14 @@ class ShapeConverter(ConverterProtocol):
         )
 
         # TODO: Use clipPath when possible.
+        # It's possible when all operations are Union (OR) or Intersect (AND).
+
         # Composite shape with multiple paths.
         current = svg_utils.create_node(
             "mask",
             parent=self.current,
             id=self.auto_id("mask"),
+            mask=attrib.pop("mask", None),  # Combine with existing mask if any.
         )
         for path_group in subpaths:
             path = path_group[0]
