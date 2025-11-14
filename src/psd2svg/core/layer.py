@@ -48,7 +48,7 @@ class LayerConverter(ConverterProtocol):
             adjustments.GradientFill: self.add_fill,
             adjustments.GradientMap: self.add_adjustment,
             adjustments.HueSaturation: self.add_adjustment,
-            adjustments.Invert: self.add_adjustment,
+            adjustments.Invert: self.add_invert_adjustment,
             adjustments.Levels: self.add_adjustment,
             adjustments.PatternFill: self.add_fill,
             adjustments.PhotoFilter: self.add_adjustment,
