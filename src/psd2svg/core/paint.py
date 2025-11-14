@@ -296,7 +296,9 @@ class PaintConverter(ConverterProtocol):
             )
 
         # Apply angle, scale, and offset transforms.
-        angle = -float(setting.get(Key.Angle, UnitFloat(0)).value)
+        angle = -float(
+            setting.get(Key.Angle, UnitFloat(unit=Unit.Angle, value=0.0)).value
+        )
         if landscape:
             angle -= 90
         if Key.Reverse in setting and setting[Key.Reverse].value:
@@ -304,7 +306,9 @@ class PaintConverter(ConverterProtocol):
         if angle != 0:
             transforms.append(f"rotate({svg_utils.num2str(angle)})")
 
-        scale = float(setting.get(Key.Scale, UnitFloat(100)).value)
+        scale = float(
+            setting.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value
+        )
         if scale != 100:
             if landscape:
                 transforms.append(
@@ -383,7 +387,7 @@ class PaintConverter(ConverterProtocol):
         3. Rotation
         """
         # Reference point
-        reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0))
+        reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0)))
         if reference != (0.0, 0.0):
             svg_utils.append_attribute(
                 pattern,
@@ -405,7 +409,9 @@ class PaintConverter(ConverterProtocol):
         if scale != 1.0:
             transforms.append(f"scale({svg_utils.num2str(scale, digit=4)})")
 
-        angle = -float(setting.get(Key.Angle, UnitFloat(0.0)).value)
+        angle = -float(
+            setting.get(Key.Angle, UnitFloat(unit=Unit.Angle, value=0.0)).value
+        )
         if angle != 0.0:
             transforms.append(f"rotate({svg_utils.num2str(angle, digit=4)})")
 

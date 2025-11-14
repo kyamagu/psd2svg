@@ -602,7 +602,9 @@ class EffectConverter(ConverterProtocol):
         if angle != 0:
             transforms.append(f"rotate({svg_utils.num2str(angle)})")
 
-        scale = float(effect.value.get(Key.Scale, UnitFloat(Unit.Percent, 100.0)).value)
+        scale = float(
+            effect.value.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value
+        )
         if scale != 100:
             if landscape:
                 transforms.append(
@@ -753,14 +755,18 @@ class EffectConverter(ConverterProtocol):
                     "patternTransform",
                     f"translate({svg_utils.seq2str(offset)})",
                 )
-        scale = float(effect.value.get(Key.Scale, UnitFloat(Unit.Percent, 100.0)).value)
+        scale = float(
+            effect.value.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value
+        )
         if scale != 100.0:
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
                 f"scale({svg_utils.num2str(scale / 100.0)})",
             )
-        angle = -float(effect.value.get(Key.Angle, UnitFloat(Unit.Angle, 0.0)).value)
+        angle = -float(
+            effect.value.get(Key.Angle, UnitFloat(unit=Unit.Angle, value=0.0)).value
+        )
         if angle != 0.0:
             svg_utils.append_attribute(
                 pattern,
