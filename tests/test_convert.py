@@ -423,3 +423,27 @@ def test_stroke_effects(psd_file: str) -> None:
 def test_fill_layers(psd_file: str) -> None:
     """Test conversion quality of fill layers."""
     evaluate_quality(psd_file, 0.01)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "adjustments/invert-mask.psd",
+        "adjustments/invert-clipping-mask.psd",
+        pytest.param(
+            "adjustments/invert-clippingbase.psd",
+            marks=pytest.mark.xfail(
+                reason="Adjustment layer for clipping base is not supported."
+            ),
+        ),
+        pytest.param(
+            "adjustments/invert-mask-transparent.psd",
+            marks=pytest.mark.xfail(
+                reason="Transparency is not supported for adjustment layers."
+            ),
+        ),
+    ],
+)
+def test_adjustment_invert(psd_file: str) -> None:
+    """Test conversion quality of invert adjustment layer."""
+    evaluate_quality(psd_file, 0.01)
