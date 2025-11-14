@@ -233,6 +233,8 @@ def test_blend_mode_quality(psd_file: str, quality: float) -> None:
         "shapes/multi-2.psd",  # Union + Subtract + Intersect
         "shapes/multi-3.psd",  # Union + Subtract + Union
         "shapes/multi-4.psd",  # Union + XOR with composite subpaths, this one requires 0.02 threshold
+        "shapes/multi-5-mask.psd",  # Multi-shape with mask
+        "shapes/multi-5-mask-disabled.psd",  # Multi-shape with disabled mask
     ],
 )
 def test_shapes(psd_file: str) -> None:
