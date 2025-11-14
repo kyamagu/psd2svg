@@ -502,11 +502,10 @@ class LayerConverter(ConverterProtocol):
             height=layer.mask.height,
         )
 
-        # If the target already has a mask or a clip-path, we need to combine them.
+        # If the target already has a mask, we need to combine them.
+        # We cannot set clip-path to <mask> elements, so we don't pop clip-path here.
         if "mask" in target.attrib:
             svg_utils.set_attribute(mask, "mask", target.attrib.pop("mask"))
-        if "clip-path" in target.attrib:
-            svg_utils.set_attribute(mask, "clip-path", target.attrib.pop("clip-path"))
 
         # If the target has a transform, we cannot directly apply it to the mask.
         if "transform" in target.attrib:

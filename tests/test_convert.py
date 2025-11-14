@@ -105,20 +105,8 @@ def test_layer_types_quality(psd_file: str, quality: float) -> None:
         pytest.param("clipping/clipping-1-vector-with-transform.psd", 0.005),
         pytest.param("clipping/clipping-2-raster-with-transform.psd", 0.005),
         pytest.param("clipping/clipping-2-vector-with-transform.psd", 0.005),
-        pytest.param(
-            "clipping/clipping-3-raster-with-transform.psd",
-            0.005,
-            marks=pytest.mark.xfail(
-                reason="Blend-mode for transformed clipping is not supported."
-            ),
-        ),
-        pytest.param(
-            "clipping/clipping-3-vector-with-transform.psd",
-            0.005,
-            marks=pytest.mark.xfail(
-                reason="Blend-mode for transformed clipping is not supported."
-            ),
-        ),
+        pytest.param("clipping/clipping-3-raster-with-transform.psd", 0.005),
+        pytest.param("clipping/clipping-3-vector-with-transform.psd", 0.005),
         # Tests for clipping with masks and transforms.
         pytest.param(
             "clipping/clipping-4-pixel-mask-with-transform-w-mask.psd",
@@ -134,6 +122,10 @@ def test_layer_types_quality(psd_file: str, quality: float) -> None:
         ),
         pytest.param(
             "clipping/clipping-4-shape-mask-with-transform-wo-mask.psd",
+            0.005,
+        ),
+        pytest.param(
+            "clipping/clipping-4-shape-mask-clippath.psd",
             0.005,
         ),
     ],
