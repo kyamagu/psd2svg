@@ -415,7 +415,7 @@ class LayerConverter(ConverterProtocol):
                 opacity *= existing_opacity
             svg_utils.set_attribute(node, "opacity", svg_utils.num2str(opacity))
 
-    def set_blend_mode(self, psd_mode: bytes | str, node: ET.Element) -> None:
+    def set_blend_mode(self, psd_mode: bytes | BlendMode, node: ET.Element) -> None:
         """Set blend mode style to the node.
 
         Args:
@@ -425,17 +425,12 @@ class LayerConverter(ConverterProtocol):
         Raises:
             ValueError: If the blend mode is not supported.
         """
-        # Convert BlendMode enum to bytes if needed for dictionary lookup
-        mode_key: BlendMode | bytes = (
-            BlendMode(psd_mode) if isinstance(psd_mode, (bytes, str)) and not isinstance(psd_mode, BlendMode) else psd_mode  # type: ignore
-        )
-
-        if mode_key not in BLEND_MODE:
+        if psd_mode not in BLEND_MODE:
             raise ValueError(f"Unsupported blend mode: {psd_mode!r}")
 
         # Warn if the blend mode is not accurately supported in SVG
-        if mode_key in INACCURATE_BLEND_MODES:
-            blend_mode = BLEND_MODE[mode_key]
+        if psd_mode in INACCURATE_BLEND_MODES:
+            blend_mode = BLEND_MODE[psd_mode]
             # Format the mode name for display
             mode_name = (
                 psd_mode.name
@@ -449,9 +444,9 @@ class LayerConverter(ConverterProtocol):
                 f"Using approximation '{blend_mode}' instead."
             )
 
-        blend_mode = BLEND_MODE[mode_key]
-        if blend_mode not in ("normal", "pass-through"):
-            svg_utils.add_style(node, "mix-blend-mode", blend_mode)
+        svg_mode = BLEND_MODE[psd_mode]
+        if svg_mode not in ("normal", "pass-through"):
+            svg_utils.add_style(node, "mix-blend-mode", svg_mode)
 
     def set_isolation(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add isolation to a group.
