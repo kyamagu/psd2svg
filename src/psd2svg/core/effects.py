@@ -187,7 +187,11 @@ class EffectConverter(ConverterProtocol):
                 result="STROKEAREA",
             )
         else:
-            position_str = effect.position.decode() if isinstance(effect.position, bytes) else str(effect.position)
+            position_str = (
+                effect.position.decode()
+                if isinstance(effect.position, bytes)
+                else str(effect.position)
+            )
             raise ValueError(f"Unsupported stroke position: {position_str}")
 
         # Gradient and pattern strokes needs feImage.
@@ -472,7 +476,11 @@ class EffectConverter(ConverterProtocol):
             elif effect.type == Enum.Radial:
                 gradient = self.add_radial_gradient(effect.gradient)
             else:
-                effect_type_str = effect.type.decode() if isinstance(effect.type, bytes) else str(effect.type)
+                effect_type_str = (
+                    effect.type.decode()
+                    if isinstance(effect.type, bytes)
+                    else str(effect.type)
+                )
                 logger.warning(
                     "Only linear and radial gradient overlay are supported: "
                     f"{effect_type_str}: '{layer.name}' ({layer.kind})"
@@ -865,7 +873,11 @@ class EffectConverter(ConverterProtocol):
         """Add an inner glow filter to the SVG document."""
         # TODO: Support different glow types.
         if effect.glow_type != Enum.SoftMatte:
-            glow_type_str = effect.glow_type.decode() if isinstance(effect.glow_type, bytes) else str(effect.glow_type)
+            glow_type_str = (
+                effect.glow_type.decode()
+                if isinstance(effect.glow_type, bytes)
+                else str(effect.glow_type)
+            )
             logger.warning(f"Only softer inner glow is supported: {glow_type_str}")
         choke = float(effect.choke)
         size = float(effect.size)

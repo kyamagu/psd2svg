@@ -97,7 +97,9 @@ class AdjustmentConverter(ConverterProtocol):
         """Wrap previous nodes into a container node for adjustment application."""
         # TODO: Find the appropriate container in the clipping context, as the parent is mask or clipPath.
         if self.current.tag == "clipPath" or self.current.tag == "mask":
-            logger.warning("Wrapping backdrop inside clipping/mask context is not supported yet.")
+            logger.warning(
+                "Wrapping backdrop inside clipping/mask context is not supported yet."
+            )
         siblings = list(self.current)
         if not siblings:
             logger.warning("No backdrop elements found to wrap for adjustment.")
