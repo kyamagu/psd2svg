@@ -1,7 +1,9 @@
 import logging
 import math
 import xml.etree.ElementTree as ET
+from typing import cast
 
+from psd_tools import PSDImage
 from psd_tools.api import effects, layers
 from psd_tools.constants import Tag
 from psd_tools.psd.descriptor import UnitFloat
@@ -185,7 +187,8 @@ class EffectConverter(ConverterProtocol):
                 result="STROKEAREA",
             )
         else:
-            raise ValueError(f"Unsupported stroke position: {effect.position}")
+            position_str = effect.position.decode() if isinstance(effect.position, bytes) else str(effect.position)
+            raise ValueError(f"Unsupported stroke position: {position_str}")
 
         # Gradient and pattern strokes needs feImage.
         if effect.fill_type == Enum.SolidColor:
@@ -197,7 +200,7 @@ class EffectConverter(ConverterProtocol):
         elif effect.fill_type == Enum.Pattern:
             if effect.pattern is None:
                 raise ValueError("Stroke pattern is None for pattern fill type.")
-            pattern = self.add_pattern(layer._psd, effect.pattern)
+            pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
             self.set_pattern_effect_transform(pattern, effect, (0, 0))
             defs = svg_utils.create_node("defs", parent=self.current)
             rect = svg_utils.create_node(
@@ -284,7 +287,7 @@ class EffectConverter(ConverterProtocol):
         elif effect.fill_type == Enum.Pattern:
             if effect.pattern is None:
                 raise ValueError("Stroke pattern is None for pattern fill type.")
-            pattern = self.add_pattern(layer._psd, effect.pattern)
+            pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
             self.set_pattern_effect_transform(pattern, effect, (0, 0))
             svg_utils.set_attribute(use, "stroke", svg_utils.get_funciri(pattern))
         elif effect.fill_type == Enum.GradientFill:
@@ -469,9 +472,10 @@ class EffectConverter(ConverterProtocol):
             elif effect.type == Enum.Radial:
                 gradient = self.add_radial_gradient(effect.gradient)
             else:
+                effect_type_str = effect.type.decode() if isinstance(effect.type, bytes) else str(effect.type)
                 logger.warning(
                     "Only linear and radial gradient overlay are supported: "
-                    f"{effect.type}: '{layer.name}' ({layer.kind})"
+                    f"{effect_type_str}: '{layer.name}' ({layer.kind})"
                 )
                 continue
             self.set_gradient_transform(layer, gradient, effect)
@@ -653,7 +657,7 @@ class EffectConverter(ConverterProtocol):
         effect_list = list(layer.effects.find("patternoverlay", enabled=True))
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.PatternOverlay)
-            pattern = self.add_pattern(layer._psd, effect.pattern)
+            pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
             reference = layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0, 0))
             self.set_pattern_effect_transform(pattern, effect, reference)
 
@@ -861,7 +865,8 @@ class EffectConverter(ConverterProtocol):
         """Add an inner glow filter to the SVG document."""
         # TODO: Support different glow types.
         if effect.glow_type != Enum.SoftMatte:
-            logger.warning(f"Only softer inner glow is supported: {effect.glow_type}")
+            glow_type_str = effect.glow_type.decode() if isinstance(effect.glow_type, bytes) else str(effect.glow_type)
+            logger.warning(f"Only softer inner glow is supported: {glow_type_str}")
         choke = float(effect.choke)
         size = float(effect.size)
         # TODO: Adjust the width and height based on size.

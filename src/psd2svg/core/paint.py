@@ -40,7 +40,7 @@ class PaintConverter(ConverterProtocol):
         self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
     ) -> None:
         """Apply fill effects to the target element."""
-        if layer.has_stroke() and not layer.stroke.fill_enabled:
+        if layer.has_stroke() and layer.stroke is not None and not layer.stroke.fill_enabled:
             logger.debug(f"Fill is disabled for layer: '{layer.name}'")
             return
 
@@ -54,7 +54,7 @@ class PaintConverter(ConverterProtocol):
         self, layer: layers.ShapeLayer | adjustments.FillLayer, target: ET.Element
     ) -> None:
         """Apply stroke effects to the target element."""
-        if not layer.has_stroke() or not layer.stroke.enabled:
+        if not layer.has_stroke() or layer.stroke is None or not layer.stroke.enabled:
             logger.debug(f"Layer has no stroke: '{layer.name}'")
             return
 
@@ -73,18 +73,20 @@ class PaintConverter(ConverterProtocol):
     ) -> None:
         """Set fill attribute to the given element."""
         # Transparent fill when stroke is enabled but fill is disabled.
-        if layer.has_stroke() and not layer.stroke.fill_enabled:
+        if layer.has_stroke() and layer.stroke is not None and not layer.stroke.fill_enabled:
             logger.debug("Fill is disabled; setting fill to transparent.")
             svg_utils.set_attribute(node, "fill", "transparent")
             return
 
         # Shapes have the following tagged blocks for fill content.
         if Tag.VECTOR_STROKE_CONTENT_DATA in layer.tagged_blocks:
-            self.set_fill_stroke_content(layer, node)
+            if isinstance(layer, layers.ShapeLayer):
+                self.set_fill_stroke_content(layer, node)
             return
 
         # Fill layers have a dedicated tagged block.
-        self.set_fill_setting(layer, node)
+        if isinstance(layer, adjustments.FillLayer):
+            self.set_fill_setting(layer, node)
 
     def set_fill_stroke_content(
         self, layer: layers.ShapeLayer, node: ET.Element
@@ -140,7 +142,7 @@ class PaintConverter(ConverterProtocol):
 
     def set_stroke(self, layer: layers.Layer, node: ET.Element) -> None:
         """Add stroke style to the path node."""
-        if not layer.has_stroke() or not layer.stroke.enabled:
+        if not layer.has_stroke() or layer.stroke is None or not layer.stroke.enabled:
             logger.debug("Layer has no stroke: %s", layer.name)
             return
 

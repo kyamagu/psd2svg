@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from xml.etree import ElementTree as ET
-from typing import Iterator
+from typing import Callable, Iterator
 
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
@@ -31,7 +31,8 @@ class LayerConverter(ConverterProtocol):
         logger.debug(f"Adding layer: '{layer.name}' ({layer.kind})")
 
         # Simple registry-based dispatch.
-        registry = {
+        # Note: Type annotation simplified to avoid complex variance issues
+        registry: dict[type, Callable] = {
             layers.Artboard: self.add_artboard,
             layers.Group: self.add_group,
             layers.PixelLayer: self.add_pixel,
@@ -60,7 +61,7 @@ class LayerConverter(ConverterProtocol):
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
-        return layer_fn(layer, **attrib)
+        return layer_fn(layer, **attrib)  # type: ignore[call-arg]
 
     def add_artboard(self, layer: layers.Artboard, **attrib: str) -> ET.Element | None:
         """Add an artboard layer to the svg document."""
@@ -126,7 +127,13 @@ class LayerConverter(ConverterProtocol):
             return None
 
         # We will later fill in the href attribute when embedding images.
-        self.images.append(layer.topil().convert("RGBA"))
+        image = layer.topil()
+        if image is None:
+            logger.warning(
+                f"Layer has no image data, skipping: '{layer.name}' ({layer.kind})."
+            )
+            return None
+        self.images.append(image.convert("RGBA"))
 
         # Raster layers can have both fill opacity and overall opacity.
         fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
@@ -197,6 +204,7 @@ class LayerConverter(ConverterProtocol):
             # Otherwise, effects won't use the correct alpha.
             if (
                 layer.has_stroke()
+                and layer.stroke is not None
                 and layer.stroke.enabled
                 and not layer.stroke.fill_enabled
             ):
@@ -417,12 +425,17 @@ class LayerConverter(ConverterProtocol):
         Raises:
             ValueError: If the blend mode is not supported.
         """
-        if psd_mode not in BLEND_MODE:
+        # Convert BlendMode enum to bytes if needed for dictionary lookup
+        mode_key: BlendMode | bytes = (
+            BlendMode(psd_mode) if isinstance(psd_mode, (bytes, str)) and not isinstance(psd_mode, BlendMode) else psd_mode  # type: ignore
+        )
+
+        if mode_key not in BLEND_MODE:
             raise ValueError(f"Unsupported blend mode: {psd_mode!r}")
 
         # Warn if the blend mode is not accurately supported in SVG
-        if psd_mode in INACCURATE_BLEND_MODES:
-            blend_mode = BLEND_MODE[psd_mode]
+        if mode_key in INACCURATE_BLEND_MODES:
+            blend_mode = BLEND_MODE[mode_key]
             # Format the mode name for display
             mode_name = (
                 psd_mode.name
@@ -436,7 +449,7 @@ class LayerConverter(ConverterProtocol):
                 f"Using approximation '{blend_mode}' instead."
             )
 
-        blend_mode = BLEND_MODE[psd_mode]
+        blend_mode = BLEND_MODE[mode_key]
         if blend_mode not in ("normal", "pass-through"):
             svg_utils.add_style(node, "mix-blend-mode", blend_mode)
 
@@ -459,6 +472,7 @@ class LayerConverter(ConverterProtocol):
         """Add a layer mask to the target node."""
         if (
             not layer.has_mask()
+            or layer.mask is None
             or layer.mask.disabled
             or layer.mask.width == 0
             or layer.mask.height == 0
@@ -492,15 +506,17 @@ class LayerConverter(ConverterProtocol):
             )
 
         # Mask image.
-        self.images.append(layer.mask.topil().convert("L"))
-        svg_utils.create_node(
-            "image",
-            parent=mask,
-            x=layer.mask.left,
-            y=layer.mask.top,
-            width=layer.mask.width,
-            height=layer.mask.height,
-        )
+        mask_image = layer.mask.topil()
+        if mask_image is not None:
+            self.images.append(mask_image.convert("L"))
+            svg_utils.create_node(
+                "image",
+                parent=mask,
+                x=layer.mask.left,
+                y=layer.mask.top,
+                width=layer.mask.width,
+                height=layer.mask.height,
+            )
 
         # If the target already has a mask, we need to combine them.
         # We cannot set clip-path to <mask> elements, so we don't pop clip-path here.
