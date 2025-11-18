@@ -33,7 +33,7 @@ class ShapeConverter(ConverterProtocol):
 
     def create_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element:
         """Create a shape element from the layer's vector mask or origination data."""
-        if not layer.has_vector_mask():
+        if not layer.has_vector_mask() or layer.vector_mask is None:
             raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
 
         if len(layer.vector_mask.paths) == 1:
@@ -47,10 +47,13 @@ class ShapeConverter(ConverterProtocol):
         self, layer: layers.ShapeLayer, **attrib: str
     ) -> ET.Element:
         """Create a composite shape element from multiple paths with operations.
-        
+
         If the layer has a mask, it will be applied to the composite mask node,
         creating a mask chain: layer_mask -> composite_mask -> paths.
         """
+        if layer.vector_mask is None:
+            raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
+
         # Group subpaths by operations.
         subpaths: list[list[Subpath]] = []
         for path in layer.vector_mask.paths:
@@ -272,7 +275,7 @@ class ShapeConverter(ConverterProtocol):
         self, layer: layers.ShapeLayer, path: Subpath, **attrib
     ) -> ET.Element:
         """Create a single shape element from the layer's vector mask or origination data."""
-        if not layer.has_vector_mask():
+        if not layer.has_vector_mask() or layer.vector_mask is None:
             raise ValueError("Layer has no vector mask: %s", layer.name)
 
         if layer.vector_mask.initial_fill_rule:

@@ -61,7 +61,7 @@ class TestBlendModeWarnings:
     def test_bytes_linear_burn_blend_mode_warning(self, converter, node, caplog):
         """Test that bytes linearBurn also triggers a warning."""
         with caplog.at_level(logging.WARNING):
-            converter.set_blend_mode(b"linearBurn", node)
+            converter.set_blend_mode(BlendMode.LINEAR_BURN, node)
 
         assert len(caplog.records) == 1
         assert "not accurately supported" in caplog.text
@@ -70,7 +70,7 @@ class TestBlendModeWarnings:
     def test_bytes_linear_dodge_blend_mode_warning(self, converter, node, caplog):
         """Test that bytes linearDodge also triggers a warning."""
         with caplog.at_level(logging.WARNING):
-            converter.set_blend_mode(b"linearDodge", node)
+            converter.set_blend_mode(BlendMode.LINEAR_DODGE, node)
 
         assert len(caplog.records) == 1
         assert "not accurately supported" in caplog.text
