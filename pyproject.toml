@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
     "pillow",
     "numpy",
-    "psd-tools>=1.10.13",
+    "psd-tools>=1.12.0",
     "resvg-py>=0.2.3",
 ]
 
