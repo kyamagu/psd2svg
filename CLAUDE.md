@@ -126,10 +126,11 @@ image.save('output.png')
 
 ### Dependencies
 
-- `psd-tools>=1.10.13` - PSD file parsing
+- `psd-tools>=1.12.0` - PSD file parsing
 - `pillow` - Image processing
 - `numpy` - Numerical operations
 - `resvg-py` - SVG rasterization (production-ready)
+- `fontconfig-py` - Font resolution for text layers
 
 ### Code Quality
 
@@ -147,3 +148,34 @@ image.save('output.png')
 - Most adjustment layers not implemented
 - Smart object filters not supported
 - APIs are NOT thread-safe
+
+### Experimental Features
+
+#### Text Layer Conversion
+
+Text layer conversion to SVG `<text>` elements is **experimental** and enabled by default. It can be disabled via the `enable_type` flag:
+
+```python
+from psd2svg.core.converter import Converter
+
+converter = Converter(psdimage, enable_type=False)  # Falls back to rasterization
+```
+
+**Current Limitations:**
+
+- Text wrapping for bounding box mode (ShapeType=1) not supported
+- Transform matrices not fully implemented
+- Only solid fill/stroke colors supported (no gradients or patterns)
+- Line height uses approximate calculation for auto-leading
+- Requires fonts to be installed on the system (uses `fontconfig` for font resolution)
+- Cross-platform font availability may vary
+
+**Supported Features:**
+
+- Basic text rendering with proper font family, size, and color
+- Text alignment (left, center, right)
+- Multiple paragraphs and styled spans
+- Baseline shift for superscript/subscript
+- Fill and stroke colors (solid only)
+
+When fonts are not available, a warning is logged and the text may fall back to a default system font.

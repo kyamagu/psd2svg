@@ -30,6 +30,7 @@ dependencies = [
     "numpy",
     "psd-tools>=1.12.0",
     "resvg-py>=0.2.3",
+    "fontconfig-py>=0.1.3",
 ]
 
 [dependency-groups]
@@ -67,4 +68,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "skimage.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fontconfig"
 ignore_missing_imports = true

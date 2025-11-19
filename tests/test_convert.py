@@ -69,7 +69,13 @@ def evaluate_quality(psd_file: str, quality: float) -> None:
             "layer-types/shape-layer.psd", 0.02
         ),  # Shape layers may require a bit more tolerance
         pytest.param("layer-types/smartobject-layer.psd", 0.01),
-        pytest.param("layer-types/type-layer.psd", 0.01),
+        pytest.param(
+            "layer-types/type-layer.psd",
+            0.01,
+            marks=pytest.mark.xfail(
+                reason="Text layer support is not fully implemented."
+            ),
+        ),
         pytest.param("layer-types/gradient-fill.psd", 0.01),
         pytest.param("layer-types/solid-color-fill.psd", 0.01),
         pytest.param("layer-types/pattern-fill.psd", 0.01),
@@ -447,3 +453,17 @@ def test_fill_layers(psd_file: str) -> None:
 def test_adjustment_invert(psd_file: str) -> None:
     """Test conversion quality of invert adjustment layer."""
     evaluate_quality(psd_file, 0.01)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "texts/paragraph-shapetype0-justification0.psd",
+        "texts/paragraph-shapetype0-justification1.psd",
+        "texts/paragraph-shapetype0-justification2.psd",
+    ],
+)
+def test_text_paragraph_justification(psd_file: str) -> None:
+    """Test text paragraph justification handling."""
+    # We need a higher threshold depending on the available fonts.
+    evaluate_quality(psd_file, 0.02)

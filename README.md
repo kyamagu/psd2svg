@@ -164,9 +164,30 @@ pytest
 
 ## Notes
 
-* SVG 1.1 does not cover all the blending modes in Photoshop (e.g., `linear-dodge`)
-* Filter effects are approximation. Some effects are not implemented.
-* Most of adjustments layers are not implemented.
-* Smart object filters are not implemented.
-* Browser support: SVG rendering quality greatly differs depending on the browser. Chrome tends to be the best quality.
-* APIs of this tool is NOT thread-safe.
+- SVG 1.1 does not cover all the blending modes in Photoshop (e.g., `linear-dodge`)
+- Filter effects are approximation. Some effects are not implemented.
+- Most of adjustments layers are not implemented.
+- Smart object filters are not implemented.
+- Browser support: SVG rendering quality greatly differs depending on the browser. Chrome tends to be the best quality.
+- APIs of this tool is NOT thread-safe.
+
+### Experimental: Text Layer Conversion
+
+Text layer conversion to SVG `<text>` elements is **experimental** and enabled by default. Text layers are converted to native SVG text with proper styling when possible.
+
+**Limitations:**
+
+- Requires fonts to be installed on your system
+- Only solid colors supported (no gradients or patterns for text)
+- Text wrapping in bounding boxes not fully supported
+- Transform matrices not fully implemented
+
+To disable and fall back to rasterization:
+
+```python
+from psd2svg.core.converter import Converter
+
+converter = Converter(psdimage, enable_type=False)
+```
+
+See the documentation for more details on text layer support and limitations.
