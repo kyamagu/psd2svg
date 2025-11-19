@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
-from psd2svg.eval import compare_raster_images
+from psd_tools import PSDImage
+
+from psd2svg.eval import compare_raster_images, create_diff_image
 
 try:
     import skimage  # noqa: F401
@@ -31,3 +33,11 @@ def test_compare_raster_images_identical(metric, expected):
     img2 = img1.copy()
     result = compare_raster_images(img1, img2, metric=metric)
     assert np.isclose(result, expected)
+
+
+def test_create_diff_image():
+    """Test create_diff_image function."""
+    psdimage = PSDImage.open("tests/fixtures/layer-types/type-layer.psd")
+    diff_image = create_diff_image(psdimage)
+    assert diff_image.mode == "RGB"
+    assert diff_image.size == psdimage.size
