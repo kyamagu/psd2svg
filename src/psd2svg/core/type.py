@@ -1,6 +1,7 @@
 import dataclasses
 import logging
 import xml.etree.ElementTree as ET
+from enum import IntEnum
 from itertools import groupby
 from typing import Any, Iterator
 
@@ -9,12 +10,32 @@ from psd_tools.api import layers
 from psd_tools.psd.descriptor import RawData
 from psd_tools.psd.engine_data import DictElement, EngineData
 from psd_tools.psd.tagged_blocks import TypeToolObjectSetting
+from psd_tools.terminology import Key
 
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 from psd2svg.core import color_utils
 
 logger = logging.getLogger(__name__)
+
+
+class Justification(IntEnum):
+    """Text justification values from Photoshop."""
+
+    LEFT = 0
+    RIGHT = 1
+    CENTER = 2
+    JUSTIFY_LAST_LEFT = 3
+    JUSTIFY_LAST_RIGHT = 4
+    JUSTIFY_LAST_CENTER = 5
+    JUSTIFY_ALL = 6
+
+
+class ShapeType(IntEnum):
+    """Text shape type values from Photoshop."""
+
+    POINT = 0
+    BOUNDING_BOX = 1
 
 
 class TypeConverter(ConverterProtocol):
@@ -33,10 +54,9 @@ class TypeConverter(ConverterProtocol):
         text_node = svg_utils.create_node(
             "text",
             parent=self.current,
-            y=text_setting.transform.ty,
+            transform=text_setting.transform.to_svg_matrix(),
         )
         # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
-        # TODO: Support transform.
         # TODO: Support adjustments.
         for i, paragraph in enumerate(text_setting):
             paragraph_node = self._add_paragraph(
@@ -58,20 +78,45 @@ class TypeConverter(ConverterProtocol):
         first_paragraph: bool = False,
     ) -> ET.Element:
         """Add a paragraph to the text node."""
-        justification = {0: "start", 1: "end", 2: "middle"}[
-            int(paragraph.style["Justification"])
-        ]
+
+        # Approximate line height
         line_height = (
             max(int(span.style["FontSize"]) for span in paragraph) * 1.2
         )  # Approximate for AutoLeading=True
         # TODO: Support manual leading.
+
+        # Horizontal positioning based on justification and shape type.
+        text_anchor = paragraph.get_text_anchor()
+        x = 0.0
+        if text_setting.shape_type == ShapeType.BOUNDING_BOX:
+            if text_anchor == "end":
+                x = text_setting.bounds.right
+            elif text_anchor == "middle":
+                x = (text_setting.bounds.left + text_setting.bounds.right) / 2
+
+        # Create paragraph node.
         paragraph_node = svg_utils.create_node(
             "tspan",
             parent=text_node,
-            text_anchor=justification,
-            x=text_setting.transform.tx,
+            text_anchor=text_anchor,
+            x=None if x == 0.0 and first_paragraph else x,
             dy=line_height if not first_paragraph else None,
+            dominant_baseline="text-before-edge"
+            if text_setting.shape_type == ShapeType.BOUNDING_BOX
+            else None,
         )
+
+        # TODO: There is still a difference with PSD rendering on dominant-baseline.
+
+        # Handle justification.
+        if paragraph.justification == Justification.JUSTIFY_ALL:
+            logger.info("Justify All is not fully supported in SVG.")
+            svg_utils.set_attribute(
+                paragraph_node,
+                "textLength",
+                svg_utils.num2str(text_setting.bounds.width),
+            )
+            svg_utils.set_attribute(paragraph_node, "lengthAdjust", "spacingAndGlyphs")
         return paragraph_node
 
     def _add_text_span(
@@ -174,6 +219,24 @@ class Paragraph:
         """Iterate over spans."""
         return iter(self.spans)
 
+    @property
+    def justification(self) -> Justification:
+        """Get justification value from paragraph style."""
+        return Justification(self.style.get("Justification", 0))
+
+    def get_text_anchor(self) -> str | None:
+        """Get SVG text-anchor value based on justification."""
+        mapping = {
+            Justification.LEFT: None,  # Start is default
+            Justification.RIGHT: "end",
+            Justification.CENTER: "middle",
+            Justification.JUSTIFY_LAST_LEFT: None,  # Start is default
+            Justification.JUSTIFY_LAST_RIGHT: "end",
+            Justification.JUSTIFY_LAST_CENTER: "middle",
+            Justification.JUSTIFY_ALL: None,  # Justify all does not map to text-anchor
+        }
+        return mapping.get(self.justification, None)
+
 
 @dataclasses.dataclass
 class Span:
@@ -195,6 +258,36 @@ class Transform:
     yy: float
     tx: float
     ty: float
+
+    def to_svg_matrix(self) -> str | None:
+        """Convert to SVG matrix string."""
+        if (self.xx, self.yx, self.xy, self.yy) == (1.0, 0.0, 0.0, 1.0):
+            if (self.tx, self.ty) == (0.0, 0.0):
+                return None  # Identity transform
+            return "translate({})".format(svg_utils.seq2str((self.tx, self.ty)))
+        return "matrix({})".format(
+            svg_utils.seq2str((self.xx, self.yx, self.xy, self.yy, self.tx, self.ty))
+        )
+
+
+@dataclasses.dataclass
+class Rectangle:
+    """Rectangle data."""
+
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+    @property
+    def width(self) -> float:
+        """Get width of the rectangle."""
+        return self.right - self.left
+
+    @property
+    def height(self) -> float:
+        """Get height of the rectangle."""
+        return self.bottom - self.top
 
 
 @dataclasses.dataclass
@@ -307,6 +400,41 @@ class TypeSetting:
         return Transform(*self._setting.transform)
 
     @property
+    def bounds(self) -> Rectangle:
+        """Text bounds rectangle.
+
+        This is a user-defined bounds that may differ from the bounding box.
+        Use bounds for positioning the text content by justification settings.
+        """
+        desc = self._setting.text_data.get("bounds")
+        if not desc:
+            logger.debug("Bounds not found in text data.")
+            return Rectangle(0.0, 0.0, 0.0, 0.0)
+        return Rectangle(
+            left=float(desc[Key.Left].value),
+            top=float(desc[Key.Top].value),
+            right=float(desc[Key.Right].value),
+            bottom=float(desc[Key.Bottom].value),
+        )
+
+    @property
+    def bounding_box(self) -> Rectangle:
+        """Text bounding box rectangle.
+
+        This is a bounding box around the text content.
+        """
+        desc = self._setting.text_data.get("boundingBox")
+        if not desc:
+            logger.debug("Bounding box not found in text data.")
+            return Rectangle(0.0, 0.0, 0.0, 0.0)
+        return Rectangle(
+            left=float(desc[Key.Left].value),
+            top=float(desc[Key.Top].value),
+            right=float(desc[Key.Right].value),
+            bottom=float(desc[Key.Bottom].value),
+        )
+
+    @property
     def engine_data(self) -> EngineData:
         """Engine data dictionary."""
         return self._engine_data
@@ -363,6 +491,78 @@ class TypeSetting:
         assert "Editor" in self.engine_dict
         assert "Text" in self.engine_dict["Editor"]
         return str(self.engine_dict["Editor"]["Text"].value)
+
+    @property
+    def _shapes(self) -> list[DictElement]:
+        """Shapes dictionary from engine data."""
+        assert "Rendered" in self.engine_dict
+        rendered = self.engine_dict["Rendered"]
+        assert "Shapes" in rendered
+        return list(rendered["Shapes"]["Children"])
+
+    @property
+    def _shape(self) -> DictElement | None:
+        """First shape dictionary from engine data."""
+        shapes = self._shapes
+        if not shapes:
+            logger.debug("No shapes found.")
+            return None
+        elif len(shapes) > 1:
+            logger.debug("Multiple shapes found, using the first one.")
+        return shapes[0]
+
+    @property
+    def shape_type(self) -> ShapeType:
+        """Shape type from engine data."""
+        shape = self._shape
+        assert shape is not None
+        assert "ShapeType" in shape
+        return ShapeType(shape["ShapeType"].value)
+
+    @property
+    def writing_direction(self) -> int:
+        """Writing direction from engine data.
+
+        Values are:
+        - 0: Left to Right
+        - 1: Right to Left (unconfirmed)
+        - 2: Top to Bottom
+        """
+        assert "Rendered" in self.engine_dict
+        rendered = self.engine_dict["Rendered"]
+        assert "WritingDirection" in rendered
+        return int(rendered["WritingDirection"].value)
+
+    @property
+    def point_base(self) -> tuple[float, float]:
+        """Point base from shape structure in engine data."""
+        if self.shape_type != ShapeType.POINT:
+            return (0.0, 0.0)  # Not a point shape
+        shape = self._shape
+        assert shape is not None
+        assert "Cookie" in shape
+        assert "Photoshop" in shape["Cookie"]
+        assert "PointBase" in shape["Cookie"]["Photoshop"]
+        point_base = shape["Cookie"]["Photoshop"]["PointBase"]
+        return (point_base[0].value, point_base[1].value)
+
+    @property
+    def box_bounds(self) -> Rectangle:
+        """Box bounds from shape structure in engine data."""
+        if self.shape_type != ShapeType.BOUNDING_BOX:
+            return Rectangle(0, 0, 0, 0)  # Not a bounding box shape
+        shape = self._shape
+        assert shape is not None
+        assert "Cookie" in shape
+        assert "Photoshop" in shape["Cookie"]
+        assert "BoxBounds" in shape["Cookie"]["Photoshop"]
+        bounds = shape["Cookie"]["Photoshop"]["BoxBounds"]
+        return Rectangle(
+            left=float(bounds[0].value),
+            top=float(bounds[1].value),
+            right=float(bounds[2].value),
+            bottom=float(bounds[3].value),
+        )
 
     @property
     def _paragraph_run(self) -> DictElement:
