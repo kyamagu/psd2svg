@@ -26,66 +26,141 @@ class TypeConverter(ConverterProtocol):
             return self.add_pixel(layer, **attrib)
 
         text_setting = TypeSetting(layer._data)
+        return self._create_text_node(text_setting)
+
+    def _create_text_node(self, text_setting: "TypeSetting") -> ET.Element:
+        """Create SVG text node from type setting."""
         text_node = svg_utils.create_node(
             "text",
             parent=self.current,
             y=text_setting.transform.ty,
         )
-        # TODO: Optimize the node structure if there is only one paragraph or span.
-        # TODO: Group per-paragraph or per-span attributes and move to the container node.
         # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
         # TODO: Support transform.
-        # TODO: Support fill and stroke colors.
         # TODO: Support adjustments.
         for i, paragraph in enumerate(text_setting):
-            justification = {0: "start", 1: "end", 2: "middle"}[
-                int(paragraph.style["Justification"])
-            ]
-            line_height = (
-                max(int(span.style["FontSize"]) for span in paragraph) * 1.2
-            )  # Approximate for AutoLeading=True
-            # TODO: Support manual leading.
-            paragraph_node = svg_utils.create_node(
-                "tspan",
-                parent=text_node,
-                text_anchor=justification,
-                x=text_setting.transform.tx,
-                dy=line_height if i > 0 else None,
+            paragraph_node = self._add_paragraph(
+                text_setting, text_node, paragraph, first_paragraph=(i == 0)
             )
-            for j, span in enumerate(paragraph):
-                font_family = find_font_family(
-                    postscriptname=text_setting.font_set[span.style["Font"]][
-                        "Name"
-                    ].value
-                )
-                font_size = int(span.style["FontSize"])
-                fill = (
-                    get_paint_content(span.style["FillColor"])
-                    if span.style["FillFlag"]
-                    else None
-                )
-                stroke = (
-                    get_paint_content(span.style["StrokeColor"])
-                    if span.style["StrokeFlag"]
-                    else None
-                )
-                baseline_shift = None
-                if span.style.get("BaselineShift") is not None:
-                    shift_value = span.style["BaselineShift"].value
-                    if shift_value != 0:
-                        baseline_shift = shift_value
-                svg_utils.create_node(
-                    "tspan",
-                    parent=paragraph_node,
-                    text=span.text,
-                    font_size=font_size,
-                    font_family=font_family,
-                    fill=fill,
-                    stroke=stroke,
-                    baseline_shift=baseline_shift,
-                )
+            for span in paragraph:
+                self._add_text_span(text_setting, paragraph_node, span)
 
+        self._merge_common_child_attributes(text_node, excludes={"x", "y", "dx", "dy"})
+        self._merge_singleton_children(text_node)
+        self._merge_attribute_less_children(text_node)
         return text_node
+
+    def _add_paragraph(
+        self,
+        text_setting: "TypeSetting",
+        text_node: ET.Element,
+        paragraph: "Paragraph",
+        first_paragraph: bool = False,
+    ) -> ET.Element:
+        """Add a paragraph to the text node."""
+        justification = {0: "start", 1: "end", 2: "middle"}[
+            int(paragraph.style["Justification"])
+        ]
+        line_height = (
+            max(int(span.style["FontSize"]) for span in paragraph) * 1.2
+        )  # Approximate for AutoLeading=True
+        # TODO: Support manual leading.
+        paragraph_node = svg_utils.create_node(
+            "tspan",
+            parent=text_node,
+            text_anchor=justification,
+            x=text_setting.transform.tx,
+            dy=line_height if not first_paragraph else None,
+        )
+        return paragraph_node
+
+    def _add_text_span(
+        self, text_setting: "TypeSetting", paragraph_node: ET.Element, span: "Span"
+    ) -> ET.Element:
+        """Add a text span to the paragraph node."""
+        font_family = find_font_family(
+            postscriptname=text_setting.font_set[span.style["Font"]]["Name"].value
+        )
+        font_size = int(span.style["FontSize"])
+        fill = (
+            get_paint_content(span.style["FillColor"])
+            if span.style["FillFlag"]
+            else None
+        )
+        stroke = (
+            get_paint_content(span.style["StrokeColor"])
+            if span.style["StrokeFlag"]
+            else None
+        )
+        baseline_shift = None
+        if span.style.get("BaselineShift") is not None:
+            shift_value = span.style["BaselineShift"].value
+            if shift_value != 0:
+                baseline_shift = shift_value
+        return svg_utils.create_node(
+            "tspan",
+            parent=paragraph_node,
+            text=span.text.strip("\r"),  # Remove carriage return characters
+            font_size=font_size,
+            font_family=font_family,
+            fill=fill,
+            stroke=stroke,
+            baseline_shift=baseline_shift,
+        )
+
+    def _merge_singleton_children(self, element: ET.Element) -> None:
+        """Merge singleton child nodes into the parent node."""
+        for child in list(element):
+            self._merge_singleton_children(child)
+        if len(element) == 1:
+            child = element[0]
+            if child.text:
+                element.text = (element.text or "") + child.text
+            if child.tail:
+                element.tail = (element.tail or "") + child.tail
+            for key, value in child.attrib.items():
+                if key in element.attrib:
+                    # This is expected because text is always inserted into leaf tspans,
+                    # and we're now hoisting child attributes to the parent.
+                    logger.debug(
+                        f"Overwriting attribute '{key}' from '{element.attrib[key]}' to '{value}'"
+                    )
+                element.attrib[key] = value
+            element.remove(child)
+
+    def _merge_attribute_less_children(self, element: ET.Element) -> None:
+        """Merge children without attributes into the parent node."""
+        for child in list(element):
+            self._merge_attribute_less_children(child)
+        for child in list(element):
+            if not child.attrib:
+                if child.text:
+                    element.text = (element.text or "") + child.text
+                if child.tail:
+                    element.tail = (element.tail or "") + child.tail
+                element.remove(child)
+
+    def _merge_common_child_attributes(
+        self, element: ET.Element, excludes: set[str]
+    ) -> None:
+        """Merge common child attributes."""
+        for child in list(element):
+            self._merge_common_child_attributes(child, excludes)
+        common_attribs: dict[str, str | None] = {}
+        for child in element:
+            for key, value in child.attrib.items():
+                if key in excludes:
+                    continue
+                if key not in common_attribs:
+                    common_attribs[key] = value
+                elif common_attribs[key] != value:
+                    common_attribs[key] = None
+        for key, value in common_attribs.items():  # type: ignore
+            if value is not None:
+                element.attrib[key] = value
+                for child in element:
+                    if key in child.attrib:
+                        del child.attrib[key]
 
 
 @dataclasses.dataclass
@@ -374,6 +449,7 @@ def get_paint_content(paint: dict) -> str | None:
         logger.info("Paint content not found in style sheet.")
         return None
     if paint["Type"].value != 1:
+        # TODO: Check other paint types like gradients and patterns if any.
         logger.info(
             f"Unsupported Paint type: {paint['Type'].value}. Only Solid color is supported."
         )
