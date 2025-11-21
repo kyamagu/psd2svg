@@ -20,6 +20,7 @@ jobs:
       - name: Install MS fonts
         run: |
           sudo apt-get update
+          echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | sudo debconf-set-selections
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ttf-mscorefonts-installer fontconfig
           sudo fc-cache -fv
 
