@@ -63,8 +63,8 @@ class FontBaseline(IntEnum):
     SUBSCRIPT = 2
 
 
-class TypeConverter(ConverterProtocol):
-    """Mixin for type layers."""
+class TextConverter(ConverterProtocol):
+    """Mixin for text layers."""
 
     def add_type(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None:
         """Add a type layer to the svg document."""
