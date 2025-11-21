@@ -13,7 +13,7 @@ from psd2svg.core.effects import EffectConverter
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.paint import PaintConverter
 from psd2svg.core.shape import ShapeConverter
-from psd2svg.core.type import TypeConverter
+from psd2svg.core.text import TextConverter
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class Converter(
     LayerConverter,
     PaintConverter,
     ShapeConverter,
-    TypeConverter,
+    TextConverter,
     EffectConverter,
 ):
     """Converter main class.

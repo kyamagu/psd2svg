@@ -146,7 +146,7 @@ The core converter uses multiple inheritance with specialized mixins:
        LayerConverter,
        PaintConverter,
        ShapeConverter,
-       TypeConverter,
+       TextConverter,
    ):
        """Main converter class combining all converter mixins."""
 
@@ -157,7 +157,7 @@ The core converter uses multiple inheritance with specialized mixins:
 * ``LayerConverter`` (``layer.py``) - Core layer conversion logic
 * ``ShapeConverter`` (``shape.py``) - Converts vector shapes
 * ``PaintConverter`` (``paint.py``) - Handles painting logic
-* ``TypeConverter`` (``type.py``) - Processes typographic layers
+* ``TextConverter`` (``text.py``) - Processes text layers
 * ``PaintConverter`` (``paint.py``) - Handles fill and stroke patterns
 
 **Supporting Modules:**

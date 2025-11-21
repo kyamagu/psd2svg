@@ -73,7 +73,7 @@ The package follows a modular converter architecture with multiple inheritance:
   - `LayerConverter` - Core layer conversion logic
   - `PaintConverter` - Handles painting logic
   - `ShapeConverter` - Converts vector shapes
-  - `TypeConverter` - Processes typographic layers
+  - `TextConverter` - Processes text layers
 
 ### Key Components
 
