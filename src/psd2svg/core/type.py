@@ -5,7 +5,6 @@ from enum import IntEnum
 from itertools import groupby
 from typing import Any, Iterator
 
-import fontconfig
 from psd_tools.api import layers
 from psd_tools.psd.descriptor import RawData
 from psd_tools.psd.engine_data import DictElement, EngineData
@@ -13,7 +12,7 @@ from psd_tools.psd.tagged_blocks import TypeToolObjectSetting
 from psd_tools.terminology import Key
 
 from psd2svg import svg_utils
-from psd2svg.core import color_utils
+from psd2svg.core import color_utils, font_utils
 from psd2svg.core.base import ConverterProtocol
 
 logger = logging.getLogger(__name__)
@@ -45,6 +44,25 @@ class WritingDirection(IntEnum):
     VERTICAL_RL = 2
 
 
+class FontCaps(IntEnum):
+    """Font capitalization style values from Photoshop."""
+
+    NORMAL = 0
+    SMALL_CAPS = 1
+    ALL_CAPS = 2
+
+
+class FontBaseline(IntEnum):
+    """Font baseline values from Photoshop.
+
+    In Photoshop, script scale is 0.583 and position is +/- 0.333 for superscript and subscript.
+    """
+
+    ROMAN = 0
+    SUPERSCRIPT = 1
+    SUBSCRIPT = 2
+
+
 class TypeConverter(ConverterProtocol):
     """Mixin for type layers."""
 
@@ -74,7 +92,9 @@ class TypeConverter(ConverterProtocol):
             for span in paragraph:
                 self._add_text_span(text_setting, paragraph_node, span)
 
-        self._merge_common_child_attributes(text_node, excludes={"x", "y", "dx", "dy"})
+        self._merge_common_child_attributes(
+            text_node, excludes={"x", "y", "dx", "dy", "transform"}
+        )
         self._merge_singleton_children(text_node)
         self._merge_attribute_less_children(text_node)
         return text_node
@@ -87,12 +107,7 @@ class TypeConverter(ConverterProtocol):
         first_paragraph: bool = False,
     ) -> ET.Element:
         """Add a paragraph to the text node."""
-
-        # Approximate line height
-        line_height = (
-            max(int(span.style["FontSize"]) for span in paragraph) * 1.2
-        )  # Approximate for AutoLeading=True
-        # TODO: Support manual leading.
+        line_height = paragraph.compute_leading()
 
         # Positioning based on justification, shape type, and writing direction.
         text_anchor = paragraph.get_text_anchor()
@@ -144,36 +159,87 @@ class TypeConverter(ConverterProtocol):
         self, text_setting: "TypeSetting", paragraph_node: ET.Element, span: "Span"
     ) -> ET.Element:
         """Add a text span to the paragraph node."""
-        font_family = find_font_family(
-            postscriptname=text_setting.font_set[span.style["Font"]]["Name"].value
-        )
-        font_size = int(span.style["FontSize"])
-        fill = (
-            get_paint_content(span.style["FillColor"])
-            if span.style["FillFlag"]
-            else None
-        )
-        stroke = (
-            get_paint_content(span.style["StrokeColor"])
-            if span.style["StrokeFlag"]
-            else None
-        )
-        baseline_shift = None
-        if span.style.get("BaselineShift") is not None:
-            shift_value = span.style["BaselineShift"].value
-            if shift_value != 0:
-                baseline_shift = shift_value
+        style = span.style
+        font_info = text_setting.get_font_info(style.font)
         tspan = svg_utils.create_node(
             "tspan",
             parent=paragraph_node,
             text=span.text.strip("\r"),  # Remove carriage return characters
-            font_size=font_size,
-            font_family=font_family,
-            fill=fill,
-            stroke=stroke,
-            baseline_shift=baseline_shift,
+            font_size=style.font_size,
+            font_family=font_info.family_name if font_info else None,
+            font_weight="bold"
+            if (font_info and font_info.bold) or style.faux_bold
+            else None,
+            font_style="italic"
+            if (font_info and font_info.italic) or style.faux_italic
+            else None,
+            fill=style.get_fill_color(),
+            stroke=style.get_stroke_color(),
+            baseline_shift=style.baseline_shift
+            if style.baseline_shift != 0.0
+            else None,
         )
-        if span.style.get("BaselineDirection") == 1:
+        if style.font_caps == FontCaps.ALL_CAPS:
+            svg_utils.add_style(tspan, "text-transform", "uppercase")
+        elif style.font_caps == FontCaps.SMALL_CAPS:
+            # NOTE: Using text_settings.small_caps_size with text-transform may be more accurate.
+            svg_utils.set_attribute(tspan, "font-variant", "small-caps")
+
+        if style.underline:
+            svg_utils.append_attribute(tspan, "text-decoration", "underline")
+        if style.strikethrough:
+            svg_utils.append_attribute(tspan, "text-decoration", "line-through")
+
+        # NOTE: Photoshop uses different values for subscript position/size.
+        # Using baseline-shift with sub or super will result in inaccurate rendering.
+        if style.font_baseline == FontBaseline.SUPERSCRIPT:
+            svg_utils.set_attribute(
+                tspan,
+                "baseline-shift",
+                style.font_size * text_setting.superscript_position,
+            )
+            svg_utils.set_attribute(
+                tspan, "font-size", style.font_size * text_setting.superscript_size
+            )
+        elif style.font_baseline == FontBaseline.SUBSCRIPT:
+            svg_utils.set_attribute(
+                tspan,
+                "baseline-shift",
+                -style.font_size * text_setting.subscript_position,
+            )
+            svg_utils.set_attribute(
+                tspan, "font-size", style.font_size * text_setting.subscript_size
+            )
+
+        if style.tracking != 0:
+            # NOTE: Photoshop tracking is in 1/1000 em units.
+            svg_utils.set_attribute(
+                tspan,
+                "letter-spacing",
+                svg_utils.num2str(style.tracking / 1000 * style.font_size),
+            )
+
+        if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
+            # NOTE: Transform cannot be applied to tspan in SVG 1.1 but only in SVG 2.
+            # Workaround would be to split tspan's into text nodes, but it's complex.
+            # Singleton merge won't work as long as the text container has transform attribute,
+            # which always happens here.
+            logger.debug(
+                "Applying scale transform to tspan is not supported in SVG 1.1."
+            )
+            svg_utils.append_attribute(
+                tspan,
+                "transform",
+                "scale({},{})".format(
+                    svg_utils.num2str(style.horizontal_scale),
+                    svg_utils.num2str(style.vertical_scale),
+                ),
+            )
+
+        if (
+            text_setting.writing_direction == WritingDirection.VERTICAL_RL
+            and style.baseline_direction == 1
+        ):
             # NOTE: Only Chromium-based browsers support 'text-orientation: upright' for SVG.
             logger.debug(
                 "Applying text-orientation: upright, but may not be supported in SVG renderers."
@@ -189,14 +255,15 @@ class TypeConverter(ConverterProtocol):
             self._merge_singleton_children(child)
         if len(element) == 1:
             child = element[0]
+            if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:
+                return  # Conflicting attributes, do not merge
+
             if child.text:
                 element.text = (element.text or "") + child.text
             if child.tail:
                 element.tail = (element.tail or "") + child.tail
             for key, value in child.attrib.items():
                 if key in element.attrib:
-                    # This is expected because text is always inserted into leaf tspans,
-                    # and we're now hoisting child attributes to the parent.
                     logger.debug(
                         f"Overwriting attribute '{key}' from '{element.attrib[key]}' to '{value}'"
                     )
@@ -221,21 +288,33 @@ class TypeConverter(ConverterProtocol):
         """Merge common child attributes."""
         for child in list(element):
             self._merge_common_child_attributes(child, excludes)
-        common_attribs: dict[str, str | None] = {}
-        for child in element:
-            for key, value in child.attrib.items():
-                if key in excludes:
-                    continue
-                if key not in common_attribs:
-                    common_attribs[key] = value
-                elif common_attribs[key] != value:
-                    common_attribs[key] = None
-        for key, value in common_attribs.items():  # type: ignore
-            if value is not None:
-                element.attrib[key] = value
-                for child in element:
-                    if key in child.attrib:
-                        del child.attrib[key]
+
+        # Find attributes that all children have in common with the same value.
+        children = list(element)
+        if not children:
+            return
+
+        # Start with the first child's attributes as candidates
+        common_attribs: dict[str, str] = {
+            key: value
+            for key, value in children[0].attrib.items()
+            if key not in excludes
+        }
+
+        # Check if remaining children all have the same values
+        for child in children[1:]:
+            keys_to_remove = []
+            for key in common_attribs:
+                if key not in child.attrib or child.attrib[key] != common_attribs[key]:
+                    keys_to_remove.append(key)
+            for key in keys_to_remove:
+                del common_attribs[key]
+
+        # Migrate the common attributes to the parent element.
+        for key, value in common_attribs.items():
+            element.attrib[key] = value
+            for child in element:
+                del child.attrib[key]
 
 
 @dataclasses.dataclass
@@ -252,7 +331,7 @@ class Paragraph:
     @property
     def justification(self) -> Justification:
         """Get justification value from paragraph style."""
-        return Justification(self.style.get("Justification", 0))
+        return Justification(self.style.justification)
 
     def get_text_anchor(self) -> str | None:
         """Get SVG text-anchor value based on justification."""
@@ -266,6 +345,12 @@ class Paragraph:
             Justification.JUSTIFY_ALL: None,  # Justify all does not map to text-anchor
         }
         return mapping.get(self.justification, None)
+
+    def compute_leading(self) -> float:
+        """Compute leading value for the paragraph."""
+        return max(
+            span.style.compute_leading(self.style.auto_leading) for span in self.spans
+        )
 
 
 @dataclasses.dataclass
@@ -344,6 +429,109 @@ class ParagraphSheet:
     def get(self, key: str, default: Any = None) -> Any:
         return self.properties.get(key, default)
 
+    @property
+    def justification(self) -> Justification:
+        """Get justification value."""
+        return Justification(self.properties.get("Justification", 0))
+
+    @property
+    def first_line_indent(self) -> float:
+        """Get first line indent value."""
+        return float(self.properties.get("FirstLineIndent", 0.0))
+
+    @property
+    def start_indent(self) -> float:
+        """Get start indent value."""
+        return float(self.properties.get("StartIndent", 0.0))
+
+    @property
+    def end_indent(self) -> float:
+        """Get end indent value."""
+        return float(self.properties.get("EndIndent", 0.0))
+
+    @property
+    def space_before(self) -> float:
+        """Get space before value."""
+        return float(self.properties.get("SpaceBefore", 0.0))
+
+    @property
+    def space_after(self) -> float:
+        """Get space after value."""
+        return float(self.properties.get("SpaceAfter", 0.0))
+
+    @property
+    def auto_hyphenate(self) -> bool:
+        """Whether auto hyphenation is enabled."""
+        return bool(self.properties.get("AutoHyphenate", False))
+
+    @property
+    def hyphenation_word_size(self) -> int:
+        """Get hyphenation word size."""
+        return int(self.properties.get("HyphenationWordSize", 6))
+
+    @property
+    def pre_hyphen(self) -> int:
+        """Get pre-hyphen characters count."""
+        return int(self.properties.get("PreHyphen", 2))
+
+    @property
+    def post_hyphen(self) -> int:
+        """Get post-hyphen characters count."""
+        return int(self.properties.get("PostHyphen", 2))
+
+    @property
+    def consecutive_hyphens(self) -> int:
+        """Get consecutive hyphens limit."""
+        return int(self.properties.get("ConsecutiveHyphens", 8))
+
+    @property
+    def zone(self) -> float:
+        """Get zone value."""
+        return float(self.properties.get("Zone", 36.0))
+
+    @property
+    def word_spacing(self) -> tuple[float, float, float]:
+        """Get word spacing as (min, desired, max)."""
+        ws = self.properties.get("WordSpacing", [1.0, 1.0, 2.0])
+        return (float(ws[0]), float(ws[1]), float(ws[2]))
+
+    @property
+    def letter_spacing(self) -> tuple[float, float, float]:
+        """Get letter spacing as (min, desired, max)."""
+        ls = self.properties.get("LetterSpacing", [0.0, 0.0, 0.05])
+        return (float(ls[0]), float(ls[1]), float(ls[2]))
+
+    @property
+    def glyph_spacing(self) -> tuple[float, float, float]:
+        """Get glyph spacing as (min, desired, max)."""
+        gs = self.properties.get("GlyphSpacing", [1.0, 1.0, 1.0])
+        return (float(gs[0]), float(gs[1]), float(gs[2]))
+
+    @property
+    def auto_leading(self) -> float:
+        """Auto leading scale."""
+        return float(self.properties.get("AutoLeading", 1.2))
+
+    @property
+    def leading_type(self) -> int:
+        """Get leading type value."""
+        return int(self.properties.get("LeadingType", 0))
+
+    @property
+    def hanging(self) -> bool:
+        """Whether hanging punctuation is enabled."""
+        return bool(self.properties.get("Hanging", False))
+
+    @property
+    def kinsoku_order(self) -> int:
+        """Get kinsoku order value."""
+        return int(self.properties.get("KinsokuOrder", 0))
+
+    @property
+    def every_line_composer(self) -> bool:
+        """Whether every line composer is enabled."""
+        return bool(self.properties.get("EveryLineComposer", False))
+
 
 @dataclasses.dataclass
 class StyleSheet:
@@ -366,6 +554,152 @@ class StyleSheet:
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.style_sheet_data.get(key, default)
+
+    @property
+    def font(self) -> int:
+        """Get font index."""
+        return int(self.style_sheet_data.get("Font", 0))
+
+    @property
+    def font_size(self) -> float:
+        """Get font size value."""
+        return float(self.style_sheet_data.get("FontSize", 12.0))
+
+    @property
+    def faux_bold(self) -> bool:
+        """Whether faux bold is enabled."""
+        return bool(self.style_sheet_data.get("FauxBold", False))
+
+    @property
+    def faux_italic(self) -> bool:
+        """Whether faux italic is enabled."""
+        return bool(self.style_sheet_data.get("FauxItalic", False))
+
+    @property
+    def auto_leading(self) -> bool:
+        """Whether auto leading is enabled."""
+        return bool(self.style_sheet_data.get("AutoLeading", True))
+
+    @property
+    def leading(self) -> float:
+        """Get leading value."""
+        return float(self.style_sheet_data.get("Leading", 0.0))
+
+    @property
+    def horizontal_scale(self) -> float:
+        """Get horizontal scale value in the range (0.0, 1.0)."""
+        return float(self.style_sheet_data.get("HorizontalScale", 1.0))
+
+    @property
+    def vertical_scale(self) -> float:
+        """Get vertical scale value in the range (0.0, 1.0)."""
+        return float(self.style_sheet_data.get("VerticalScale", 1.0))
+
+    @property
+    def tracking(self) -> int:
+        """Get tracking value."""
+        return int(self.style_sheet_data.get("Tracking", 0))
+
+    @property
+    def auto_kerning(self) -> bool:
+        """Whether auto kerning is enabled."""
+        return bool(self.style_sheet_data.get("AutoKern", True))
+
+    @property
+    def kerning(self) -> int:
+        """Get kerning value."""
+        return int(self.style_sheet_data.get("Kerning", 0))
+
+    @property
+    def baseline_shift(self) -> float:
+        """Get baseline shift value."""
+        return float(self.style_sheet_data.get("BaselineShift", 0.0))
+
+    @property
+    def font_caps(self) -> FontCaps:
+        """Get font capitalization style."""
+        return FontCaps(self.style_sheet_data.get("FontCaps", 0))
+
+    @property
+    def font_baseline(self) -> FontBaseline:
+        """Font baseline."""
+        return FontBaseline(self.style_sheet_data.get("FontBaseline", 0))
+
+    @property
+    def underline(self) -> bool:
+        """Whether underline is enabled."""
+        return bool(self.style_sheet_data.get("Underline", False))
+
+    @property
+    def strikethrough(self) -> bool:
+        """Whether strikethrough is enabled."""
+        return bool(self.style_sheet_data.get("Strikethrough", False))
+
+    @property
+    def ligatures(self) -> bool:
+        """Whether ligatures are enabled."""
+        return bool(self.style_sheet_data.get("Ligatures", False))
+
+    @property
+    def discretionary_ligatures(self) -> bool:
+        """Whether discretionary ligatures are enabled."""
+        return bool(self.style_sheet_data.get("DLigatures", False))
+
+    @property
+    def baseline_direction(self) -> int:
+        """Get baseline direction value."""
+        return int(self.style_sheet_data.get("BaselineDirection", 0))
+
+    @property
+    def no_break(self) -> bool:
+        """Whether no-break is enabled."""
+        return bool(self.style_sheet_data.get("NoBreak", False))
+
+    @property
+    def fill_color(self) -> tuple[float, float, float, float]:
+        """Get fill color as ARGB tuple with values between 0 and 1."""
+        color = self.style_sheet_data.get("FillColor", None)
+        if color is None:
+            return (1.0, 0.0, 0.0, 0.0)  # Default black
+        assert "Type" in color and color["Type"].value == 1  # ARGB color
+        return tuple(color["Values"])
+
+    @property
+    def stroke_color(self) -> tuple[float, float, float, float]:
+        """Get stroke color as ARGB tuple with values between 0 and 1."""
+        color = self.style_sheet_data.get("StrokeColor", None)
+        if color is None:
+            return (0.0, 0.0, 0.0, 0.0)  # Default transparent
+        assert "Type" in color and color["Type"].value == 1  # ARGB color
+        return tuple(color["Values"])
+
+    @property
+    def fill_flag(self) -> bool:
+        """Whether fill is enabled."""
+        return bool(self.style_sheet_data.get("FillFlag", True))
+
+    @property
+    def stroke_flag(self) -> bool:
+        """Whether stroke is enabled."""
+        return bool(self.style_sheet_data.get("StrokeFlag", False))
+
+    def get_fill_color(self) -> str | None:
+        """Get fill color as hex string."""
+        if not self.fill_flag:
+            return None
+        return _get_hex_color_from_argb(self.fill_color)
+
+    def get_stroke_color(self) -> str | None:
+        """Get stroke color as hex string."""
+        if not self.stroke_flag:
+            return None
+        return _get_hex_color_from_argb(self.stroke_color)
+
+    def compute_leading(self, auto_leading_scale: float = 1.2) -> float:
+        """Compute leading value."""
+        if self.auto_leading:
+            return self.font_size * auto_leading_scale
+        return self.leading
 
 
 class RunLengthIndex:
@@ -597,6 +931,36 @@ class TypeSetting:
         )
 
     @property
+    def superscript_size(self) -> float:
+        """Superscript size from document resources."""
+        assert "SuperscriptSize" in self.document_resources
+        return float(self.document_resources["SuperscriptSize"].value)
+
+    @property
+    def subscript_size(self) -> float:
+        """Subscript size from document resources."""
+        assert "SubscriptSize" in self.document_resources
+        return float(self.document_resources["SubscriptSize"].value)
+
+    @property
+    def superscript_position(self) -> float:
+        """Superscript position from document resources."""
+        assert "SuperscriptPosition" in self.document_resources
+        return float(self.document_resources["SuperscriptPosition"].value)
+
+    @property
+    def subscript_position(self) -> float:
+        """Subscript position from document resources."""
+        assert "SubscriptPosition" in self.document_resources
+        return float(self.document_resources["SubscriptPosition"].value)
+
+    @property
+    def small_cap_size(self) -> float:
+        """Small cap size from document resources."""
+        assert "SmallCapSize" in self.document_resources
+        return float(self.document_resources["SmallCapSize"].value)
+
+    @property
     def _paragraph_run(self) -> DictElement:
         """Paragraph run dictionary from engine data."""
         assert "ParagraphRun" in self.engine_dict
@@ -635,6 +999,15 @@ class TypeSetting:
             ]
             yield Paragraph(style=paragraph_sheet, spans=spans)
 
+    def get_font_info(self, font_index: int) -> font_utils.FontInfo | None:
+        """Get the font family name for the given font index."""
+        font_info = self.font_set[font_index]
+        postscriptname = font_info.get("Name", None)
+        if postscriptname is None:
+            logger.warning(f"PostScript name not found for font index {font_index}.")
+            return None
+        return font_utils.FontInfo.find(postscriptname.value)
+
     def get_paragraph_sheet(self, sheet: ParagraphSheet) -> ParagraphSheet:
         """Get the merged paragraph sheet."""
         default_properties = dict(
@@ -661,40 +1034,14 @@ class TypeSetting:
         )
 
 
-def find_font_family(postscriptname: str) -> str | None:
-    """Find the font family name for the given span index."""
-    results = fontconfig.query(
-        where=f":postscriptname={postscriptname}", select=("family",)
-    )
-    if not results:
-        logger.warning(
-            f"Font file for '{postscriptname}' not found. "
-            "Make sure the font is installed on your system."
-        )
-        return None
-    return results[0]["family"][0]  # type: ignore
-
-
-def get_paint_content(paint: dict) -> str | None:
-    """Get the paint content from the style sheet."""
-    if paint is None:
-        logger.info("Paint content not found in style sheet.")
-        return None
-    if paint["Type"].value != 1:
-        # TODO: Check other paint types like gradients and patterns if any.
-        logger.info(
-            f"Unsupported Paint type: {paint['Type'].value}. Only Solid color is supported."
-        )
-        return None
-
-    values = paint["Values"]
-    # Assuming fill_color is in ARGB format with values between 0 and 1.
-    r = int(values[1] * 255)
-    g = int(values[2] * 255)
-    b = int(values[3] * 255)
-    a = values[0]
+def _get_hex_color_from_argb(argb: tuple[float, float, float, float]) -> str | None:
+    """Convert ARGB color tuple to hex string."""
+    a, r, g, b = argb
     if a == 0:
         return "none"
     elif ((r, g, b) == (0, 0, 0)) and (a == 1):
         return None  # Default black color in SVG.
-    return color_utils.rgba2hex((r, g, b), alpha=a)
+    r_int = int(r * 255)
+    g_int = int(g * 255)
+    b_int = int(b * 255)
+    return color_utils.rgba2hex((r_int, g_int, b_int), alpha=a)

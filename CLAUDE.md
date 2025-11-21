@@ -164,12 +164,19 @@ converter = Converter(psdimage, enable_text=False)  # Falls back to rasterizatio
 **Supported Features:**
 
 - Text content with multiple paragraphs and styled spans
-- Font family, size, weight, and color
+- Font family, size, weight (bold), and style (italic)
+- Faux bold and faux italic
+- Font color (solid fill and stroke colors)
 - Horizontal and vertical writing modes
 - Text alignment (left, center, right, justify)
-- Solid fill and stroke colors
+- Text decoration (underline, strikethrough)
+- Text transformation (all-caps, small-caps)
+- Superscript and subscript with accurate positioning
+- Baseline shift for custom vertical positioning
+- Letter spacing (tracking)
+- Line height (leading)
+- Horizontal and vertical text scaling
 - Position, rotation, and scaling transformations
-- Baseline shift for superscript/subscript
 
 **Current Limitations:**
 
@@ -179,7 +186,8 @@ converter = Converter(psdimage, enable_text=False)  # Falls back to rasterizatio
 - Line height uses approximate calculation for auto-leading
 - Requires fonts to be installed on the system (uses `fontconfig` for font resolution)
 - Cross-platform font availability may vary
-- Advanced typography features (kerning, tracking, ligatures) not supported
+- Kerning and ligatures not supported
+- Horizontal/vertical text scaling uses SVG 2.0 features (may not work in older renderers)
 
 **Font Requirements:**
 

@@ -112,18 +112,26 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 **Supported Features:**
 
 * Text content with multiple paragraphs and styled spans
-* Font family, size, weight, and color
+* Font family, size, weight (bold), and style (italic)
+* Faux bold and faux italic
+* Font color (solid fill and stroke colors)
 * Horizontal and vertical writing modes
 * Text alignment (left, center, right, justify)
-* Solid fill and stroke colors
+* Text decoration (underline, strikethrough)
+* Text transformation (all-caps, small-caps)
+* Superscript and subscript with accurate positioning
+* Baseline shift for custom vertical positioning
+* Letter spacing (tracking)
+* Line height (leading)
+* Horizontal and vertical text scaling
 * Position, rotation, and scaling transformations
-* Baseline shift (superscript/subscript)
 
 **Unsupported Features:**
 
 * Text wrapping for bounding box text
 * Gradient fills and pattern strokes
-* Advanced typography (kerning, tracking, ligatures, OpenType features)
+* Kerning and ligatures
+* OpenType features
 * Variable fonts and font variations
 
 **Font Requirements:**
@@ -147,8 +155,11 @@ Rendering quality varies significantly across SVG renderers:
 
   * ``text-orientation: upright`` for vertical writing mode
   * ``dominant-baseline`` alignment for vertical text
+  * ``transform`` on ``<tspan>`` elements (SVG 1.1 limitation for horizontal/vertical scaling)
 
 For best results with vertical text, use Chromium-based browsers for viewing or rendering.
+
+**Note on Text Scaling:** Horizontal and vertical text scaling uses ``transform`` on ``<tspan>`` elements, which is an SVG 2.0 feature. While most modern browsers support this, some older SVG 1.1 renderers may not render scaled text correctly.
 
 Rasterized Text (Image Fallback)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
