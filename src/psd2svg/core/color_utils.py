@@ -7,6 +7,26 @@ from psd_tools.terminology import Klass, Enum
 logger = logging.getLogger(__name__)
 
 
+def rgb2hex(values: Sequence[int]) -> str:
+    """Convert RGB color to hex string."""
+    assert len(values) == 3
+    return (
+        f"#{clip_int(values[0]):02x}{clip_int(values[1]):02x}{clip_int(values[2]):02x}"
+    )
+
+
+def rgba2hex(values: Sequence[int], alpha: float = 1.0) -> str:
+    """Convert RGBA color to hex string, considering alpha channel."""
+    assert len(values) == 3
+    if alpha >= 1.0:
+        return rgb2hex(values)
+    r = clip_int(values[0])
+    g = clip_int(values[1])
+    b = clip_int(values[2])
+    a = max(0, min(255, int(alpha * 255)))
+    return f"#{r:02x}{g:02x}{b:02x}{a:02x}"
+
+
 def cmyk2rgb(values: Sequence[float]) -> tuple[int, int, int]:
     """Convert CMYK color to RGB color."""
     assert len(values) == 4

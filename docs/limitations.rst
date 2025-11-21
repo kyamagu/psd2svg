@@ -100,10 +100,60 @@ Smart Object Features
 Text Layers
 -----------
 
-Rasterization of Text
-~~~~~~~~~~~~~~~~~~~~~
+Text layers can be converted to SVG ``<text>`` elements (``enable_text=True``, default) or rasterized as images (``enable_text=False``).
 
-**Important:** Text layers are currently **rasterized** (uses bitmap preview in PSD files) rather than being rendered as SVG text elements.
+**Note:** Text conversion is experimental and has limitations. For production use, test thoroughly with your target SVG renderers.
+
+Native SVG Text Conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``enable_text=True`` (default), text layers are converted to native SVG ``<text>`` elements.
+
+**Supported Features:**
+
+* Text content with multiple paragraphs and styled spans
+* Font family, size, weight, and color
+* Horizontal and vertical writing modes
+* Text alignment (left, center, right, justify)
+* Solid fill and stroke colors
+* Position, rotation, and scaling transformations
+* Baseline shift (superscript/subscript)
+
+**Unsupported Features:**
+
+* Text wrapping for bounding box text
+* Gradient fills and pattern strokes
+* Advanced typography (kerning, tracking, ligatures, OpenType features)
+* Variable fonts and font variations
+
+**Font Requirements:**
+
+Text conversion requires fonts to be installed on the system. The converter uses ``fontconfig`` to resolve font names. If a font is not found:
+
+* A warning is logged
+* Text may fall back to a default system font
+* Results may differ from Photoshop's rendering
+
+Cross-platform font availability varies—test on your target deployment environment.
+
+**SVG Renderer Compatibility:**
+
+Rendering quality varies significantly across SVG renderers:
+
+* **Chromium-based browsers** (Chrome, Edge): Best support, including vertical text features
+* **Firefox**: Good support with minor differences
+* **Safari**: Acceptable support with some limitations
+* **resvg** (bundled rasterizer): Does not support:
+
+  * ``text-orientation: upright`` for vertical writing mode
+  * ``dominant-baseline`` alignment for vertical text
+
+For best results with vertical text, use Chromium-based browsers for viewing or rendering.
+
+Rasterized Text (Image Fallback)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``enable_text=False``, the converter uses the rasterized preview image embedded in the PSD file.
 
 This means:
 
@@ -111,11 +161,6 @@ This means:
 * **Text is not selectable** or searchable
 * **Scaling may reduce quality** since text becomes a raster image
 * **File size increases** with embedded raster text
-
-**Future:** Native SVG text element support is planned for a future release.
-
-Text Quality Considerations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since text is rasterized:
 

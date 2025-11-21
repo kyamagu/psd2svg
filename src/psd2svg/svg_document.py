@@ -46,7 +46,9 @@ class SVGDocument:
     # TODO: Font handling.
 
     @staticmethod
-    def from_psd(psdimage: PSDImage, enable_live_shapes: bool = True) -> "SVGDocument":
+    def from_psd(
+        psdimage: PSDImage, enable_live_shapes: bool = True, enable_text: bool = True
+    ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
         Args:
@@ -55,10 +57,14 @@ class SVGDocument:
                 Disabling live shapes results in <path> elements instead of
                 shape primitives like <rect> or <circle>. This may be more
                 accurate, but less editable.
+            enable_text: Enable text layer conversion. If False, text layers
+                are rasterized as images.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
-        converter = Converter(psdimage, enable_live_shapes=enable_live_shapes)
+        converter = Converter(
+            psdimage, enable_live_shapes=enable_live_shapes, enable_text=enable_text
+        )
         converter.build()
         return SVGDocument(svg=converter.svg, images=converter.images)
 
