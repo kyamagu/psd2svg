@@ -100,41 +100,60 @@ Smart Object Features
 Text Layers
 -----------
 
-Text layer conversion can be enabled with the ``enable_text=True`` option, but there are several limitations.
-When ``enable_text=False``, the converter uses the rasterized preview of text layers embedded in the PSD file.
+Text layers can be converted to SVG ``<text>`` elements (``enable_text=True``, default) or rasterized as images (``enable_text=False``).
 
-Text Conversion Features
-~~~~~~~~~~~~~~~~~~~~~~~~
+**Note:** Text conversion is experimental and has limitations. For production use, test thoroughly with your target SVG renderers.
 
-When ``enable_text=True``, the following features are supported:
+Native SVG Text Conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Basic text content extraction
-* Font family, size, color, and weight
-* Text alignment (left, center, right)
-* Vertical and horizontal writing modes
-* Simple transformations (position, rotation, scaling)
+When ``enable_text=True`` (default), text layers are converted to native SVG ``<text>`` elements.
 
-However, the following text features are not supported:
+**Supported Features:**
+
+* Text content with multiple paragraphs and styled spans
+* Font family, size, weight, and color
+* Horizontal and vertical writing modes
+* Text alignment (left, center, right, justify)
+* Solid fill and stroke colors
+* Position, rotation, and scaling transformations
+* Baseline shift (superscript/subscript)
+
+**Unsupported Features:**
 
 * Text wrapping for bounding box text
-* Advanced typography features (kerning, tracking, ligatures)
 * Gradient fills and pattern strokes
+* Advanced typography (kerning, tracking, ligatures, OpenType features)
+* Variable fonts and font variations
 
-**Renderer-Specific Limitations:**
+**Font Requirements:**
 
-Rendering quality depends heavily on the SVG renderer being used. Different browsers and tools have varying levels of SVG specification support, particularly for text rendering.
+Text conversion requires fonts to be installed on the system. The converter uses ``fontconfig`` to resolve font names. If a font is not found:
 
-The bundled resvg library does not support:
+* A warning is logged
+* Text may fall back to a default system font
+* Results may differ from Photoshop's rendering
 
-* Text orientation in vertical writing mode (``text-orientation: upright``)
-* Dominant baseline alignment for vertical text
+Cross-platform font availability varies—test on your target deployment environment.
 
-For best results with vertical text, use a Chromium-based browser which provides the most complete SVG text support.
+**SVG Renderer Compatibility:**
 
-Rasterized Text Previews
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Rendering quality varies significantly across SVG renderers:
 
-When ``enable_text=False``, the converter uses the rasterized preview image of text layers embedded in the PSD file.
+* **Chromium-based browsers** (Chrome, Edge): Best support, including vertical text features
+* **Firefox**: Good support with minor differences
+* **Safari**: Acceptable support with some limitations
+* **resvg** (bundled rasterizer): Does not support:
+
+  * ``text-orientation: upright`` for vertical writing mode
+  * ``dominant-baseline`` alignment for vertical text
+
+For best results with vertical text, use Chromium-based browsers for viewing or rendering.
+
+Rasterized Text (Image Fallback)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``enable_text=False``, the converter uses the rasterized preview image embedded in the PSD file.
 
 This means:
 

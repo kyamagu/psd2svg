@@ -153,13 +153,23 @@ image.save('output.png')
 
 #### Text Layer Conversion
 
-Text layer conversion to SVG `<text>` elements is **experimental** and enabled by default. It can be disabled via the `enable_type` flag:
+Text layer conversion to SVG `<text>` elements is **experimental** and enabled by default. It can be disabled via the `enable_text` flag:
 
 ```python
 from psd2svg.core.converter import Converter
 
-converter = Converter(psdimage, enable_type=False)  # Falls back to rasterization
+converter = Converter(psdimage, enable_text=False)  # Falls back to rasterization
 ```
+
+**Supported Features:**
+
+- Text content with multiple paragraphs and styled spans
+- Font family, size, weight, and color
+- Horizontal and vertical writing modes
+- Text alignment (left, center, right, justify)
+- Solid fill and stroke colors
+- Position, rotation, and scaling transformations
+- Baseline shift for superscript/subscript
 
 **Current Limitations:**
 
@@ -169,13 +179,12 @@ converter = Converter(psdimage, enable_type=False)  # Falls back to rasterizatio
 - Line height uses approximate calculation for auto-leading
 - Requires fonts to be installed on the system (uses `fontconfig` for font resolution)
 - Cross-platform font availability may vary
+- Advanced typography features (kerning, tracking, ligatures) not supported
 
-**Supported Features:**
+**Font Requirements:**
 
-- Basic text rendering with proper font family, size, and color
-- Text alignment (left, center, right)
-- Multiple paragraphs and styled spans
-- Baseline shift for superscript/subscript
-- Fill and stroke colors (solid only)
+Text conversion requires fonts to be installed on the system. When fonts are not available, a warning is logged and the text may fall back to a default system font.
 
-When fonts are not available, a warning is logged and the text may fall back to a default system font.
+**Renderer Compatibility:**
+
+SVG text rendering quality varies across renderers. Chromium-based browsers provide the best support, including for vertical text features. The bundled resvg rasterizer does not support `text-orientation: upright` or `dominant-baseline` for vertical text.
