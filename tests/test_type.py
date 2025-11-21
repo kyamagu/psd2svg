@@ -18,6 +18,7 @@ def convert_psd_to_svg(psd_file: str) -> ET.Element:
 @pytest.mark.parametrize(
     "psd_file, expected_justification",
     [
+        # Horizontal text cases
         ("texts/paragraph-shapetype0-justification0.psd", None),
         ("texts/paragraph-shapetype0-justification1.psd", "end"),
         ("texts/paragraph-shapetype0-justification2.psd", "middle"),
@@ -27,6 +28,31 @@ def convert_psd_to_svg(psd_file: str) -> ET.Element:
         ("texts/paragraph-shapetype1-justification3.psd", None),
         ("texts/paragraph-shapetype1-justification4.psd", "end"),
         ("texts/paragraph-shapetype1-justification5.psd", "middle"),
+        # Vertical text cases
+        (
+            "texts/shapetype0-writingdirection2-baselinedirection2-justification0.psd",
+            None,
+        ),
+        (
+            "texts/shapetype0-writingdirection2-baselinedirection2-justification1.psd",
+            "end",
+        ),
+        (
+            "texts/shapetype0-writingdirection2-baselinedirection2-justification2.psd",
+            "middle",
+        ),
+        (
+            "texts/shapetype1-writingdirection2-baselinedirection2-justification0.psd",
+            None,
+        ),
+        (
+            "texts/shapetype1-writingdirection2-baselinedirection2-justification1.psd",
+            "end",
+        ),
+        (
+            "texts/shapetype1-writingdirection2-baselinedirection2-justification2.psd",
+            "middle",
+        ),
     ],
 )
 def test_text_paragraph_justification(
@@ -81,3 +107,26 @@ def test_text_paragraph_positions() -> None:
     for i in range(1, 4):
         assert tspan_nodes[i].attrib.get("x") == "0"
         assert tspan_nodes[i].attrib.get("dy") is not None
+
+
+def test_text_writing_direction() -> None:
+    """Test text writing direction handling."""
+
+    # Vertical Right to Left, characters upright
+    # NOTE: Only Chromium-based browsers support 'text-orientation: upright' for SVG.
+    svg = convert_psd_to_svg(
+        "texts/shapetype0-writingdirection2-baselinedirection1-justification0.psd"
+    )
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    assert text_node.attrib.get("writing-mode") == "vertical-rl"
+    assert text_node.attrib.get("style") == "text-orientation: upright"
+
+    # Vertical Right to Left, baseline direction
+    svg = convert_psd_to_svg(
+        "texts/shapetype0-writingdirection2-baselinedirection2-justification0.psd"
+    )
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    assert text_node.attrib.get("writing-mode") == "vertical-rl"
+    assert text_node.attrib.get("style") is None

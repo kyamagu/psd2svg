@@ -13,8 +13,8 @@ from psd_tools.psd.tagged_blocks import TypeToolObjectSetting
 from psd_tools.terminology import Key
 
 from psd2svg import svg_utils
-from psd2svg.core.base import ConverterProtocol
 from psd2svg.core import color_utils
+from psd2svg.core.base import ConverterProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,19 @@ class ShapeType(IntEnum):
     BOUNDING_BOX = 1
 
 
+class WritingDirection(IntEnum):
+    """Text writing direction values from Photoshop."""
+
+    HORIZONTAL_TB = 0
+    VERTICAL_RL = 2
+
+
 class TypeConverter(ConverterProtocol):
     """Mixin for type layers."""
 
     def add_type(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None:
         """Add a type layer to the svg document."""
-        if not self.enable_type:
+        if not self.enable_text:
             return self.add_pixel(layer, **attrib)
 
         text_setting = TypeSetting(layer._data)
@@ -56,6 +63,8 @@ class TypeConverter(ConverterProtocol):
             parent=self.current,
             transform=text_setting.transform.to_svg_matrix(),
         )
+        if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
+            svg_utils.set_attribute(text_node, "writing-mode", "vertical-rl")
         # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
         # TODO: Support adjustments.
         for i, paragraph in enumerate(text_setting):
@@ -85,14 +94,27 @@ class TypeConverter(ConverterProtocol):
         )  # Approximate for AutoLeading=True
         # TODO: Support manual leading.
 
-        # Horizontal positioning based on justification and shape type.
+        # Positioning based on justification, shape type, and writing direction.
         text_anchor = paragraph.get_text_anchor()
         x = 0.0
+        y = 0.0
+        dominant_baseline = None
         if text_setting.shape_type == ShapeType.BOUNDING_BOX:
-            if text_anchor == "end":
+            dominant_baseline = "text-before-edge"
+            if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
+                if text_anchor == "end":
+                    x = text_setting.bounds.right
+                elif text_anchor == "middle":
+                    x = (text_setting.bounds.left + text_setting.bounds.right) / 2
+            elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
+                logger.debug(
+                    "Dominant baseline may not be supported by SVG renderers for vertical text."
+                )
                 x = text_setting.bounds.right
-            elif text_anchor == "middle":
-                x = (text_setting.bounds.left + text_setting.bounds.right) / 2
+                if text_anchor == "end":
+                    y = text_setting.bounds.bottom
+                elif text_anchor == "middle":
+                    y = (text_setting.bounds.top + text_setting.bounds.bottom) / 2
 
         # Create paragraph node.
         paragraph_node = svg_utils.create_node(
@@ -100,10 +122,9 @@ class TypeConverter(ConverterProtocol):
             parent=text_node,
             text_anchor=text_anchor,
             x=None if x == 0.0 and first_paragraph else x,
+            y=None if y == 0.0 and first_paragraph else y,
             dy=line_height if not first_paragraph else None,
-            dominant_baseline="text-before-edge"
-            if text_setting.shape_type == ShapeType.BOUNDING_BOX
-            else None,
+            dominant_baseline=dominant_baseline,
         )
 
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
@@ -142,7 +163,7 @@ class TypeConverter(ConverterProtocol):
             shift_value = span.style["BaselineShift"].value
             if shift_value != 0:
                 baseline_shift = shift_value
-        return svg_utils.create_node(
+        tspan = svg_utils.create_node(
             "tspan",
             parent=paragraph_node,
             text=span.text.strip("\r"),  # Remove carriage return characters
@@ -152,6 +173,15 @@ class TypeConverter(ConverterProtocol):
             stroke=stroke,
             baseline_shift=baseline_shift,
         )
+        if span.style.get("BaselineDirection") == 1:
+            # NOTE: Only Chromium-based browsers support 'text-orientation: upright' for SVG.
+            logger.debug(
+                "Applying text-orientation: upright, but may not be supported in SVG renderers."
+            )
+            svg_utils.add_style(tspan, "text-orientation", "upright")
+            # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
+            # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
+        return tspan
 
     def _merge_singleton_children(self, element: ET.Element) -> None:
         """Merge singleton child nodes into the parent node."""
@@ -520,18 +550,20 @@ class TypeSetting:
         return ShapeType(shape["ShapeType"].value)
 
     @property
-    def writing_direction(self) -> int:
+    def writing_direction(self) -> WritingDirection:
         """Writing direction from engine data.
 
         Values are:
-        - 0: Left to Right
-        - 1: Right to Left (unconfirmed)
-        - 2: Top to Bottom
+        - 0: Horizontal Top to Bottom
+        - 2: Vertical Right to Left
+
+        TODO: There could be other values, need to verify.
         """
         assert "Rendered" in self.engine_dict
         rendered = self.engine_dict["Rendered"]
-        assert "WritingDirection" in rendered
-        return int(rendered["WritingDirection"].value)
+        assert "Shapes" in rendered
+        assert "WritingDirection" in rendered["Shapes"]
+        return WritingDirection(rendered["Shapes"]["WritingDirection"].value)
 
     @property
     def point_base(self) -> tuple[float, float]:

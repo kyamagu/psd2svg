@@ -48,7 +48,7 @@ class Converter(
     Args:
         psdimage: Source PSDImage to convert.
         enable_live_shapes: Enable live shape conversion when possible.
-        enable_type: Enable text layer conversion when possible.
+        enable_text: Enable text layer conversion when possible.
     """
 
     _id_counter: AutoCounter | None = None
@@ -57,7 +57,7 @@ class Converter(
         self,
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
-        enable_type: bool = True,
+        enable_text: bool = True,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -66,7 +66,7 @@ class Converter(
             raise TypeError("psdimage must be an instance of PSDImage")
         self.psd = psdimage
         self.enable_live_shapes = enable_live_shapes
-        self.enable_type = enable_type
+        self.enable_text = enable_text
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(

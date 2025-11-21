@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 def rgb2hex(values: Sequence[int]) -> str:
     """Convert RGB color to hex string."""
     assert len(values) == 3
-    return f"#{clip_int(values[0]):02x}{clip_int(values[1]):02x}{clip_int(values[2]):02x}"
+    return (
+        f"#{clip_int(values[0]):02x}{clip_int(values[1]):02x}{clip_int(values[2]):02x}"
+    )
 
 
 def rgba2hex(values: Sequence[int], alpha: float = 1.0) -> str:

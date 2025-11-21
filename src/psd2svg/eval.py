@@ -42,13 +42,17 @@ def create_diff_image(psdimage: PSDImage, amplify: float = 1.0) -> Image.Image:
     if rasterized.mode != "RGB":
         rasterized = rasterized.convert("RGB")
 
-    diff = np.abs(np.array(original, dtype=np.float32) - np.array(rasterized, dtype=np.float32))
+    diff = np.abs(
+        np.array(original, dtype=np.float32) - np.array(rasterized, dtype=np.float32)
+    )
     diff = np.clip(diff * amplify, 0, 255).astype(np.uint8)
     return Image.fromarray(diff)
 
 
 def compare_raster_images(
-    input1: np.ndarray | Image.Image, input2: np.ndarray | Image.Image, metric: str = "MSE"
+    input1: np.ndarray | Image.Image,
+    input2: np.ndarray | Image.Image,
+    metric: str = "MSE",
 ) -> float:
     """Compare two raster images in numpy array format."""
     input1, input2 = _normalize_images(input1, input2)

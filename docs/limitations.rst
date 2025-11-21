@@ -100,10 +100,41 @@ Smart Object Features
 Text Layers
 -----------
 
-Rasterization of Text
-~~~~~~~~~~~~~~~~~~~~~
+Text layer conversion can be enabled with the ``enable_text=True`` option, but there are several limitations.
+When ``enable_text=False``, the converter uses the rasterized preview of text layers embedded in the PSD file.
 
-**Important:** Text layers are currently **rasterized** (uses bitmap preview in PSD files) rather than being rendered as SVG text elements.
+Text Conversion Features
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``enable_text=True``, the following features are supported:
+
+* Basic text content extraction
+* Font family, size, color, and weight
+* Text alignment (left, center, right)
+* Vertical and horizontal writing modes
+* Simple transformations (position, rotation, scaling)
+
+However, the following text features are not supported:
+
+* Text wrapping for bounding box text
+* Advanced typography features (kerning, tracking, ligatures)
+* Gradient fills and pattern strokes
+
+**Renderer-Specific Limitations:**
+
+Rendering quality depends heavily on the SVG renderer being used. Different browsers and tools have varying levels of SVG specification support, particularly for text rendering.
+
+The bundled resvg library does not support:
+
+* Text orientation in vertical writing mode (``text-orientation: upright``)
+* Dominant baseline alignment for vertical text
+
+For best results with vertical text, use a Chromium-based browser which provides the most complete SVG text support.
+
+Rasterized Text Previews
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``enable_text=False``, the converter uses the rasterized preview image of text layers embedded in the PSD file.
 
 This means:
 
@@ -111,11 +142,6 @@ This means:
 * **Text is not selectable** or searchable
 * **Scaling may reduce quality** since text becomes a raster image
 * **File size increases** with embedded raster text
-
-**Future:** Native SVG text element support is planned for a future release.
-
-Text Quality Considerations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since text is rasterized:
 
