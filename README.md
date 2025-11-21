@@ -175,19 +175,31 @@ pytest
 
 Text layer conversion to SVG `<text>` elements is **experimental** and enabled by default. Text layers are converted to native SVG text with proper styling when possible.
 
-**Limitations:**
+**Supported text features:**
+
+- Font family, size, weight (bold), and style (italic)
+- Faux bold and faux italic
+- Text decoration (underline, strikethrough)
+- Text transformation (all-caps, small-caps)
+- Superscript and subscript
+- Baseline shift, letter spacing (tracking), and line height (leading)
+- Horizontal and vertical text scaling
+- Text alignment and vertical writing modes
+
+**Known limitations:**
 
 - Requires fonts to be installed on your system
 - Only solid colors supported (no gradients or patterns for text)
 - Text wrapping in bounding boxes not fully supported
-- Transform matrices not fully implemented
+- Kerning and ligatures not supported
+- Text scaling may not work in older SVG 1.1 renderers
 
 To disable and fall back to rasterization:
 
 ```python
 from psd2svg.core.converter import Converter
 
-converter = Converter(psdimage, enable_type=False)
+converter = Converter(psdimage, enable_text=False)
 ```
 
-See the documentation for more details on text layer support and limitations.
+See the documentation for complete details on text layer support and limitations.
