@@ -6,6 +6,15 @@ from psd2svg.core.converter import Converter
 
 from .conftest import get_fixture
 
+try:
+    import fontconfig
+
+    _TIMES_FONT_AVAILABLE = bool(
+        fontconfig.query(where=":postscriptname=Times-Roman", select=("family",))
+    )
+except Exception:
+    _TIMES_FONT_AVAILABLE = False
+
 
 def convert_psd_to_svg(psd_file: str) -> ET.Element:
     """Convert a PSD file to SVG and return the SVG as a string."""
@@ -85,7 +94,9 @@ def test_text_span_common_attributes() -> None:
     text_node = svg.find(".//text")
     assert text_node is not None
     assert text_node.attrib.get("text-anchor") is None
-    assert text_node.attrib.get("font-family") == "Times"
+    # Only check font-family if Times font is available on the system
+    if _TIMES_FONT_AVAILABLE:
+        assert text_node.attrib.get("font-family") == "Times"
     # Check that individual spans still have their unique attributes
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) == 4
