@@ -65,9 +65,8 @@ class LayerConverter(ConverterProtocol):
 
     def add_artboard(self, layer: layers.Artboard, **attrib: str) -> ET.Element | None:
         """Add an artboard layer to the svg document."""
-        node = svg_utils.create_node(
+        node = self.create_node(
             "svg",
-            parent=self.current,
             class_=layer.kind,
             title=layer.name,
             x=layer.left,
@@ -78,7 +77,7 @@ class LayerConverter(ConverterProtocol):
                 [layer.left, layer.top, layer.width, layer.height]
             ),
             id=self.auto_id("artboard") if layer.has_effects() else None,
-            **attrib,
+            **attrib,  # type: ignore[arg-type]
         )
         with self.set_current(node):
             self.add_children(layer)
@@ -86,13 +85,12 @@ class LayerConverter(ConverterProtocol):
 
     def add_group(self, layer: layers.Group, **attrib: str) -> ET.Element | None:
         """Add a group layer to the svg document."""
-        node = svg_utils.create_node(
+        node = self.create_node(
             "g",
-            parent=self.current,
             class_=layer.kind,
             title=layer.name,
             id=self.auto_id("group") if layer.has_effects() else None,
-            **attrib,
+            **attrib,  # type: ignore[arg-type]
         )
         with self.set_current(node):
             self.add_children(layer)
@@ -140,7 +138,7 @@ class LayerConverter(ConverterProtocol):
 
         # When the layer has effects, we need to create a separate <image> to handle fill opacity.
         if layer.has_effects():
-            defs = svg_utils.create_node("defs", parent=self.current)
+            defs = self.create_node("defs")
             node = svg_utils.create_node(
                 "image",
                 parent=defs,
@@ -161,16 +159,15 @@ class LayerConverter(ConverterProtocol):
             self.apply_overlay_effects(layer, node)
             self.apply_stroke_effect(layer, node)
         else:
-            node = svg_utils.create_node(
+            node = self.create_node(
                 "image",
-                parent=self.current,
                 x=layer.left,
                 y=layer.top,
                 width=layer.width,
                 height=layer.height,
                 title=layer.name,
                 class_=layer.kind,
-                **attrib,
+                **attrib,  # type: ignore[arg-type]
             )
             if fill_opacity < 255:
                 self.set_opacity(fill_opacity / 255, node)
@@ -188,7 +185,7 @@ class LayerConverter(ConverterProtocol):
             )
         ):
             # We need to split the shape definition and effects.
-            defs = svg_utils.create_node("defs", parent=self.current)
+            defs = self.create_node("defs")
             with self.set_current(defs):
                 node = self.create_shape(
                     layer,
@@ -263,8 +260,8 @@ class LayerConverter(ConverterProtocol):
             raise ValueError(f"Layer has no vector mask: '{layer.name}'")
 
         # Create a clipping path definition.
-        clip_path = svg_utils.create_node(
-            "clipPath", parent=self.current, id=self.auto_id("clip"), class_="clipping"
+        clip_path = self.create_node(
+            "clipPath", id=self.auto_id("clip"), class_="clipping"
         )
         with self.set_current(clip_path):
             target = self.create_shape(

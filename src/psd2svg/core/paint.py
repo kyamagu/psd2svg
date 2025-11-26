@@ -48,8 +48,8 @@ class PaintConverter(ConverterProtocol):
             logger.debug(f"Fill is disabled for layer: '{layer.name}'")
             return
 
-        use = svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target), class_="fill"
+        use = self.create_node(
+            "use", href=svg_utils.get_uri(target), class_="fill"
         )
         self.set_fill(layer, use)
         self.set_blend_mode(layer.blend_mode, use)
@@ -62,9 +62,8 @@ class PaintConverter(ConverterProtocol):
             logger.debug(f"Layer has no stroke: '{layer.name}'")
             return
 
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             fill="transparent",
             class_="stroke",
@@ -219,17 +218,13 @@ class PaintConverter(ConverterProtocol):
 
     def add_linear_gradient(self, gradient: Descriptor) -> ET.Element:
         """Add linear gradient definition to the SVG document."""
-        node = svg_utils.create_node(
-            "linearGradient", parent=self.current, id=self.auto_id("gradient")
-        )
+        node = self.create_node("linearGradient", id=self.auto_id("gradient"))
         self.set_gradient_stops(gradient, node)
         return node
 
     def add_radial_gradient(self, gradient: Descriptor) -> ET.Element:
         """Add radial gradient definition to the SVG document."""
-        node = svg_utils.create_node(
-            "radialGradient", parent=self.current, id=self.auto_id("gradient")
-        )
+        node = self.create_node("radialGradient", id=self.auto_id("gradient"))
         self.set_gradient_stops(gradient, node)
         return node
 
@@ -371,9 +366,8 @@ class PaintConverter(ConverterProtocol):
             raise ValueError(f"Pattern data not found: {pattern_id}")
         image = pil_io.convert_pattern_to_pil(pattern_data)
 
-        node = svg_utils.create_node(
+        node = self.create_node(
             "pattern",
-            parent=self.current,
             id=self.auto_id("pattern"),
             width=image.width,
             height=image.height,

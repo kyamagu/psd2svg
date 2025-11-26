@@ -71,23 +71,19 @@ class AdjustmentConverter(ConverterProtocol):
     ) -> tuple[ET.Element, ET.Element]:
         """Create SVG filter structure for the adjustment layer."""
         wrapper = self._wrap_backdrop("symbol", id=self.auto_id("backdrop"))
-        filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id(name)
-        )
+        filter = self.create_node("filter", id=self.auto_id(name))
         # Backdrop use.
-        svg_utils.create_node(
+        self.create_node(
             "use",
-            parent=self.current,
             href=f"#{wrapper.get('id')}",
         )
         # Apply filter to the use.
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=f"#{wrapper.get('id')}",
             filter=f"url(#{filter.get('id')})",
             class_=name,
-            **attrib,  # Clipping context etc.
+            **attrib,  # type: ignore[arg-type]  # Clipping context etc.
         )
         self.set_layer_attributes(layer, use)
         use = self.apply_mask(layer, use)
@@ -103,7 +99,7 @@ class AdjustmentConverter(ConverterProtocol):
         siblings = list(self.current)
         if not siblings:
             logger.warning("No backdrop elements found to wrap for adjustment.")
-        wrapper = svg_utils.create_node(tag, parent=self.current, **attrib)
+        wrapper = self.create_node(tag, **attrib)  # type: ignore[arg-type]
         for node in siblings:
             self.current.remove(node)
             wrapper.append(node)

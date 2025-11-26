@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import xml.etree.ElementTree as ET
-from typing import Iterator
+from typing import Any, Iterator
 
 from PIL import Image
 from psd_tools import PSDImage
@@ -87,9 +87,8 @@ class Converter(
 
         if len(self.psd) == 0 and self.psd.has_preview():
             # Special case: No layers, just a flat image.
-            svg_utils.create_node(
+            self.create_node(
                 "image",
-                parent=self.current,
                 width=self.psd.width,
                 height=self.psd.height,
             )
@@ -102,6 +101,39 @@ class Converter(
         if self._id_counter is None:
             self._id_counter = AutoCounter()
         return self._id_counter.get_id(prefix)
+
+    def create_node(
+        self,
+        tag: str,
+        parent: ET.Element | None = None,
+        class_: str = "",
+        title: str = "",
+        text: str = "",
+        desc: str = "",
+        **kwargs: Any,
+    ) -> ET.Element:
+        """Create an SVG node with the current element as default parent.
+
+        This is a convenience wrapper around svg_utils.create_node that automatically
+        uses self.current as the parent if no parent is specified.
+
+        Args:
+            tag: The XML tag name.
+            parent: Optional parent element. Defaults to self.current.
+            class_: Optional class attribute.
+            title: Optional title element.
+            text: Optional text content.
+            desc: Optional description element.
+            **kwargs: Additional attributes to pass to svg_utils.create_node.
+
+        Returns:
+            The created XML element.
+        """
+        if parent is None:
+            parent = self.current
+        return svg_utils.create_node(
+            tag, parent=parent, class_=class_, title=title, text=text, desc=desc, **kwargs
+        )
 
     @contextlib.contextmanager
     def set_current(self, node: ET.Element) -> Iterator[None]:

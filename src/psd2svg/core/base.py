@@ -1,6 +1,6 @@
 import contextlib
 import xml.etree.ElementTree as ET
-from typing import Iterator, Protocol
+from typing import Any, Iterator, Protocol
 
 from PIL import Image
 from psd_tools import PSDImage
@@ -113,5 +113,15 @@ class ConverterProtocol(Protocol):
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...
+    def create_node(
+        self,
+        tag: str,
+        parent: ET.Element | None = None,
+        class_: str = "",
+        title: str = "",
+        text: str = "",
+        desc: str = "",
+        **kwargs: Any,
+    ) -> ET.Element: ...
     @contextlib.contextmanager
     def set_current(self, node: ET.Element) -> Iterator[None]: ...

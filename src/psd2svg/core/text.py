@@ -76,9 +76,8 @@ class TextConverter(ConverterProtocol):
 
     def _create_text_node(self, text_setting: "TypeSetting") -> ET.Element:
         """Create SVG text node from type setting."""
-        text_node = svg_utils.create_node(
+        text_node = self.create_node(
             "text",
-            parent=self.current,
             transform=text_setting.transform.to_svg_matrix(),
         )
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
