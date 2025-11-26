@@ -258,3 +258,81 @@ class TestFontInfoFind:
             pattern=":postscriptname=SpecialFont-Regular_1.0",
             select=("file", "family", "style", "weight"),
         )
+
+
+class TestFontInfoSerialization:
+    """Tests for FontInfo serialization methods."""
+
+    def test_to_dict(self) -> None:
+        """Test to_dict method converts FontInfo to dictionary."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        result = font.to_dict()
+
+        assert isinstance(result, dict)
+        assert result["postscript_name"] == "ArialMT"
+        assert result["file"] == "/path/to/arial.ttf"
+        assert result["family"] == "Arial"
+        assert result["style"] == "Regular"
+        assert result["weight"] == 80.0
+
+    def test_from_dict(self) -> None:
+        """Test from_dict classmethod creates FontInfo from dictionary."""
+        data = {
+            "postscript_name": "ArialMT",
+            "file": "/path/to/arial.ttf",
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.from_dict(data)
+
+        assert isinstance(font, FontInfo)
+        assert font.postscript_name == "ArialMT"
+        assert font.file == "/path/to/arial.ttf"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+
+    def test_to_dict_from_dict_roundtrip(self) -> None:
+        """Test that to_dict and from_dict are symmetric."""
+        original = FontInfo(
+            postscript_name="Arial-BoldMT",
+            file="/path/to/arial-bold.ttf",
+            family="Arial",
+            style="Bold",
+            weight=200.0,
+        )
+
+        # Convert to dict and back
+        data = original.to_dict()
+        restored = FontInfo.from_dict(data)
+
+        # Verify all fields match
+        assert restored.postscript_name == original.postscript_name
+        assert restored.file == original.file
+        assert restored.family == original.family
+        assert restored.style == original.style
+        assert restored.weight == original.weight
+
+    def test_from_dict_with_string_weight(self) -> None:
+        """Test from_dict handles string weight by converting to float."""
+        data = {
+            "postscript_name": "ArialMT",
+            "file": "/path/to/arial.ttf",
+            "family": "Arial",
+            "style": "Regular",
+            "weight": "80.0",  # String instead of float
+        }
+
+        font = FontInfo.from_dict(data)
+
+        assert font.weight == 80.0
+        assert isinstance(font.weight, float)

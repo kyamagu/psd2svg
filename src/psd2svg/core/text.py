@@ -160,6 +160,11 @@ class TextConverter(ConverterProtocol):
         """Add a text span to the paragraph node."""
         style = span.style
         font_info = text_setting.get_font_info(style.font)
+
+        # Collect font info for later use in rasterization.
+        if font_info and font_info.postscript_name not in self.fonts:
+            self.fonts[font_info.postscript_name] = font_info
+
         tspan = svg_utils.create_node(
             "tspan",
             parent=paragraph_node,

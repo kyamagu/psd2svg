@@ -43,11 +43,14 @@ class ResvgRasterizer(BaseRasterizer):
         """
         self.dpi = dpi
 
-    def from_file(self, filepath: str) -> Image.Image:
+    def from_file(
+        self, filepath: str, font_files: list[str] | None = None
+    ) -> Image.Image:
         """Rasterize an SVG file to a PIL Image.
 
         Args:
             filepath: Path to the SVG file to rasterize.
+            font_files: Optional list of font file paths to use for rendering.
 
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
@@ -56,11 +59,15 @@ class ResvgRasterizer(BaseRasterizer):
             FileNotFoundError: If the SVG file does not exist.
             ValueError: If the SVG content is invalid.
         """
-        png_bytes = resvg_py.svg_to_bytes(svg_path=filepath, dpi=int(self.dpi))
+        png_bytes = resvg_py.svg_to_bytes(
+            svg_path=filepath, dpi=int(self.dpi), font_files=font_files
+        )
         image = Image.open(BytesIO(png_bytes))
         return self._composite_background(image)
 
-    def from_string(self, svg_content: Union[str, bytes]) -> Image.Image:
+    def from_string(
+        self, svg_content: Union[str, bytes], font_files: list[str] | None = None
+    ) -> Image.Image:
         """Rasterize SVG content from a string to a PIL Image.
 
         This method provides an optimized implementation that directly
@@ -68,6 +75,7 @@ class ResvgRasterizer(BaseRasterizer):
 
         Args:
             svg_content: SVG content as string or bytes.
+            font_files: Optional list of font file paths to use for rendering.
 
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
@@ -81,6 +89,8 @@ class ResvgRasterizer(BaseRasterizer):
             if isinstance(svg_content, bytes)
             else svg_content
         )
-        png_bytes = resvg_py.svg_to_bytes(svg_string=svg_string, dpi=int(self.dpi))
+        png_bytes = resvg_py.svg_to_bytes(
+            svg_string=svg_string, dpi=int(self.dpi), font_files=font_files
+        )
         image = Image.open(BytesIO(png_bytes))
         return self._composite_background(image)

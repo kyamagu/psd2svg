@@ -45,6 +45,32 @@ class FontInfo:
         """Whether the font is italic."""
         return "italic" in self.style.lower()
 
+    def to_dict(self) -> dict[str, str | float]:
+        """Convert FontInfo to a serializable dictionary.
+
+        Returns:
+            Dictionary representation of the font information.
+        """
+        return dataclasses.asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, str | float]) -> Self:
+        """Create FontInfo from a dictionary.
+
+        Args:
+            data: Dictionary containing font information.
+
+        Returns:
+            FontInfo instance.
+        """
+        return cls(
+            postscript_name=str(data["postscript_name"]),
+            file=str(data["file"]),
+            family=str(data["family"]),
+            style=str(data["style"]),
+            weight=float(data["weight"]),
+        )
+
     @staticmethod
     def find(postscriptname: str) -> Self | None:
         """Find the font family name for the given span index."""
