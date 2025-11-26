@@ -65,8 +65,8 @@ class EffectConverter(ConverterProtocol):
 
         SVG does not allow coloring a raster image directly, so we create a filter.
         """
-        filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("coloroverlay")
+        filter = self.create_node(
+            "filter", id=self.auto_id("coloroverlay")
         )
         svg_utils.create_node(
             "feFlood",
@@ -79,9 +79,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="SourceAlpha",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="color-overlay-effect",
@@ -126,8 +125,8 @@ class EffectConverter(ConverterProtocol):
 
         SVG does not allow stroking a raster image directly, so we create a filter.
         """
-        filter = svg_utils.create_node(
-            "filter", parent=self.current, id=self.auto_id("stroke")
+        filter = self.create_node(
+            "filter", id=self.auto_id("stroke")
         )
 
         # Create stroke area using morphology and composite.
@@ -206,7 +205,7 @@ class EffectConverter(ConverterProtocol):
                 raise ValueError("Stroke pattern is None for pattern fill type.")
             pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
             self.set_pattern_effect_transform(pattern, effect, (0, 0))
-            defs = svg_utils.create_node("defs", parent=self.current)
+            defs = self.create_node("defs")
             rect = svg_utils.create_node(
                 "rect",
                 parent=defs,
@@ -241,7 +240,7 @@ class EffectConverter(ConverterProtocol):
                 svg_utils.create_node("feFlood", parent=filter, flood_color=flood_color)
             if gradient is not None:
                 self.set_gradient_transform(layer, gradient, effect)
-                defs = svg_utils.create_node("defs", parent=self.current)
+                defs = self.create_node("defs")
                 rect = svg_utils.create_node(
                     "rect",
                     parent=defs,
@@ -261,9 +260,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="STROKEAREA",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="stroke-effect",
@@ -275,9 +273,8 @@ class EffectConverter(ConverterProtocol):
     ) -> ET.Element:
         """Add a stroke effect to the current element using vector path."""
 
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             fill="transparent",
             class_="stroke-effect",
@@ -350,9 +347,8 @@ class EffectConverter(ConverterProtocol):
         choke = float(effect.choke)
         size = float(effect.size)
         # TODO: Adjust the width and height based on size.
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("dropshadow"),
             x="-25%",
             y="-25%",
@@ -390,9 +386,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="SHADOW",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="drop-shadow-effect",
@@ -426,9 +421,8 @@ class EffectConverter(ConverterProtocol):
         choke = float(effect.choke)
         size = float(effect.size)
         # TODO: Adjust the width and height based on size.
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("outerglow"),
         )
         # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
@@ -456,9 +450,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="GLOW",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="outer-glow-effect",
@@ -502,7 +495,7 @@ class EffectConverter(ConverterProtocol):
         self, gradient: ET.Element, target: ET.Element
     ) -> ET.Element:
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
-        defs = svg_utils.create_node("defs", parent=self.current)
+        defs = self.create_node("defs")
         # Rect here should have the target size.
         rect = svg_utils.create_node(
             "rect",
@@ -513,9 +506,8 @@ class EffectConverter(ConverterProtocol):
             fill=svg_utils.get_funciri(gradient),
         )
         # Filter origin should be set to (0, 0) instead of (-10%, -10%).
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("gradientoverlay"),
             x="0",
             y="0",
@@ -531,9 +523,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             parent=filter,
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="gradient-overlay-effect",
@@ -683,7 +674,7 @@ class EffectConverter(ConverterProtocol):
         self, pattern: ET.Element, target: ET.Element
     ) -> ET.Element:
         # feFlood does not support fill with pattern, so we use feImage and feComposite.
-        defs = svg_utils.create_node("defs", parent=self.current)
+        defs = self.create_node("defs")
 
         if "x" not in target.attrib or "y" not in target.attrib:
             logger.debug(
@@ -703,9 +694,8 @@ class EffectConverter(ConverterProtocol):
             fill=svg_utils.get_funciri(pattern),
         )
         # Filter should use the user space coordinates here.
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("patternoverlay"),
             x=0,
             y=0,
@@ -722,9 +712,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             parent=filter,
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="pattern-overlay-effect",
@@ -805,9 +794,8 @@ class EffectConverter(ConverterProtocol):
         logger.debug(f"Adding raster inner shadow effect: {effect}")
         choke = float(effect.choke)
         size = float(effect.size)
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("innershadow"),
         )
         svg_utils.create_node(
@@ -848,9 +836,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="SourceAlpha",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="inner-shadow-effect",
@@ -882,9 +869,8 @@ class EffectConverter(ConverterProtocol):
         choke = float(effect.choke)
         size = float(effect.size)
         # TODO: Adjust the width and height based on size.
-        filter = svg_utils.create_node(
+        filter = self.create_node(
             "filter",
-            parent=self.current,
             id=self.auto_id("innerglow"),
         )
         # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
@@ -918,9 +904,8 @@ class EffectConverter(ConverterProtocol):
             operator="in",
             in2="SourceAlpha",
         )
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
-            parent=self.current,
             href=svg_utils.get_uri(target),
             filter=svg_utils.get_funciri(filter),
             class_="inner-glow-effect",

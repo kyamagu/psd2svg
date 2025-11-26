@@ -74,9 +74,8 @@ class ShapeConverter(ConverterProtocol):
         # It's possible when all operations are Union (OR) or Intersect (AND).
 
         # Composite shape with multiple paths.
-        current = svg_utils.create_node(
+        current = self.create_node(
             "mask",
-            parent=self.current,
             id=self.auto_id("mask"),
             mask=attrib.pop("mask", None),  # Combine with existing mask if any.
         )
@@ -100,15 +99,14 @@ class ShapeConverter(ConverterProtocol):
             else:
                 raise ValueError(f"Unsupported path operation: {path.operation}")
 
-        return svg_utils.create_node(
+        return self.create_node(
             "rect",
-            parent=self.current,
             x=layer.left,
             y=layer.top,
             width=layer.width,
             height=layer.height,
             mask=svg_utils.get_funciri(current),
-            **attrib,
+            **attrib,  # type: ignore[arg-type]
         )
 
     def apply_union_operation(
@@ -159,9 +157,8 @@ class ShapeConverter(ConverterProtocol):
         """Apply Intersect (AND) operation to find overlapping regions."""
         # Create a new mask for the AND operation.
         if len(previous) > 0:
-            current = svg_utils.create_node(
+            current = self.create_node(
                 "mask",
-                parent=self.current,
                 id=self.auto_id("mask"),
             )
         with self.set_current(current):
@@ -196,7 +193,7 @@ class ShapeConverter(ConverterProtocol):
             return current
 
         # Create the shape in <defs> to reuse it
-        defs = svg_utils.create_node("defs", parent=self.current)
+        defs = self.create_node("defs")
         shape_id = self.auto_id("shape")
         with self.set_current(defs):
             if len(path_group) > 1:
@@ -205,16 +202,14 @@ class ShapeConverter(ConverterProtocol):
                 self.create_single_shape(layer, path_group[0], id=shape_id)
 
         # Create a mask for the union (A OR B)
-        union_mask = svg_utils.create_node(
+        union_mask = self.create_node(
             "mask",
-            parent=self.current,
             id=self.auto_id("mask"),
         )
         # Add previous shapes to union
         with self.set_current(union_mask):
-            svg_utils.create_node(
+            self.create_node(
                 "rect",
-                parent=self.current,
                 fill="#ffffff",
                 width="100%",
                 height="100%",
@@ -222,48 +217,42 @@ class ShapeConverter(ConverterProtocol):
             )
         # Add current shape to union using <use>
         with self.set_current(union_mask):
-            svg_utils.create_node(
+            self.create_node(
                 "use",
-                parent=self.current,
                 href=f"#{shape_id}",
                 fill="#ffffff",
             )
 
         # Create a mask for the intersection (A AND B)
-        intersection_mask = svg_utils.create_node(
+        intersection_mask = self.create_node(
             "mask",
-            parent=self.current,
             id=self.auto_id("mask"),
         )
         with self.set_current(intersection_mask):
-            svg_utils.create_node(
+            self.create_node(
                 "use",
-                parent=self.current,
                 href=f"#{shape_id}",
                 fill="#ffffff",
                 mask=svg_utils.get_funciri(previous),
             )
 
         # Create the final XOR mask: union minus intersection
-        current = svg_utils.create_node(
+        current = self.create_node(
             "mask",
-            parent=self.current,
             id=self.auto_id("mask"),
         )
         with self.set_current(current):
             # Add the union
-            svg_utils.create_node(
+            self.create_node(
                 "rect",
-                parent=self.current,
                 fill="#ffffff",
                 width="100%",
                 height="100%",
                 mask=svg_utils.get_funciri(union_mask),
             )
             # Subtract the intersection
-            svg_utils.create_node(
+            self.create_node(
                 "rect",
-                parent=self.current,
                 fill="#000000",
                 width="100%",
                 height="100%",
@@ -315,9 +304,8 @@ class ShapeConverter(ConverterProtocol):
     ) -> ET.Element:
         """Create a rectangle shape from origination data."""
         bbox = get_origin_bbox(origination, reference)
-        return svg_utils.create_node(
+        return self.create_node(
             "rect",
-            parent=self.current,
             x=bbox[0],
             y=bbox[1],
             width=bbox[2] - bbox[0],
@@ -351,9 +339,8 @@ class ShapeConverter(ConverterProtocol):
             / 2
             / scale
         )
-        return svg_utils.create_node(
+        return self.create_node(
             "rect",
-            parent=self.current,
             x=bbox[0],
             y=bbox[1],
             width=bbox[2] - bbox[0],
@@ -373,18 +360,16 @@ class ShapeConverter(ConverterProtocol):
         rx = (bbox[2] - bbox[0]) / 2
         ry = (bbox[3] - bbox[1]) / 2
         if rx == ry:
-            return svg_utils.create_node(
+            return self.create_node(
                 "circle",
-                parent=self.current,
                 cx=int(cx),
                 cy=int(cy),
                 r=rx,
                 **attrib,
             )
         else:
-            return svg_utils.create_node(
+            return self.create_node(
                 "ellipse",
-                parent=self.current,
                 cx=int(cx),
                 cy=int(cy),
                 rx=rx,
@@ -447,11 +432,10 @@ class ShapeConverter(ConverterProtocol):
             if "id" not in node.attrib:
                 svg_utils.set_attribute(node, "id", self.auto_id("shape"))
             if self.current.tag != "defs":
-                defs = svg_utils.create_node("defs", parent=self.current)
+                defs = self.create_node("defs")
                 svg_utils.wrap_element(node, self.current, defs)
-            use = svg_utils.create_node(
+            use = self.create_node(
                 "use",
-                parent=self.current,
                 href=svg_utils.get_uri(node),
                 mask=mask,
                 clip_path=clip_path,
@@ -467,9 +451,8 @@ class ShapeConverter(ConverterProtocol):
 
     def create_path(self, path: Subpath, **attrib) -> ET.Element:
         """Create a path element."""
-        return svg_utils.create_node(
+        return self.create_node(
             "path",
-            parent=self.current,
             d=" ".join(generate_path(path, self.psd.width, self.psd.height)),
             **attrib,
         )
@@ -481,15 +464,14 @@ class ShapeConverter(ConverterProtocol):
         **attrib,
     ) -> ET.Element:
         """Create a composite path element."""
-        return svg_utils.create_node(
+        return self.create_node(
             "path",
-            parent=self.current,
             d=" ".join(
                 " ".join(generate_path(path, self.psd.width, self.psd.height))
                 for path in paths
             ),
-            **{str(rule): "evenodd"},
-            **attrib,
+            **{str(rule): "evenodd"},  # type: ignore[arg-type]
+            **attrib,  # type: ignore[arg-type]
         )
 
 
