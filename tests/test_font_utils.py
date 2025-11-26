@@ -1,0 +1,260 @@
+"""Tests for psd2svg.core.font_utils module."""
+
+import logging
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from psd2svg.core.font_utils import FontInfo
+
+
+class TestFontInfo:
+    """Tests for FontInfo dataclass."""
+
+    def test_init(self) -> None:
+        """Test FontInfo initialization."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.postscript_name == "ArialMT"
+        assert font.file == "/path/to/arial.ttf"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+
+    def test_family_name_property(self) -> None:
+        """Test family_name property returns family name."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.family_name == "Arial"
+
+    def test_family_name_property_empty(self) -> None:
+        """Test family_name property with empty family string."""
+        font = FontInfo(
+            postscript_name="UnknownFont",
+            file="/path/to/unknown.ttf",
+            family="",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.family_name == ""
+
+    def test_bold_property_regular_weight(self) -> None:
+        """Test bold property returns False for regular weight."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.bold is False
+
+    def test_bold_property_bold_weight(self) -> None:
+        """Test bold property returns True for bold weight (>= 200)."""
+        font = FontInfo(
+            postscript_name="Arial-BoldMT",
+            file="/path/to/arial-bold.ttf",
+            family="Arial",
+            style="Bold",
+            weight=200.0,
+        )
+        assert font.bold is True
+
+    def test_bold_property_edge_case(self) -> None:
+        """Test bold property at weight boundary."""
+        # Weight exactly 200 should be bold
+        font = FontInfo(
+            postscript_name="Arial-BoldMT",
+            file="/path/to/arial-bold.ttf",
+            family="Arial",
+            style="Bold",
+            weight=200.0,
+        )
+        assert font.bold is True
+
+        # Weight just under 200 should not be bold
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="SemiBold",
+            weight=199.9,
+        )
+        assert font.bold is False
+
+    def test_italic_property_regular_style(self) -> None:
+        """Test italic property returns False for regular style."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.italic is False
+
+    def test_italic_property_italic_style(self) -> None:
+        """Test italic property returns True for italic style."""
+        font = FontInfo(
+            postscript_name="Arial-ItalicMT",
+            file="/path/to/arial-italic.ttf",
+            family="Arial",
+            style="Italic",
+            weight=80.0,
+        )
+        assert font.italic is True
+
+    def test_italic_property_case_insensitive(self) -> None:
+        """Test italic property is case-insensitive."""
+        for style in ["italic", "ITALIC", "Italic"]:
+            font = FontInfo(
+                postscript_name="Arial-ItalicMT",
+                file="/path/to/arial-italic.ttf",
+                family="Arial",
+                style=style,
+                weight=80.0,
+            )
+            assert font.italic is True
+
+    def test_italic_property_oblique(self) -> None:
+        """Test italic property returns True for oblique style."""
+        font = FontInfo(
+            postscript_name="Arial-Oblique",
+            file="/path/to/arial-oblique.ttf",
+            family="Arial",
+            style="Oblique italic",
+            weight=80.0,
+        )
+        assert font.italic is True
+
+
+class TestFontInfoFind:
+    """Tests for FontInfo.find static method."""
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_success(self, mock_match: MagicMock) -> None:
+        """Test find method with successful font match."""
+        mock_match.return_value = {
+            "file": "/path/to/arial.ttf",
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.find("ArialMT")
+
+        assert font is not None
+        assert font.postscript_name == "ArialMT"
+        assert font.file == "/path/to/arial.ttf"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=ArialMT",
+            select=("file", "family", "style", "weight"),
+        )
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_not_found(
+        self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test find method when font is not found."""
+        mock_match.return_value = None
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.find("NonExistentFont")
+
+        assert font is None
+        assert "Font file for 'NonExistentFont' not found" in caplog.text
+        assert "Make sure the font is installed on your system" in caplog.text
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_empty_result(
+        self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test find method with empty match result."""
+        mock_match.return_value = {}
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.find("EmptyFont")
+
+        assert font is None
+        assert "Font file for 'EmptyFont' not found" in caplog.text
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_bold_font(self, mock_match: MagicMock) -> None:
+        """Test find method for bold font."""
+        mock_match.return_value = {
+            "file": "/path/to/arial-bold.ttf",
+            "family": "Arial",
+            "style": "Bold",
+            "weight": 200.0,
+        }
+
+        font = FontInfo.find("Arial-BoldMT")
+
+        assert font is not None
+        assert font.bold is True
+        assert font.italic is False
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_italic_font(self, mock_match: MagicMock) -> None:
+        """Test find method for italic font."""
+        mock_match.return_value = {
+            "file": "/path/to/arial-italic.ttf",
+            "family": "Arial",
+            "style": "Italic",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.find("Arial-ItalicMT")
+
+        assert font is not None
+        assert font.bold is False
+        assert font.italic is True
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_bold_italic_font(self, mock_match: MagicMock) -> None:
+        """Test find method for bold italic font."""
+        mock_match.return_value = {
+            "file": "/path/to/arial-bolditalic.ttf",
+            "family": "Arial",
+            "style": "Bold Italic",
+            "weight": 200.0,
+        }
+
+        font = FontInfo.find("Arial-BoldItalicMT")
+
+        assert font is not None
+        assert font.bold is True
+        assert font.italic is True
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_with_special_characters(self, mock_match: MagicMock) -> None:
+        """Test find method with postscript name containing special characters."""
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "Special Font",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.find("SpecialFont-Regular_1.0")
+
+        assert font is not None
+        assert font.postscript_name == "SpecialFont-Regular_1.0"
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=SpecialFont-Regular_1.0",
+            select=("file", "family", "style", "weight"),
+        )
