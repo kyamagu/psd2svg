@@ -10,6 +10,7 @@ from psd2svg import svg_utils
 from psd2svg.core.adjustment import AdjustmentConverter
 from psd2svg.core.counter import AutoCounter
 from psd2svg.core.effects import EffectConverter
+from psd2svg.core.font_utils import FontInfo
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.paint import PaintConverter
 from psd2svg.core.shape import ShapeConverter
@@ -77,6 +78,9 @@ class Converter(
             viewBox=svg_utils.seq2str([0, 0, psdimage.width, psdimage.height], sep=" "),
         )
         self.images: list[Image.Image] = []  # Store PIL images here.
+        self.fonts: dict[
+            str, FontInfo
+        ] = {}  # Store font info keyed by postscript name.
 
         # Initialize the current node pointer.
         self.current = self.svg
@@ -132,7 +136,13 @@ class Converter(
         if parent is None:
             parent = self.current
         return svg_utils.create_node(
-            tag, parent=parent, class_=class_, title=title, text=text, desc=desc, **kwargs
+            tag,
+            parent=parent,
+            class_=class_,
+            title=title,
+            text=text,
+            desc=desc,
+            **kwargs,
         )
 
     @contextlib.contextmanager

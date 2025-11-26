@@ -1,12 +1,15 @@
 import contextlib
 import xml.etree.ElementTree as ET
-from typing import Any, Iterator, Protocol
+from typing import TYPE_CHECKING, Any, Iterator, Protocol
 
 from PIL import Image
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
 from psd_tools.constants import BlendMode
 from psd_tools.psd.descriptor import Descriptor
+
+if TYPE_CHECKING:
+    from psd2svg.core.font_utils import FontInfo
 
 
 class ConverterProtocol(Protocol):
@@ -16,6 +19,7 @@ class ConverterProtocol(Protocol):
     svg: ET.Element
     current: ET.Element
     images: list[Image.Image]
+    fonts: dict[str, "FontInfo"]
 
     # Flags to control the conversion.
     enable_live_shapes: bool

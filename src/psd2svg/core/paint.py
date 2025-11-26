@@ -48,9 +48,7 @@ class PaintConverter(ConverterProtocol):
             logger.debug(f"Fill is disabled for layer: '{layer.name}'")
             return
 
-        use = self.create_node(
-            "use", href=svg_utils.get_uri(target), class_="fill"
-        )
+        use = self.create_node("use", href=svg_utils.get_uri(target), class_="fill")
         self.set_fill(layer, use)
         self.set_blend_mode(layer.blend_mode, use)
 
