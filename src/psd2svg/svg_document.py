@@ -44,7 +44,7 @@ class SVGDocument:
 
     svg: ET.Element
     images: list[Image.Image] = dataclasses.field(default_factory=list)
-    fonts: dict[str, FontInfo] = dataclasses.field(default_factory=dict)
+    fonts: list[FontInfo] = dataclasses.field(default_factory=list)
 
     @staticmethod
     def from_psd(
@@ -68,7 +68,9 @@ class SVGDocument:
         )
         converter.build()
         return SVGDocument(
-            svg=converter.svg, images=converter.images, fonts=converter.fonts
+            svg=converter.svg,
+            images=converter.images,
+            fonts=list(converter.fonts.values()),
         )
 
     def tostring(
@@ -123,24 +125,21 @@ class SVGDocument:
         """
         rasterizer = ResvgRasterizer(dpi=dpi)
         svg = self.tostring(embed_images=True)
-        font_files = [info.file for info in self.fonts.values()] if self.fonts else None
+        font_files = [info.file for info in self.fonts] if self.fonts else None
         return rasterizer.from_string(svg, font_files=font_files)
 
     def export(
         self,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
-    ) -> dict[str, str | list[bytes] | dict[str, dict[str, str | float]]]:
+    ) -> dict[str, str | list[bytes] | list[dict[str, str | float]]]:
         """Export the SVG document in a serializable format."""
         return {
             "svg": svg_utils.tostring(self.svg, indent=indent),
             "images": [
                 image_utils.encode_image(image, image_format) for image in self.images
             ],
-            "fonts": {
-                postscript_name: font_info.to_dict()
-                for postscript_name, font_info in self.fonts.items()
-            },
+            "fonts": [font_info.to_dict() for font_info in self.fonts],
         }
 
     @classmethod
@@ -148,24 +147,19 @@ class SVGDocument:
         cls,
         svg: str,
         images: list[bytes],
-        fonts: dict[str, dict[str, str | float]] | None = None,
+        fonts: list[dict[str, str | float]] | None = None,
     ) -> "SVGDocument":
         """Load an SVGDocument from SVG content and image bytes.
 
         Args:
             svg: SVG content as a string.
             images: List of image bytes corresponding to <image> nodes in the SVG.
-            fonts: Optional dict of font information keyed by postscript name.
+            fonts: Optional list of font information dictionaries.
         """
         svg_node = ET.fromstring(svg)
         pil_images = [image_utils.decode_image(img_bytes) for img_bytes in images]
         font_infos = (
-            {
-                postscript_name: FontInfo.from_dict(font_dict)
-                for postscript_name, font_dict in fonts.items()
-            }
-            if fonts
-            else {}
+            [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
         )
         return SVGDocument(svg=svg_node, images=pil_images, fonts=font_infos)
 

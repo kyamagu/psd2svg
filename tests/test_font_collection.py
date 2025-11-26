@@ -19,7 +19,7 @@ class TestFontCollection:
         document = SVGDocument.from_psd(psdimage, enable_text=True)
 
         # Verify fonts were collected
-        assert isinstance(document.fonts, dict)
+        assert isinstance(document.fonts, list)
         # Note: Font collection depends on whether fonts are available on the system
 
     def test_no_fonts_when_text_disabled(self) -> None:
@@ -29,7 +29,7 @@ class TestFontCollection:
         document = SVGDocument.from_psd(psdimage, enable_text=False)
 
         # Fonts should be empty when text is disabled
-        assert isinstance(document.fonts, dict)
+        assert isinstance(document.fonts, list)
         assert len(document.fonts) == 0
 
     def test_fonts_attribute_exists(self) -> None:
@@ -38,9 +38,9 @@ class TestFontCollection:
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage)
 
-        # Fonts should be an empty dict for non-text layers
+        # Fonts should be an empty list for non-text layers
         assert hasattr(document, "fonts")
-        assert isinstance(document.fonts, dict)
+        assert isinstance(document.fonts, list)
         assert len(document.fonts) == 0
 
 
@@ -57,7 +57,7 @@ class TestFontExportLoad:
 
         # Verify fonts are in the export
         assert "fonts" in exported
-        assert isinstance(exported["fonts"], dict)
+        assert isinstance(exported["fonts"], list)
 
     def test_export_load_roundtrip(self) -> None:
         """Test that fonts survive export/load roundtrip."""
@@ -74,13 +74,12 @@ class TestFontExportLoad:
         )
 
         # Verify fonts are preserved
-        assert isinstance(loaded_document.fonts, dict)
+        assert isinstance(loaded_document.fonts, list)
         assert len(loaded_document.fonts) == len(document.fonts)
 
         # Verify font info objects are correctly reconstructed
-        for postscript_name, font_info in loaded_document.fonts.items():
+        for font_info in loaded_document.fonts:
             assert isinstance(font_info, FontInfo)
-            assert font_info.postscript_name == postscript_name
 
     def test_load_without_fonts_param(self) -> None:
         """Test that load works without fonts parameter (backward compatibility)."""
@@ -93,8 +92,8 @@ class TestFontExportLoad:
         # Load without fonts parameter
         loaded_document = SVGDocument.load(exported["svg"], exported["images"])
 
-        # Should have empty fonts dict
-        assert isinstance(loaded_document.fonts, dict)
+        # Should have empty fonts list
+        assert isinstance(loaded_document.fonts, list)
         assert len(loaded_document.fonts) == 0
 
 
