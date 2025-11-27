@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 import pytest
 from psd_tools import PSDImage
@@ -42,7 +43,7 @@ from .conftest import get_fixture
         "layer-types/type-layer.psd",
     ],
 )
-def test_convert(tmp_path, psd_file: str) -> None:
+def test_convert(tmp_path: Path, psd_file: str) -> None:
     """Test conversion succeeds for various file types."""
     input_path = get_fixture(psd_file)
     output_path = str(tmp_path / "output.svg")
