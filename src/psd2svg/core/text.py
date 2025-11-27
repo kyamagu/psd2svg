@@ -76,26 +76,42 @@ class TextConverter(ConverterProtocol):
 
     def _create_text_node(self, text_setting: "TypeSetting") -> ET.Element:
         """Create SVG text node from type setting."""
-        text_node = self.create_node(
-            "text",
-            transform=text_setting.transform.to_svg_matrix(),
-        )
+        # Use native x, y attributes for translation-only transforms
+        transform = text_setting.transform
+        uses_native_positioning = transform.is_translation_only()
+
+        paragraphs = list(text_setting)
+
+        if uses_native_positioning:
+            # Don't set x/y on parent - each tspan will have its own position
+            text_node = self.create_node("text")
+        else:
+            # Use transform for non-translation transforms
+            text_node = self.create_node(
+                "text",
+                transform=transform.to_svg_matrix(),
+            )
+
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
             svg_utils.set_attribute(text_node, "writing-mode", "vertical-rl")
         # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
         # TODO: Support adjustments.
-        for i, paragraph in enumerate(text_setting):
+        for i, paragraph in enumerate(paragraphs):
             paragraph_node = self._add_paragraph(
-                text_setting, text_node, paragraph, first_paragraph=(i == 0)
+                text_setting,
+                text_node,
+                paragraph,
+                first_paragraph=(i == 0),
+                uses_native_positioning=uses_native_positioning,
             )
             for span in paragraph:
                 self._add_text_span(text_setting, paragraph_node, span)
 
-        self._merge_common_child_attributes(
+        svg_utils.merge_common_child_attributes(
             text_node, excludes={"x", "y", "dx", "dy", "transform"}
         )
-        self._merge_singleton_children(text_node)
-        self._merge_attribute_less_children(text_node)
+        svg_utils.merge_singleton_children(text_node)
+        svg_utils.merge_attribute_less_children(text_node)
         return text_node
 
     def _add_paragraph(
@@ -104,17 +120,55 @@ class TextConverter(ConverterProtocol):
         text_node: ET.Element,
         paragraph: "Paragraph",
         first_paragraph: bool = False,
+        uses_native_positioning: bool = False,
     ) -> ET.Element:
         """Add a paragraph to the text node."""
         line_height = paragraph.compute_leading()
-
-        # Positioning based on justification, shape type, and writing direction.
         text_anchor = paragraph.get_text_anchor()
+
+        # Calculate positioning based on shape type and writing direction
+        x, y, dominant_baseline = self._compute_paragraph_position(
+            text_setting, text_anchor
+        )
+
+        # Create paragraph node
+        paragraph_node = self._create_paragraph_node(
+            text_setting,
+            text_node,
+            x,
+            y,
+            line_height,
+            text_anchor,
+            dominant_baseline,
+            first_paragraph,
+            uses_native_positioning,
+        )
+
+        # Apply justification settings
+        self._apply_justification(paragraph, paragraph_node, text_setting)
+
+        return paragraph_node
+
+    def _compute_paragraph_position(
+        self,
+        text_setting: "TypeSetting",
+        text_anchor: str | None,
+    ) -> tuple[float, float, str | None]:
+        """Compute paragraph position based on justification, shape type, and writing direction.
+
+        Args:
+            text_setting: Type setting object containing bounds and writing direction.
+            text_anchor: SVG text-anchor value ("start", "middle", "end", or None).
+
+        Returns:
+            Tuple of (x, y, dominant_baseline) for positioning the paragraph.
+        """
         x = 0.0
         y = 0.0
         dominant_baseline = None
+
         if text_setting.shape_type == ShapeType.BOUNDING_BOX:
-            dominant_baseline = "text-before-edge"
+            dominant_baseline = "hanging"
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
                 if text_anchor == "end":
                     x = text_setting.bounds.right
@@ -130,20 +184,81 @@ class TextConverter(ConverterProtocol):
                 elif text_anchor == "middle":
                     y = (text_setting.bounds.top + text_setting.bounds.bottom) / 2
 
-        # Create paragraph node.
-        paragraph_node = svg_utils.create_node(
+        return x, y, dominant_baseline
+
+    def _create_paragraph_node(
+        self,
+        text_setting: "TypeSetting",
+        text_node: ET.Element,
+        x: float,
+        y: float,
+        line_height: float,
+        text_anchor: str | None,
+        dominant_baseline: str | None,
+        first_paragraph: bool,
+        uses_native_positioning: bool,
+    ) -> ET.Element:
+        """Create paragraph node with positioning attributes.
+
+        All paragraphs use consistent structure: each tspan has explicit x/y or dy positioning.
+
+        Args:
+            text_setting: Type setting object containing transform information.
+            text_node: Parent text element.
+            x: Base x position.
+            y: Base y position.
+            line_height: Line height for dy attribute.
+            text_anchor: SVG text-anchor value.
+            dominant_baseline: SVG dominant-baseline value.
+            first_paragraph: Whether this is the first paragraph.
+            uses_native_positioning: Whether native x/y positioning is used.
+
+        Returns:
+            New tspan element with appropriate position attributes.
+        """
+        # Add transform offset if using native positioning
+        if uses_native_positioning:
+            transform = text_setting.transform
+            x += transform.tx
+            y += transform.ty
+
+        # Determine if we should set x, y on the tspan
+        # All paragraphs get x for consistency (to reset horizontal position)
+        # First paragraph gets both x and y
+        # Subsequent paragraphs get x and dy (for line spacing)
+        if uses_native_positioning:
+            should_set_x = True  # Always set x for consistency
+            should_set_y = first_paragraph  # Only first paragraph gets y
+        else:
+            # Using transform positioning
+            should_set_x = x != 0.0 or not first_paragraph
+            should_set_y = y != 0.0 and first_paragraph
+
+        # Create paragraph node
+        # TODO: There is still a difference with PSD rendering on dominant-baseline.
+        return svg_utils.create_node(
             "tspan",
             parent=text_node,
             text_anchor=text_anchor,
-            x=None if x == 0.0 and first_paragraph else x,
-            y=None if y == 0.0 and first_paragraph else y,
+            x=x if should_set_x else None,
+            y=y if should_set_y else None,
             dy=line_height if not first_paragraph else None,
             dominant_baseline=dominant_baseline,
         )
 
-        # TODO: There is still a difference with PSD rendering on dominant-baseline.
+    def _apply_justification(
+        self,
+        paragraph: "Paragraph",
+        paragraph_node: ET.Element,
+        text_setting: "TypeSetting",
+    ) -> None:
+        """Apply justification settings to paragraph node.
 
-        # Handle justification.
+        Args:
+            paragraph: Paragraph object containing justification settings.
+            paragraph_node: SVG tspan element to apply justification to.
+            text_setting: Type setting object containing bounds information.
+        """
         if paragraph.justification == Justification.JUSTIFY_ALL:
             logger.info("Justify All is not fully supported in SVG.")
             svg_utils.set_attribute(
@@ -152,7 +267,6 @@ class TextConverter(ConverterProtocol):
                 svg_utils.num2str(text_setting.bounds.width),
             )
             svg_utils.set_attribute(paragraph_node, "lengthAdjust", "spacingAndGlyphs")
-        return paragraph_node
 
     def _add_text_span(
         self, text_setting: "TypeSetting", paragraph_node: ET.Element, span: "Span"
@@ -165,15 +279,29 @@ class TextConverter(ConverterProtocol):
         if font_info and font_info.postscript_name not in self.fonts:
             self.fonts[font_info.postscript_name] = font_info
 
+        # Determine font weight
+        # Only set font-weight if it differs from regular (400)
+        # SVG default is 400, so we only need to specify non-regular weights
+        # Use numeric CSS weights for better compatibility
+        font_weight: int | str | None = None
+        if font_info:
+            css_weight = font_info.css_weight
+            # Apply faux bold if needed
+            if style.faux_bold and css_weight < 700:
+                css_weight = 700
+            # Only set font-weight if not regular (400)
+            if css_weight != 400:
+                font_weight = css_weight
+        elif style.faux_bold:
+            font_weight = "bold"
+
         tspan = svg_utils.create_node(
             "tspan",
             parent=paragraph_node,
             text=span.text.strip("\r"),  # Remove carriage return characters
             font_size=style.font_size,
             font_family=font_info.family_name if font_info else None,
-            font_weight="bold"
-            if (font_info and font_info.bold) or style.faux_bold
-            else None,
+            font_weight=font_weight,
             font_style="italic"
             if (font_info and font_info.italic) or style.faux_italic
             else None,
@@ -215,12 +343,18 @@ class TextConverter(ConverterProtocol):
                 tspan, "font-size", style.font_size * text_setting.subscript_size
             )
 
-        if style.tracking != 0:
+        # Apply letter spacing from tracking and optional global offset
+        letter_spacing = style.tracking / 1000 * style.font_size
+        if hasattr(self, 'text_letter_spacing_offset'):
+            letter_spacing += self.text_letter_spacing_offset
+
+        # Only set letter-spacing if non-zero (or if offset makes it non-zero)
+        if letter_spacing != 0:
             # NOTE: Photoshop tracking is in 1/1000 em units.
             svg_utils.set_attribute(
                 tspan,
                 "letter-spacing",
-                svg_utils.num2str(style.tracking / 1000 * style.font_size),
+                svg_utils.num2str(letter_spacing),
             )
 
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
@@ -240,6 +374,17 @@ class TextConverter(ConverterProtocol):
                 ),
             )
 
+            # Set transform-origin to the paragraph's position to prevent scale from shifting the text
+            # Get x and y from parent paragraph node
+            parent_x = paragraph_node.attrib.get("x")
+            parent_y = paragraph_node.attrib.get("y")
+            if parent_x is not None and parent_y is not None:
+                svg_utils.set_attribute(
+                    tspan,
+                    "transform-origin",
+                    f"{parent_x} {parent_y}",
+                )
+
         if (
             text_setting.writing_direction == WritingDirection.VERTICAL_RL
             and style.baseline_direction == 1
@@ -252,73 +397,6 @@ class TextConverter(ConverterProtocol):
             # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
             # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
         return tspan
-
-    def _merge_singleton_children(self, element: ET.Element) -> None:
-        """Merge singleton child nodes into the parent node."""
-        for child in list(element):
-            self._merge_singleton_children(child)
-        if len(element) == 1:
-            child = element[0]
-            if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:
-                return  # Conflicting attributes, do not merge
-
-            if child.text:
-                element.text = (element.text or "") + child.text
-            if child.tail:
-                element.tail = (element.tail or "") + child.tail
-            for key, value in child.attrib.items():
-                if key in element.attrib:
-                    logger.debug(
-                        f"Overwriting attribute '{key}' from '{element.attrib[key]}' to '{value}'"
-                    )
-                element.attrib[key] = value
-            element.remove(child)
-
-    def _merge_attribute_less_children(self, element: ET.Element) -> None:
-        """Merge children without attributes into the parent node."""
-        for child in list(element):
-            self._merge_attribute_less_children(child)
-        for child in list(element):
-            if not child.attrib:
-                if child.text:
-                    element.text = (element.text or "") + child.text
-                if child.tail:
-                    element.tail = (element.tail or "") + child.tail
-                element.remove(child)
-
-    def _merge_common_child_attributes(
-        self, element: ET.Element, excludes: set[str]
-    ) -> None:
-        """Merge common child attributes."""
-        for child in list(element):
-            self._merge_common_child_attributes(child, excludes)
-
-        # Find attributes that all children have in common with the same value.
-        children = list(element)
-        if not children:
-            return
-
-        # Start with the first child's attributes as candidates
-        common_attribs: dict[str, str] = {
-            key: value
-            for key, value in children[0].attrib.items()
-            if key not in excludes
-        }
-
-        # Check if remaining children all have the same values
-        for child in children[1:]:
-            keys_to_remove = []
-            for key in common_attribs:
-                if key not in child.attrib or child.attrib[key] != common_attribs[key]:
-                    keys_to_remove.append(key)
-            for key in keys_to_remove:
-                del common_attribs[key]
-
-        # Migrate the common attributes to the parent element.
-        for key, value in common_attribs.items():
-            element.attrib[key] = value
-            for child in element:
-                del child.attrib[key]
 
 
 @dataclasses.dataclass
@@ -386,6 +464,23 @@ class Transform:
             return "translate({})".format(svg_utils.seq2str((self.tx, self.ty)))
         return "matrix({})".format(
             svg_utils.seq2str((self.xx, self.yx, self.xy, self.yy, self.tx, self.ty))
+        )
+    
+    def is_translation_only(self, tolerance: float = 1e-6) -> bool:
+        """Check if the transform is only a translation.
+
+        Args:
+            tolerance: Maximum allowed deviation from identity matrix values.
+                       Defaults to 1e-6 to account for floating-point precision.
+
+        Returns:
+            True if the transform is a translation (rotation/scale components form identity matrix).
+        """
+        return (
+            abs(self.xx - 1.0) < tolerance
+            and abs(self.yx - 0.0) < tolerance
+            and abs(self.xy - 0.0) < tolerance
+            and abs(self.yy - 1.0) < tolerance
         )
 
 

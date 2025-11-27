@@ -161,6 +161,37 @@ For best results with vertical text, use Chromium-based browsers for viewing or 
 
 **Note on Text Scaling:** Horizontal and vertical text scaling uses ``transform`` on ``<tspan>`` elements, which is an SVG 2.0 feature. While most modern browsers support this, some older SVG 1.1 renderers may not render scaled text correctly.
 
+**Letter Spacing Differences:**
+
+Photoshop and SVG renderers may have slightly different default letter spacing and kerning behaviors:
+
+* Photoshop uses optical kerning by default (AutoKern=true)
+* SVG renderers use font's built-in kerning tables without optical adjustments
+* Different text layout engines may have subtle spacing differences
+
+To compensate for these differences, you can use the ``text_letter_spacing_offset`` parameter:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+
+   # Apply a small negative offset to tighten letter spacing
+   document = SVGDocument.from_psd(
+       psdimage,
+       text_letter_spacing_offset=-0.015
+   )
+
+   # Or use a positive offset to loosen spacing
+   document = SVGDocument.from_psd(
+       psdimage,
+       text_letter_spacing_offset=0.01
+   )
+
+The offset is in pixels and is added to all letter-spacing values. Typical values range from -0.02 to 0.02. You may need to experiment with different values depending on your fonts and target renderers.
+
 Rasterized Text (Image Fallback)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

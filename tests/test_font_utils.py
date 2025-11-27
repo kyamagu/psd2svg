@@ -138,6 +138,105 @@ class TestFontInfo:
         assert font.italic is True
 
 
+class TestFontInfoCSSWeight:
+    """Tests for FontInfo CSS weight conversion methods."""
+
+    def test_css_weight_property_regular(self) -> None:
+        """Test css_weight property for regular weight."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.css_weight == 400
+
+    def test_css_weight_property_bold(self) -> None:
+        """Test css_weight property for bold weight."""
+        font = FontInfo(
+            postscript_name="Arial-BoldMT",
+            file="/path/to/arial-bold.ttf",
+            family="Arial",
+            style="Bold",
+            weight=200.0,
+        )
+        assert font.css_weight == 700
+
+    def test_get_css_weight_numeric(self) -> None:
+        """Test get_css_weight() returns numeric values by default."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.get_css_weight() == 400
+        assert font.get_css_weight(semantic=False) == 400
+
+    def test_get_css_weight_semantic_normal(self) -> None:
+        """Test get_css_weight(semantic=True) returns 'normal' for 400."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        assert font.get_css_weight(semantic=True) == "normal"
+
+    def test_get_css_weight_semantic_bold(self) -> None:
+        """Test get_css_weight(semantic=True) returns 'bold' for 700."""
+        font = FontInfo(
+            postscript_name="Arial-BoldMT",
+            file="/path/to/arial-bold.ttf",
+            family="Arial",
+            style="Bold",
+            weight=200.0,
+        )
+        assert font.get_css_weight(semantic=True) == "bold"
+
+    def test_get_css_weight_semantic_light(self) -> None:
+        """Test get_css_weight(semantic=True) returns numeric for non-normal/bold."""
+        font = FontInfo(
+            postscript_name="Arial-Light",
+            file="/path/to/arial-light.ttf",
+            family="Arial",
+            style="Light",
+            weight=50.0,
+        )
+        # Light (300) has no semantic keyword in CSS
+        assert font.get_css_weight(semantic=True) == 300
+
+    def test_css_weight_all_ranges(self) -> None:
+        """Test CSS weight mapping for all weight ranges."""
+        test_cases = [
+            (0, 100),  # thin
+            (40, 200),  # extralight
+            (50, 300),  # light
+            (75, 350),  # semilight
+            (80, 400),  # regular
+            (100, 500),  # medium
+            (180, 600),  # semibold
+            (200, 700),  # bold
+            (205, 800),  # extrabold
+            (210, 900),  # black
+        ]
+
+        for fc_weight, expected_css in test_cases:
+            font = FontInfo(
+                postscript_name="TestFont",
+                file="/path/to/test.ttf",
+                family="Test",
+                style="Test",
+                weight=float(fc_weight),
+            )
+            assert (
+                font.css_weight == expected_css
+            ), f"FC weight {fc_weight} should map to CSS {expected_css}"
+
+
 class TestFontInfoFind:
     """Tests for FontInfo.find static method."""
 

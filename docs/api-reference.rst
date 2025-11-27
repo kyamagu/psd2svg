@@ -104,10 +104,10 @@ Shape Converter
    :undoc-members:
    :show-inheritance:
 
-Type Converter
+Text Converter
 ~~~~~~~~~~~~~~
 
-.. automodule:: psd2svg.core.type
+.. automodule:: psd2svg.core.text
    :members:
    :undoc-members:
    :show-inheritance:
