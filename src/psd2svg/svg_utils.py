@@ -73,6 +73,40 @@ def create_node(
     return node
 
 
+def _strip_text_element_whitespace(node: ET.Element) -> None:
+    """Strip whitespace-only text and tail from SVG text elements.
+
+    SVG preserves whitespace in text elements by default. When pretty-printing
+    adds indentation, this whitespace becomes significant and can cause
+    alignment issues (especially with text-anchor="end"). This function ensures
+    that any whitespace-only text/tail content is removed from text container
+    elements, leaving only the actual text content in tspan children.
+    """
+    # Check if this is a text or tspan element
+    tag = node.tag
+    if isinstance(tag, str):
+        # Handle namespaced tags
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+        is_text_element = local_name in ("text", "tspan")
+    else:
+        is_text_element = False
+
+    if is_text_element:
+        # If element has children, clear any whitespace-only text
+        if len(node) > 0:
+            if node.text and node.text.strip() == "":
+                node.text = None
+
+        # Clear whitespace-only tail for all child elements
+        for child in node:
+            if child.tail and child.tail.strip() == "":
+                child.tail = None
+
+    # Recursively clean all child elements
+    for child in node:
+        _strip_text_element_whitespace(child)
+
+
 def fromstring(data: str) -> ET.Element:
     """Parse an XML string to an Element."""
     return ET.fromstring(data)
@@ -81,6 +115,7 @@ def fromstring(data: str) -> ET.Element:
 def tostring(node: ET.Element, indent: str = "  ") -> str:
     """Convert an XML node to a string."""
     ET.indent(node, space=indent)
+    _strip_text_element_whitespace(node)
     return ET.tostring(node, encoding="unicode", xml_declaration=False)
 
 
@@ -96,6 +131,7 @@ def write(node: ET.Element, file: Any, indent: str = "  ") -> None:
     """Write an XML node to a file."""
     tree = ET.ElementTree(node)
     ET.indent(tree, space=indent)
+    _strip_text_element_whitespace(node)
     tree.write(file, encoding="unicode", xml_declaration=False)
 
 
