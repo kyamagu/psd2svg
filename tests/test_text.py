@@ -112,78 +112,81 @@ def test_text_span_common_attributes() -> None:
 
 
 def test_text_paragraph_positions() -> None:
-    """Test text paragraph positions handling."""
+    """Test text paragraph positions handling with consistent structure."""
     svg = convert_psd_to_svg("texts/font-sizes-1.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
 
-    # Parent text node should have x and y
-    assert text_node.attrib.get("x") is not None
-    assert text_node.attrib.get("y") is not None
+    # Parent text node should NOT have x and y (all tspans have their own positions)
+    assert text_node.attrib.get("x") is None
+    assert text_node.attrib.get("y") is None
 
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) == 4
 
-    # First tspan should not have x or dy set (inherits x from parent)
-    assert tspan_nodes[0].attrib.get("x") is None
+    # All tspans should have x attribute
+    # First tspan should have x and y
+    assert tspan_nodes[0].attrib.get("x") is not None
+    assert tspan_nodes[0].attrib.get("y") is not None
     assert tspan_nodes[0].attrib.get("dy") is None
 
-    # Second to fourth tspans should have x set to parent's x (to reset horizontal position)
-    # and dy for vertical offset (line spacing)
-    parent_x = text_node.attrib.get("x")
+    # Subsequent tspans should have x and dy (no y)
+    # All should have same x value (to reset to left margin)
+    first_x = tspan_nodes[0].attrib.get("x")
     for i in range(1, 4):
-        assert tspan_nodes[i].attrib.get("x") == parent_x, \
-            f"tspan {i} should have x='{parent_x}' to reset to parent's x position"
-        assert tspan_nodes[i].attrib.get("dy") is not None
+        assert tspan_nodes[i].attrib.get("x") == first_x, \
+            f"tspan {i} should have x='{first_x}' to reset to left margin"
+        assert tspan_nodes[i].attrib.get("y") is None, \
+            f"tspan {i} should not have y (uses dy instead)"
+        assert tspan_nodes[i].attrib.get("dy") is not None, \
+            f"tspan {i} should have dy for line spacing"
 
 
 def test_text_paragraph_native_positioning_no_x_override() -> None:
-    """Test that subsequent paragraphs reset x to parent's value, not to 0.
+    """Test that all paragraphs have consistent x positioning.
 
-    Regression test for bug where subsequent paragraph tspans were incorrectly
-    setting x="0" when using native positioning (parent text node has x/y attributes).
-    This caused alignment issues because x="0" moved text to absolute position 0
-    instead of the parent's x position.
+    Regression test for alignment issues. The current implementation gives all
+    paragraphs consistent structure: each tspan has explicit x positioning.
 
-    The correct behavior is for subsequent tspans to:
-    - Set x to parent's x value (to reset horizontal position to left margin)
-    - Set dy for vertical offset (line spacing)
-    - Not set y (using dy instead for relative positioning)
+    The correct behavior is for all tspans to:
+    - Have x attribute set to the same value (to maintain left margin alignment)
+    - First tspan has x and y (initial position)
+    - Subsequent tspans have x and dy (reset horizontal, offset vertical)
     """
     svg = convert_psd_to_svg("texts/font-sizes-1.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
 
-    # Verify we're using native positioning (parent has x and y)
-    parent_x = text_node.attrib.get("x")
-    parent_y = text_node.attrib.get("y")
-    assert parent_x is not None, "Parent text node should have x attribute"
-    assert parent_y is not None, "Parent text node should have y attribute"
-
-    # Parse the x value to verify it's non-zero (not at origin)
-    parent_x_value = float(parent_x)
-    assert parent_x_value != 0.0, "Parent x should be non-zero for this test"
+    # Verify we're using native positioning (no transform on parent)
+    assert text_node.attrib.get("transform") is None, \
+        "Parent text node should not have transform (using native positioning)"
 
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) >= 2, "Need at least 2 paragraphs to test"
 
-    # First paragraph tspan should not have position attributes (hoisted to parent)
-    assert tspan_nodes[0].attrib.get("x") is None
-    assert tspan_nodes[0].attrib.get("y") is None
-    assert tspan_nodes[0].attrib.get("dy") is None
+    # First paragraph tspan should have x and y
+    first_x = tspan_nodes[0].attrib.get("x")
+    first_y = tspan_nodes[0].attrib.get("y")
+    assert first_x is not None, "First tspan should have x attribute"
+    assert first_y is not None, "First tspan should have y attribute"
+    assert tspan_nodes[0].attrib.get("dy") is None, "First tspan should not have dy"
 
-    # Subsequent paragraph tspans should:
-    # 1. Have x set to parent's x (to reset horizontal position)
+    # Parse the x value to verify it's non-zero (not at origin)
+    first_x_value = float(first_x)
+    assert first_x_value != 0.0, "First tspan x should be non-zero for this test"
+
+    # All subsequent paragraph tspans should:
+    # 1. Have x set to same value as first (to reset horizontal position)
     # 2. Have dy attribute for vertical offset
     # 3. NOT have y attribute (using dy instead)
     for i in range(1, len(tspan_nodes)):
         tspan = tspan_nodes[i]
 
-        # Critical: x should be set to parent's x, NOT "0" or None
+        # Critical: x should be set consistently across all tspans
         x_attr = tspan.attrib.get("x")
-        assert x_attr == parent_x, \
-            f"Paragraph {i+1} tspan should have x='{parent_x}' (parent's x), but has x='{x_attr}'. " \
-            f"Without this, text would continue from end of previous line instead of resetting to left margin."
+        assert x_attr == first_x, \
+            f"Paragraph {i+1} tspan should have x='{first_x}', but has x='{x_attr}'. " \
+            f"Without consistent x, text would continue from end of previous line."
 
         # Should have dy for line spacing
         dy_attr = tspan.attrib.get("dy")
@@ -297,10 +300,16 @@ def test_text_style_strikethrough() -> None:
 def test_text_style_all_caps() -> None:
     """Test all-caps text transform handling."""
     svg = convert_psd_to_svg("texts/style-all-caps.psd")
-    tspan = svg.find(".//tspan")
-    assert tspan is not None
-    style = tspan.attrib.get("style", "")
-    assert "text-transform: uppercase" in style or "text-transform:uppercase" in style
+    # After merge_common_child_attributes, style may be on parent text node or tspans
+    text = svg.find(".//text")
+    assert text is not None
+
+    # Check text node and all tspans for the style
+    text_style = text.attrib.get("style", "")
+    tspans = svg.findall(".//tspan")
+    tspan_styles = " ".join(t.attrib.get("style", "") for t in tspans)
+    combined_style = text_style + " " + tspan_styles
+    assert "text-transform: uppercase" in combined_style or "text-transform:uppercase" in combined_style
 
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
@@ -525,19 +534,15 @@ def test_text_native_positioning_bounding_box_center() -> None:
 def test_text_multiple_paragraphs_different_alignments() -> None:
     """Test that multiple paragraphs with different text anchors are handled correctly.
 
-    When paragraphs have different text-anchor values (e.g., left, center, right),
-    the native positioning optimization should NOT hoist the first paragraph's
-    attributes to the parent text node. Instead, each paragraph should have its
-    own tspan with appropriate positioning and text-anchor.
+    Each paragraph has its own tspan with explicit positioning and text-anchor,
+    regardless of whether the alignments differ or not. This provides consistent structure.
     """
     svg = convert_psd_to_svg("texts/paragraph-shapetype1-multiple.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
 
-    # The parent text node should use native x, y positioning (translation only)
-    assert text_node.attrib.get("x") is not None
-    assert text_node.attrib.get("y") is not None
-    assert text_node.attrib.get("transform") is None
+    # The parent text node should not have x/y (each tspan has its own position)
+    assert text_node.attrib.get("transform") is None, "Should use native positioning"
 
     # Get all tspan elements (one per paragraph)
     tspans = text_node.findall("tspan")

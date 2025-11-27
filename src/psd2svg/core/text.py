@@ -80,20 +80,13 @@ class TextConverter(ConverterProtocol):
         transform = text_setting.transform
         uses_native_positioning = transform.is_translation_only()
 
-        # Check if all paragraphs have the same text-anchor value
-        # Only enable native positioning optimization for first paragraph if they do
         paragraphs = list(text_setting)
-        text_anchors = [p.get_text_anchor() for p in paragraphs]
-        all_same_text_anchor = len(set(text_anchors)) == 1
-        can_hoist_first_paragraph = uses_native_positioning and all_same_text_anchor
 
         if uses_native_positioning:
-            text_node = self.create_node(
-                "text",
-                x=transform.tx if transform.tx != 0.0 else None,
-                y=transform.ty if transform.ty != 0.0 else None,
-            )
+            # Don't set x/y on parent - each tspan will have its own position
+            text_node = self.create_node("text")
         else:
+            # Use transform for non-translation transforms
             text_node = self.create_node(
                 "text",
                 transform=transform.to_svg_matrix(),
@@ -110,7 +103,6 @@ class TextConverter(ConverterProtocol):
                 paragraph,
                 first_paragraph=(i == 0),
                 uses_native_positioning=uses_native_positioning,
-                can_hoist_first_paragraph=can_hoist_first_paragraph,
             )
             for span in paragraph:
                 self._add_text_span(text_setting, paragraph_node, span)
@@ -129,7 +121,6 @@ class TextConverter(ConverterProtocol):
         paragraph: "Paragraph",
         first_paragraph: bool = False,
         uses_native_positioning: bool = False,
-        can_hoist_first_paragraph: bool = False,
     ) -> ET.Element:
         """Add a paragraph to the text node."""
         line_height = paragraph.compute_leading()
@@ -140,24 +131,18 @@ class TextConverter(ConverterProtocol):
             text_setting, text_anchor
         )
 
-        # Create paragraph node with appropriate positioning strategy
-        if can_hoist_first_paragraph and first_paragraph:
-            paragraph_node = self._create_hoisted_paragraph_node(
-                text_setting, text_node, x, y, text_anchor, dominant_baseline
-            )
-        else:
-            paragraph_node = self._create_standard_paragraph_node(
-                text_setting,
-                text_node,
-                x,
-                y,
-                line_height,
-                text_anchor,
-                dominant_baseline,
-                first_paragraph,
-                uses_native_positioning,
-                can_hoist_first_paragraph,
-            )
+        # Create paragraph node
+        paragraph_node = self._create_paragraph_node(
+            text_setting,
+            text_node,
+            x,
+            y,
+            line_height,
+            text_anchor,
+            dominant_baseline,
+            first_paragraph,
+            uses_native_positioning,
+        )
 
         # Apply justification settings
         self._apply_justification(paragraph, paragraph_node, text_setting)
@@ -201,52 +186,7 @@ class TextConverter(ConverterProtocol):
 
         return x, y, dominant_baseline
 
-    def _create_hoisted_paragraph_node(
-        self,
-        text_setting: "TypeSetting",
-        text_node: ET.Element,
-        x: float,
-        y: float,
-        text_anchor: str | None,
-        dominant_baseline: str | None,
-    ) -> ET.Element:
-        """Create paragraph node with positioning hoisted to parent text node.
-
-        This optimization moves positioning attributes to the parent text node
-        when all paragraphs have the same text-anchor value.
-
-        Args:
-            text_setting: Type setting object containing transform information.
-            text_node: Parent text element to update.
-            x: Base x position.
-            y: Base y position.
-            text_anchor: SVG text-anchor value.
-            dominant_baseline: SVG dominant-baseline value.
-
-        Returns:
-            New tspan element without position attributes (inherited from parent).
-        """
-        transform = text_setting.transform
-        # Calculate the final absolute position
-        final_x = x + transform.tx
-        final_y = y + transform.ty
-
-        # Update the parent text node with the final position
-        if final_x != 0.0 or text_node.attrib.get("x") is not None:
-            svg_utils.set_attribute(text_node, "x", final_x)
-        if final_y != 0.0 or text_node.attrib.get("y") is not None:
-            svg_utils.set_attribute(text_node, "y", final_y)
-
-        # Also move text-anchor and dominant-baseline to parent if they're set
-        if text_anchor is not None:
-            svg_utils.set_attribute(text_node, "text-anchor", text_anchor)
-        if dominant_baseline is not None:
-            svg_utils.set_attribute(text_node, "dominant-baseline", dominant_baseline)
-
-        # Create paragraph node without position attributes (inherited from parent)
-        return svg_utils.create_node("tspan", parent=text_node)
-
-    def _create_standard_paragraph_node(
+    def _create_paragraph_node(
         self,
         text_setting: "TypeSetting",
         text_node: ET.Element,
@@ -257,9 +197,10 @@ class TextConverter(ConverterProtocol):
         dominant_baseline: str | None,
         first_paragraph: bool,
         uses_native_positioning: bool,
-        can_hoist_first_paragraph: bool,
     ) -> ET.Element:
-        """Create standard paragraph node with positioning attributes.
+        """Create paragraph node with positioning attributes.
+
+        All paragraphs use consistent structure: each tspan has explicit x/y or dy positioning.
 
         Args:
             text_setting: Type setting object containing transform information.
@@ -271,7 +212,6 @@ class TextConverter(ConverterProtocol):
             dominant_baseline: SVG dominant-baseline value.
             first_paragraph: Whether this is the first paragraph.
             uses_native_positioning: Whether native x/y positioning is used.
-            can_hoist_first_paragraph: Whether first paragraph positioning can be hoisted.
 
         Returns:
             New tspan element with appropriate position attributes.
@@ -279,31 +219,20 @@ class TextConverter(ConverterProtocol):
         # Add transform offset if using native positioning
         if uses_native_positioning:
             transform = text_setting.transform
-            # Only add transform if we're not hoisting the first paragraph
-            # (because if we are, the parent already has the transform)
-            if not can_hoist_first_paragraph:
-                x += transform.tx
-                y += transform.ty
+            x += transform.tx
+            y += transform.ty
 
         # Determine if we should set x, y on the tspan
-        # For non-first paragraphs, we typically use dy instead of y
-        if uses_native_positioning and can_hoist_first_paragraph:
-            # When first paragraph is hoisted to parent, subsequent paragraphs need to
-            # reset x to parent's x position (to start at left margin instead of
-            # continuing from end of previous line).
-            parent_x_str = text_node.get("x")
-            parent_x = float(parent_x_str) if parent_x_str else 0.0
-
-            # For non-first paragraphs, set x to parent's x to reset horizontal position
-            # For first paragraph, don't set x (it's already on parent)
-            should_set_x = not first_paragraph
-            if should_set_x:
-                x = parent_x  # Reset to parent's x position
+        # All paragraphs get x for consistency (to reset horizontal position)
+        # First paragraph gets both x and y
+        # Subsequent paragraphs get x and dy (for line spacing)
+        if uses_native_positioning:
+            should_set_x = True  # Always set x for consistency
+            should_set_y = first_paragraph  # Only first paragraph gets y
         else:
-            # Using transform positioning or not hoisting first paragraph
+            # Using transform positioning
             should_set_x = x != 0.0 or not first_paragraph
-
-        should_set_y = y != 0.0 and first_paragraph
+            should_set_y = y != 0.0 and first_paragraph
 
         # Create paragraph node
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
