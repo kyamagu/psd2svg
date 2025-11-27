@@ -374,6 +374,17 @@ class TextConverter(ConverterProtocol):
                 ),
             )
 
+            # Set transform-origin to the paragraph's position to prevent scale from shifting the text
+            # Get x and y from parent paragraph node
+            parent_x = paragraph_node.attrib.get("x")
+            parent_y = paragraph_node.attrib.get("y")
+            if parent_x is not None and parent_y is not None:
+                svg_utils.set_attribute(
+                    tspan,
+                    "transform-origin",
+                    f"{parent_x} {parent_y}",
+                )
+
         if (
             text_setting.writing_direction == WritingDirection.VERTICAL_RL
             and style.baseline_direction == 1
