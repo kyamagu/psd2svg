@@ -56,6 +56,15 @@ psd2svg = "psd2svg.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "requires_noto_sans: marks tests that require Noto Sans font",
+    "requires_noto_sans_jp: marks tests that require Noto Sans JP font",
+    "requires_noto_sans_cjk: marks tests that require Noto Sans CJK JP font",
+    "requires_noto_sans_arabic: marks tests that require Noto Sans Arabic font",
+    "requires_noto_sans_devanagari: marks tests that require Noto Sans Devanagari font",
+    "requires_noto_sans_thai: marks tests that require Noto Sans Thai font",
+    "requires_noto_sans_hebrew: marks tests that require Noto Sans Hebrew font",
+]
 
 [tool.mypy]
 python_version = "3.10"

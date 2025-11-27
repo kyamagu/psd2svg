@@ -233,15 +233,29 @@ class TextConverter(ConverterProtocol):
         if font_info and font_info.postscript_name not in self.fonts:
             self.fonts[font_info.postscript_name] = font_info
 
+        # Determine font weight
+        # Only set font-weight if it differs from regular (400)
+        # SVG default is 400, so we only need to specify non-regular weights
+        # Use numeric CSS weights for better compatibility
+        font_weight: int | str | None = None
+        if font_info:
+            css_weight = font_info.css_weight
+            # Apply faux bold if needed
+            if style.faux_bold and css_weight < 700:
+                css_weight = 700
+            # Only set font-weight if not regular (400)
+            if css_weight != 400:
+                font_weight = css_weight
+        elif style.faux_bold:
+            font_weight = "bold"
+
         tspan = svg_utils.create_node(
             "tspan",
             parent=paragraph_node,
             text=span.text.strip("\r"),  # Remove carriage return characters
             font_size=style.font_size,
             font_family=font_info.family_name if font_info else None,
-            font_weight="bold"
-            if (font_info and font_info.bold) or style.faux_bold
-            else None,
+            font_weight=font_weight,
             font_style="italic"
             if (font_info and font_info.italic) or style.faux_italic
             else None,

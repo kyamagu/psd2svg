@@ -38,6 +38,44 @@ The repository uses GitHub Actions for continuous integration:
   - Tests across Python 3.10, 3.11, 3.12, 3.13, and 3.14
   - Executes linting (ruff), type checking (mypy), and unit tests (pytest)
   - Uses uv for fast dependency management
+  - Installs required fonts (MS Core Fonts and Noto fonts) for text rendering tests
+
+#### Font Requirements for Testing
+
+The test suite includes tests for non-Latin text rendering that require specific fonts:
+
+**Core fonts (always installed in CI):**
+
+- MS Core Fonts (Arial, Times New Roman, etc.)
+- Noto Sans (baseline Latin)
+- Noto Sans CJK (includes Noto Sans JP, Noto Sans KR, Noto Sans SC, Noto Sans TC for Japanese/Korean/Chinese)
+
+**Optional fonts (tests skipped if unavailable):**
+
+- Noto Sans Arabic (right-to-left script)
+- Noto Sans Devanagari (Indic script)
+- Noto Sans Thai (complex shaping)
+- Noto Sans Hebrew (right-to-left script)
+
+**Local development setup:**
+
+On Ubuntu/Debian:
+
+```bash
+sudo apt-get install fonts-noto-core fonts-noto-cjk fonts-noto-ui-core
+sudo fc-cache -fv
+```
+
+On macOS:
+
+```bash
+brew tap homebrew/cask-fonts
+brew install --cask font-noto-sans font-noto-sans-cjk-jp
+```
+
+**Pytest markers:**
+
+Tests requiring specific fonts use markers like `@requires_noto_sans_jp` or `@requires_noto_sans_cjk`. These tests are automatically skipped if fonts are unavailable. See [tests/conftest.py](tests/conftest.py) for available markers and the full list of supported fonts.
 
 ### Release Process
 
@@ -148,6 +186,28 @@ image.save('output.png')
 - Most adjustment layers not implemented
 - Smart object filters not supported
 - APIs are NOT thread-safe
+
+### Known Issues
+
+#### resvg-py Variable Font Rendering Bug
+
+**Issue**: resvg-py (Python wrapper for resvg) does not correctly apply `font-weight` attributes when rendering variable fonts. It may render text at the wrong weight (e.g., thin instead of regular/400).
+
+**Workaround**: The converter uses numeric `font-weight` values (100-900) instead of keywords for non-regular weights. Regular weight (400) is omitted since it's the SVG default. However, resvg-py may still not render variable fonts correctly.
+
+**Impact**:
+
+- SVG files display correctly in browsers (Chrome, Firefox, Safari)
+- Rasterized output via resvg-py may show incorrect font weights
+- Affects variable fonts like `NotoSansJP-VariableFont_wght.ttf`
+
+**Status**: This is a bug in the resvg-py wrapper library, not in psd2svg. Monitor upstream: <https://github.com/sparkfish/resvg-py>
+
+**Recommendation**: For production rasterization with variable fonts, consider:
+
+1. Using browser-based rendering (Chromium headless) instead of resvg-py
+2. Installing static (non-variable) font variants
+3. Testing rasterized output to verify font weight rendering
 
 ### Experimental Features
 

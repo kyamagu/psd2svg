@@ -4,7 +4,7 @@ from psd_tools import PSDImage
 
 from psd2svg.core.converter import Converter
 
-from .conftest import get_fixture
+from .conftest import get_fixture, requires_noto_sans_jp
 
 try:
     import fontconfig
@@ -151,11 +151,21 @@ def test_text_writing_direction() -> None:
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_bold() -> None:
-    """Test bold font weight handling."""
+    """Test bold font weight handling.
+
+    Bold fonts should have font-weight="700" (CSS numeric value).
+    This works better with variable fonts than the keyword "bold".
+    """
     svg = convert_psd_to_svg("texts/style-bold.psd")
-    tspan = svg.find(".//tspan[@font-weight]")
-    assert tspan is not None
-    assert tspan.attrib.get("font-weight") == "bold"
+    # Find all tspans with font-weight
+    tspans = svg.findall(".//tspan[@font-weight]")
+    assert len(tspans) > 0, "Should have at least one tspan with font-weight"
+
+    # Check that we have a bold tspan (weight 700)
+    font_weights = [t.attrib.get("font-weight") for t in tspans]
+    assert "700" in font_weights, (
+        f"Expected to find font-weight='700' (bold), got: {font_weights}"
+    )
 
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
@@ -169,11 +179,21 @@ def test_text_style_italic() -> None:
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_faux_bold() -> None:
-    """Test faux bold handling."""
+    """Test faux bold handling.
+
+    Faux bold (synthetic bold) should set font-weight="700".
+    This ensures proper rendering even with variable fonts.
+    """
     svg = convert_psd_to_svg("texts/style-faux-bold.psd")
-    tspan = svg.find(".//tspan[@font-weight]")
-    assert tspan is not None
-    assert tspan.attrib.get("font-weight") == "bold"
+    # Find all tspans with font-weight
+    tspans = svg.findall(".//tspan[@font-weight]")
+    assert len(tspans) > 0, "Should have at least one tspan with font-weight"
+
+    # Check that we have a bold tspan (weight 700 for faux bold)
+    font_weights = [t.attrib.get("font-weight") for t in tspans]
+    assert "700" in font_weights, (
+        f"Expected to find font-weight='700' (faux bold), got: {font_weights}"
+    )
 
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
@@ -465,3 +485,39 @@ def test_text_point_type_no_dominant_baseline() -> None:
 
     # Should NOT have dominant-baseline for point text
     assert text_node.attrib.get("dominant-baseline") is None
+
+
+@requires_noto_sans_jp
+def test_text_japanese_notosans_jp() -> None:
+    """Test Japanese text rendering with Noto Sans JP font.
+
+    This test verifies that:
+    1. Japanese text content is preserved in the SVG
+    2. The font-family is set to Noto Sans JP (not a fallback font)
+    3. Text elements are properly created
+    4. The text is rendered (not rasterized as an image)
+
+    Note: The PSD file specifies "NotoSansJP-Regular" as the PostScript name,
+    which should resolve to "Noto Sans JP" family name via fontconfig.
+    """
+    svg = convert_psd_to_svg("texts/fonts-notosans-jp.psd")
+
+    # Find all text elements
+    text_nodes = svg.findall(".//text")
+    assert len(text_nodes) > 0, "Should have at least one text element"
+
+    # Check the first text element
+    text_node = text_nodes[0]
+
+    # Verify Japanese text content is present (美しい日本語 = Beautiful Japanese)
+    text_content = "".join(text_node.itertext())
+    assert "美しい日本語" in text_content, f"Japanese text not found. Got: {text_content}"
+
+    # Verify font-family is set to Noto Sans JP (not a fallback)
+    font_family = text_node.attrib.get("font-family")
+    assert font_family is not None, "font-family should be set"
+    assert font_family == "Noto Sans JP", (
+        f"Expected font-family to be exactly 'Noto Sans JP', got: '{font_family}'. "
+        "If you see a different Noto font (like 'Noto Sans Yi'), it means "
+        "'Noto Sans JP' is not properly installed and fontconfig fell back to another font."
+    )

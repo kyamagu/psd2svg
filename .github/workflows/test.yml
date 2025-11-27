@@ -17,11 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MS fonts
+      - name: Install fonts
         run: |
           sudo apt-get update
           echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | sudo debconf-set-selections
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ttf-mscorefonts-installer fontconfig
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            ttf-mscorefonts-installer \
+            fontconfig \
+            fonts-noto-core \
+            fonts-noto-cjk \
+            fonts-noto-ui-core
           sudo fc-cache -fv
 
       - name: Install uv
