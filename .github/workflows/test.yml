@@ -41,7 +41,7 @@ jobs:
         run: uv run ruff check src/
 
       - name: Run type checking
-        run: uv run mypy src/
+        run: uv run mypy src/ tests/
 
       - name: Run tests
         run: uv run pytest
