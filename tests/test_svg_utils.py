@@ -428,13 +428,9 @@ class TestMergeCommonChildAttributes:
         """Test that only truly common attributes are hoisted."""
 
         text = ET.Element("text")
-        tspan1 = ET.SubElement(
-            text, "tspan", attrib={"fill": "red", "font-size": "12"}
-        )
+        tspan1 = ET.SubElement(text, "tspan", attrib={"fill": "red", "font-size": "12"})
         tspan1.text = "A"
-        tspan2 = ET.SubElement(
-            text, "tspan", attrib={"fill": "red", "font-size": "14"}
-        )
+        tspan2 = ET.SubElement(text, "tspan", attrib={"fill": "red", "font-size": "14"})
         tspan2.text = "B"
 
         svg_utils.merge_common_child_attributes(text)

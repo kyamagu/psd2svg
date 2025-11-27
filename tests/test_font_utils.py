@@ -233,9 +233,9 @@ class TestFontInfoCSSWeight:
                 style="Test",
                 weight=float(fc_weight),
             )
-            assert (
-                font.css_weight == expected_css
-            ), f"FC weight {fc_weight} should map to CSS {expected_css}"
+            assert font.css_weight == expected_css, (
+                f"FC weight {fc_weight} should map to CSS {expected_css}"
+            )
 
 
 class TestFontInfoFind:

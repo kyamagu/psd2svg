@@ -38,7 +38,10 @@ jobs:
         run: uv sync --group dev -p ${{ matrix.python-version }}
 
       - name: Run linting
-        run: uv run ruff check src/
+        run: uv run ruff check src/ tests/
+
+      - name: Run formatting check
+        run: uv run ruff format --check src/ tests/
 
       - name: Run type checking
         run: uv run mypy src/ tests/

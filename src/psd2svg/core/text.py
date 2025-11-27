@@ -345,7 +345,7 @@ class TextConverter(ConverterProtocol):
 
         # Apply letter spacing from tracking and optional global offset
         letter_spacing = style.tracking / 1000 * style.font_size
-        if hasattr(self, 'text_letter_spacing_offset'):
+        if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
 
         # Only set letter-spacing if non-zero (or if offset makes it non-zero)
@@ -465,7 +465,7 @@ class Transform:
         return "matrix({})".format(
             svg_utils.seq2str((self.xx, self.yx, self.xy, self.yy, self.tx, self.ty))
         )
-    
+
     def is_translation_only(self, tolerance: float = 1e-6) -> bool:
         """Check if the transform is only a translation.
 
