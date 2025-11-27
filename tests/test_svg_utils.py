@@ -217,3 +217,193 @@ class TestSvgFormatting:
         assert (
             svg_utils.seq2str(negative_reference, sep=" ", digit=4) == "-100.5 -200.75"
         )
+
+
+class TestMergeAttributeLessChildren:
+    """Test the merge_attribute_less_children function."""
+
+    def test_simple_attribute_less_children(self):
+        """Test merging simple children without attributes."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan")
+        tspan1.text = "Hello"
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        tspan2.text = " World"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Both tspans should be merged into parent text
+        assert len(text) == 0
+        assert text.text == "Hello World"
+
+    def test_preserve_order_with_styled_elements(self):
+        """Test that text order is preserved when merging around styled elements."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "Bold"
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        tspan2.text = " Regular"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Should have one child (the bold tspan) with text after it
+        assert len(text) == 1
+        assert text[0].attrib.get("font-weight") == "700"
+        assert text[0].text == "Bold"
+        assert text[0].tail == " Regular"
+
+    def test_nested_attribute_less_children(self):
+        """Test merging nested children without attributes."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
+        tspan2 = ET.SubElement(tspan1, "tspan")  # No attributes, nested
+        tspan2.text = "Nested text"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Nested tspan should be merged into parent tspan
+        assert len(text) == 1
+        assert text[0].attrib.get("x") == "10"
+        assert len(text[0]) == 0  # No children
+        assert text[0].text == "Nested text"
+
+    def test_multiple_attribute_less_between_styled(self):
+        """Test multiple attribute-less children between styled elements."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "Bold"
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        tspan2.text = " and "
+        tspan3 = ET.SubElement(text, "tspan", attrib={"font-style": "italic"})
+        tspan3.text = "italic"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Should have two children (bold and italic) with text between them
+        assert len(text) == 2
+        assert text[0].attrib.get("font-weight") == "700"
+        assert text[0].text == "Bold"
+        assert text[0].tail == " and "
+        assert text[1].attrib.get("font-style") == "italic"
+        assert text[1].text == "italic"
+
+    def test_all_children_have_attributes(self):
+        """Test that nothing changes when all children have attributes."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "Bold"
+        tspan2 = ET.SubElement(text, "tspan", attrib={"font-style": "italic"})
+        tspan2.text = "Italic"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Nothing should change
+        assert len(text) == 2
+        assert text[0].attrib.get("font-weight") == "700"
+        assert text[0].text == "Bold"
+        assert text[1].attrib.get("font-style") == "italic"
+        assert text[1].text == "Italic"
+
+    def test_first_child_without_attributes(self):
+        """Test merging when first child has no attributes."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        text.text = "Start "
+        tspan1 = ET.SubElement(text, "tspan")  # No attributes
+        tspan1.text = "Middle"
+        tspan2 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan2.text = "End"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # First tspan should merge into parent text
+        assert len(text) == 1
+        assert text.text == "Start Middle"
+        assert text[0].attrib.get("font-weight") == "700"
+        assert text[0].text == "End"
+
+    def test_tail_handling(self):
+        """Test that tail text is properly preserved."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "Bold"
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        tspan2.text = "Regular"
+        tspan2.tail = " after"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # The tail should be preserved
+        assert len(text) == 1
+        assert text[0].tail == "Regular after"
+
+    def test_empty_attribute_less_children(self):
+        """Test merging children with no text content."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
+        tspan1.text = "Text"
+        ET.SubElement(text, "tspan")  # No attributes, no text - will be removed
+        tspan3 = ET.SubElement(text, "tspan", attrib={"y": "20"})
+        tspan3.text = "More"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Empty tspan should be removed
+        assert len(text) == 2
+        assert text[0].attrib.get("x") == "10"
+        assert text[1].attrib.get("y") == "20"
+
+    def test_deeply_nested_structure(self):
+        """Test merging in deeply nested structures."""
+        import xml.etree.ElementTree as ET
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
+        tspan2 = ET.SubElement(tspan1, "tspan", attrib={"font-weight": "700"})
+        tspan3 = ET.SubElement(tspan2, "tspan")  # No attributes
+        tspan3.text = "Deep text"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # Should recursively merge from innermost to outermost
+        assert len(text) == 1
+        assert len(text[0]) == 1
+        assert len(text[0][0]) == 0
+        assert text[0][0].text == "Deep text"
+
+    def test_complex_real_world_scenario(self):
+        """Test a complex real-world SVG text structure."""
+        import xml.etree.ElementTree as ET
+
+        # Simulate: <text>First <tspan font-weight="700">bold</tspan> then <tspan>normal</tspan> end</text>
+        text = ET.Element("text")
+        text.text = "First "
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "bold"
+        tspan1.tail = " then "
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        tspan2.text = "normal"
+        tspan2.tail = " end"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # tspan2 should be merged, preserving all text
+        assert len(text) == 1
+        assert text.text == "First "
+        assert text[0].text == "bold"
+        assert text[0].tail == " then normal end"

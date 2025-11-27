@@ -238,36 +238,50 @@ def merge_attribute_less_children(element: ET.Element) -> None:
         merge_attribute_less_children(child)
 
     # Then merge attribute-less children into parent
+    # We need to find the previous element that still exists (wasn't removed)
     children = list(element)
     for i, child in enumerate(children):
         if not child.attrib:
             # Move child's text content
             if child.text:
-                # If this is the first child, prepend to parent's text
-                if i == 0:
-                    element.text = (element.text or "") + child.text
+                # Find previous sibling that still exists in the tree
+                prev_existing = None
+                for j in range(i - 1, -1, -1):
+                    if children[j] in element:
+                        prev_existing = children[j]
+                        break
+
+                if prev_existing is not None:
+                    # Append to previous existing sibling's tail
+                    prev_existing.tail = (prev_existing.tail or "") + child.text
                 else:
-                    # Otherwise, append to previous sibling's tail
-                    prev_sibling = children[i - 1]
-                    prev_sibling.tail = (prev_sibling.tail or "") + child.text
+                    # No previous sibling, append to parent's text
+                    element.text = (element.text or "") + child.text
 
             # Move child's tail
             if child.tail:
-                if i == len(children) - 1:
-                    # Last child - tail goes to next element or becomes lost
-                    # Actually, we need to preserve it by appending to parent text after all children
-                    if i == 0:
-                        element.text = (element.text or "") + child.tail
-                    else:
-                        children[i - 1].tail = (children[i - 1].tail or "") + child.tail
+                # Find next sibling that still exists in the tree
+                next_existing = None
+                for j in range(i + 1, len(children)):
+                    if children[j] in element:
+                        next_existing = children[j]
+                        break
+
+                if next_existing is not None:
+                    # Prepend to next existing sibling's text
+                    next_existing.text = child.tail + (next_existing.text or "")
                 else:
-                    # Not last child - tail goes to next sibling
-                    next_sibling = children[i + 1]
-                    # Prepend to next sibling's text or tail
-                    if next_sibling.text:
-                        next_sibling.text = child.tail + next_sibling.text
+                    # No next sibling, find previous sibling or append to parent
+                    prev_existing = None
+                    for j in range(i - 1, -1, -1):
+                        if children[j] in element:
+                            prev_existing = children[j]
+                            break
+
+                    if prev_existing is not None:
+                        prev_existing.tail = (prev_existing.tail or "") + child.tail
                     else:
-                        next_sibling.text = child.tail
+                        element.text = (element.text or "") + child.tail
 
             # Remove the now-empty child
             element.remove(child)
