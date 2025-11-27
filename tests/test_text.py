@@ -5,7 +5,7 @@ from psd_tools import PSDImage
 from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 
-from .conftest import get_fixture, requires_noto_sans_jp
+from .conftest import get_fixture, requires_noto_sans_cjk
 
 try:
     import fontconfig
@@ -615,20 +615,20 @@ def test_text_point_type_no_dominant_baseline() -> None:
     assert text_node.attrib.get("dominant-baseline") is None
 
 
-@requires_noto_sans_jp
-def test_text_japanese_notosans_jp() -> None:
-    """Test Japanese text rendering with Noto Sans JP font.
+@requires_noto_sans_cjk
+def test_text_japanese_notosans_cjk_jp() -> None:
+    """Test Japanese text rendering with Noto Sans CJK JP font.
 
     This test verifies that:
     1. Japanese text content is preserved in the SVG
-    2. The font-family is set to Noto Sans JP (not a fallback font)
+    2. The font-family is set to Noto Sans CJK JP (not a fallback font)
     3. Text elements are properly created
     4. The text is rendered (not rasterized as an image)
 
-    Note: The PSD file specifies "NotoSansJP-Regular" as the PostScript name,
-    which should resolve to "Noto Sans JP" family name via fontconfig.
+    Note: The PSD file specifies "NotoSansCJKjp-Regular" as the PostScript name,
+    which should resolve to "Noto Sans CJK JP" family name via fontconfig.
     """
-    svg = convert_psd_to_svg("texts/fonts-notosans-jp.psd")
+    svg = convert_psd_to_svg("texts/fonts-notosans-cjk-jp.psd")
 
     # Find all text elements
     text_nodes = svg.findall(".//text")
@@ -641,11 +641,11 @@ def test_text_japanese_notosans_jp() -> None:
     text_content = "".join(text_node.itertext())
     assert "美しい日本語" in text_content, f"Japanese text not found. Got: {text_content}"
 
-    # Verify font-family is set to Noto Sans JP (not a fallback)
+    # Verify font-family is set to Noto Sans CJK JP (not a fallback)
     font_family = text_node.attrib.get("font-family")
     assert font_family is not None, "font-family should be set"
-    assert font_family == "Noto Sans JP", (
-        f"Expected font-family to be exactly 'Noto Sans JP', got: '{font_family}'. "
+    assert font_family == "Noto Sans CJK JP", (
+        f"Expected font-family to be exactly 'Noto Sans CJK JP', got: '{font_family}'. "
         "If you see a different Noto font (like 'Noto Sans Yi'), it means "
-        "'Noto Sans JP' is not properly installed and fontconfig fell back to another font."
+        "'Noto Sans CJK JP' is not properly installed and fontconfig fell back to another font."
     )
