@@ -5,20 +5,10 @@ from psd_tools import PSDImage
 from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 
-from .conftest import get_fixture, requires_noto_sans_cjk
+from .conftest import get_fixture, has_postscript_font, requires_noto_sans_cjk
 
-try:
-    import fontconfig
-
-    _TIMES_FONT_AVAILABLE = bool(
-        fontconfig.query(where=":postscriptname=Times-Roman", select=("family",))
-    )
-    _ARIAL_FONT_AVAILABLE = bool(
-        fontconfig.query(where=":postscriptname=ArialMT", select=("family",))
-    )
-except Exception:
-    _TIMES_FONT_AVAILABLE = False
-    _ARIAL_FONT_AVAILABLE = False
+_TIMES_FONT_AVAILABLE = has_postscript_font("Times-Roman")
+_ARIAL_FONT_AVAILABLE = has_postscript_font("ArialMT")
 
 
 def convert_psd_to_svg(psd_file: str) -> ET.Element:
