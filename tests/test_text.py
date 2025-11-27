@@ -91,7 +91,11 @@ def test_text_span_common_attributes() -> None:
     assert text_node.attrib.get("text-anchor") is None
     # Only check font-family if Times font is available on the system
     if _TIMES_FONT_AVAILABLE:
-        assert text_node.attrib.get("font-family") == "Times"
+        font_family = text_node.attrib.get("font-family")
+        # Accept both "Times" and "Times New Roman" as fontconfig may resolve them differently
+        assert font_family in ("Times", "Times New Roman"), (
+            f"Expected font-family to be 'Times' or 'Times New Roman', got: '{font_family}'"
+        )
     # Check that individual spans still have their unique attributes
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) == 4
