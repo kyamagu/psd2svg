@@ -27,7 +27,7 @@ except ImportError:
         ),
     ],
 )
-def test_compare_raster_images_identical(metric, expected):
+def test_compare_raster_images_identical(metric: str, expected: float) -> None:
     """Test compare_raster_images with identical images."""
     img1 = np.random.rand(100, 100, 4).astype(np.float32)
     img2 = img1.copy()
@@ -35,7 +35,7 @@ def test_compare_raster_images_identical(metric, expected):
     assert np.isclose(result, expected)
 
 
-def test_create_diff_image():
+def test_create_diff_image() -> None:
     """Test create_diff_image function."""
     psdimage = PSDImage.open("tests/fixtures/layer-types/type-layer.psd")
     diff_image = create_diff_image(psdimage)
