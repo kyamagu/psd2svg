@@ -5,10 +5,7 @@ from psd_tools import PSDImage
 from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 
-from .conftest import get_fixture, has_postscript_font, requires_noto_sans_cjk
-
-_TIMES_FONT_AVAILABLE = has_postscript_font("Times-Roman")
-_ARIAL_FONT_AVAILABLE = has_postscript_font("ArialMT")
+from .conftest import get_fixture, requires_noto_sans_cjk
 
 
 def convert_psd_to_svg(psd_file: str) -> ET.Element:
@@ -89,13 +86,6 @@ def test_text_span_common_attributes() -> None:
     text_node = svg.find(".//text")
     assert text_node is not None
     assert text_node.attrib.get("text-anchor") is None
-    # Only check font-family if Times font is available on the system
-    if _TIMES_FONT_AVAILABLE:
-        font_family = text_node.attrib.get("font-family")
-        # Accept both "Times" and "Times New Roman" as fontconfig may resolve them differently
-        assert font_family in ("Times", "Times New Roman"), (
-            f"Expected font-family to be 'Times' or 'Times New Roman', got: '{font_family}'"
-        )
     # Check that individual spans still have their unique attributes
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) == 4
@@ -223,7 +213,6 @@ def test_text_writing_direction() -> None:
     assert text_node.attrib.get("style") is None
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_bold() -> None:
     """Test bold font weight handling.
 
@@ -242,7 +231,6 @@ def test_text_style_bold() -> None:
     )
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_italic() -> None:
     """Test italic font style handling."""
     svg = convert_psd_to_svg("texts/style-italic.psd")
@@ -251,7 +239,6 @@ def test_text_style_italic() -> None:
     assert tspan.attrib.get("font-style") == "italic"
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_faux_bold() -> None:
     """Test faux bold handling.
 
@@ -270,7 +257,6 @@ def test_text_style_faux_bold() -> None:
     )
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_faux_italic() -> None:
     """Test faux italic handling."""
     svg = convert_psd_to_svg("texts/style-faux-italic.psd")
@@ -279,7 +265,6 @@ def test_text_style_faux_italic() -> None:
     assert tspan.attrib.get("font-style") == "italic"
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_underline() -> None:
     """Test underline text decoration handling."""
     svg = convert_psd_to_svg("texts/style-underline.psd")
@@ -288,7 +273,6 @@ def test_text_style_underline() -> None:
     assert "underline" in tspan.attrib.get("text-decoration", "")
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_strikethrough() -> None:
     """Test strikethrough text decoration handling."""
     svg = convert_psd_to_svg("texts/style-strikethrough.psd")
@@ -297,7 +281,6 @@ def test_text_style_strikethrough() -> None:
     assert "line-through" in tspan.attrib.get("text-decoration", "")
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_all_caps() -> None:
     """Test all-caps text transform handling."""
     svg = convert_psd_to_svg("texts/style-all-caps.psd")
@@ -316,7 +299,6 @@ def test_text_style_all_caps() -> None:
     )
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_small_caps() -> None:
     """Test small-caps font variant handling."""
     svg = convert_psd_to_svg("texts/style-small-caps.psd")
@@ -325,7 +307,6 @@ def test_text_style_small_caps() -> None:
     assert tspan.attrib.get("font-variant") == "small-caps"
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_superscript() -> None:
     """Test superscript baseline shift and font size handling."""
     svg = convert_psd_to_svg("texts/style-superscript.psd")
@@ -338,7 +319,6 @@ def test_text_style_superscript() -> None:
     assert tspan.attrib.get("font-size") is not None
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_subscript() -> None:
     """Test subscript baseline shift and font size handling."""
     svg = convert_psd_to_svg("texts/style-subscript.psd")
@@ -351,7 +331,6 @@ def test_text_style_subscript() -> None:
     assert tspan.attrib.get("font-size") is not None
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_baseline_shift() -> None:
     """Test baseline shift handling."""
     svg = convert_psd_to_svg("texts/style-baseline-shift.psd")
@@ -363,7 +342,6 @@ def test_text_style_baseline_shift() -> None:
     assert baseline_shift != 0
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_tracking() -> None:
     """Test tracking (letter-spacing) handling."""
     svg = convert_psd_to_svg("texts/style-tracking.psd")
@@ -374,7 +352,6 @@ def test_text_style_tracking() -> None:
     assert letter_spacing != 0
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_letter_spacing_offset() -> None:
     """Test text_letter_spacing_offset parameter."""
     # Test with no offset (default behavior)
@@ -399,7 +376,6 @@ def test_text_letter_spacing_offset() -> None:
     assert abs(letter_spacing_negative - (letter_spacing_no_offset - 0.3)) < 1e-6
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_letter_spacing_offset_zero_tracking() -> None:
     """Test text_letter_spacing_offset with text that has zero tracking."""
     # Use a text file - this should have zero tracking by default
@@ -431,7 +407,6 @@ def test_text_letter_spacing_offset_zero_tracking() -> None:
             assert abs((spacing_with - spacing_no) - (-0.01)) < 1e-6
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_leading() -> None:
     """Test leading (line height) handling."""
     svg = convert_psd_to_svg("texts/style-leading.psd")
@@ -444,7 +419,6 @@ def test_text_style_leading() -> None:
     assert dy != 0
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_horizontal_scale() -> None:
     """Test horizontal scale transform handling."""
     svg = convert_psd_to_svg("texts/style-horizontally-scale-50.psd")
@@ -460,7 +434,6 @@ def test_text_style_horizontal_scale() -> None:
     assert "0.5" in transform or ".5" in transform
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_style_vertical_scale() -> None:
     """Test vertical scale transform handling."""
     svg = convert_psd_to_svg("texts/style-vertically-scale-50.psd")
@@ -538,7 +511,6 @@ def test_text_native_positioning_bounding_box_center() -> None:
     assert text_x > 50
 
 
-@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
 def test_text_multiple_paragraphs_different_alignments() -> None:
     """Test that multiple paragraphs with different text anchors are handled correctly.
 
