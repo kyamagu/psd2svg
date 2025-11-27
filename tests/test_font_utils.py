@@ -1,6 +1,7 @@
 """Tests for psd2svg.core.font_utils module."""
 
 import logging
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -383,7 +384,7 @@ class TestFontInfoSerialization:
 
     def test_from_dict(self) -> None:
         """Test from_dict classmethod creates FontInfo from dictionary."""
-        data = {
+        data: dict[str, Any] = {
             "postscript_name": "ArialMT",
             "file": "/path/to/arial.ttf",
             "family": "Arial",
@@ -391,7 +392,7 @@ class TestFontInfoSerialization:
             "weight": 80.0,
         }
 
-        font = FontInfo.from_dict(data)
+        font = FontInfo.from_dict(cast(dict[str, str | float], data))
 
         assert isinstance(font, FontInfo)
         assert font.postscript_name == "ArialMT"
@@ -423,7 +424,7 @@ class TestFontInfoSerialization:
 
     def test_from_dict_with_string_weight(self) -> None:
         """Test from_dict handles string weight by converting to float."""
-        data = {
+        data: dict[str, Any] = {
             "postscript_name": "ArialMT",
             "file": "/path/to/arial.ttf",
             "family": "Arial",
@@ -431,7 +432,7 @@ class TestFontInfoSerialization:
             "weight": "80.0",  # String instead of float
         }
 
-        font = FontInfo.from_dict(data)
+        font = FontInfo.from_dict(cast(dict[str, str | float], data))
 
         assert font.weight == 80.0
         assert isinstance(font.weight, float)

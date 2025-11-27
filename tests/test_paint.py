@@ -30,7 +30,7 @@ class TestPatternTransform:
         """Create a mock layer."""
         layer = Mock(spec=Layer)
         layer.tagged_blocks = TaggedBlocks()
-        layer.tagged_blocks.set_data(Tag.REFERENCE_POINT, ListElement([0, 0]))
+        layer.tagged_blocks.set_data(Tag.REFERENCE_POINT, ListElement([0, 0]))  # type: ignore[list-item]
         return layer
 
     @pytest.fixture
@@ -38,7 +38,7 @@ class TestPatternTransform:
         """Create a mock layer."""
         layer = Mock(spec=Layer)
         layer.tagged_blocks = TaggedBlocks()
-        layer.tagged_blocks.set_data(Tag.REFERENCE_POINT, ListElement([0, 12]))
+        layer.tagged_blocks.set_data(Tag.REFERENCE_POINT, ListElement([0, 12]))  # type: ignore[list-item]
         return layer
 
     @pytest.fixture
