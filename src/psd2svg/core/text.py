@@ -115,10 +115,10 @@ class TextConverter(ConverterProtocol):
             for span in paragraph:
                 self._add_text_span(text_setting, paragraph_node, span)
 
-        self._merge_common_child_attributes(
+        svg_utils.merge_common_child_attributes(
             text_node, excludes={"x", "y", "dx", "dy", "transform"}
         )
-        self._merge_singleton_children(text_node)
+        svg_utils.merge_singleton_children(text_node)
         svg_utils.merge_attribute_less_children(text_node)
         return text_node
 
@@ -436,61 +436,6 @@ class TextConverter(ConverterProtocol):
             # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
             # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
         return tspan
-
-    def _merge_singleton_children(self, element: ET.Element) -> None:
-        """Merge singleton child nodes into the parent node."""
-        for child in list(element):
-            self._merge_singleton_children(child)
-        if len(element) == 1:
-            child = element[0]
-            if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:
-                return  # Conflicting attributes, do not merge
-
-            if child.text:
-                element.text = (element.text or "") + child.text
-            if child.tail:
-                element.tail = (element.tail or "") + child.tail
-            for key, value in child.attrib.items():
-                if key in element.attrib:
-                    logger.debug(
-                        f"Overwriting attribute '{key}' from '{element.attrib[key]}' to '{value}'"
-                    )
-                element.attrib[key] = value
-            element.remove(child)
-
-    def _merge_common_child_attributes(
-        self, element: ET.Element, excludes: set[str]
-    ) -> None:
-        """Merge common child attributes."""
-        for child in list(element):
-            self._merge_common_child_attributes(child, excludes)
-
-        # Find attributes that all children have in common with the same value.
-        children = list(element)
-        if not children:
-            return
-
-        # Start with the first child's attributes as candidates
-        common_attribs: dict[str, str] = {
-            key: value
-            for key, value in children[0].attrib.items()
-            if key not in excludes
-        }
-
-        # Check if remaining children all have the same values
-        for child in children[1:]:
-            keys_to_remove = []
-            for key in common_attribs:
-                if key not in child.attrib or child.attrib[key] != common_attribs[key]:
-                    keys_to_remove.append(key)
-            for key in keys_to_remove:
-                del common_attribs[key]
-
-        # Migrate the common attributes to the parent element.
-        for key, value in common_attribs.items():
-            element.attrib[key] = value
-            for child in element:
-                del child.attrib[key]
 
 
 @dataclasses.dataclass

@@ -285,3 +285,110 @@ def merge_attribute_less_children(element: ET.Element) -> None:
 
             # Remove the now-empty child
             element.remove(child)
+
+
+def merge_common_child_attributes(
+    element: ET.Element, excludes: set[str] | None = None
+) -> None:
+    """Recursively merge common child attributes to their parent node.
+
+    This utility hoists attributes that are common to ALL children (with the same value)
+    to the parent element. This helps produce cleaner, more compact SVG output by
+    reducing redundant attribute declarations.
+
+    Args:
+        element: The XML element to process recursively.
+        excludes: Set of attribute names that should not be hoisted to parent.
+                 Common excludes for text elements: {"x", "y", "dx", "dy", "transform"}
+
+    Example:
+        Before: <text><tspan fill="red">A</tspan><tspan fill="red">B</tspan></text>
+        After:  <text fill="red"><tspan>A</tspan><tspan>B</tspan></text>
+
+        Before (with excludes={"x"}):
+                <text><tspan x="10" fill="red">A</tspan><tspan x="20" fill="red">B</tspan></text>
+        After:  <text fill="red"><tspan x="10">A</tspan><tspan x="20">B</tspan></text>
+    """
+    if excludes is None:
+        excludes = set()
+
+    # First, recursively process all children
+    for child in list(element):
+        merge_common_child_attributes(child, excludes)
+
+    # Find attributes that all children have in common with the same value
+    children = list(element)
+    if not children:
+        return
+
+    # Start with the first child's attributes as candidates
+    common_attribs: dict[str, str] = {
+        key: value for key, value in children[0].attrib.items() if key not in excludes
+    }
+
+    # Check if remaining children all have the same values
+    for child in children[1:]:
+        keys_to_remove = []
+        for key in common_attribs:
+            if key not in child.attrib or child.attrib[key] != common_attribs[key]:
+                keys_to_remove.append(key)
+        for key in keys_to_remove:
+            del common_attribs[key]
+
+    # Migrate the common attributes to the parent element
+    for key, value in common_attribs.items():
+        element.attrib[key] = value
+        for child in element:
+            del child.attrib[key]
+
+
+def merge_singleton_children(element: ET.Element) -> None:
+    """Recursively merge singleton child nodes into their parent nodes.
+
+    This utility removes redundant wrapper elements when a parent has exactly one child
+    and there are no conflicting attributes. The child's attributes and text content
+    are moved to the parent element.
+
+    Args:
+        element: The XML element to process recursively.
+
+    Example:
+        Before: <text><tspan>Hello</tspan></text>
+        After:  <text>Hello</text>
+
+        Before: <text x="10"><tspan font-weight="700">Bold</tspan></text>
+        After:  <text x="10" font-weight="700">Bold</text>
+
+        Not merged (conflicting attributes):
+        Before: <text x="10"><tspan x="20">Text</tspan></text>
+        After:  <text x="10"><tspan x="20">Text</tspan></text>  (unchanged)
+    """
+    # First, recursively process all children
+    for child in list(element):
+        merge_singleton_children(child)
+
+    # Merge singleton child if present
+    if len(element) == 1:
+        child = element[0]
+
+        # Check for attribute conflicts
+        if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:
+            return  # Conflicting attributes, do not merge
+
+        # Move child's text content to parent
+        # Note: child.text comes before any children in document order
+        if child.text:
+            element.text = (element.text or "") + child.text
+
+        # Move child's tail to parent's text
+        # Note: When we remove the child, its tail (which comes after </child>)
+        # should become part of the parent's text content
+        if child.tail:
+            element.text = (element.text or "") + child.tail
+
+        # Move all child's attributes to parent
+        for key, value in child.attrib.items():
+            element.attrib[key] = value
+
+        # Remove the now-merged child
+        element.remove(child)
