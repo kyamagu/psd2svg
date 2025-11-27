@@ -29,7 +29,7 @@ class GradientInterpolation:
         self._build_color_stops()
         self._build_opacity_stops()
 
-    def _build_color_stops(self):
+    def _build_color_stops(self) -> None:
         """Build color stops from the gradient descriptor."""
         if len(self.descriptor[Key.Colors]) <= 0:
             raise ValueError("No color stops found in gradient descriptor")
@@ -48,7 +48,7 @@ class GradientInterpolation:
             color_stops.append((1.0, color_stops[-1][1]))
         self.color_stops = color_stops
 
-    def _build_opacity_stops(self):
+    def _build_opacity_stops(self) -> None:
         """Build opacity stops from the gradient descriptor."""
         if len(self.descriptor[Key.Transparency]) <= 0:
             raise ValueError("No transparency stops found in gradient descriptor")

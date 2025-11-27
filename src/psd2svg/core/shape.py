@@ -14,7 +14,7 @@ Photoshop's knot points and control points to SVG path syntax.
 
 import logging
 import xml.etree.ElementTree as ET
-from typing import Iterator, Literal
+from typing import Any, Iterator, Literal
 
 import numpy as np
 from psd_tools.api import layers
@@ -261,7 +261,7 @@ class ShapeConverter(ConverterProtocol):
         return current
 
     def create_single_shape(
-        self, layer: layers.ShapeLayer, path: Subpath, **attrib
+        self, layer: layers.ShapeLayer, path: Subpath, **attrib: Any
     ) -> ET.Element:
         """Create a single shape element from the layer's vector mask or origination data."""
         if not layer.has_vector_mask() or layer.vector_mask is None:
@@ -300,7 +300,7 @@ class ShapeConverter(ConverterProtocol):
         self,
         origination: Rectangle,
         reference: tuple[float, float],
-        **attrib,
+        **attrib: Any,
     ) -> ET.Element:
         """Create a rectangle shape from origination data."""
         bbox = get_origin_bbox(origination, reference)
@@ -317,7 +317,7 @@ class ShapeConverter(ConverterProtocol):
         self,
         origination: RoundedRectangle,
         reference: tuple[float, float],
-        **attrib,
+        **attrib: Any,
     ) -> ET.Element:
         """Create a rounded rectangle shape from origination data."""
         bbox = get_origin_bbox(origination, reference)
@@ -351,7 +351,7 @@ class ShapeConverter(ConverterProtocol):
         )
 
     def create_origination_ellipse(
-        self, origination: Ellipse, reference: tuple[float, float], **attrib
+        self, origination: Ellipse, reference: tuple[float, float], **attrib: Any
     ) -> ET.Element:
         """Create an ellipse shape from origination data."""
         bbox = get_origin_bbox(origination, reference)
@@ -449,7 +449,7 @@ class ShapeConverter(ConverterProtocol):
             return use
         return node
 
-    def create_path(self, path: Subpath, **attrib) -> ET.Element:
+    def create_path(self, path: Subpath, **attrib: Any) -> ET.Element:
         """Create a path element."""
         return self.create_node(
             "path",
@@ -461,7 +461,7 @@ class ShapeConverter(ConverterProtocol):
         self,
         paths: list[Subpath],
         rule: Literal["fill-rule", "clip-rule"] = "fill-rule",
-        **attrib,
+        **attrib: Any,
     ) -> ET.Element:
         """Create a composite path element."""
         return self.create_node(

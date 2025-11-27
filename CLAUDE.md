@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development and Testing
 
 - `uv run pytest` - Run tests
-- `uv run mypy src/` - Run type checking
-- `uv run ruff check src/` - Run linting
-- `uv run ruff format src/` - Format code
+- `uv run mypy src/ tests/` - Run type checking
+- `uv run ruff check src/ tests/` - Run linting
+- `uv run ruff format src/ tests/` - Format code
 - `uv run python` - Run python interpreter
 
 ### Building and Installation

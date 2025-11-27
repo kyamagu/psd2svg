@@ -134,12 +134,15 @@ def test_text_paragraph_positions() -> None:
     # All should have same x value (to reset to left margin)
     first_x = tspan_nodes[0].attrib.get("x")
     for i in range(1, 4):
-        assert tspan_nodes[i].attrib.get("x") == first_x, \
+        assert tspan_nodes[i].attrib.get("x") == first_x, (
             f"tspan {i} should have x='{first_x}' to reset to left margin"
-        assert tspan_nodes[i].attrib.get("y") is None, \
+        )
+        assert tspan_nodes[i].attrib.get("y") is None, (
             f"tspan {i} should not have y (uses dy instead)"
-        assert tspan_nodes[i].attrib.get("dy") is not None, \
+        )
+        assert tspan_nodes[i].attrib.get("dy") is not None, (
             f"tspan {i} should have dy for line spacing"
+        )
 
 
 def test_text_paragraph_native_positioning_no_x_override() -> None:
@@ -158,8 +161,9 @@ def test_text_paragraph_native_positioning_no_x_override() -> None:
     assert text_node is not None
 
     # Verify we're using native positioning (no transform on parent)
-    assert text_node.attrib.get("transform") is None, \
+    assert text_node.attrib.get("transform") is None, (
         "Parent text node should not have transform (using native positioning)"
+    )
 
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) >= 2, "Need at least 2 paragraphs to test"
@@ -184,19 +188,22 @@ def test_text_paragraph_native_positioning_no_x_override() -> None:
 
         # Critical: x should be set consistently across all tspans
         x_attr = tspan.attrib.get("x")
-        assert x_attr == first_x, \
-            f"Paragraph {i+1} tspan should have x='{first_x}', but has x='{x_attr}'. " \
+        assert x_attr == first_x, (
+            f"Paragraph {i + 1} tspan should have x='{first_x}', but has x='{x_attr}'. "
             f"Without consistent x, text would continue from end of previous line."
+        )
 
         # Should have dy for line spacing
         dy_attr = tspan.attrib.get("dy")
-        assert dy_attr is not None, \
-            f"Paragraph {i+1} tspan should have dy attribute for vertical offset"
+        assert dy_attr is not None, (
+            f"Paragraph {i + 1} tspan should have dy attribute for vertical offset"
+        )
 
         # Should not have y (using dy instead for relative positioning)
         y_attr = tspan.attrib.get("y")
-        assert y_attr is None, \
-            f"Paragraph {i+1} tspan should not have y attribute (should use dy instead)"
+        assert y_attr is None, (
+            f"Paragraph {i + 1} tspan should not have y attribute (should use dy instead)"
+        )
 
 
 def test_text_writing_direction() -> None:
@@ -309,7 +316,10 @@ def test_text_style_all_caps() -> None:
     tspans = svg.findall(".//tspan")
     tspan_styles = " ".join(t.attrib.get("style", "") for t in tspans)
     combined_style = text_style + " " + tspan_styles
-    assert "text-transform: uppercase" in combined_style or "text-transform:uppercase" in combined_style
+    assert (
+        "text-transform: uppercase" in combined_style
+        or "text-transform:uppercase" in combined_style
+    )
 
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
@@ -399,7 +409,9 @@ def test_text_letter_spacing_offset() -> None:
 def test_text_letter_spacing_offset_zero_tracking() -> None:
     """Test text_letter_spacing_offset with text that has zero tracking."""
     # Use a text file - this should have zero tracking by default
-    psdimage = PSDImage.open(get_fixture("texts/paragraph-shapetype0-justification0.psd"))
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype0-justification0.psd")
+    )
 
     # Test that offset is applied even when tracking is zero
     # First get baseline (no offset)
@@ -415,7 +427,9 @@ def test_text_letter_spacing_offset_zero_tracking() -> None:
 
     # Check that the offset is properly applied
     for tspan_no, tspan_with in zip(tspans_no_offset, tspans_with_offset):
-        if tspan_no.text and tspan_no.text.strip():  # Only check tspans with actual text
+        if (
+            tspan_no.text and tspan_no.text.strip()
+        ):  # Only check tspans with actual text
             # Get letter-spacing values (default to 0 if not present)
             spacing_no = float(tspan_no.attrib.get("letter-spacing", "0"))
             spacing_with = float(tspan_with.attrib.get("letter-spacing", "0"))
@@ -639,7 +653,9 @@ def test_text_japanese_notosans_cjk_jp() -> None:
 
     # Verify Japanese text content is present (美しい日本語 = Beautiful Japanese)
     text_content = "".join(text_node.itertext())
-    assert "美しい日本語" in text_content, f"Japanese text not found. Got: {text_content}"
+    assert "美しい日本語" in text_content, (
+        f"Japanese text not found. Got: {text_content}"
+    )
 
     # Verify font-family is set to Noto Sans CJK JP (not a fallback)
     font_family = text_node.attrib.get("font-family")

@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from psd_tools.psd import descriptor
 from psd_tools.terminology import Klass, Key, Unit
@@ -6,7 +8,7 @@ from psd2svg.core.gradient import GradientInterpolation
 
 
 @pytest.fixture
-def gradient_descriptor():
+def gradient_descriptor() -> Any:
     gradient = descriptor.Descriptor(classID=Klass.Gradient)
     # Set color stops.
     color1 = descriptor.Descriptor(classID=Klass.ColorStop)
@@ -23,7 +25,7 @@ def gradient_descriptor():
     color2[Key.Color][Key.Blue] = descriptor.Integer(255)
     color2[Key.Location] = descriptor.Integer(4096)
     color2[Key.Midpoint] = descriptor.Integer(50)
-    gradient[Key.Colors] = descriptor.List([color1, color2])
+    gradient[Key.Colors] = descriptor.List([color1, color2])  # type: ignore[list-item]
     # Set opacity stops.
     opacity1 = descriptor.Descriptor(classID=Klass.TransparencyStop)
     opacity1[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
@@ -33,11 +35,11 @@ def gradient_descriptor():
     opacity2[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=0)
     opacity2[Key.Location] = descriptor.Integer(4096)
     opacity2[Key.Midpoint] = descriptor.Integer(50)
-    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])
+    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])  # type: ignore[list-item]
     return gradient
 
 
-def test_color_stops(gradient_descriptor):
+def test_color_stops(gradient_descriptor: Any) -> None:
     interp = GradientInterpolation(gradient_descriptor)
     assert interp.color_stops[0][0] == 0.0
     assert interp.color_stops[-1][0] == 1.0
@@ -59,14 +61,14 @@ def test_color_stops(gradient_descriptor):
     assert color3[Key.Blue] == 127.5
 
 
-def test_opacity_stops(gradient_descriptor):
+def test_opacity_stops(gradient_descriptor: Any) -> None:
     interp = GradientInterpolation(gradient_descriptor)
     assert interp.get_opacity(0.0) == 1.0
     assert interp.get_opacity(0.25) == 0.75
     assert interp.get_opacity(1.0) == 0.0
 
 
-def test_iterator(gradient_descriptor):
+def test_iterator(gradient_descriptor: Any) -> None:
     interp = GradientInterpolation(gradient_descriptor)
     stops = list(interp)
     assert len(stops) == 2
@@ -76,7 +78,7 @@ def test_iterator(gradient_descriptor):
     assert stops[1][2] == 0.0
 
 
-def test_duplicate_color_stops():
+def test_duplicate_color_stops() -> None:
     """Test that duplicate color stops at the same location don't cause division by zero."""
     gradient = descriptor.Descriptor(classID=Klass.Gradient)
     # Create two color stops at the same location (0.5)
@@ -92,7 +94,7 @@ def test_duplicate_color_stops():
     color2[Key.Color][Key.Green] = descriptor.Integer(255)
     color2[Key.Color][Key.Blue] = descriptor.Integer(0)
     color2[Key.Location] = descriptor.Integer(2048)  # Same location: 0.5 * 4096
-    gradient[Key.Colors] = descriptor.List([color1, color2])
+    gradient[Key.Colors] = descriptor.List([color1, color2])  # type: ignore[list-item]
     # Set opacity stops (valid ones)
     opacity1 = descriptor.Descriptor(classID=Klass.TransparencyStop)
     opacity1[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
@@ -100,7 +102,7 @@ def test_duplicate_color_stops():
     opacity2 = descriptor.Descriptor(classID=Klass.TransparencyStop)
     opacity2[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
     opacity2[Key.Location] = descriptor.Integer(4096)
-    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])
+    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])  # type: ignore[list-item]
 
     interp = GradientInterpolation(gradient)
     # Should not raise ZeroDivisionError and should return the first color
@@ -111,7 +113,7 @@ def test_duplicate_color_stops():
     assert color[Key.Blue] == 0
 
 
-def test_duplicate_opacity_stops():
+def test_duplicate_opacity_stops() -> None:
     """Test that duplicate opacity stops at the same location don't cause division by zero."""
     gradient = descriptor.Descriptor(classID=Klass.Gradient)
     # Set color stops (valid ones)
@@ -127,7 +129,7 @@ def test_duplicate_opacity_stops():
     color2[Key.Color][Key.Green] = descriptor.Integer(0)
     color2[Key.Color][Key.Blue] = descriptor.Integer(255)
     color2[Key.Location] = descriptor.Integer(4096)
-    gradient[Key.Colors] = descriptor.List([color1, color2])
+    gradient[Key.Colors] = descriptor.List([color1, color2])  # type: ignore[list-item]
     # Create two opacity stops at the same location (0.5)
     opacity1 = descriptor.Descriptor(classID=Klass.TransparencyStop)
     opacity1[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=100)
@@ -135,7 +137,7 @@ def test_duplicate_opacity_stops():
     opacity2 = descriptor.Descriptor(classID=Klass.TransparencyStop)
     opacity2[Key.Opacity] = descriptor.UnitFloat(unit=Unit.Percent, value=50)
     opacity2[Key.Location] = descriptor.Integer(2048)  # Same location: 0.5 * 4096
-    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])
+    gradient[Key.Transparency] = descriptor.List([opacity1, opacity2])  # type: ignore[list-item]
 
     interp = GradientInterpolation(gradient)
     # Should not raise ZeroDivisionError and should return the first opacity

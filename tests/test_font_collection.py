@@ -1,5 +1,7 @@
 """Tests for font collection and rasterization functionality."""
 
+from typing import cast
+
 from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
@@ -70,7 +72,9 @@ class TestFontExportLoad:
 
         # Load it back
         loaded_document = SVGDocument.load(
-            exported["svg"], exported["images"], exported["fonts"]
+            cast(str, exported["svg"]),
+            cast(list[bytes], exported["images"]),
+            cast(list[dict[str, str | float]], exported["fonts"]),
         )
 
         # Verify fonts are preserved
@@ -90,7 +94,9 @@ class TestFontExportLoad:
         exported = document.export()
 
         # Load without fonts parameter
-        loaded_document = SVGDocument.load(exported["svg"], exported["images"])
+        loaded_document = SVGDocument.load(
+            cast(str, exported["svg"]), cast(list[bytes], exported["images"])
+        )
 
         # Should have empty fonts list
         assert isinstance(loaded_document.fonts, list)

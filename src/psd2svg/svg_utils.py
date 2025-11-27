@@ -37,7 +37,9 @@ def num2str(num: int | float | bool, digit: int = DEFAULT_NUMBER_DIGITS) -> str:
 
 
 def seq2str(
-    seq: Sequence[int | float | bool], sep=",", digit: int = DEFAULT_NUMBER_DIGITS
+    seq: Sequence[int | float | bool],
+    sep: str = ",",
+    digit: int = DEFAULT_NUMBER_DIGITS,
 ) -> str:
     """Convert a sequence of numbers to a string, using the specified format for floats."""
     return sep.join(num2str(n, digit) for n in seq)
