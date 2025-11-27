@@ -133,12 +133,55 @@ class TextConverter(ConverterProtocol):
     ) -> ET.Element:
         """Add a paragraph to the text node."""
         line_height = paragraph.compute_leading()
-
-        # Positioning based on justification, shape type, and writing direction.
         text_anchor = paragraph.get_text_anchor()
+
+        # Calculate positioning based on shape type and writing direction
+        x, y, dominant_baseline = self._compute_paragraph_position(
+            text_setting, text_anchor
+        )
+
+        # Create paragraph node with appropriate positioning strategy
+        if can_hoist_first_paragraph and first_paragraph:
+            paragraph_node = self._create_hoisted_paragraph_node(
+                text_setting, text_node, x, y, text_anchor, dominant_baseline
+            )
+        else:
+            paragraph_node = self._create_standard_paragraph_node(
+                text_setting,
+                text_node,
+                x,
+                y,
+                line_height,
+                text_anchor,
+                dominant_baseline,
+                first_paragraph,
+                uses_native_positioning,
+                can_hoist_first_paragraph,
+            )
+
+        # Apply justification settings
+        self._apply_justification(paragraph, paragraph_node, text_setting)
+
+        return paragraph_node
+
+    def _compute_paragraph_position(
+        self,
+        text_setting: "TypeSetting",
+        text_anchor: str | None,
+    ) -> tuple[float, float, str | None]:
+        """Compute paragraph position based on justification, shape type, and writing direction.
+
+        Args:
+            text_setting: Type setting object containing bounds and writing direction.
+            text_anchor: SVG text-anchor value ("start", "middle", "end", or None).
+
+        Returns:
+            Tuple of (x, y, dominant_baseline) for positioning the paragraph.
+        """
         x = 0.0
         y = 0.0
         dominant_baseline = None
+
         if text_setting.shape_type == ShapeType.BOUNDING_BOX:
             dominant_baseline = "hanging"
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
@@ -156,62 +199,122 @@ class TextConverter(ConverterProtocol):
                 elif text_anchor == "middle":
                     y = (text_setting.bounds.top + text_setting.bounds.bottom) / 2
 
-        # If using native x, y positioning and this is the first paragraph,
-        # and all paragraphs have the same text-anchor value,
-        # we can move the positioning to the parent text node instead of tspan.
-        if can_hoist_first_paragraph and first_paragraph:
+        return x, y, dominant_baseline
+
+    def _create_hoisted_paragraph_node(
+        self,
+        text_setting: "TypeSetting",
+        text_node: ET.Element,
+        x: float,
+        y: float,
+        text_anchor: str | None,
+        dominant_baseline: str | None,
+    ) -> ET.Element:
+        """Create paragraph node with positioning hoisted to parent text node.
+
+        This optimization moves positioning attributes to the parent text node
+        when all paragraphs have the same text-anchor value.
+
+        Args:
+            text_setting: Type setting object containing transform information.
+            text_node: Parent text element to update.
+            x: Base x position.
+            y: Base y position.
+            text_anchor: SVG text-anchor value.
+            dominant_baseline: SVG dominant-baseline value.
+
+        Returns:
+            New tspan element without position attributes (inherited from parent).
+        """
+        transform = text_setting.transform
+        # Calculate the final absolute position
+        final_x = x + transform.tx
+        final_y = y + transform.ty
+
+        # Update the parent text node with the final position
+        if final_x != 0.0 or text_node.attrib.get("x") is not None:
+            svg_utils.set_attribute(text_node, "x", final_x)
+        if final_y != 0.0 or text_node.attrib.get("y") is not None:
+            svg_utils.set_attribute(text_node, "y", final_y)
+
+        # Also move text-anchor and dominant-baseline to parent if they're set
+        if text_anchor is not None:
+            svg_utils.set_attribute(text_node, "text-anchor", text_anchor)
+        if dominant_baseline is not None:
+            svg_utils.set_attribute(text_node, "dominant-baseline", dominant_baseline)
+
+        # Create paragraph node without position attributes (inherited from parent)
+        return svg_utils.create_node("tspan", parent=text_node)
+
+    def _create_standard_paragraph_node(
+        self,
+        text_setting: "TypeSetting",
+        text_node: ET.Element,
+        x: float,
+        y: float,
+        line_height: float,
+        text_anchor: str | None,
+        dominant_baseline: str | None,
+        first_paragraph: bool,
+        uses_native_positioning: bool,
+        can_hoist_first_paragraph: bool,
+    ) -> ET.Element:
+        """Create standard paragraph node with positioning attributes.
+
+        Args:
+            text_setting: Type setting object containing transform information.
+            text_node: Parent text element.
+            x: Base x position.
+            y: Base y position.
+            line_height: Line height for dy attribute.
+            text_anchor: SVG text-anchor value.
+            dominant_baseline: SVG dominant-baseline value.
+            first_paragraph: Whether this is the first paragraph.
+            uses_native_positioning: Whether native x/y positioning is used.
+            can_hoist_first_paragraph: Whether first paragraph positioning can be hoisted.
+
+        Returns:
+            New tspan element with appropriate position attributes.
+        """
+        # Add transform offset if using native positioning
+        if uses_native_positioning:
             transform = text_setting.transform
-            # Calculate the final absolute position
-            final_x = x + transform.tx
-            final_y = y + transform.ty
+            # Only add transform if we're not hoisting the first paragraph
+            # (because if we are, the parent already has the transform)
+            if not can_hoist_first_paragraph:
+                x += transform.tx
+                y += transform.ty
 
-            # Update the parent text node with the final position
-            if final_x != 0.0 or text_node.attrib.get("x") is not None:
-                svg_utils.set_attribute(text_node, "x", final_x)
-            if final_y != 0.0 or text_node.attrib.get("y") is not None:
-                svg_utils.set_attribute(text_node, "y", final_y)
+        # Determine if we should set x, y on the tspan
+        # For non-first paragraphs, we typically use dy instead of y
+        should_set_x = x != 0.0 or not first_paragraph
+        should_set_y = y != 0.0 and first_paragraph
 
-            # Also move text-anchor and dominant-baseline to parent if they're set
-            if text_anchor is not None:
-                svg_utils.set_attribute(text_node, "text-anchor", text_anchor)
-            if dominant_baseline is not None:
-                svg_utils.set_attribute(text_node, "dominant-baseline", dominant_baseline)
-
-            # Create paragraph node without position attributes (inherited from parent)
-            paragraph_node = svg_utils.create_node(
-                "tspan",
-                parent=text_node,
-            )
-        else:
-            # For non-first paragraphs or when not using native positioning,
-            # use the standard approach
-            if uses_native_positioning:
-                transform = text_setting.transform
-                # Only add transform if we're not hoisting the first paragraph
-                # (because if we are, the parent already has the transform)
-                if not can_hoist_first_paragraph:
-                    x += transform.tx
-                    y += transform.ty
-
-            # Determine if we should set x, y on the tspan
-            # For non-first paragraphs, we typically use dy instead of y
-            should_set_x = x != 0.0 or not first_paragraph
-            should_set_y = y != 0.0 and first_paragraph
-
-            # Create paragraph node.
-            paragraph_node = svg_utils.create_node(
-                "tspan",
-                parent=text_node,
-                text_anchor=text_anchor,
-                x=x if should_set_x else None,
-                y=y if should_set_y else None,
-                dy=line_height if not first_paragraph else None,
-                dominant_baseline=dominant_baseline,
-            )
-
+        # Create paragraph node
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
+        return svg_utils.create_node(
+            "tspan",
+            parent=text_node,
+            text_anchor=text_anchor,
+            x=x if should_set_x else None,
+            y=y if should_set_y else None,
+            dy=line_height if not first_paragraph else None,
+            dominant_baseline=dominant_baseline,
+        )
 
-        # Handle justification.
+    def _apply_justification(
+        self,
+        paragraph: "Paragraph",
+        paragraph_node: ET.Element,
+        text_setting: "TypeSetting",
+    ) -> None:
+        """Apply justification settings to paragraph node.
+
+        Args:
+            paragraph: Paragraph object containing justification settings.
+            paragraph_node: SVG tspan element to apply justification to.
+            text_setting: Type setting object containing bounds information.
+        """
         if paragraph.justification == Justification.JUSTIFY_ALL:
             logger.info("Justify All is not fully supported in SVG.")
             svg_utils.set_attribute(
@@ -220,7 +323,6 @@ class TextConverter(ConverterProtocol):
                 svg_utils.num2str(text_setting.bounds.width),
             )
             svg_utils.set_attribute(paragraph_node, "lengthAdjust", "spacingAndGlyphs")
-        return paragraph_node
 
     def _add_text_span(
         self, text_setting: "TypeSetting", paragraph_node: ET.Element, span: "Span"
