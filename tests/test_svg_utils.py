@@ -1,5 +1,7 @@
 """Tests for SVG utility functions."""
 
+import xml.etree.ElementTree as ET
+
 import pytest
 
 from psd2svg import svg_utils
@@ -224,7 +226,6 @@ class TestMergeAttributeLessChildren:
 
     def test_simple_attribute_less_children(self):
         """Test merging simple children without attributes."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan")
@@ -240,7 +241,6 @@ class TestMergeAttributeLessChildren:
 
     def test_preserve_order_with_styled_elements(self):
         """Test that text order is preserved when merging around styled elements."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -258,7 +258,6 @@ class TestMergeAttributeLessChildren:
 
     def test_nested_attribute_less_children(self):
         """Test merging nested children without attributes."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
@@ -275,7 +274,6 @@ class TestMergeAttributeLessChildren:
 
     def test_multiple_attribute_less_between_styled(self):
         """Test multiple attribute-less children between styled elements."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -297,7 +295,6 @@ class TestMergeAttributeLessChildren:
 
     def test_all_children_have_attributes(self):
         """Test that nothing changes when all children have attributes."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -316,7 +313,6 @@ class TestMergeAttributeLessChildren:
 
     def test_first_child_without_attributes(self):
         """Test merging when first child has no attributes."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         text.text = "Start "
@@ -335,7 +331,6 @@ class TestMergeAttributeLessChildren:
 
     def test_tail_handling(self):
         """Test that tail text is properly preserved."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -352,7 +347,6 @@ class TestMergeAttributeLessChildren:
 
     def test_empty_attribute_less_children(self):
         """Test merging children with no text content."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
@@ -370,7 +364,6 @@ class TestMergeAttributeLessChildren:
 
     def test_deeply_nested_structure(self):
         """Test merging in deeply nested structures."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"x": "10"})
@@ -388,7 +381,6 @@ class TestMergeAttributeLessChildren:
 
     def test_complex_real_world_scenario(self):
         """Test a complex real-world SVG text structure."""
-        import xml.etree.ElementTree as ET
 
         # Simulate: <text>First <tspan font-weight="700">bold</tspan> then <tspan>normal</tspan> end</text>
         text = ET.Element("text")
@@ -414,7 +406,6 @@ class TestMergeCommonChildAttributes:
 
     def test_simple_common_attributes(self):
         """Test merging common attributes from all children."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"fill": "red", "font-size": "12"})
@@ -435,7 +426,6 @@ class TestMergeCommonChildAttributes:
 
     def test_partial_common_attributes(self):
         """Test that only truly common attributes are hoisted."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(
@@ -460,7 +450,6 @@ class TestMergeCommonChildAttributes:
 
     def test_no_common_attributes(self):
         """Test when no attributes are common."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan", attrib={"fill": "red"})
@@ -479,7 +468,6 @@ class TestMergeCommonChildAttributes:
 
     def test_excludes_parameter(self):
         """Test that excluded attributes are not hoisted."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(
@@ -507,7 +495,6 @@ class TestMergeCommonChildAttributes:
 
     def test_recursive_processing(self):
         """Test that function processes nested children recursively."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         g1 = ET.SubElement(text, "g")
@@ -532,7 +519,6 @@ class TestMergeCommonChildAttributes:
 
     def test_empty_element(self):
         """Test with element that has no children."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         text.text = "No children"
@@ -545,7 +531,6 @@ class TestMergeCommonChildAttributes:
 
     def test_single_child(self):
         """Test with element that has only one child."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan = ET.SubElement(text, "tspan", attrib={"fill": "red"})
@@ -563,7 +548,6 @@ class TestMergeSingletonChildren:
 
     def test_simple_singleton_merge(self):
         """Test merging a simple singleton child."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan = ET.SubElement(text, "tspan")
@@ -577,7 +561,6 @@ class TestMergeSingletonChildren:
 
     def test_singleton_with_attributes(self):
         """Test merging singleton child with attributes."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text", attrib={"x": "10"})
         tspan = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -593,7 +576,6 @@ class TestMergeSingletonChildren:
 
     def test_conflicting_attributes_no_merge(self):
         """Test that singleton with conflicting attributes is not merged."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text", attrib={"x": "10"})
         tspan = ET.SubElement(text, "tspan", attrib={"x": "20"})
@@ -609,7 +591,6 @@ class TestMergeSingletonChildren:
 
     def test_singleton_with_tail(self):
         """Test that singleton's tail is properly handled."""
-        import xml.etree.ElementTree as ET
 
         # Create: <g><text>Hello</text> World</g>
         g = ET.Element("g")
@@ -625,7 +606,6 @@ class TestMergeSingletonChildren:
 
     def test_multiple_children_no_merge(self):
         """Test that element with multiple children is not merged."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         tspan1 = ET.SubElement(text, "tspan")
@@ -642,7 +622,6 @@ class TestMergeSingletonChildren:
 
     def test_recursive_processing(self):
         """Test that function processes nested singletons recursively."""
-        import xml.etree.ElementTree as ET
 
         # Create: <text><g><tspan>Hello</tspan></g></text>
         text = ET.Element("text")
@@ -658,7 +637,6 @@ class TestMergeSingletonChildren:
 
     def test_parent_with_existing_text(self):
         """Test merging when parent already has text."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         text.text = "Start "
@@ -673,7 +651,6 @@ class TestMergeSingletonChildren:
 
     def test_parent_with_text_and_child_with_tail(self):
         """Test complex case with both parent text and child tail."""
-        import xml.etree.ElementTree as ET
 
         # This is unusual but possible: <text>Before<tspan>Middle</tspan>After</text>
         text = ET.Element("text")
@@ -690,7 +667,6 @@ class TestMergeSingletonChildren:
 
     def test_empty_singleton_child(self):
         """Test merging an empty singleton child."""
-        import xml.etree.ElementTree as ET
 
         text = ET.Element("text")
         ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
