@@ -426,3 +426,42 @@ def test_text_multiple_paragraphs_different_alignments() -> None:
     # Center should be in the middle
     # Left should have the smallest x
     assert tspan_x_values[0] > tspan_x_values[1] > tspan_x_values[2]
+
+
+def test_text_bounding_box_dominant_baseline() -> None:
+    """Test that bounding box text (ShapeType=1) uses dominant-baseline="hanging".
+
+    Bounding box text should set dominant-baseline="hanging" which aligns text
+    to the hanging baseline (top of capital letters), providing better visual
+    alignment with Photoshop's rendering compared to "text-before-edge".
+    """
+    # Test with a bounding box left-aligned text
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification0.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+
+    # Should have dominant-baseline="hanging" for bounding box text
+    assert text_node.attrib.get("dominant-baseline") == "hanging"
+
+    # Test with multiple paragraphs
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-multiple.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+
+    # Should also have dominant-baseline="hanging"
+    assert text_node.attrib.get("dominant-baseline") == "hanging"
+
+
+def test_text_point_type_no_dominant_baseline() -> None:
+    """Test that point text (ShapeType=0) does NOT set dominant-baseline.
+
+    Point text should not have dominant-baseline attribute since it doesn't
+    use bounding box positioning.
+    """
+    # Test with a point-type text
+    svg = convert_psd_to_svg("texts/paragraph-shapetype0-justification0.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+
+    # Should NOT have dominant-baseline for point text
+    assert text_node.attrib.get("dominant-baseline") is None

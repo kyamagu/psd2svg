@@ -140,7 +140,7 @@ class TextConverter(ConverterProtocol):
         y = 0.0
         dominant_baseline = None
         if text_setting.shape_type == ShapeType.BOUNDING_BOX:
-            dominant_baseline = "text-before-edge"
+            dominant_baseline = "hanging"
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
                 if text_anchor == "end":
                     x = text_setting.bounds.right
