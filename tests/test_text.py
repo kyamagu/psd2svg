@@ -288,9 +288,12 @@ def test_text_style_leading() -> None:
 def test_text_style_horizontal_scale() -> None:
     """Test horizontal scale transform handling."""
     svg = convert_psd_to_svg("texts/style-horizontally-scale-50.psd")
-    tspan = svg.find(".//tspan[@transform]")
-    assert tspan is not None
-    transform = tspan.attrib.get("transform", "")
+    # Check for transform on tspan or text element (optimization may move it to text)
+    element = svg.find(".//tspan[@transform]")
+    if element is None:
+        element = svg.find(".//text[@transform]")
+    assert element is not None
+    transform = element.attrib.get("transform", "")
     # Should contain scale transformation
     assert "scale" in transform
     # Should have horizontal scale of 0.5 (50%)
@@ -301,10 +304,125 @@ def test_text_style_horizontal_scale() -> None:
 def test_text_style_vertical_scale() -> None:
     """Test vertical scale transform handling."""
     svg = convert_psd_to_svg("texts/style-vertically-scale-50.psd")
-    tspan = svg.find(".//tspan[@transform]")
-    assert tspan is not None
-    transform = tspan.attrib.get("transform", "")
+    # Check for transform on tspan or text element (optimization may move it to text)
+    element = svg.find(".//tspan[@transform]")
+    if element is None:
+        element = svg.find(".//text[@transform]")
+    assert element is not None
+    transform = element.attrib.get("transform", "")
     # Should contain scale transformation
     assert "scale" in transform
     # Should have vertical scale of 0.5 (50%)
     assert "0.5" in transform or ".5" in transform
+
+
+def test_text_native_positioning_point_type() -> None:
+    """Test that point-type text uses native x, y attributes instead of transform."""
+    svg = convert_psd_to_svg("texts/paragraph-shapetype0-justification0.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    # Should use native x, y attributes for translation-only transforms
+    assert text_node.attrib.get("x") is not None
+    assert text_node.attrib.get("y") is not None
+    # Should not have a transform attribute (translation-only)
+    assert text_node.attrib.get("transform") is None
+
+
+def test_text_native_positioning_bounding_box_left() -> None:
+    """Test that bounding box with left alignment uses native x, y on text node."""
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification0.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    # Should use native x, y attributes
+    assert text_node.attrib.get("x") is not None
+    assert text_node.attrib.get("y") is not None
+    # Should not have a transform attribute
+    assert text_node.attrib.get("transform") is None
+
+
+def test_text_native_positioning_bounding_box_right() -> None:
+    """Test that bounding box with right alignment correctly combines transform and bounds on text node."""
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification1.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    # Should use native x, y attributes on text node with combined position
+    text_x = float(text_node.attrib.get("x", "0"))
+    text_y = float(text_node.attrib.get("y", "0"))
+    assert text_x != 0
+    assert text_y != 0
+    # Should not have a transform attribute on text
+    assert text_node.attrib.get("transform") is None
+    # Should have text-anchor for right alignment
+    assert text_node.attrib.get("text-anchor") == "end"
+    # x should be greater than just the transform tx (includes bounds.right)
+    # For this test file, transform.tx is about 23, but with bounds it should be ~217
+    assert text_x > 100
+
+
+def test_text_native_positioning_bounding_box_center() -> None:
+    """Test that bounding box with center alignment correctly combines transform and bounds on text node."""
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification2.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+    # Should use native x, y attributes on text node with combined position
+    text_x = float(text_node.attrib.get("x", "0"))
+    text_y = float(text_node.attrib.get("y", "0"))
+    assert text_x != 0
+    assert text_y != 0
+    # Should not have a transform attribute on text
+    assert text_node.attrib.get("transform") is None
+    # Should have text-anchor for center alignment
+    assert text_node.attrib.get("text-anchor") == "middle"
+    # x should be greater than just the transform tx (includes midpoint)
+    # For this test file, transform.tx is about 23, but with bounds midpoint it should be ~120
+    assert text_x > 50
+
+
+@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
+def test_text_multiple_paragraphs_different_alignments() -> None:
+    """Test that multiple paragraphs with different text anchors are handled correctly.
+
+    When paragraphs have different text-anchor values (e.g., left, center, right),
+    the native positioning optimization should NOT hoist the first paragraph's
+    attributes to the parent text node. Instead, each paragraph should have its
+    own tspan with appropriate positioning and text-anchor.
+    """
+    svg = convert_psd_to_svg("texts/paragraph-shapetype1-multiple.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+
+    # The parent text node should use native x, y positioning (translation only)
+    assert text_node.attrib.get("x") is not None
+    assert text_node.attrib.get("y") is not None
+    assert text_node.attrib.get("transform") is None
+
+    # Get all tspan elements (one per paragraph)
+    tspans = text_node.findall("tspan")
+    assert len(tspans) == 3  # Three paragraphs
+
+    # First paragraph: RIGHT alignment (text-anchor="end")
+    assert tspans[0].attrib.get("text-anchor") == "end"
+    assert tspans[0].attrib.get("x") is not None
+    assert tspans[0].attrib.get("y") is not None  # First paragraph has y
+    assert tspans[0].attrib.get("dy") is None  # First paragraph doesn't have dy
+
+    # Second paragraph: CENTER alignment (text-anchor="middle")
+    assert tspans[1].attrib.get("text-anchor") == "middle"
+    assert tspans[1].attrib.get("x") is not None
+    assert tspans[1].attrib.get("y") is None  # Non-first paragraphs don't have y
+    assert tspans[1].attrib.get("dy") is not None  # Non-first paragraphs have dy
+
+    # Third paragraph: LEFT alignment (text-anchor=None or not set)
+    third_text_anchor = tspans[2].attrib.get("text-anchor")
+    assert third_text_anchor is None or third_text_anchor == "start"
+    assert tspans[2].attrib.get("x") is not None
+    assert tspans[2].attrib.get("y") is None  # Non-first paragraphs don't have y
+    assert tspans[2].attrib.get("dy") is not None  # Non-first paragraphs have dy
+
+    # Verify that each paragraph has the correct x position
+    # (based on bounds and alignment)
+    tspan_x_values = [float(t.attrib.get("x", "0")) for t in tspans]
+    # Right-aligned should have the largest x
+    # Center should be in the middle
+    # Left should have the smallest x
+    assert tspan_x_values[0] > tspan_x_values[1] > tspan_x_values[2]

@@ -76,17 +76,41 @@ class TextConverter(ConverterProtocol):
 
     def _create_text_node(self, text_setting: "TypeSetting") -> ET.Element:
         """Create SVG text node from type setting."""
-        text_node = self.create_node(
-            "text",
-            transform=text_setting.transform.to_svg_matrix(),
-        )
+        # Use native x, y attributes for translation-only transforms
+        transform = text_setting.transform
+        uses_native_positioning = transform.is_translation_only()
+
+        # Check if all paragraphs have the same text-anchor value
+        # Only enable native positioning optimization for first paragraph if they do
+        paragraphs = list(text_setting)
+        text_anchors = [p.get_text_anchor() for p in paragraphs]
+        all_same_text_anchor = len(set(text_anchors)) == 1
+        can_hoist_first_paragraph = uses_native_positioning and all_same_text_anchor
+
+        if uses_native_positioning:
+            text_node = self.create_node(
+                "text",
+                x=transform.tx if transform.tx != 0.0 else None,
+                y=transform.ty if transform.ty != 0.0 else None,
+            )
+        else:
+            text_node = self.create_node(
+                "text",
+                transform=transform.to_svg_matrix(),
+            )
+
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
             svg_utils.set_attribute(text_node, "writing-mode", "vertical-rl")
         # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
         # TODO: Support adjustments.
-        for i, paragraph in enumerate(text_setting):
+        for i, paragraph in enumerate(paragraphs):
             paragraph_node = self._add_paragraph(
-                text_setting, text_node, paragraph, first_paragraph=(i == 0)
+                text_setting,
+                text_node,
+                paragraph,
+                first_paragraph=(i == 0),
+                uses_native_positioning=uses_native_positioning,
+                can_hoist_first_paragraph=can_hoist_first_paragraph,
             )
             for span in paragraph:
                 self._add_text_span(text_setting, paragraph_node, span)
@@ -104,6 +128,8 @@ class TextConverter(ConverterProtocol):
         text_node: ET.Element,
         paragraph: "Paragraph",
         first_paragraph: bool = False,
+        uses_native_positioning: bool = False,
+        can_hoist_first_paragraph: bool = False,
     ) -> ET.Element:
         """Add a paragraph to the text node."""
         line_height = paragraph.compute_leading()
@@ -130,16 +156,58 @@ class TextConverter(ConverterProtocol):
                 elif text_anchor == "middle":
                     y = (text_setting.bounds.top + text_setting.bounds.bottom) / 2
 
-        # Create paragraph node.
-        paragraph_node = svg_utils.create_node(
-            "tspan",
-            parent=text_node,
-            text_anchor=text_anchor,
-            x=None if x == 0.0 and first_paragraph else x,
-            y=None if y == 0.0 and first_paragraph else y,
-            dy=line_height if not first_paragraph else None,
-            dominant_baseline=dominant_baseline,
-        )
+        # If using native x, y positioning and this is the first paragraph,
+        # and all paragraphs have the same text-anchor value,
+        # we can move the positioning to the parent text node instead of tspan.
+        if can_hoist_first_paragraph and first_paragraph:
+            transform = text_setting.transform
+            # Calculate the final absolute position
+            final_x = x + transform.tx
+            final_y = y + transform.ty
+
+            # Update the parent text node with the final position
+            if final_x != 0.0 or text_node.attrib.get("x") is not None:
+                svg_utils.set_attribute(text_node, "x", final_x)
+            if final_y != 0.0 or text_node.attrib.get("y") is not None:
+                svg_utils.set_attribute(text_node, "y", final_y)
+
+            # Also move text-anchor and dominant-baseline to parent if they're set
+            if text_anchor is not None:
+                svg_utils.set_attribute(text_node, "text-anchor", text_anchor)
+            if dominant_baseline is not None:
+                svg_utils.set_attribute(text_node, "dominant-baseline", dominant_baseline)
+
+            # Create paragraph node without position attributes (inherited from parent)
+            paragraph_node = svg_utils.create_node(
+                "tspan",
+                parent=text_node,
+            )
+        else:
+            # For non-first paragraphs or when not using native positioning,
+            # use the standard approach
+            if uses_native_positioning:
+                transform = text_setting.transform
+                # Only add transform if we're not hoisting the first paragraph
+                # (because if we are, the parent already has the transform)
+                if not can_hoist_first_paragraph:
+                    x += transform.tx
+                    y += transform.ty
+
+            # Determine if we should set x, y on the tspan
+            # For non-first paragraphs, we typically use dy instead of y
+            should_set_x = x != 0.0 or not first_paragraph
+            should_set_y = y != 0.0 and first_paragraph
+
+            # Create paragraph node.
+            paragraph_node = svg_utils.create_node(
+                "tspan",
+                parent=text_node,
+                text_anchor=text_anchor,
+                x=x if should_set_x else None,
+                y=y if should_set_y else None,
+                dy=line_height if not first_paragraph else None,
+                dominant_baseline=dominant_baseline,
+            )
 
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
 
@@ -386,6 +454,23 @@ class Transform:
             return "translate({})".format(svg_utils.seq2str((self.tx, self.ty)))
         return "matrix({})".format(
             svg_utils.seq2str((self.xx, self.yx, self.xy, self.yy, self.tx, self.ty))
+        )
+    
+    def is_translation_only(self, tolerance: float = 1e-6) -> bool:
+        """Check if the transform is only a translation.
+
+        Args:
+            tolerance: Maximum allowed deviation from identity matrix values.
+                       Defaults to 1e-6 to account for floating-point precision.
+
+        Returns:
+            True if the transform is a translation (rotation/scale components form identity matrix).
+        """
+        return (
+            abs(self.xx - 1.0) < tolerance
+            and abs(self.yx - 0.0) < tolerance
+            and abs(self.xy - 0.0) < tolerance
+            and abs(self.yy - 1.0) < tolerance
         )
 
 
