@@ -119,7 +119,7 @@ class TextConverter(ConverterProtocol):
             text_node, excludes={"x", "y", "dx", "dy", "transform"}
         )
         self._merge_singleton_children(text_node)
-        self._merge_attribute_less_children(text_node)
+        svg_utils.merge_attribute_less_children(text_node)
         return text_node
 
     def _add_paragraph(
@@ -457,18 +457,6 @@ class TextConverter(ConverterProtocol):
                     )
                 element.attrib[key] = value
             element.remove(child)
-
-    def _merge_attribute_less_children(self, element: ET.Element) -> None:
-        """Merge children without attributes into the parent node."""
-        for child in list(element):
-            self._merge_attribute_less_children(child)
-        for child in list(element):
-            if not child.attrib:
-                if child.text:
-                    element.text = (element.text or "") + child.text
-                if child.tail:
-                    element.tail = (element.tail or "") + child.tail
-                element.remove(child)
 
     def _merge_common_child_attributes(
         self, element: ET.Element, excludes: set[str]

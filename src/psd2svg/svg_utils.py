@@ -211,3 +211,63 @@ def wrap_element(
     parent.remove(node)
     wrapper.append(node)
     return wrapper
+
+
+def merge_attribute_less_children(element: ET.Element) -> None:
+    """Recursively merge children without attributes into their parent nodes.
+
+    This utility removes redundant wrapper elements that have no attributes,
+    moving their text content directly into the parent element. This helps
+    produce cleaner, more compact SVG output.
+
+    The function preserves document order by properly handling both element.text
+    and child.tail to ensure text appears in the correct sequence.
+
+    Args:
+        element: The XML element to process recursively.
+
+    Example:
+        Before: <text><tspan x="10"><tspan>Hello</tspan></tspan></text>
+        After:  <text><tspan x="10">Hello</tspan></text>
+
+        Before: <text><tspan font-weight="700">Bold</tspan><tspan> text</tspan></text>
+        After:  <text><tspan font-weight="700">Bold</tspan> text</text>
+    """
+    # First, recursively process all children
+    for child in list(element):
+        merge_attribute_less_children(child)
+
+    # Then merge attribute-less children into parent
+    children = list(element)
+    for i, child in enumerate(children):
+        if not child.attrib:
+            # Move child's text content
+            if child.text:
+                # If this is the first child, prepend to parent's text
+                if i == 0:
+                    element.text = (element.text or "") + child.text
+                else:
+                    # Otherwise, append to previous sibling's tail
+                    prev_sibling = children[i - 1]
+                    prev_sibling.tail = (prev_sibling.tail or "") + child.text
+
+            # Move child's tail
+            if child.tail:
+                if i == len(children) - 1:
+                    # Last child - tail goes to next element or becomes lost
+                    # Actually, we need to preserve it by appending to parent text after all children
+                    if i == 0:
+                        element.text = (element.text or "") + child.tail
+                    else:
+                        children[i - 1].tail = (children[i - 1].tail or "") + child.tail
+                else:
+                    # Not last child - tail goes to next sibling
+                    next_sibling = children[i + 1]
+                    # Prepend to next sibling's text or tail
+                    if next_sibling.text:
+                        next_sibling.text = child.tail + next_sibling.text
+                    else:
+                        next_sibling.text = child.tail
+
+            # Remove the now-empty child
+            element.remove(child)
