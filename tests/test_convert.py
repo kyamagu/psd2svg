@@ -42,11 +42,11 @@ from .conftest import get_fixture
         "layer-types/type-layer.psd",
     ],
 )
-def test_convert(tmpdir, psd_file: str) -> None:
+def test_convert(tmp_path, psd_file: str) -> None:
     """Test conversion succeeds for various file types."""
     input_path = get_fixture(psd_file)
-    output_path = tmpdir.dirname + "/output.svg"
-    images_path = tmpdir.dirname + "/images"
+    output_path = str(tmp_path / "output.svg")
+    images_path = str(tmp_path / "images")
     convert(input_path, output_path, images_path)
     assert os.path.exists(output_path)
 
