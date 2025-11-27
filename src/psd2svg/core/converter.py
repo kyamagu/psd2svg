@@ -50,6 +50,10 @@ class Converter(
         psdimage: Source PSDImage to convert.
         enable_live_shapes: Enable live shape conversion when possible.
         enable_text: Enable text layer conversion when possible.
+        text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
+            values. This can be used to compensate for differences between Photoshop's
+            text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
+            Default is 0.0 (no offset).
     """
 
     _id_counter: AutoCounter | None = None
@@ -59,6 +63,7 @@ class Converter(
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
         enable_text: bool = True,
+        text_letter_spacing_offset: float = 0.0,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -68,6 +73,7 @@ class Converter(
         self.psd = psdimage
         self.enable_live_shapes = enable_live_shapes
         self.enable_text = enable_text
+        self.text_letter_spacing_offset = text_letter_spacing_offset
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(

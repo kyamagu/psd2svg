@@ -28,6 +28,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `psd2svg input.psd output.svg` - Convert PSD to SVG
 
+### Advanced Options
+
+#### Text Letter Spacing Offset
+
+Photoshop and SVG renderers may have slightly different default letter spacing due to differences in kerning algorithms. You can compensate for these differences using the `text_letter_spacing_offset` parameter:
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+
+# Apply a small negative offset to tighten letter spacing
+document = SVGDocument.from_psd(
+    psdimage,
+    text_letter_spacing_offset=-0.015  # in pixels
+)
+
+# Or use convert() function
+from psd2svg import convert
+convert('input.psd', 'output.svg', text_letter_spacing_offset=-0.015)
+```
+
+The offset is in pixels and is added to all letter-spacing values. Typical values range from -0.02 to 0.02. Experiment with different values to match your specific fonts and target renderers.
+
 ## CI/CD
 
 ### Automated Testing

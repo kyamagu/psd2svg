@@ -48,7 +48,10 @@ class SVGDocument:
 
     @staticmethod
     def from_psd(
-        psdimage: PSDImage, enable_live_shapes: bool = True, enable_text: bool = True
+        psdimage: PSDImage,
+        enable_live_shapes: bool = True,
+        enable_text: bool = True,
+        text_letter_spacing_offset: float = 0.0,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -60,11 +63,18 @@ class SVGDocument:
                 accurate, but less editable.
             enable_text: Enable text layer conversion. If False, text layers
                 are rasterized as images.
+            text_letter_spacing_offset: Global offset (in pixels) to add to all
+                letter-spacing values. This can be used to compensate for differences
+                between Photoshop's text rendering and SVG's text rendering. Typical
+                values range from -0.02 to 0.02. Default is 0.0 (no offset).
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
         converter = Converter(
-            psdimage, enable_live_shapes=enable_live_shapes, enable_text=enable_text
+            psdimage,
+            enable_live_shapes=enable_live_shapes,
+            enable_text=enable_text,
+            text_letter_spacing_offset=text_letter_spacing_offset,
         )
         converter.build()
         return SVGDocument(
@@ -192,16 +202,27 @@ class SVGDocument:
         return svg
 
 
-def convert(input_path: str, output_path: str, image_prefix: str | None = None) -> None:
+def convert(
+    input_path: str,
+    output_path: str,
+    image_prefix: str | None = None,
+    text_letter_spacing_offset: float = 0.0,
+) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
     Args:
         input_path: Path to the input PSD file.
         output_path: Path to the output SVG file.
-        images_path: Optional path prefix to save extracted images. If None, images will be embedded.
+        image_prefix: Optional path prefix to save extracted images. If None, images will be embedded.
+        text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
+            values. This can be used to compensate for differences between Photoshop's
+            text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
+            Default is 0.0 (no offset).
     """
     psdimage = PSDImage.open(input_path)
-    document = SVGDocument.from_psd(psdimage)
+    document = SVGDocument.from_psd(
+        psdimage, text_letter_spacing_offset=text_letter_spacing_offset
+    )
     document.save(
         output_path, embed_images=image_prefix is None, image_prefix=image_prefix
     )

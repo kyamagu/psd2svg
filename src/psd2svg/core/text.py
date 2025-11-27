@@ -399,12 +399,18 @@ class TextConverter(ConverterProtocol):
                 tspan, "font-size", style.font_size * text_setting.subscript_size
             )
 
-        if style.tracking != 0:
+        # Apply letter spacing from tracking and optional global offset
+        letter_spacing = style.tracking / 1000 * style.font_size
+        if hasattr(self, 'text_letter_spacing_offset'):
+            letter_spacing += self.text_letter_spacing_offset
+
+        # Only set letter-spacing if non-zero (or if offset makes it non-zero)
+        if letter_spacing != 0:
             # NOTE: Photoshop tracking is in 1/1000 em units.
             svg_utils.set_attribute(
                 tspan,
                 "letter-spacing",
-                svg_utils.num2str(style.tracking / 1000 * style.font_size),
+                svg_utils.num2str(letter_spacing),
             )
 
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:

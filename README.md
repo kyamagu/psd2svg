@@ -92,6 +92,27 @@ exported = document.export()
 document = SVGDocument.load(exported["svg"], exported["images"])
 ```
 
+### Text Letter Spacing Adjustment
+
+Photoshop and SVG renderers may have slightly different default letter spacing. You can adjust this with the `text_letter_spacing_offset` parameter:
+
+```python
+from psd2svg import SVGDocument, convert
+from psd_tools import PSDImage
+
+# Using SVGDocument
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(
+    psdimage,
+    text_letter_spacing_offset=-0.015  # tighten spacing by 0.015 pixels
+)
+
+# Using convert()
+convert('input.psd', 'output.svg', text_letter_spacing_offset=-0.015)
+```
+
+The offset (in pixels) is added to all letter-spacing values. Typical values range from -0.02 to 0.02. Experiment to find the best value for your fonts and target renderers.
+
 ### Rasterization
 
 The package includes rasterizer support using resvg to convert SVG to PIL Image:

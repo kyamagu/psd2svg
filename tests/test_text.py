@@ -2,6 +2,7 @@ import pytest
 import xml.etree.ElementTree as ET
 from psd_tools import PSDImage
 
+from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 
 from .conftest import get_fixture, requires_noto_sans_jp
@@ -289,6 +290,59 @@ def test_text_style_tracking() -> None:
     # Should have non-zero letter spacing
     letter_spacing = float(tspan.attrib.get("letter-spacing", "0"))
     assert letter_spacing != 0
+
+
+@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
+def test_text_letter_spacing_offset() -> None:
+    """Test text_letter_spacing_offset parameter."""
+    # Test with no offset (default behavior)
+    psdimage = PSDImage.open(get_fixture("texts/style-tracking.psd"))
+    doc_no_offset = SVGDocument.from_psd(psdimage, text_letter_spacing_offset=0.0)
+    tspan_no_offset = doc_no_offset.svg.find(".//tspan[@letter-spacing]")
+    assert tspan_no_offset is not None
+    letter_spacing_no_offset = float(tspan_no_offset.attrib.get("letter-spacing", "0"))
+
+    # Test with positive offset
+    doc_positive = SVGDocument.from_psd(psdimage, text_letter_spacing_offset=0.5)
+    tspan_positive = doc_positive.svg.find(".//tspan[@letter-spacing]")
+    assert tspan_positive is not None
+    letter_spacing_positive = float(tspan_positive.attrib.get("letter-spacing", "0"))
+    assert abs(letter_spacing_positive - (letter_spacing_no_offset + 0.5)) < 1e-6
+
+    # Test with negative offset
+    doc_negative = SVGDocument.from_psd(psdimage, text_letter_spacing_offset=-0.3)
+    tspan_negative = doc_negative.svg.find(".//tspan[@letter-spacing]")
+    assert tspan_negative is not None
+    letter_spacing_negative = float(tspan_negative.attrib.get("letter-spacing", "0"))
+    assert abs(letter_spacing_negative - (letter_spacing_no_offset - 0.3)) < 1e-6
+
+
+@pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")
+def test_text_letter_spacing_offset_zero_tracking() -> None:
+    """Test text_letter_spacing_offset with text that has zero tracking."""
+    # Use a text file - this should have zero tracking by default
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-shapetype0-justification0.psd"))
+
+    # Test that offset is applied even when tracking is zero
+    # First get baseline (no offset)
+    doc_no_offset = SVGDocument.from_psd(psdimage, text_letter_spacing_offset=0.0)
+    tspans_no_offset = doc_no_offset.svg.findall(".//tspan")
+
+    # Apply offset and verify it's added to all text
+    doc_with_offset = SVGDocument.from_psd(psdimage, text_letter_spacing_offset=-0.01)
+    tspans_with_offset = doc_with_offset.svg.findall(".//tspan")
+
+    # Both should have same number of tspans
+    assert len(tspans_no_offset) == len(tspans_with_offset)
+
+    # Check that the offset is properly applied
+    for tspan_no, tspan_with in zip(tspans_no_offset, tspans_with_offset):
+        if tspan_no.text and tspan_no.text.strip():  # Only check tspans with actual text
+            # Get letter-spacing values (default to 0 if not present)
+            spacing_no = float(tspan_no.attrib.get("letter-spacing", "0"))
+            spacing_with = float(tspan_with.attrib.get("letter-spacing", "0"))
+            # The difference should be the offset (-0.01)
+            assert abs((spacing_with - spacing_no) - (-0.01)) < 1e-6
 
 
 @pytest.mark.skipif(not _ARIAL_FONT_AVAILABLE, reason="Arial font not available")

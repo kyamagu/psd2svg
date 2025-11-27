@@ -25,6 +25,12 @@ From PSD File
    # Create SVG document
    document = SVGDocument.from_psd(psdimage)
 
+   # Create with custom letter spacing offset
+   document = SVGDocument.from_psd(
+       psdimage,
+       text_letter_spacing_offset=-0.015
+   )
+
 Saving SVG Documents
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -151,6 +157,10 @@ For simple one-step conversions, use the ``convert()`` convenience function:
            image_prefix='images/img_',
            image_format='webp')
 
+   # With custom letter spacing offset
+   convert('input.psd', 'output.svg',
+           text_letter_spacing_offset=-0.015)
+
 Parameters
 ~~~~~~~~~~
 
@@ -159,6 +169,7 @@ Parameters
 * ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
 * ``image_prefix`` (str, optional): Prefix for external image files
 * ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
+* ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)
 
 Working with Images
 -------------------
