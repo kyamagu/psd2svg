@@ -116,15 +116,84 @@ def test_text_paragraph_positions() -> None:
     svg = convert_psd_to_svg("texts/font-sizes-1.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
+
+    # Parent text node should have x and y
+    assert text_node.attrib.get("x") is not None
+    assert text_node.attrib.get("y") is not None
+
     tspan_nodes = text_node.findall(".//tspan")
     assert len(tspan_nodes) == 4
-    # First tspan should not have x or dy set
+
+    # First tspan should not have x or dy set (inherits x from parent)
     assert tspan_nodes[0].attrib.get("x") is None
     assert tspan_nodes[0].attrib.get("dy") is None
-    # Second to fourth tspans should have x="0" and dy set
+
+    # Second to fourth tspans should have x set to parent's x (to reset horizontal position)
+    # and dy for vertical offset (line spacing)
+    parent_x = text_node.attrib.get("x")
     for i in range(1, 4):
-        assert tspan_nodes[i].attrib.get("x") == "0"
+        assert tspan_nodes[i].attrib.get("x") == parent_x, \
+            f"tspan {i} should have x='{parent_x}' to reset to parent's x position"
         assert tspan_nodes[i].attrib.get("dy") is not None
+
+
+def test_text_paragraph_native_positioning_no_x_override() -> None:
+    """Test that subsequent paragraphs reset x to parent's value, not to 0.
+
+    Regression test for bug where subsequent paragraph tspans were incorrectly
+    setting x="0" when using native positioning (parent text node has x/y attributes).
+    This caused alignment issues because x="0" moved text to absolute position 0
+    instead of the parent's x position.
+
+    The correct behavior is for subsequent tspans to:
+    - Set x to parent's x value (to reset horizontal position to left margin)
+    - Set dy for vertical offset (line spacing)
+    - Not set y (using dy instead for relative positioning)
+    """
+    svg = convert_psd_to_svg("texts/font-sizes-1.psd")
+    text_node = svg.find(".//text")
+    assert text_node is not None
+
+    # Verify we're using native positioning (parent has x and y)
+    parent_x = text_node.attrib.get("x")
+    parent_y = text_node.attrib.get("y")
+    assert parent_x is not None, "Parent text node should have x attribute"
+    assert parent_y is not None, "Parent text node should have y attribute"
+
+    # Parse the x value to verify it's non-zero (not at origin)
+    parent_x_value = float(parent_x)
+    assert parent_x_value != 0.0, "Parent x should be non-zero for this test"
+
+    tspan_nodes = text_node.findall(".//tspan")
+    assert len(tspan_nodes) >= 2, "Need at least 2 paragraphs to test"
+
+    # First paragraph tspan should not have position attributes (hoisted to parent)
+    assert tspan_nodes[0].attrib.get("x") is None
+    assert tspan_nodes[0].attrib.get("y") is None
+    assert tspan_nodes[0].attrib.get("dy") is None
+
+    # Subsequent paragraph tspans should:
+    # 1. Have x set to parent's x (to reset horizontal position)
+    # 2. Have dy attribute for vertical offset
+    # 3. NOT have y attribute (using dy instead)
+    for i in range(1, len(tspan_nodes)):
+        tspan = tspan_nodes[i]
+
+        # Critical: x should be set to parent's x, NOT "0" or None
+        x_attr = tspan.attrib.get("x")
+        assert x_attr == parent_x, \
+            f"Paragraph {i+1} tspan should have x='{parent_x}' (parent's x), but has x='{x_attr}'. " \
+            f"Without this, text would continue from end of previous line instead of resetting to left margin."
+
+        # Should have dy for line spacing
+        dy_attr = tspan.attrib.get("dy")
+        assert dy_attr is not None, \
+            f"Paragraph {i+1} tspan should have dy attribute for vertical offset"
+
+        # Should not have y (using dy instead for relative positioning)
+        y_attr = tspan.attrib.get("y")
+        assert y_attr is None, \
+            f"Paragraph {i+1} tspan should not have y attribute (should use dy instead)"
 
 
 def test_text_writing_direction() -> None:

@@ -287,7 +287,22 @@ class TextConverter(ConverterProtocol):
 
         # Determine if we should set x, y on the tspan
         # For non-first paragraphs, we typically use dy instead of y
-        should_set_x = x != 0.0 or not first_paragraph
+        if uses_native_positioning and can_hoist_first_paragraph:
+            # When first paragraph is hoisted to parent, subsequent paragraphs need to
+            # reset x to parent's x position (to start at left margin instead of
+            # continuing from end of previous line).
+            parent_x_str = text_node.get("x")
+            parent_x = float(parent_x_str) if parent_x_str else 0.0
+
+            # For non-first paragraphs, set x to parent's x to reset horizontal position
+            # For first paragraph, don't set x (it's already on parent)
+            should_set_x = not first_paragraph
+            if should_set_x:
+                x = parent_x  # Reset to parent's x position
+        else:
+            # Using transform positioning or not hoisting first paragraph
+            should_set_x = x != 0.0 or not first_paragraph
+
         should_set_y = y != 0.0 and first_paragraph
 
         # Create paragraph node
