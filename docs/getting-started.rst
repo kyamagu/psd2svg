@@ -55,7 +55,7 @@ Command Line Options
 
 **Image handling:**
 
-* ``--image-prefix PATH`` - Save extracted images to external files with this prefix (default: embed images)
+* ``--image-prefix PATH`` - Save extracted images to external files with this prefix, relative to the output SVG file's directory (default: embed images)
 * ``--image-format FORMAT`` - Image format for rasterized layers: webp, png, jpeg (default: webp)
 
 **Feature flags:**
@@ -72,17 +72,21 @@ Command Line Options
 
 .. code-block:: bash
 
-   # Export images to external files (default format: webp)
+   # Export images to same directory as SVG (using "." prefix)
    psd2svg input.psd output.svg --image-prefix .
-   # => output.svg, xxx1.webp, ...
+   # => output.svg, 01.webp, 02.webp, ...
+
+   # Export images to subdirectory (relative to SVG location)
+   psd2svg input.psd output.svg --image-prefix images/img
+   # => output.svg, images/img01.webp, images/img02.webp, ...
 
    # Export images as PNG
    psd2svg input.psd output.svg --image-prefix . --image-format png
-   # => output.svg, xxx1.png, ...
+   # => output.svg, 01.png, 02.png, ...
 
-   # Export images to specific directory
-   psd2svg input.psd output/ --image-prefix resources/
-   # => output/input.svg, output/resources/xxx1.webp, ...
+   # Export with nested output directory
+   psd2svg input.psd output/result.svg --image-prefix .
+   # => output/result.svg, output/01.webp, output/02.webp, ...
 
    # Disable text layer conversion
    psd2svg input.psd output.svg --no-text
@@ -105,13 +109,17 @@ For quick conversions, use the ``convert()`` function:
    # Convert with embedded images
    convert('input.psd', 'output.svg')
 
-   # Convert with external images (webp format by default)
-   convert('input.psd', 'output.svg', image_prefix='images/img_')
-   # => output.svg, images/img_01.webp, images/img_02.webp, ...
+   # Convert with external images in same directory as SVG
+   convert('input.psd', 'output.svg', image_prefix='.')
+   # => output.svg, 01.webp, 02.webp, ...
+
+   # Convert with external images in subdirectory (relative to output SVG)
+   convert('input.psd', 'output.svg', image_prefix='images/img')
+   # => output.svg, images/img01.webp, images/img02.webp, ...
 
    # Convert with external PNG images
-   convert('input.psd', 'output.svg', image_prefix='images/img_', image_format='png')
-   # => output.svg, images/img_01.png, images/img_02.png, ...
+   convert('input.psd', 'output.svg', image_prefix='images/img', image_format='png')
+   # => output.svg, images/img01.png, images/img02.png, ...
 
    # Disable text layer conversion (rasterize text instead)
    convert('input.psd', 'output.svg', enable_text=False)

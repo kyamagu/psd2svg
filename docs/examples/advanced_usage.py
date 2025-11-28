@@ -22,7 +22,7 @@ for psd_file in input_dir.glob("*.psd"):
 
     document.save(
         str(svg_path),
-        image_prefix=f"images/{psd_file.stem}_",
+        image_prefix=f"images/{psd_file.stem}",
         image_format="webp",
     )
     print(f"✓ Created {svg_path}")
@@ -33,13 +33,13 @@ psdimage = PSDImage.open("photo.psd")
 document = SVGDocument.from_psd(psdimage)
 
 # PNG - lossless, larger file
-document.save("output_png.svg", image_prefix="img_", image_format="png")
+document.save("output_png.svg", image_prefix="img", image_format="png")
 
 # WebP - modern, good compression
-document.save("output_webp.svg", image_prefix="img_", image_format="webp")
+document.save("output_webp.svg", image_prefix="img", image_format="webp")
 
 # JPEG - lossy, smallest file
-document.save("output_jpeg.svg", image_prefix="img_", image_format="jpeg")
+document.save("output_jpeg.svg", image_prefix="img", image_format="jpeg")
 
 print("✓ Created files with different image formats")
 
@@ -66,7 +66,7 @@ print("\nExample 4: Memory-efficient processing")
 # For very large PSDs, convert and save immediately
 psdimage = PSDImage.open("large.psd")
 document = SVGDocument.from_psd(psdimage)
-document.save("large.svg", image_prefix="large_", image_format="webp")
+document.save("large.svg", image_prefix="large", image_format="webp")
 del document
 del psdimage
 print("✓ Processed large file and freed memory")
@@ -117,7 +117,7 @@ document = SVGDocument.from_psd(psdimage)
 # Save with relative paths
 document.save(
     str(svg_dir / f"{base_name}.svg"),
-    image_prefix=f"../images/{base_name}/{base_name}_",
+    image_prefix=f"../images/{base_name}/{base_name}",
     image_format="webp",
 )
 print(f"✓ Created organized output structure in {output_root}")

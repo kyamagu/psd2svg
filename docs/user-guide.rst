@@ -47,21 +47,21 @@ Embed all images as base64-encoded data URIs within the SVG file:
 With External Images
 ^^^^^^^^^^^^^^^^^^^^
 
-Export images to external files:
+Export images to external files. The ``image_prefix`` is interpreted relative to the output SVG file's directory:
 
 .. code-block:: python
 
-   # Export as PNG
-   document.save("output.svg", image_prefix="images/img_", image_format="png")
-   # => output.svg, images/img_01.png, images/img_02.png, ...
+   # Export to same directory as SVG (using "." prefix)
+   document.save("output.svg", image_prefix=".", image_format="png")
+   # => output.svg, 01.png, 02.png, ...
 
-   # Export as WebP
-   document.save("output.svg", image_prefix="images/img_", image_format="webp")
-   # => output.svg, images/img_01.webp, images/img_02.webp, ...
+   # Export to subdirectory
+   document.save("output.svg", image_prefix="images/img", image_format="webp")
+   # => output.svg, images/img01.webp, images/img02.webp, ...
 
-   # Export as JPEG
-   document.save("output.svg", image_prefix="images/img_", image_format="jpeg")
-   # => output.svg, images/img_01.jpg, images/img_02.jpg, ...
+   # Export as JPEG with custom prefix
+   document.save("output.svg", image_prefix="images/photo", image_format="jpeg")
+   # => output.svg, images/photo01.jpg, images/photo02.jpg, ...
 
 Getting SVG as String
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -158,12 +158,15 @@ For simple one-step conversions, use the ``convert()`` convenience function:
    # Basic conversion with embedded images
    convert('input.psd', 'output.svg')
 
-   # With external images
-   convert('input.psd', 'output.svg', image_prefix='images/img_')
+   # With external images in same directory
+   convert('input.psd', 'output.svg', image_prefix='.')
+
+   # With external images in subdirectory
+   convert('input.psd', 'output.svg', image_prefix='images/img')
 
    # With custom image format
    convert('input.psd', 'output.svg',
-           image_prefix='images/img_',
+           image_prefix='images/img',
            image_format='webp')
 
    # With custom options
@@ -177,7 +180,7 @@ Parameters
 * ``input_path`` (str): Path to input PSD file
 * ``output_path`` (str): Path to output SVG file
 * ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
-* ``image_prefix`` (str, optional): Prefix for external image files
+* ``image_prefix`` (str, optional): Prefix for external image files, relative to the output SVG file's directory
 * ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
 * ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: True)
 * ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)

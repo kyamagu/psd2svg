@@ -104,7 +104,7 @@ class SVGDocument:
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
-        svg = self._handle_images(embed_images, image_prefix, image_format)
+        svg = self._handle_images(embed_images, image_prefix, image_format, svg_filepath=None)
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
@@ -120,11 +120,12 @@ class SVGDocument:
         Args:
             filepath: Path to the output SVG file.
             embed_images: If True, embed images as base64 data URIs.
-            image_prefix: If provided, save images to files with this prefix.
+            image_prefix: If provided, save images to files with this prefix
+                relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
-        svg = self._handle_images(embed_images, image_prefix, image_format)
+        svg = self._handle_images(embed_images, image_prefix, image_format, svg_filepath=filepath)
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
@@ -180,9 +181,19 @@ class SVGDocument:
         return SVGDocument(svg=svg_node, images=pil_images, fonts=font_infos)
 
     def _handle_images(
-        self, embed_images: bool, image_prefix: str | None, image_format: str
+        self, embed_images: bool, image_prefix: str | None, image_format: str,
+        svg_filepath: str | None = None
     ) -> ET.Element:
-        """Handle image embedding or saving."""
+        """Handle image embedding or saving.
+
+        Args:
+            embed_images: If True, embed images as base64 data URIs.
+            image_prefix: Path prefix for saving images. If svg_filepath is provided,
+                this is interpreted relative to the SVG file's directory.
+            image_format: Image format to use when embedding or saving images.
+            svg_filepath: Optional path to the SVG file. When provided, image_prefix
+                is interpreted relative to this file's directory.
+        """
         svg = deepcopy(self.svg)  # Avoid modifying the original SVG.
         nodes = svg.findall(".//image")
         if len(nodes) != len(self.images):
@@ -193,13 +204,38 @@ class SVGDocument:
             for node, image in zip(nodes, self.images):
                 data_uri = image_utils.encode_data_uri(image, image_format)
                 node.set("href", data_uri)
-        elif image_prefix:
-            dirname = os.path.dirname(image_prefix)
-            if dirname and not os.path.exists(dirname):
-                logger.debug("Creating directory: %s", dirname)
-                os.makedirs(dirname)
+        elif image_prefix is not None:
+            # Determine the base directory for saving images
+            if svg_filepath:
+                svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+                # Special handling for "." - treat as "no prefix, just counter"
+                if image_prefix == ".":
+                    base_dir = svg_dir
+                    prefix = ""
+                else:
+                    # image_prefix is relative to SVG file's directory
+                    base_dir = os.path.join(svg_dir, os.path.dirname(image_prefix))
+                    prefix = os.path.basename(image_prefix)
+            else:
+                # No svg_filepath provided (tostring() case)
+                # Special handling for "." - treat as "no prefix, just counter"
+                if image_prefix == ".":
+                    base_dir = os.getcwd()
+                    prefix = ""
+                else:
+                    base_dir = os.path.dirname(image_prefix) or os.getcwd()
+                    prefix = os.path.basename(image_prefix)
+
+            # Create directory if needed
+            if base_dir and not os.path.exists(base_dir):
+                logger.debug("Creating directory: %s", base_dir)
+                os.makedirs(base_dir)
+
             for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
-                filepath = "{}{:02d}.{}".format(image_prefix, i, image_format.lower())
+                # Construct filename: prefix + counter + extension
+                filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
+                filepath = os.path.join(base_dir, filename)
+
                 # Convert RGBA to RGB for JPEG format (JPEG doesn't support alpha)
                 if image_format.lower() == "jpeg" and image.mode == "RGBA":
                     # Create white background and paste image on it
@@ -208,7 +244,14 @@ class SVGDocument:
                     rgb_image.save(filepath)
                 else:
                     image.save(filepath)
-                node.set("href", filepath)
+
+                # Set href: if svg_filepath provided, use relative path; otherwise use filename
+                if svg_filepath:
+                    svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+                    href = os.path.relpath(filepath, svg_dir)
+                else:
+                    href = filename
+                node.set("href", href)
         else:
             raise ValueError("Either embed must be True or path must be provided.")
 
