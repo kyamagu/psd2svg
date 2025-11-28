@@ -514,3 +514,59 @@ def test_text_paragraph_justification(psd_file: str) -> None:
     """Test text paragraph justification handling."""
     # We need a higher threshold depending on the available fonts.
     evaluate_quality(psd_file, 0.02)
+
+
+def test_convert_with_options(tmp_path: Path) -> None:
+    """Test convert() function with various options."""
+    input_path = get_fixture("shapes/rectangle-1.psd")
+    output_path = str(tmp_path / "output.svg")
+    images_path = str(tmp_path / "images")
+
+    # Test with enable_text=False
+    convert(
+        input_path,
+        output_path,
+        image_prefix=images_path,
+        enable_text=False,
+    )
+    assert os.path.exists(output_path)
+
+    # Test with enable_live_shapes=False
+    output_path2 = str(tmp_path / "output2.svg")
+    convert(
+        input_path,
+        output_path2,
+        image_prefix=images_path,
+        enable_live_shapes=False,
+    )
+    assert os.path.exists(output_path2)
+
+    # Test with enable_title=False
+    output_path3 = str(tmp_path / "output3.svg")
+    convert(
+        input_path,
+        output_path3,
+        image_prefix=images_path,
+        enable_title=False,
+    )
+    assert os.path.exists(output_path3)
+
+    # Test with different image_format
+    output_path4 = str(tmp_path / "output4.svg")
+    convert(
+        input_path,
+        output_path4,
+        image_prefix=images_path,
+        image_format="png",
+    )
+    assert os.path.exists(output_path4)
+
+    # Test with text_letter_spacing_offset
+    output_path5 = str(tmp_path / "output5.svg")
+    convert(
+        input_path,
+        output_path5,
+        image_prefix=images_path,
+        text_letter_spacing_offset=-0.015,
+    )
+    assert os.path.exists(output_path5)

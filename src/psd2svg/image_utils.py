@@ -8,14 +8,26 @@ logger = logging.getLogger(__name__)
 
 
 def encode_image(image: Image.Image, format: str = "WEBP") -> bytes:
-    """Encode a PIL image to bytes in the specified format."""
+    """Encode a PIL image to bytes in the specified format.
+
+    For JPEG format, RGBA images are automatically converted to RGB with a white background.
+    """
+    # Convert RGBA to RGB for JPEG format (JPEG doesn't support alpha)
+    if format.upper() == "JPEG" and image.mode == "RGBA":
+        rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+        rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
+        image = rgb_image
+
     with io.BytesIO() as output:
         image.save(output, format=format.upper())
         return output.getvalue()
 
 
 def encode_data_uri(image: Image.Image, format: str = "WEBP") -> str:
-    """Encode a PIL image as a base64 data URI."""
+    """Encode a PIL image as a base64 data URI.
+
+    For JPEG format, RGBA images are automatically converted to RGB with a white background.
+    """
     image_bytes = encode_image(image, format)
     base64_data = base64.b64encode(image_bytes).decode("utf-8")
     return f"data:image/{format.lower()};base64,{base64_data}"
