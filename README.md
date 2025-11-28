@@ -13,6 +13,22 @@ Use `pip` to install:
 pip install psd2svg
 ```
 
+### Platform Support
+
+**Supported Platforms:**
+
+- **Linux**: Full support for all features including text layer conversion
+- **macOS**: Full support for all features including text layer conversion
+- **Windows**: Supported - text layers are rasterized as images
+
+**Text Layer Conversion:**
+
+Text layer conversion requires the `fontconfig` library, which is automatically installed on Linux and macOS but not available on Windows:
+
+- **Linux/macOS**: Text layers are converted to native SVG `<text>` elements (fontconfig installed automatically)
+- **Windows**: Text layers are automatically rasterized as images (fontconfig not available on Windows)
+- **All platforms**: Can explicitly disable text conversion with `enable_text=False`
+
 ## Usage
 
 The package comes with a command-line tool:
@@ -178,31 +194,70 @@ The offset (in pixels) is added to all letter-spacing values. Typical values ran
 
 ### Rasterization
 
-The package includes rasterizer support using resvg to convert SVG to PIL Image:
+The package includes two rasterizer options for converting SVG to PIL Image:
+
+#### ResvgRasterizer (Default)
+
+Fast, production-ready rasterizer using resvg (included as dependency):
 
 ```python
 from psd2svg import SVGDocument
+from psd2svg.rasterizer import ResvgRasterizer
 
 document = SVGDocument.from_psd(psdimage)
 
-# Built-in rasterize method (uses resvg)
+# Built-in rasterize method (uses ResvgRasterizer by default)
 image = document.rasterize()
 image.save('output.png')
 
-# Rasterize with custom DPI
+# Rasterize with custom DPI for higher resolution
 image = document.rasterize(dpi=300)
 image.save('output_high_res.png')
 
 # Or use rasterizer directly
-from psd2svg.rasterizer import ResvgRasterizer
-
 rasterizer = ResvgRasterizer(dpi=96)
 svg_string = document.tostring(embed_images=True)
-image = rasterizer.rasterize_from_string(svg_string)
+image = rasterizer.from_string(svg_string)
 image.save('output.png')
 ```
 
-The `resvg-py` package is included as a dependency, providing fast and accurate SVG rendering with no external dependencies.
+**Note:** resvg-py may crash (SIGABRT) on malformed SVG or missing files instead of raising Python exceptions. For production use, validate SVG content before rasterizing. See the [Rasterizers Guide](https://psd2svg.readthedocs.io/en/latest/rasterizers.html#known-issues-with-resvg-py) for workarounds.
+
+#### PlaywrightRasterizer (Optional)
+
+Browser-based rasterizer with better SVG 2.0 support and more graceful error handling:
+
+```python
+from psd2svg import SVGDocument
+from psd2svg.rasterizer import PlaywrightRasterizer
+
+document = SVGDocument.from_psd(psdimage)
+
+# Use PlaywrightRasterizer for better vertical text support
+with PlaywrightRasterizer(dpi=96) as rasterizer:
+    image = document.rasterize(rasterizer=rasterizer)
+    image.save('output.png')
+```
+
+**Installation:**
+
+```bash
+pip install psd2svg[browser]
+# or with uv:
+uv sync --group browser
+
+# Install Chromium browser
+playwright install chromium
+```
+
+**Platform Support:** Playwright supports Linux, macOS, and Windows. Browsers are automatically downloaded during installation.
+
+**When to use:**
+
+- **ResvgRasterizer** (default): Production use, batch processing, fast rendering
+- **PlaywrightRasterizer**: Testing SVG 2.0 features, vertical text with `text-orientation: upright`, quality assurance
+
+See the [Rasterizers documentation](https://psd2svg.readthedocs.io/en/latest/rasterizers.html) for complete details.
 
 ## Documentation
 

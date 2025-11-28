@@ -10,7 +10,7 @@ from psd_tools import PSDImage
 from psd2svg import image_utils, svg_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
-from psd2svg.rasterizer import ResvgRasterizer
+from psd2svg.rasterizer import BaseRasterizer, ResvgRasterizer
 
 logger = logging.getLogger(__name__)
 
@@ -133,21 +133,47 @@ class SVGDocument:
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
-    def rasterize(self, dpi: int = 0) -> Image.Image:
-        """Rasterize the SVG document to PIL Image using resvg.
+    def rasterize(
+        self, dpi: int = 0, rasterizer: BaseRasterizer | None = None
+    ) -> Image.Image:
+        """Rasterize the SVG document to PIL Image.
 
         Args:
-            dpi: Dots per inch for rendering. If 0 (default), uses resvg's
-                default of 96 DPI. Higher values produce larger, higher
-                resolution images (e.g., 300 DPI for print quality).
+            dpi: Dots per inch for rendering. If 0 (default), uses the
+                rasterizer's default (96 DPI for ResvgRasterizer). Higher values
+                produce larger, higher resolution images (e.g., 300 DPI for print
+                quality). Only used if rasterizer is None.
+            rasterizer: Optional custom rasterizer instance. If None, uses
+                ResvgRasterizer with the specified dpi. Use this to specify
+                alternative rasterizers like PlaywrightRasterizer for better
+                SVG 2.0 feature support.
 
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
+
+        Example:
+            >>> # Default resvg rasterization
+            >>> image = document.rasterize()
+
+            >>> # High DPI rasterization
+            >>> image = document.rasterize(dpi=300)
+
+            >>> # Browser-based rasterization
+            >>> from psd2svg.rasterizer import PlaywrightRasterizer
+            >>> browser_rasterizer = PlaywrightRasterizer(dpi=96)
+            >>> image = document.rasterize(rasterizer=browser_rasterizer)
         """
-        rasterizer = ResvgRasterizer(dpi=dpi)
+        if rasterizer is None:
+            rasterizer = ResvgRasterizer(dpi=dpi)
+
         svg = self.tostring(embed_images=True)
-        font_files = [info.file for info in self.fonts] if self.fonts else None
-        return rasterizer.from_string(svg, font_files=font_files)
+
+        # Font files are only supported by ResvgRasterizer
+        if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
+            font_files = [info.file for info in self.fonts]
+            return rasterizer.from_string(svg, font_files=font_files)
+
+        return rasterizer.from_string(svg)
 
     def export(
         self,

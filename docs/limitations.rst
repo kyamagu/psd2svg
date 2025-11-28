@@ -3,6 +3,27 @@ Limitations
 
 While psd2svg strives to accurately convert PSD files to SVG format, there are inherent limitations due to differences between the Photoshop format and SVG capabilities.
 
+Platform Support
+----------------
+
+Operating System Limitations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**All Platforms**: psd2svg works on Linux, macOS, and Windows. However, text layer conversion has platform-specific requirements.
+
+**Text Layer Conversion:**
+
+* **Linux/macOS**: Text layers are converted to native SVG ``<text>`` elements (fontconfig installed automatically)
+* **Windows**: Text layers are automatically rasterized as images, as fontconfig is not available on Windows
+
+**Workarounds for Windows Text Conversion:**
+
+If you need native SVG text conversion on Windows, you can:
+
+1. Use Windows Subsystem for Linux (WSL) with a Linux distribution
+2. Use a Docker container with Linux
+3. Convert PSD files to SVG on Linux/macOS (with text conversion) and use the resulting SVG files on Windows
+
 SVG 1.1 Limitations
 -------------------
 
@@ -282,6 +303,40 @@ Thread Safety
 * Do not share ``SVGDocument`` instances across threads
 * Do not perform concurrent operations on the same document
 * Use separate instances for parallel processing
+
+Rasterizer Stability
+---------------------
+
+resvg-py Edge Cases
+~~~~~~~~~~~~~~~~~~~
+
+The bundled resvg rasterizer (via resvg-py) has stability issues with edge cases:
+
+**Crashes (SIGABRT):**
+
+The resvg-py library may crash instead of raising Python exceptions when encountering:
+
+* Severely malformed or corrupted SVG content
+* Missing SVG files (``from_file()`` with non-existent paths)
+* Empty SVG documents (0x0 dimensions)
+
+**Impact:**
+
+These crashes cannot be caught with Python exception handling, which means:
+
+* Applications may terminate unexpectedly
+* Error recovery is not possible
+* No proper error messages are available
+
+**Workarounds:**
+
+1. **Validate input** - Check file existence and parse SVG with XML parser before rasterizing
+2. **Use PlaywrightRasterizer** - The optional browser-based rasterizer handles errors more gracefully
+3. **Sanitize SVG** - Ensure SVG content is well-formed before rasterization
+
+See the :doc:`rasterizers` documentation for detailed workarounds and examples.
+
+**Status:** This is a limitation of the underlying resvg-py library, not psd2svg itself.
 
 Color Management
 ----------------

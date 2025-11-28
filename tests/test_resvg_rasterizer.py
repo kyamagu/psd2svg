@@ -1,0 +1,367 @@
+"""Tests for ResvgRasterizer."""
+
+import tempfile
+
+import pytest
+from PIL import Image
+
+from psd2svg.rasterizer import ResvgRasterizer
+
+
+@pytest.fixture
+def simple_svg() -> str:
+    """Simple SVG for basic testing."""
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+    <rect x="10" y="10" width="80" height="80" fill="red"/>
+</svg>"""
+
+
+@pytest.fixture
+def vertical_text_svg() -> str:
+    """SVG with vertical text using SVG features."""
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <text x="100" y="50" writing-mode="vertical-rl"
+          font-family="sans-serif" font-size="20" fill="black">
+        Text
+    </text>
+</svg>"""
+
+
+@pytest.fixture
+def svg_with_viewbox_only() -> str:
+    """SVG with only viewBox (no width/height attributes)."""
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150">
+    <circle cx="100" cy="75" r="50" fill="blue"/>
+</svg>"""
+
+
+@pytest.fixture
+def svg_with_gradient() -> str:
+    """SVG with gradient fill."""
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(255,255,0);stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(255,0,0);stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect width="200" height="200" fill="url(#grad1)" />
+</svg>"""
+
+
+@pytest.fixture
+def svg_with_embedded_image() -> str:
+    """SVG with embedded image (data URI)."""
+    # 1x1 red pixel PNG as data URI
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="100" height="100" viewBox="0 0 100 100">
+    <image x="10" y="10" width="80" height="80"
+           xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==" />
+</svg>"""
+
+
+def test_rasterizer_basic(simple_svg: str) -> None:
+    """Test basic rasterization functionality."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(simple_svg)
+
+    # Verify image properties
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (100, 100)
+
+
+def test_rasterizer_default_dpi(simple_svg: str) -> None:
+    """Test rasterization with default DPI (0 = 96 DPI)."""
+    rasterizer = ResvgRasterizer()
+    image = rasterizer.from_string(simple_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (100, 100)
+
+
+def test_rasterizer_from_file(simple_svg: str) -> None:
+    """Test rasterization from file."""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".svg", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(simple_svg)
+        svg_path = f.name
+
+    try:
+        rasterizer = ResvgRasterizer(dpi=96)
+        image = rasterizer.from_file(svg_path)
+
+        assert isinstance(image, Image.Image)
+        assert image.mode == "RGBA"
+        assert image.size == (100, 100)
+    finally:
+        import os
+
+        os.unlink(svg_path)
+
+
+def test_rasterizer_dpi_scaling() -> None:
+    """Test DPI scaling with physical dimensions (e.g., inches).
+
+    Note: DPI only affects scaling when SVG uses physical units.
+    When SVG has explicit pixel dimensions, output size stays constant.
+    """
+    # SVG with physical dimensions (1 inch x 1 inch)
+    svg_inches = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1in" height="1in" viewBox="0 0 100 100">
+    <rect x="10" y="10" width="80" height="80" fill="red"/>
+</svg>"""
+
+    rasterizer_96 = ResvgRasterizer(dpi=96)
+    image_96 = rasterizer_96.from_string(svg_inches)
+
+    rasterizer_192 = ResvgRasterizer(dpi=192)
+    image_192 = rasterizer_192.from_string(svg_inches)
+
+    # 1 inch at 96 DPI = 96 pixels, at 192 DPI = 192 pixels
+    assert image_96.size == (96, 96)
+    assert image_192.size == (192, 192)
+
+
+def test_rasterizer_high_dpi() -> None:
+    """Test high DPI rendering (print quality)."""
+    # SVG with physical dimensions for DPI testing
+    svg_inches = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1in" height="1in" viewBox="0 0 100 100">
+    <rect x="10" y="10" width="80" height="80" fill="red"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=300)
+    image = rasterizer.from_string(svg_inches)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    # 1 inch at 300 DPI = 300 pixels
+    assert image.size == (300, 300)
+
+
+def test_rasterizer_vertical_text(vertical_text_svg: str) -> None:
+    """Test rendering of vertical text.
+
+    Note: resvg may not support all vertical text features like
+    text-orientation: upright, but it should render the SVG without errors.
+    """
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(vertical_text_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (200, 200)
+
+
+def test_rasterizer_viewbox_only(svg_with_viewbox_only: str) -> None:
+    """Test SVG with only viewBox (no width/height attributes)."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(svg_with_viewbox_only)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    # Should use viewBox dimensions
+    assert image.size == (200, 150)
+
+
+def test_rasterizer_gradient(svg_with_gradient: str) -> None:
+    """Test rendering of gradients."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(svg_with_gradient)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (200, 200)
+
+    # Check that gradient produces varying colors (not solid)
+    pixel_tl = image.getpixel((10, 10))
+    pixel_br = image.getpixel((190, 190))
+
+    assert isinstance(pixel_tl, tuple)
+    assert isinstance(pixel_br, tuple)
+
+    # Colors should be different at gradient endpoints
+    assert pixel_tl[:3] != pixel_br[:3]
+
+
+def test_rasterizer_embedded_image(svg_with_embedded_image: str) -> None:
+    """Test rendering of SVG with embedded images."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(svg_with_embedded_image)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (100, 100)
+
+
+def test_rasterizer_transparency(simple_svg: str) -> None:
+    """Test that transparency is preserved."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(simple_svg)
+
+    # Image should have alpha channel
+    assert image.mode == "RGBA"
+
+    # Check that corners are transparent (outside the red rectangle)
+    # Red rectangle is at (10, 10) to (90, 90)
+    pixel = image.getpixel((5, 5))  # Top-left corner
+    # Pixel should be a tuple in RGBA mode
+    assert isinstance(pixel, tuple)
+    assert pixel[3] == 0  # Alpha should be 0 (transparent)
+
+
+def test_rasterizer_bytes_input(simple_svg: str) -> None:
+    """Test rasterization with bytes input."""
+    svg_bytes = simple_svg.encode("utf-8")
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(svg_bytes)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (100, 100)
+
+
+def test_rasterizer_string_input(simple_svg: str) -> None:
+    """Test rasterization with string input."""
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(simple_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (100, 100)
+
+
+def test_rasterizer_reuse() -> None:
+    """Test that rasterizer can be reused for multiple renders."""
+    svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="red"/></svg>'
+    svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image1 = rasterizer.from_string(svg1)
+    image2 = rasterizer.from_string(svg2)
+
+    assert image1.size == (50, 50)
+    assert image2.size == (100, 100)
+
+
+def test_rasterizer_with_font_files(simple_svg: str) -> None:
+    """Test rasterization with font_files parameter."""
+    rasterizer = ResvgRasterizer(dpi=96)
+
+    # Test with empty font list (should not error)
+    image = rasterizer.from_string(simple_svg, font_files=[])
+    assert isinstance(image, Image.Image)
+    assert image.size == (100, 100)
+
+    # Test with None font list (should not error)
+    image = rasterizer.from_string(simple_svg, font_files=None)
+    assert isinstance(image, Image.Image)
+    assert image.size == (100, 100)
+
+
+# Note: Tests for malformed SVG, missing files, and empty SVG are omitted
+# because resvg-py may crash (SIGABRT) instead of raising Python exceptions
+# for these edge cases. This is a limitation of the underlying resvg library.
+
+
+def test_rasterizer_large_svg() -> None:
+    """Test rendering of large SVG dimensions."""
+    large_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+    <rect x="100" y="100" width="800" height="800" fill="green"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(large_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (1000, 1000)
+
+
+def test_rasterizer_complex_shapes() -> None:
+    """Test rendering of complex path shapes."""
+    complex_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <path d="M 100 10 L 40 198 L 190 78 L 10 78 L 160 198 Z"
+          fill="gold" stroke="orange" stroke-width="2"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(complex_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (200, 200)
+
+
+def test_rasterizer_with_transforms() -> None:
+    """Test rendering of SVG with transforms."""
+    transform_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <rect x="50" y="50" width="50" height="50" fill="purple"
+          transform="rotate(45 100 100)"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(transform_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (200, 200)
+
+
+def test_rasterizer_with_opacity() -> None:
+    """Test rendering of semi-transparent elements."""
+    opacity_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <rect x="50" y="50" width="100" height="100" fill="red" opacity="0.5"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(opacity_svg)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+
+    # Check that opacity is applied (pixel should be semi-transparent)
+    pixel = image.getpixel((100, 100))
+    assert isinstance(pixel, tuple)
+    assert 0 < pixel[3] < 255  # Alpha should be between 0 and 255
+
+
+def test_rasterizer_composite_background() -> None:
+    """Test that _composite_background is applied correctly."""
+    rasterizer = ResvgRasterizer(dpi=96)
+
+    # Create a simple test image
+    test_image = Image.new("RGBA", (100, 100), (255, 0, 0, 128))
+
+    # Apply composite background
+    result = rasterizer._composite_background(test_image)
+
+    assert result.mode == "RGBA"
+    assert result.size == (100, 100)
+
+
+def test_rasterizer_from_string_optimized() -> None:
+    """Test that from_string uses optimized implementation (not via temp file)."""
+    simple_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="blue"/></svg>'
+
+    rasterizer = ResvgRasterizer(dpi=96)
+
+    # Both bytes and string should work without temp files
+    image_str = rasterizer.from_string(simple_svg)
+    image_bytes = rasterizer.from_string(simple_svg.encode("utf-8"))
+
+    assert image_str.size == (100, 100)
+    assert image_bytes.size == (100, 100)

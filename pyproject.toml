@@ -30,7 +30,7 @@ dependencies = [
     "numpy",
     "psd-tools>=1.12.0",
     "resvg-py>=0.2.3",
-    "fontconfig-py>=0.3.0",
+    "fontconfig-py>=0.3.0; sys_platform != 'win32'",
 ]
 
 [dependency-groups]
@@ -45,6 +45,9 @@ docs = [
     "sphinx-rtd-theme>=2.0",
     "sphinx-autodoc-typehints>=1.25",
     "myst-parser>=2.0",
+]
+browser = [
+    "playwright>=1.40.0",
 ]
 
 [project.urls]
@@ -65,6 +68,7 @@ markers = [
     "requires_noto_sans_thai: marks tests that require Noto Sans Thai font",
     "requires_noto_sans_hebrew: marks tests that require Noto Sans Hebrew font",
     "requires_arial: marks tests that require Arial font (from MS Core Fonts)",
+    "requires_playwright: marks tests that require Playwright browser automation",
 ]
 
 [tool.mypy]
@@ -83,4 +87,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "fontconfig"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "playwright.*"
 ignore_missing_imports = true
