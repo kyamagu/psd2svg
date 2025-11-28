@@ -33,7 +33,7 @@ class SVGDocument:
 
         # Save to file or get as string.
         document.save("output.svg", embed_images=True)
-        svg_string = document.tostring(embed_images=True)
+        svg_string = document.tostring()  # Images embedded by default
 
         # Rasterize to PIL Image.
         rasterized = document.rasterize()
@@ -95,7 +95,7 @@ class SVGDocument:
 
     def tostring(
         self,
-        embed_images: bool = False,
+        embed_images: bool = True,
         embed_fonts: bool = False,
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
@@ -104,12 +104,14 @@ class SVGDocument:
         """Convert SVG document to string.
 
         Args:
-            embed_images: If True, embed images as base64 data URIs.
+            embed_images: If True, embed images as base64 data URIs. Default is True
+                since string output has no file system context for external images.
             embed_fonts: If True, embed fonts as @font-face rules in <style> element.
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
             image_prefix: If provided, save images to files with this prefix.
+                When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
@@ -271,13 +273,19 @@ class SVGDocument:
         if len(nodes) != len(self.images):
             raise RuntimeError("Number of <image> nodes and images do not match.")
 
-        # Handle image resources.
+        # Handle image resources (skip if no images).
+        if len(nodes) == 0:
+            return svg
+
         if embed_images:
             self._embed_images_as_data_uris(nodes, image_format)
         elif image_prefix is not None:
             self._save_images_to_files(nodes, image_prefix, image_format, svg_filepath)
         else:
-            raise ValueError("Either embed must be True or path must be provided.")
+            raise ValueError(
+                "Either embed_images must be True or image_prefix must be provided "
+                "when the document contains images."
+            )
 
         return svg
 
