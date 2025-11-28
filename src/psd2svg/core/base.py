@@ -34,7 +34,7 @@ class ConverterProtocol(Protocol):
     def add_adjustment(
         self, layer: layers.AdjustmentLayer, **attrib: str
     ) -> ET.Element | None: ...
-    def add_type(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None: ...
+    def add_text(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None: ...
     def add_fill(
         self,
         layer: adjustments.SolidColorFill
@@ -55,6 +55,9 @@ class ConverterProtocol(Protocol):
 
     # Shape methods
     def create_shape(self, layer: layers.ShapeLayer, **attrib: Any) -> ET.Element: ...
+
+    # Text methods
+    def create_text_node(self, layer: layers.TypeLayer) -> ET.Element: ...
 
     # Paint methods
     def apply_vector_fill(

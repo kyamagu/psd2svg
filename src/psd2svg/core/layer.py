@@ -38,7 +38,7 @@ class LayerConverter(ConverterProtocol):
             layers.PixelLayer: self.add_pixel,
             layers.ShapeLayer: self.add_shape,
             layers.SmartObjectLayer: self.add_pixel,
-            layers.TypeLayer: self.add_type,
+            layers.TypeLayer: self.add_text,
             adjustments.BlackAndWhite: self.add_adjustment,
             adjustments.BrightnessContrast: self.add_adjustment,
             adjustments.ChannelMixer: self.add_adjustment,
@@ -223,6 +223,49 @@ class LayerConverter(ConverterProtocol):
             self.set_layer_attributes(layer, node)
             node = self.apply_mask(layer, node)
         return node
+
+    def add_text(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None:
+        """Add a text layer to the svg document."""
+        if not self.enable_text:
+            return self.add_pixel(layer, **attrib)
+
+        # Check if layer has effects
+        if layer.has_effects():
+            # Create defs section and target node with ID
+            defs = self.create_node("defs")
+            with self.set_current(defs):
+                node = self.create_text_node(layer)
+                svg_utils.set_attribute(node, "id", self.auto_id("text"))
+                svg_utils.set_attribute(node, "title", layer.name)
+                svg_utils.append_attribute(node, "class", layer.kind)
+                # Apply any additional attributes
+                for key, value in attrib.items():
+                    svg_utils.set_attribute(node, key, value)
+
+                # Set opacity on the base text node
+                self.set_opacity(layer.opacity / 255.0, node)
+                node = self.apply_mask(layer, node)
+
+            # Apply effects in order (text already has fill/stroke from _add_text_span)
+            self.apply_background_effects(layer, node, insert_before_target=False)
+
+            # Create main visible text using <use>
+            svg_utils.create_node(
+                "use",
+                parent=self.current,
+                href=svg_utils.get_uri(node),
+                class_="text-content",
+            )
+
+            self.apply_overlay_effects(layer, node)
+            self.apply_stroke_effect(layer, node)
+            return node
+        else:
+            # No effects - simple path
+            node = self.create_text_node(layer)
+            self.set_layer_attributes(layer, node)
+            node = self.apply_mask(layer, node)
+            return node
 
     @contextlib.contextmanager
     def add_clipping_target(self, layer: layers.Layer | layers.Group) -> Iterator[dict]:

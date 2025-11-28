@@ -105,3 +105,8 @@ requires_noto_sans_hebrew = pytest.mark.skipif(
     not has_font("Noto Sans Hebrew"),
     reason="Noto Sans Hebrew font not installed",
 )
+
+requires_arial = pytest.mark.skipif(
+    not has_postscript_font("ArialMT"),
+    reason="Arial font not installed (from MS Core Fonts)",
+)

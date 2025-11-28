@@ -64,6 +64,7 @@ markers = [
     "requires_noto_sans_devanagari: marks tests that require Noto Sans Devanagari font",
     "requires_noto_sans_thai: marks tests that require Noto Sans Thai font",
     "requires_noto_sans_hebrew: marks tests that require Noto Sans Hebrew font",
+    "requires_arial: marks tests that require Arial font (from MS Core Fonts)",
 ]
 
 [tool.mypy]
