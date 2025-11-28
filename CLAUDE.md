@@ -35,6 +35,7 @@ Both ResvgRasterizer and PlaywrightRasterizer support all three platforms for SV
 - `uv sync` - Install dependencies
 - `uv sync --group docs` - Install documentation dependencies
 - `uv sync --group browser` - Install browser-based rasterizer dependencies (Playwright)
+- `uv sync --group fonts` - Install font subsetting dependencies (fonttools)
 - `uv run playwright install chromium` - Install Chromium browser for Playwright (after installing browser group)
 - `uv build` - Build distribution packages
 
@@ -127,6 +128,118 @@ Font embedding may be subject to licensing restrictions. Before distributing SVG
 - For PlaywrightRasterizer (rasterization only), font embedding is typically acceptable as it produces images, not redistributable font files
 - Consult with legal counsel if uncertain about font license compliance
 
+#### Font Subsetting and WOFF2 Conversion
+
+For web delivery, you can drastically reduce embedded font file sizes (typically 90%+ reduction) using font subsetting and WOFF2 compression. This feature requires the optional `fonts` dependency group:
+
+```bash
+uv sync --group fonts
+```
+
+**Basic Usage:**
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# Option 1: WOFF2 format (auto-enables subsetting, best compression)
+document.save('output.svg', embed_images=True, embed_fonts=True, font_format='woff2')
+
+# Option 2: Explicit subsetting with TTF format
+document.save('output.svg', embed_images=True, embed_fonts=True, subset_fonts=True)
+
+# Option 3: Full control over format and subsetting
+document.save(
+    'output.svg',
+    embed_images=True,
+    embed_fonts=True,
+    subset_fonts=True,
+    font_format='woff2'  # 'ttf', 'otf', or 'woff2'
+)
+```
+
+**Supported Formats:**
+
+- `'ttf'` - TrueType (default, no subsetting unless explicitly enabled)
+- `'otf'` - OpenType (no subsetting unless explicitly enabled)
+- `'woff2'` - Web Open Font Format 2 (best compression, auto-enables subsetting)
+
+**How It Works:**
+
+1. **Unicode Extraction**: Analyzes all `<text>` and `<tspan>` elements to determine which characters are actually used
+2. **Font Subsetting**: Uses `fonttools` (pyftsubset) to create minimal font files containing only the required glyphs
+3. **Format Conversion**: Optionally converts fonts to WOFF2 for maximum compression
+4. **Embedding**: Embeds the subset fonts as base64 data URIs in `@font-face` CSS rules
+
+**Performance Benefits:**
+
+- **File Size**: 90-95% reduction typical (e.g., 150KB → 10KB per font)
+- **Load Time**: Significantly faster page loads for SVG files displayed in browsers
+- **Bandwidth**: Reduced data transfer costs for web applications
+
+**Requirements and Notes:**
+
+- Requires `fonttools[woff]>=4.50.0` (install with `uv sync --group fonts`)
+- `subset_fonts=True` requires `embed_fonts=True` (raises `ValueError` otherwise)
+- `font_format='woff2'` automatically enables subsetting (most efficient option)
+- Missing characters fall back to full font encoding with a warning
+- Font subsetting is cached per SVGDocument instance to avoid re-processing
+
+**When to Use Font Subsetting:**
+
+- ✅ **Web delivery**: Embedding SVG files in web pages or applications
+- ✅ **Email**: Embedding SVG in HTML emails (smaller = better deliverability)
+- ✅ **Documentation**: Generating documentation with embedded fonts
+- ❌ **Editing**: Keep `subset_fonts=False` if SVG will be edited (may need additional characters)
+- ❌ **Unknown content**: Don't subset if text content might change later
+
+**Example - Complete Workflow:**
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+# Load PSD
+psdimage = PSDImage.open("design.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# For web deployment - maximum compression
+document.save(
+    'web/design.svg',
+    embed_images=True,
+    embed_fonts=True,
+    font_format='woff2'  # Auto-enables subsetting
+)
+
+# For editing - keep fonts external
+document.save(
+    'edit/design.svg',
+    embed_fonts=False,  # External fonts
+    image_prefix='images/design'
+)
+
+# For archiving - full embedded fonts
+document.save(
+    'archive/design.svg',
+    embed_images=True,
+    embed_fonts=True,
+    font_format='ttf'  # No subsetting
+)
+```
+
+**Font License Considerations (Subsetting):**
+
+Font subsetting creates derivative font files. Ensure your font license permits:
+
+- Subsetting and modification of font files
+- Distribution of subset fonts (even if embedded in SVG)
+- WOFF2 conversion (format transformation)
+
+Most open-source fonts (OFL, Apache) explicitly allow subsetting. Commercial fonts vary - check your license agreement.
+
 ## CI/CD
 
 ### Automated Testing
@@ -175,6 +288,85 @@ brew install --cask font-noto-sans font-noto-sans-cjk-jp
 **Pytest markers:**
 
 Tests requiring specific fonts use markers like `@requires_noto_sans_jp` or `@requires_noto_sans_cjk`. These tests are automatically skipped if fonts are unavailable. See [tests/conftest.py](tests/conftest.py) for available markers and the full list of supported fonts.
+
+### Pull Request Workflow
+
+**IMPORTANT:** Always run formatting and type checking before pushing to remote to ensure CI tests pass.
+
+**Pre-push checklist:**
+
+1. **Format code:**
+
+   ```bash
+   uv run ruff format src/ tests/
+   ```
+
+2. **Run linting:**
+
+   ```bash
+   uv run ruff check src/ tests/
+   ```
+
+3. **Run type checking:**
+
+   ```bash
+   uv run mypy src/ tests/
+   ```
+
+4. **Run tests:**
+
+   ```bash
+   uv run pytest
+   ```
+
+5. **Stage and commit changes:**
+
+   ```bash
+   git add .
+   git commit -m "Your commit message"
+   ```
+
+6. **Push to remote:**
+
+   ```bash
+   git push -u origin your-branch-name
+   ```
+
+7. **Create pull request:**
+
+   ```bash
+   gh pr create --title "Your PR title" --body "PR description"
+   ```
+
+**Complete workflow example:**
+
+```bash
+# Make your changes
+# ...
+
+# Format and check code
+uv run ruff format src/ tests/
+uv run ruff check src/ tests/
+uv run mypy src/ tests/
+uv run pytest
+
+# Commit and push
+git add .
+git commit -m "Add feature X"
+git push -u origin feature/x
+
+# Create PR
+gh pr create --title "Add feature X" --body "Description of feature X"
+```
+
+**Why this matters:**
+
+The CI workflow runs these same checks on every push and PR. Running them locally first:
+
+- Catches issues before pushing (faster feedback)
+- Avoids failed CI checks that require additional commits
+- Keeps the git history clean
+- Saves CI resources
 
 ### Release Process
 

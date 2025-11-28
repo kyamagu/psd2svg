@@ -23,6 +23,40 @@ Requirements
   * ``numpy`` - Numerical operations
   * ``resvg-py`` - SVG rasterization
 
+Optional Features
+~~~~~~~~~~~~~~~~~
+
+**Font Subsetting (Web Optimization):**
+
+For web delivery, you can drastically reduce embedded font file sizes (90%+ reduction) using font subsetting and WOFF2 compression:
+
+.. code-block:: bash
+
+   pip install psd2svg[fonts]
+   # or with uv:
+   uv sync --group fonts
+
+This enables:
+
+* **Font subsetting**: Only include glyphs actually used in the SVG (150KB → 10KB typical)
+* **WOFF2 compression**: Modern web font format with superior compression
+* **Automatic optimization**: Characters extracted from SVG text, fonts subset automatically
+
+See the :doc:`user-guide` for detailed usage examples.
+
+**Browser-based Rasterization:**
+
+For better SVG 2.0 support and vertical text rendering:
+
+.. code-block:: bash
+
+   pip install psd2svg[browser]
+   # or with uv:
+   uv sync --group browser
+   playwright install chromium
+
+See :doc:`rasterizers` for more details.
+
 Command Line Usage
 ------------------
 
