@@ -97,6 +97,8 @@ class SVGDocument:
         self,
         embed_images: bool = True,
         embed_fonts: bool = False,
+        subset_fonts: bool = False,
+        font_format: str = "ttf",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -110,17 +112,31 @@ class SVGDocument:
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
+            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
+                Requires embed_fonts=True. Requires fonttools package (install with:
+                uv sync --group fonts). This significantly reduces file size (typically
+                90%+ reduction).
+            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
+                WOFF2 provides best compression and automatically enables subsetting.
             image_prefix: If provided, save images to files with this prefix.
                 When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
+        # Validate font subsetting parameters
+        if subset_fonts and not embed_fonts:
+            raise ValueError("subset_fonts=True requires embed_fonts=True")
+
+        # Auto-enable subsetting for WOFF2 (web-optimized format)
+        if font_format == "woff2" and embed_fonts:
+            subset_fonts = True
+
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=None
         )
 
         if embed_fonts and self.fonts:
-            self._embed_fonts(svg)
+            self._embed_fonts(svg, subset_fonts=subset_fonts, font_format=font_format)
 
         return svg_utils.tostring(svg, indent=indent)
 
@@ -129,6 +145,8 @@ class SVGDocument:
         filepath: str,
         embed_images: bool = False,
         embed_fonts: bool = False,
+        subset_fonts: bool = False,
+        font_format: str = "ttf",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -142,17 +160,31 @@ class SVGDocument:
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
+            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
+                Requires embed_fonts=True. Requires fonttools package (install with:
+                uv sync --group fonts). This significantly reduces file size (typically
+                90%+ reduction).
+            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
+                WOFF2 provides best compression and automatically enables subsetting.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
+        # Validate font subsetting parameters
+        if subset_fonts and not embed_fonts:
+            raise ValueError("subset_fonts=True requires embed_fonts=True")
+
+        # Auto-enable subsetting for WOFF2 (web-optimized format)
+        if font_format == "woff2" and embed_fonts:
+            subset_fonts = True
+
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=filepath
         )
 
         if embed_fonts and self.fonts:
-            self._embed_fonts(svg)
+            self._embed_fonts(svg, subset_fonts=subset_fonts, font_format=font_format)
 
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
@@ -399,7 +431,9 @@ class SVGDocument:
         else:
             image.save(filepath)
 
-    def _embed_fonts(self, svg: ET.Element) -> None:
+    def _embed_fonts(
+        self, svg: ET.Element, subset_fonts: bool = False, font_format: str = "ttf"
+    ) -> None:
         """Embed fonts as @font-face rules in a <style> element.
 
         This modifies the provided SVG element in-place by inserting or updating
@@ -407,6 +441,8 @@ class SVGDocument:
 
         Args:
             svg: SVG element to modify.
+            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
+            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
 
         Warning:
             Font embedding may be subject to licensing restrictions. Ensure you
@@ -417,9 +453,28 @@ class SVGDocument:
             - Logs warnings for missing/unreadable fonts but continues
             - Creates <style> element as first child of <svg> root
             - Idempotent: calling multiple times won't duplicate fonts
+            - Font subsetting requires fonttools package (uv sync --group fonts)
         """
         if not self.fonts:
             return
+
+        # Extract Unicode usage if subsetting is enabled
+        font_usage: dict[str, set[str]] = {}
+        if subset_fonts:
+            try:
+                from psd2svg import font_subsetting
+
+                font_usage = font_subsetting.extract_used_unicode(svg)
+                logger.debug(
+                    f"Extracted {len(font_usage)} font(s) with "
+                    f"{sum(len(chars) for chars in font_usage.values())} unique char(s)"
+                )
+            except ImportError as e:
+                logger.error(
+                    f"Font subsetting requires fonttools package: {e}. "
+                    "Install with: uv sync --group fonts"
+                )
+                raise
 
         # Collect @font-face rules
         font_face_rules = []
@@ -434,19 +489,66 @@ class SVGDocument:
             seen_fonts.add(font_path)
 
             try:
-                # Use cache to avoid re-encoding
-                if font_path not in self._font_data_cache:
-                    logger.debug(f"Encoding font: {font_path}")
-                    self._font_data_cache[font_path] = font_utils.encode_font_data_uri(
-                        font_path
-                    )
+                if subset_fonts:
+                    # Subset and convert font
+                    from psd2svg import font_subsetting
 
-                data_uri = self._font_data_cache[font_path]
+                    # Get characters used by this specific font family
+                    chars = font_usage.get(font_info.family, set())
+
+                    if not chars:
+                        logger.warning(
+                            f"No characters found for font '{font_info.family}', "
+                            "skipping subsetting"
+                        )
+                        # Fall back to full font encoding
+                        if font_path not in self._font_data_cache:
+                            logger.debug(f"Encoding full font: {font_path}")
+                            self._font_data_cache[font_path] = (
+                                font_utils.encode_font_data_uri(font_path)
+                            )
+                        data_uri = self._font_data_cache[font_path]
+                    else:
+                        # Create cache key for subset fonts (include format and chars)
+                        cache_key = f"{font_path}:{font_format}:{len(chars)}"
+
+                        if cache_key not in self._font_data_cache:
+                            logger.debug(
+                                f"Subsetting font: {font_path} -> {font_format} "
+                                f"({len(chars)} chars)"
+                            )
+                            font_bytes = font_subsetting.subset_font(
+                                input_path=font_path,
+                                output_format=font_format,
+                                unicode_chars=chars,
+                            )
+                            data_uri = font_utils.encode_font_bytes_to_data_uri(
+                                font_bytes, font_format
+                            )
+                            self._font_data_cache[cache_key] = data_uri
+                        else:
+                            data_uri = self._font_data_cache[cache_key]
+                else:
+                    # Use full font encoding (original behavior)
+                    if font_path not in self._font_data_cache:
+                        logger.debug(f"Encoding font: {font_path}")
+                        self._font_data_cache[font_path] = (
+                            font_utils.encode_font_data_uri(font_path)
+                        )
+
+                    data_uri = self._font_data_cache[font_path]
+
                 css_rule = font_info.to_font_face_css(data_uri)
                 font_face_rules.append(css_rule)
 
             except (FileNotFoundError, IOError) as e:
                 logger.warning(f"Failed to embed font '{font_path}': {e}")
+                continue
+            except ImportError as e:
+                logger.error(f"Font subsetting failed (missing dependency): {e}")
+                raise
+            except Exception as e:
+                logger.warning(f"Failed to subset font '{font_path}': {e}")
                 continue
 
         if not font_face_rules:

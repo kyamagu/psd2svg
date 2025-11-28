@@ -29,6 +29,37 @@ Text layer conversion requires the `fontconfig` library, which is automatically 
 - **Windows**: Text layers are automatically rasterized as images (fontconfig not available on Windows)
 - **All platforms**: Can explicitly disable text conversion with `enable_text=False`
 
+### Optional Features
+
+**Font Subsetting (Web Optimization):**
+
+For web delivery, you can drastically reduce embedded font file sizes (90%+ reduction) using font subsetting and WOFF2 compression:
+
+```bash
+pip install psd2svg[fonts]
+# or with uv:
+uv sync --group fonts
+```
+
+This enables:
+
+- **Font subsetting**: Only include glyphs actually used in the SVG (150KB → 10KB typical)
+- **WOFF2 compression**: Modern web font format with superior compression
+- **Automatic optimization**: Characters extracted from SVG text, fonts subset automatically
+
+See the [Font Subsetting documentation](https://psd2svg.readthedocs.io/) for usage examples.
+
+**Browser-based Rasterization:**
+
+For better SVG 2.0 support and vertical text rendering:
+
+```bash
+pip install psd2svg[browser]
+# or with uv:
+uv sync --group browser
+playwright install chromium
+```
+
 ## Usage
 
 The package comes with a command-line tool:
@@ -138,6 +169,9 @@ document.save("output.svg", image_prefix="images/img", image_format="png")
 # Get as string
 svg_string = document.tostring(embed_images=True)
 print(svg_string)
+
+# Embed fonts with subsetting for web delivery (requires fonts extra)
+document.save("output.svg", embed_images=True, embed_fonts=True, font_format="woff2")
 
 # Rasterize to PIL Image using resvg
 image = document.rasterize()

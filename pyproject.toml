@@ -49,6 +49,9 @@ docs = [
 browser = [
     "playwright>=1.40.0",
 ]
+fonts = [
+    "fonttools[woff]>=4.50.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/kyamagu/psd2svg"
@@ -91,4 +94,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "playwright.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fontTools.*"
 ignore_missing_imports = true

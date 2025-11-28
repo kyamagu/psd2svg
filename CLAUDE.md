@@ -35,6 +35,7 @@ Both ResvgRasterizer and PlaywrightRasterizer support all three platforms for SV
 - `uv sync` - Install dependencies
 - `uv sync --group docs` - Install documentation dependencies
 - `uv sync --group browser` - Install browser-based rasterizer dependencies (Playwright)
+- `uv sync --group fonts` - Install font subsetting dependencies (fonttools)
 - `uv run playwright install chromium` - Install Chromium browser for Playwright (after installing browser group)
 - `uv build` - Build distribution packages
 
@@ -126,6 +127,118 @@ Font embedding may be subject to licensing restrictions. Before distributing SVG
 - For production web use, consider using web fonts (Google Fonts, Adobe Fonts, etc.)
 - For PlaywrightRasterizer (rasterization only), font embedding is typically acceptable as it produces images, not redistributable font files
 - Consult with legal counsel if uncertain about font license compliance
+
+#### Font Subsetting and WOFF2 Conversion
+
+For web delivery, you can drastically reduce embedded font file sizes (typically 90%+ reduction) using font subsetting and WOFF2 compression. This feature requires the optional `fonts` dependency group:
+
+```bash
+uv sync --group fonts
+```
+
+**Basic Usage:**
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# Option 1: WOFF2 format (auto-enables subsetting, best compression)
+document.save('output.svg', embed_images=True, embed_fonts=True, font_format='woff2')
+
+# Option 2: Explicit subsetting with TTF format
+document.save('output.svg', embed_images=True, embed_fonts=True, subset_fonts=True)
+
+# Option 3: Full control over format and subsetting
+document.save(
+    'output.svg',
+    embed_images=True,
+    embed_fonts=True,
+    subset_fonts=True,
+    font_format='woff2'  # 'ttf', 'otf', or 'woff2'
+)
+```
+
+**Supported Formats:**
+
+- `'ttf'` - TrueType (default, no subsetting unless explicitly enabled)
+- `'otf'` - OpenType (no subsetting unless explicitly enabled)
+- `'woff2'` - Web Open Font Format 2 (best compression, auto-enables subsetting)
+
+**How It Works:**
+
+1. **Unicode Extraction**: Analyzes all `<text>` and `<tspan>` elements to determine which characters are actually used
+2. **Font Subsetting**: Uses `fonttools` (pyftsubset) to create minimal font files containing only the required glyphs
+3. **Format Conversion**: Optionally converts fonts to WOFF2 for maximum compression
+4. **Embedding**: Embeds the subset fonts as base64 data URIs in `@font-face` CSS rules
+
+**Performance Benefits:**
+
+- **File Size**: 90-95% reduction typical (e.g., 150KB → 10KB per font)
+- **Load Time**: Significantly faster page loads for SVG files displayed in browsers
+- **Bandwidth**: Reduced data transfer costs for web applications
+
+**Requirements and Notes:**
+
+- Requires `fonttools[woff]>=4.50.0` (install with `uv sync --group fonts`)
+- `subset_fonts=True` requires `embed_fonts=True` (raises `ValueError` otherwise)
+- `font_format='woff2'` automatically enables subsetting (most efficient option)
+- Missing characters fall back to full font encoding with a warning
+- Font subsetting is cached per SVGDocument instance to avoid re-processing
+
+**When to Use Font Subsetting:**
+
+- ✅ **Web delivery**: Embedding SVG files in web pages or applications
+- ✅ **Email**: Embedding SVG in HTML emails (smaller = better deliverability)
+- ✅ **Documentation**: Generating documentation with embedded fonts
+- ❌ **Editing**: Keep `subset_fonts=False` if SVG will be edited (may need additional characters)
+- ❌ **Unknown content**: Don't subset if text content might change later
+
+**Example - Complete Workflow:**
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+# Load PSD
+psdimage = PSDImage.open("design.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# For web deployment - maximum compression
+document.save(
+    'web/design.svg',
+    embed_images=True,
+    embed_fonts=True,
+    font_format='woff2'  # Auto-enables subsetting
+)
+
+# For editing - keep fonts external
+document.save(
+    'edit/design.svg',
+    embed_fonts=False,  # External fonts
+    image_prefix='images/design'
+)
+
+# For archiving - full embedded fonts
+document.save(
+    'archive/design.svg',
+    embed_images=True,
+    embed_fonts=True,
+    font_format='ttf'  # No subsetting
+)
+```
+
+**Font License Considerations (Subsetting):**
+
+Font subsetting creates derivative font files. Ensure your font license permits:
+
+- Subsetting and modification of font files
+- Distribution of subset fonts (even if embedded in SVG)
+- WOFF2 conversion (format transformation)
+
+Most open-source fonts (OFL, Apache) explicitly allow subsetting. Commercial fonts vary - check your license agreement.
 
 ## CI/CD
 

@@ -249,3 +249,42 @@ def encode_font_data_uri(font_path: str) -> str:
 
     base64_data = base64.b64encode(font_data).decode("utf-8")
     return f"data:{mime_type};base64,{base64_data}"
+
+
+def encode_font_bytes_to_data_uri(font_bytes: bytes, font_format: str) -> str:
+    """Encode font bytes as a base64 data URI.
+
+    This function is used for embedding subset or converted fonts that
+    are already in memory as bytes (e.g., from fontTools subsetting).
+
+    Args:
+        font_bytes: Font file data as bytes.
+        font_format: Font format - "ttf", "otf", or "woff2".
+
+    Returns:
+        Data URI string (e.g., 'data:font/woff2;base64,...').
+
+    Raises:
+        ValueError: If font_format is unsupported.
+
+    Example:
+        >>> font_bytes = b'...'  # Subset font data
+        >>> data_uri = encode_font_bytes_to_data_uri(font_bytes, "woff2")
+        >>> print(data_uri[:30])
+        data:font/woff2;base64,d09GMg...
+    """
+    mime_types = {
+        "ttf": "font/ttf",
+        "otf": "font/otf",
+        "woff2": "font/woff2",
+    }
+
+    if font_format not in mime_types:
+        raise ValueError(
+            f"Unsupported font format: {font_format}. "
+            f"Supported formats: {', '.join(mime_types.keys())}"
+        )
+
+    mime_type = mime_types[font_format]
+    base64_data = base64.b64encode(font_bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{base64_data}"
