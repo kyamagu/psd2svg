@@ -616,9 +616,10 @@ def test_image_prefix_with_subdirectory(tmp_path: Path) -> None:
     with open(output_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
         # On Windows, path separator might be different
-        assert ('href="images/img01.webp"' in svg_content or
-                'href="images\\img01.webp"' in svg_content), \
-                "Expected href='images/img01.webp' in SVG"
+        assert (
+            'href="images/img01.webp"' in svg_content
+            or 'href="images\\img01.webp"' in svg_content
+        ), "Expected href='images/img01.webp' in SVG"
 
 
 def test_image_prefix_nested_output_directory(tmp_path: Path) -> None:

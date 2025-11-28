@@ -104,7 +104,9 @@ class SVGDocument:
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
-        svg = self._handle_images(embed_images, image_prefix, image_format, svg_filepath=None)
+        svg = self._handle_images(
+            embed_images, image_prefix, image_format, svg_filepath=None
+        )
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
@@ -125,7 +127,9 @@ class SVGDocument:
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
-        svg = self._handle_images(embed_images, image_prefix, image_format, svg_filepath=filepath)
+        svg = self._handle_images(
+            embed_images, image_prefix, image_format, svg_filepath=filepath
+        )
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
@@ -181,8 +185,11 @@ class SVGDocument:
         return SVGDocument(svg=svg_node, images=pil_images, fonts=font_infos)
 
     def _handle_images(
-        self, embed_images: bool, image_prefix: str | None, image_format: str,
-        svg_filepath: str | None = None
+        self,
+        embed_images: bool,
+        image_prefix: str | None,
+        image_format: str,
+        svg_filepath: str | None = None,
     ) -> ET.Element:
         """Handle image embedding or saving.
 
