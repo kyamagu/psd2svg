@@ -83,10 +83,18 @@ Export the document to a dictionary format:
 
    # Export
    exported = document.export()
-   # Returns: {"svg": "<svg>...</svg>", "images": {"id1": <PIL.Image>, ...}}
+   # Returns: {
+   #     "svg": "<svg>...</svg>",
+   #     "images": [<bytes>, <bytes>, ...],
+   #     "fonts": [{"family": "Arial", "style": "normal", ...}, ...]
+   # }
 
    # Load back
-   document = SVGDocument.load(exported["svg"], exported["images"])
+   document = SVGDocument.load(
+       exported["svg"],
+       exported["images"],
+       exported["fonts"]
+   )
 
 This is useful for serialization or transferring documents between processes.
 
