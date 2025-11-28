@@ -37,7 +37,7 @@ class ShapeConverter(ConverterProtocol):
             raise ValueError(f"Layer has no vector mask: '{layer.name}' ({layer.kind})")
 
         if len(layer.vector_mask.paths) == 1:
-            # TODO: Handle NOT OR for single path.
+            # TODO: Handle NOT OR for single path. This is a negated shape.
             path = layer.vector_mask.paths[0]
             return self.create_single_shape(layer, path, **attrib)
         else:

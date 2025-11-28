@@ -305,10 +305,12 @@ def merge_common_child_attributes(
 
     Example:
         Before: <text><tspan fill="red">A</tspan><tspan fill="red">B</tspan></text>
+
         After:  <text fill="red"><tspan>A</tspan><tspan>B</tspan></text>
 
         Before (with excludes={"x"}):
                 <text><tspan x="10" fill="red">A</tspan><tspan x="20" fill="red">B</tspan></text>
+
         After:  <text fill="red"><tspan x="10">A</tspan><tspan x="20">B</tspan></text>
     """
     if excludes is None:

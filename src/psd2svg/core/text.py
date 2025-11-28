@@ -1070,7 +1070,6 @@ class TypeSetting:
         paragraph_index = RunLengthIndex(self._paragraph_run["RunLengthArray"])
         style_index = RunLengthIndex(self._style_run["RunLengthArray"])
         stops = sorted(set(paragraph_index.boundaries) | set(style_index.boundaries))
-        # TODO: Merge the default paragraph and style sheets.
         for index, group in groupby(
             zip([0] + stops, stops), key=lambda start_end: paragraph_index(start_end[0])
         ):

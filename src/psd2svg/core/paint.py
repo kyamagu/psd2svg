@@ -60,6 +60,9 @@ class PaintConverter(ConverterProtocol):
             logger.debug(f"Layer has no stroke: '{layer.name}'")
             return
 
+        if "stroke" in target.attrib:
+            logger.debug(f"Stroke already set for layer: '{layer.name}'")
+
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -67,7 +70,6 @@ class PaintConverter(ConverterProtocol):
             class_="stroke",
         )
         self.set_stroke(layer, use)
-        # TODO: Check if we already set stroke.
 
     def set_fill(
         self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
@@ -398,7 +400,6 @@ class PaintConverter(ConverterProtocol):
                 "translate(%s)" % svg_utils.seq2str(reference),
             )
 
-        # TODO: Split the transform builder into a helper method.
         # Scale and rotation
         transforms = []
 
