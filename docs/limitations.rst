@@ -149,11 +149,43 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 
 **Unsupported Features:**
 
-* Text wrapping for bounding box text
-* Gradient fills and pattern strokes
+* Gradient fills and pattern strokes (solid colors only)
 * Kerning and ligatures
 * OpenType features
 * Variable fonts and font variations
+
+**Text Wrapping Support:**
+
+Text wrapping for bounding box text (ShapeType=1) is supported using ``<foreignObject>`` with XHTML/CSS content. This feature is **opt-in** and disabled by default.
+
+To enable text wrapping:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd2svg.core.text import TextWrappingMode
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(
+       psdimage,
+       text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+   )
+
+**foreignObject Renderer Compatibility:**
+
+* ✅ **Supported**: Modern browsers (Chrome, Firefox, Safari, Edge)
+* ✅ **Supported**: PlaywrightRasterizer (Chromium-based rasterizer)
+* ❌ **Not supported**: ResvgRasterizer/resvg-py (the default rasterizer ignores foreignObject)
+* ❌ **Not supported**: Many SVG tools (PDF converters, design tools like Inkscape/Sketch/Figma)
+
+**Important Notes:**
+
+* foreignObject text cannot be edited in vector graphics editors (appears as embedded HTML)
+* Point text (ShapeType=0) always uses native SVG ``<text>`` elements, regardless of this setting
+* Default behavior (``text_wrapping_mode=0``) maintains backward compatibility with native SVG text
+* For web-only SVG display or browser-based rendering, foreignObject provides better text wrapping
+* For maximum compatibility, leave text wrapping disabled (default)
 
 **Font Requirements:**
 
