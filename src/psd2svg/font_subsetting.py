@@ -113,7 +113,9 @@ def subset_font(
         )
 
     if not unicode_chars:
-        logger.warning("No Unicode characters provided for subsetting, using all glyphs")
+        logger.warning(
+            "No Unicode characters provided for subsetting, using all glyphs"
+        )
 
     # Convert characters to Unicode code points
     unicodes = _chars_to_unicode_list(unicode_chars)

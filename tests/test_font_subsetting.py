@@ -222,7 +222,9 @@ class TestFontSubsetting:
         assert len(large_subset) < 100000  # < 100KB
 
     @requires_fonttools
-    def test_subset_font_missing_fonttools_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_subset_font_missing_fonttools_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test error when fonttools is not installed."""
         # Temporarily hide fonttools
         import sys
@@ -277,7 +279,9 @@ class TestSVGDocumentIntegration:
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
 
-        with pytest.raises(ValueError, match="subset_fonts=True requires embed_fonts=True"):
+        with pytest.raises(
+            ValueError, match="subset_fonts=True requires embed_fonts=True"
+        ):
             doc.tostring(embed_fonts=False, subset_fonts=True)
 
     def test_save_subset_requires_embed(self, tmp_path: Path) -> None:
@@ -292,7 +296,9 @@ class TestSVGDocumentIntegration:
 
         output_path = tmp_path / "output.svg"
 
-        with pytest.raises(ValueError, match="subset_fonts=True requires embed_fonts=True"):
+        with pytest.raises(
+            ValueError, match="subset_fonts=True requires embed_fonts=True"
+        ):
             doc.save(str(output_path), embed_fonts=False, subset_fonts=True)
 
     def test_woff2_auto_enables_subsetting(self, tmp_path: Path) -> None:
@@ -324,7 +330,10 @@ class TestSVGDocumentIntegration:
             # Verify WOFF2 or fallback TTF data URI is in the output
             content = output_path.read_text()
             # May have WOFF2 or TTF depending on whether chars were found
-            assert ("data:font/woff2;base64," in content or "data:font/ttf;base64," in content)
+            assert (
+                "data:font/woff2;base64," in content
+                or "data:font/ttf;base64," in content
+            )
             assert "@font-face" in content
         except FileNotFoundError:
             pytest.skip("Required font not available")
@@ -343,7 +352,9 @@ class TestSVGDocumentIntegration:
         # Save without subsetting
         output_full = tmp_path / "output_full.svg"
         try:
-            doc.save(str(output_full), embed_images=True, embed_fonts=True, font_format="ttf")
+            doc.save(
+                str(output_full), embed_images=True, embed_fonts=True, font_format="ttf"
+            )
         except FileNotFoundError:
             pytest.skip("Required font not available")
 
@@ -378,7 +389,12 @@ class TestSVGDocumentIntegration:
         # Save with WOFF2 (auto-enables subsetting)
         output_woff2 = tmp_path / "output.svg"
         try:
-            doc.save(str(output_woff2), embed_images=True, embed_fonts=True, font_format="woff2")
+            doc.save(
+                str(output_woff2),
+                embed_images=True,
+                embed_fonts=True,
+                font_format="woff2",
+            )
         except FileNotFoundError:
             pytest.skip("Required font not available")
 
@@ -429,7 +445,7 @@ class TestHelperFunctions:
         assert _extract_font_family(elem) == "Times"
 
         # Quoted font family
-        elem = ET.fromstring('<text style="font-family: \'Courier New\'"/>')
+        elem = ET.fromstring("<text style=\"font-family: 'Courier New'\"/>")
         assert _extract_font_family(elem) == "Courier New"
 
         # No font-family
