@@ -8,6 +8,7 @@ from PIL import Image
 from psd_tools import PSDImage
 
 from psd2svg import image_utils, svg_utils
+from psd2svg.core import font_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
 from psd2svg.rasterizer import BaseRasterizer, ResvgRasterizer
@@ -32,7 +33,7 @@ class SVGDocument:
 
         # Save to file or get as string.
         document.save("output.svg", embed_images=True)
-        svg_string = document.tostring(embed_images=True)
+        svg_string = document.tostring()  # Images embedded by default
 
         # Rasterize to PIL Image.
         rasterized = document.rasterize()
@@ -45,6 +46,9 @@ class SVGDocument:
     svg: ET.Element
     images: list[Image.Image] = dataclasses.field(default_factory=list)
     fonts: list[FontInfo] = dataclasses.field(default_factory=list)
+    _font_data_cache: dict[str, str] = dataclasses.field(
+        default_factory=dict, init=False, repr=False
+    )
 
     @staticmethod
     def from_psd(
@@ -91,28 +95,40 @@ class SVGDocument:
 
     def tostring(
         self,
-        embed_images: bool = False,
+        embed_images: bool = True,
+        embed_fonts: bool = False,
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
     ) -> str:
-        """Embed images as base64 data URIs.
+        """Convert SVG document to string.
 
         Args:
-            embed_images: If True, embed images as base64 data URIs.
+            embed_images: If True, embed images as base64 data URIs. Default is True
+                since string output has no file system context for external images.
+            embed_fonts: If True, embed fonts as @font-face rules in <style> element.
+                WARNING: Font embedding may be subject to licensing restrictions.
+                Ensure you have appropriate rights before distributing SVG files
+                with embedded fonts.
             image_prefix: If provided, save images to files with this prefix.
+                When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
         """
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=None
         )
+
+        if embed_fonts and self.fonts:
+            self._embed_fonts(svg)
+
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
         self,
         filepath: str,
         embed_images: bool = False,
+        embed_fonts: bool = False,
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -122,6 +138,10 @@ class SVGDocument:
         Args:
             filepath: Path to the output SVG file.
             embed_images: If True, embed images as base64 data URIs.
+            embed_fonts: If True, embed fonts as @font-face rules in <style> element.
+                WARNING: Font embedding may be subject to licensing restrictions.
+                Ensure you have appropriate rights before distributing SVG files
+                with embedded fonts.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
@@ -130,6 +150,10 @@ class SVGDocument:
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=filepath
         )
+
+        if embed_fonts and self.fonts:
+            self._embed_fonts(svg)
+
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
@@ -151,6 +175,10 @@ class SVGDocument:
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
 
+        Note:
+            When using PlaywrightRasterizer, fonts are automatically embedded
+            in the SVG content to ensure correct rendering in the browser.
+
         Example:
             >>> # Default resvg rasterization
             >>> image = document.rasterize()
@@ -158,7 +186,7 @@ class SVGDocument:
             >>> # High DPI rasterization
             >>> image = document.rasterize(dpi=300)
 
-            >>> # Browser-based rasterization
+            >>> # Browser-based rasterization (fonts auto-embedded)
             >>> from psd2svg.rasterizer import PlaywrightRasterizer
             >>> browser_rasterizer = PlaywrightRasterizer(dpi=96)
             >>> image = document.rasterize(rasterizer=browser_rasterizer)
@@ -166,7 +194,20 @@ class SVGDocument:
         if rasterizer is None:
             rasterizer = ResvgRasterizer(dpi=dpi)
 
-        svg = self.tostring(embed_images=True)
+        # Check if we need to auto-embed fonts for PlaywrightRasterizer
+        # Import here to avoid circular dependency issues
+        try:
+            from psd2svg.rasterizer.playwright_rasterizer import PlaywrightRasterizer
+
+            is_playwright = isinstance(rasterizer, PlaywrightRasterizer)
+        except ImportError:
+            is_playwright = False
+
+        # Auto-embed fonts for PlaywrightRasterizer
+        if is_playwright and self.fonts:
+            svg = self.tostring(embed_images=True, embed_fonts=True)
+        else:
+            svg = self.tostring(embed_images=True)
 
         # Font files are only supported by ResvgRasterizer
         if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
@@ -232,63 +273,232 @@ class SVGDocument:
         if len(nodes) != len(self.images):
             raise RuntimeError("Number of <image> nodes and images do not match.")
 
-        # Handle image resources.
-        if embed_images:
-            for node, image in zip(nodes, self.images):
-                data_uri = image_utils.encode_data_uri(image, image_format)
-                node.set("href", data_uri)
-        elif image_prefix is not None:
-            # Determine the base directory for saving images
-            if svg_filepath:
-                svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
-                # Special handling for "." - treat as "no prefix, just counter"
-                if image_prefix == ".":
-                    base_dir = svg_dir
-                    prefix = ""
-                else:
-                    # image_prefix is relative to SVG file's directory
-                    base_dir = os.path.join(svg_dir, os.path.dirname(image_prefix))
-                    prefix = os.path.basename(image_prefix)
-            else:
-                # No svg_filepath provided (tostring() case)
-                # Special handling for "." - treat as "no prefix, just counter"
-                if image_prefix == ".":
-                    base_dir = os.getcwd()
-                    prefix = ""
-                else:
-                    base_dir = os.path.dirname(image_prefix) or os.getcwd()
-                    prefix = os.path.basename(image_prefix)
+        # Handle image resources (skip if no images).
+        if len(nodes) == 0:
+            return svg
 
-            # Create directory if needed
-            if base_dir and not os.path.exists(base_dir):
-                logger.debug("Creating directory: %s", base_dir)
-                os.makedirs(base_dir)
-
-            for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
-                # Construct filename: prefix + counter + extension
-                filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
-                filepath = os.path.join(base_dir, filename)
-
-                # Convert RGBA to RGB for JPEG format (JPEG doesn't support alpha)
-                if image_format.lower() == "jpeg" and image.mode == "RGBA":
-                    # Create white background and paste image on it
-                    rgb_image = Image.new("RGB", image.size, (255, 255, 255))
-                    rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
-                    rgb_image.save(filepath)
-                else:
-                    image.save(filepath)
-
-                # Set href: if svg_filepath provided, use relative path; otherwise use filename
-                if svg_filepath:
-                    svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
-                    href = os.path.relpath(filepath, svg_dir)
-                else:
-                    href = filename
-                node.set("href", href)
+        # image_prefix takes precedence over embed_images (as documented)
+        if image_prefix is not None:
+            self._save_images_to_files(nodes, image_prefix, image_format, svg_filepath)
+        elif embed_images:
+            self._embed_images_as_data_uris(nodes, image_format)
         else:
-            raise ValueError("Either embed must be True or path must be provided.")
+            raise ValueError(
+                "Either embed_images must be True or image_prefix must be provided "
+                "when the document contains images."
+            )
 
         return svg
+
+    def _embed_images_as_data_uris(
+        self, nodes: list[ET.Element], image_format: str
+    ) -> None:
+        """Embed images as base64 data URIs in image nodes.
+
+        Args:
+            nodes: List of <image> elements to update.
+            image_format: Image format to use for encoding.
+        """
+        for node, image in zip(nodes, self.images):
+            data_uri = image_utils.encode_data_uri(image, image_format)
+            node.set("href", data_uri)
+
+    def _save_images_to_files(
+        self,
+        nodes: list[ET.Element],
+        image_prefix: str,
+        image_format: str,
+        svg_filepath: str | None,
+    ) -> None:
+        """Save images to files and update image nodes with file paths.
+
+        Args:
+            nodes: List of <image> elements to update.
+            image_prefix: Path prefix for saving images.
+            image_format: Image format to use for saving.
+            svg_filepath: Optional path to the SVG file for relative path calculation.
+        """
+        # Determine base directory and filename prefix
+        base_dir, prefix = self._resolve_image_output_paths(image_prefix, svg_filepath)
+
+        # Create directory if needed
+        if base_dir and not os.path.exists(base_dir):
+            logger.debug("Creating directory: %s", base_dir)
+            os.makedirs(base_dir)
+
+        # Save each image and update node href
+        for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
+            filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
+            filepath = os.path.join(base_dir, filename)
+
+            # Save image (with JPEG conversion if needed)
+            self._save_image_file(image, filepath, image_format)
+
+            # Set href: if svg_filepath provided, use relative path; otherwise use filename
+            if svg_filepath:
+                svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+                href = os.path.relpath(filepath, svg_dir)
+            else:
+                href = filename
+            node.set("href", href)
+
+    def _resolve_image_output_paths(
+        self, image_prefix: str, svg_filepath: str | None
+    ) -> tuple[str, str]:
+        """Resolve base directory and filename prefix for image output.
+
+        Args:
+            image_prefix: Path prefix for saving images.
+            svg_filepath: Optional path to the SVG file for relative path calculation.
+
+        Returns:
+            Tuple of (base_dir, filename_prefix).
+
+        Note:
+            Special handling for "." prefix - treats it as "no prefix, just counter".
+        """
+        if svg_filepath:
+            svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+            # Special handling for "." - treat as "no prefix, just counter"
+            if image_prefix == ".":
+                return svg_dir, ""
+            else:
+                # image_prefix is relative to SVG file's directory
+                base_dir = os.path.join(svg_dir, os.path.dirname(image_prefix))
+                prefix = os.path.basename(image_prefix)
+                return base_dir, prefix
+        else:
+            # No svg_filepath provided (tostring() case)
+            # Special handling for "." - treat as "no prefix, just counter"
+            if image_prefix == ".":
+                return os.getcwd(), ""
+            else:
+                base_dir = os.path.dirname(image_prefix) or os.getcwd()
+                prefix = os.path.basename(image_prefix)
+                return base_dir, prefix
+
+    def _save_image_file(
+        self, image: Image.Image, filepath: str, image_format: str
+    ) -> None:
+        """Save a PIL Image to file, with JPEG conversion if needed.
+
+        Args:
+            image: PIL Image to save.
+            filepath: Output file path.
+            image_format: Image format (used for JPEG RGBA conversion).
+
+        Note:
+            JPEG doesn't support alpha channel, so RGBA images are converted
+            to RGB with a white background.
+        """
+        if image_format.lower() == "jpeg" and image.mode == "RGBA":
+            # Create white background and paste image on it
+            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+            rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
+            rgb_image.save(filepath)
+        else:
+            image.save(filepath)
+
+    def _embed_fonts(self, svg: ET.Element) -> None:
+        """Embed fonts as @font-face rules in a <style> element.
+
+        This modifies the provided SVG element in-place by inserting or updating
+        a <style> element with @font-face CSS rules for all fonts in self.fonts.
+
+        Args:
+            svg: SVG element to modify.
+
+        Warning:
+            Font embedding may be subject to licensing restrictions. Ensure you
+            have appropriate rights before distributing SVG files with embedded fonts.
+
+        Note:
+            - Caches encoded font data URIs to avoid re-encoding
+            - Logs warnings for missing/unreadable fonts but continues
+            - Creates <style> element as first child of <svg> root
+            - Idempotent: calling multiple times won't duplicate fonts
+        """
+        if not self.fonts:
+            return
+
+        # Collect @font-face rules
+        font_face_rules = []
+        seen_fonts = set()  # Track fonts by file path to avoid duplicates
+
+        for font_info in self.fonts:
+            font_path = font_info.file
+
+            # Skip duplicates
+            if font_path in seen_fonts:
+                continue
+            seen_fonts.add(font_path)
+
+            try:
+                # Use cache to avoid re-encoding
+                if font_path not in self._font_data_cache:
+                    logger.debug(f"Encoding font: {font_path}")
+                    self._font_data_cache[font_path] = font_utils.encode_font_data_uri(
+                        font_path
+                    )
+
+                data_uri = self._font_data_cache[font_path]
+                css_rule = font_info.to_font_face_css(data_uri)
+                font_face_rules.append(css_rule)
+
+            except (FileNotFoundError, IOError) as e:
+                logger.warning(f"Failed to embed font '{font_path}': {e}")
+                continue
+
+        if not font_face_rules:
+            logger.warning("No fonts were successfully embedded")
+            return
+
+        # Create CSS content
+        css_content = "\n".join(font_face_rules)
+
+        # Insert or update <style> element with CSS content
+        self._insert_or_update_style_element(svg, css_content)
+
+        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
+
+    def _insert_or_update_style_element(
+        self, svg: ET.Element, css_content: str
+    ) -> None:
+        """Insert or update a <style> element in the SVG root.
+
+        Args:
+            svg: SVG root element to modify.
+            css_content: CSS content to insert or append.
+
+        Note:
+            - If a <style> element exists as first child, appends to it
+            - Otherwise creates a new <style> element as first child
+            - Idempotent: skips if CSS content already present
+        """
+        # Find existing <style> element (check first child only)
+        style_element = None
+        if len(svg) > 0:
+            first_child = svg[0]
+            # Check if it's a style element (handle namespaced tags)
+            tag = first_child.tag
+            local_name = tag.split("}")[-1] if "}" in tag else tag
+            if local_name == "style":
+                style_element = first_child
+
+        if style_element is not None:
+            # Update existing style element
+            existing_text = style_element.text or ""
+            # Check if our fonts are already embedded (idempotent check)
+            if css_content in existing_text:
+                logger.debug("CSS content already present, skipping")
+                return
+            # Append to existing styles
+            style_element.text = existing_text + "\n" + css_content
+        else:
+            # Create new style element as first child
+            style_element = ET.Element("style")
+            style_element.text = css_content
+            svg.insert(0, style_element)
 
 
 def convert(

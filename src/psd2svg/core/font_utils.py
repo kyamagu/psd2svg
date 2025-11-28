@@ -1,5 +1,7 @@
+import base64
 import dataclasses
 import logging
+import os
 
 try:
     from typing import Self  # type: ignore
@@ -146,6 +148,37 @@ class FontInfo:
             weight=float(data["weight"]),
         )
 
+    def to_font_face_css(self, data_uri: str) -> str:
+        """Generate @font-face CSS rule for this font.
+
+        Args:
+            data_uri: Base64 data URI for the font file (e.g., 'data:font/ttf;base64,...').
+
+        Returns:
+            CSS @font-face rule string.
+
+        Example:
+            >>> font_info = FontInfo.find('Arial-Regular')
+            >>> data_uri = encode_font_data_uri(font_info.file)
+            >>> css = font_info.to_font_face_css(data_uri)
+            >>> print(css)
+            @font-face {
+              font-family: 'Arial';
+              src: url(data:font/ttf;base64,...);
+              font-weight: 400;
+              font-style: normal;
+            }
+        """
+        font_style = "italic" if self.italic else "normal"
+        css_weight = self.css_weight
+
+        return f"""@font-face {{
+  font-family: '{self.family}';
+  src: url({data_uri});
+  font-weight: {css_weight};
+  font-style: {font_style};
+}}"""
+
     @staticmethod
     def find(postscriptname: str) -> Self | None:
         """Find the font family name for the given span index."""
@@ -174,3 +207,45 @@ class FontInfo:
             style=match["style"],  # type: ignore
             weight=match["weight"],  # type: ignore
         )
+
+
+def encode_font_data_uri(font_path: str) -> str:
+    """Encode a font file as a base64 data URI.
+
+    Args:
+        font_path: Absolute path to the font file.
+
+    Returns:
+        Data URI string (e.g., 'data:font/ttf;base64,...').
+
+    Raises:
+        FileNotFoundError: If font file doesn't exist.
+        IOError: If font file can't be read.
+
+    Example:
+        >>> data_uri = encode_font_data_uri('/usr/share/fonts/arial.ttf')
+        >>> print(data_uri[:50])
+        data:font/ttf;base64,AAEAAAATAQAABAAwR1BPUw...
+    """
+    if not os.path.exists(font_path):
+        raise FileNotFoundError(f"Font file not found: {font_path}")
+
+    # Determine MIME type from file extension
+    ext = os.path.splitext(font_path)[1].lower()
+    mime_types = {
+        ".ttf": "font/ttf",
+        ".otf": "font/otf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+    }
+    mime_type = mime_types.get(ext, "font/ttf")  # Default to ttf
+
+    # Read and encode font file
+    try:
+        with open(font_path, "rb") as f:
+            font_data = f.read()
+    except IOError as e:
+        raise IOError(f"Failed to read font file '{font_path}': {e}") from e
+
+    base64_data = base64.b64encode(font_data).decode("utf-8")
+    return f"data:{mime_type};base64,{base64_data}"

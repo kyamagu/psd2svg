@@ -73,6 +73,60 @@ convert('input.psd', 'output.svg', text_letter_spacing_offset=-0.015)
 
 The offset is in pixels and is added to all letter-spacing values. Typical values range from -0.02 to 0.02. Experiment with different values to match your specific fonts and target renderers.
 
+#### Font Embedding
+
+When saving SVG files or using PlaywrightRasterizer, you can embed fonts as base64 data URIs using `@font-face` CSS rules. This ensures fonts are available for browser-based rendering:
+
+```python
+from psd2svg import SVGDocument
+from psd2svg.rasterizer import PlaywrightRasterizer
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# Option 1: Save SVG with embedded fonts (large file size)
+document.save('output.svg', embed_images=True, embed_fonts=True)
+
+# Option 2: Get string with embedded fonts
+svg_string = document.tostring(embed_images=True, embed_fonts=True)
+
+# Option 3: PlaywrightRasterizer auto-embeds fonts (recommended)
+with PlaywrightRasterizer(dpi=96) as rasterizer:
+    # Fonts are automatically embedded for browser rendering
+    image = document.rasterize(rasterizer=rasterizer)
+    image.save('output.png')
+```
+
+**When to use font embedding:**
+
+- **PlaywrightRasterizer**: Fonts are automatically embedded (no manual action needed)
+- **Saving SVG for web**: Use `embed_fonts=True` to ensure fonts display correctly in browsers
+- **Debugging**: Keep `embed_fonts=False` (default) for smaller, more readable SVG files
+
+**Important Notes:**
+
+- Font embedding significantly increases file size (100KB+ per font)
+- Fonts are cached per SVGDocument instance to avoid re-encoding
+- Missing/unreadable fonts are logged as warnings but don't fail the operation
+- ResvgRasterizer passes font files directly (more efficient than embedding)
+
+**⚠️ Font License Considerations:**
+
+Font embedding may be subject to licensing restrictions. Before distributing SVG files with embedded fonts, ensure you have the appropriate license rights:
+
+- **Commercial fonts**: Check if your license permits embedding/redistribution
+- **Open source fonts**: Verify the license (e.g., OFL, Apache) allows embedding
+- **System fonts**: May have restrictions on redistribution
+- **Web use**: Some fonts require web-specific licenses for embedding
+
+**Recommended practices:**
+
+- Use font embedding only for internal/testing purposes unless you have proper licenses
+- For production web use, consider using web fonts (Google Fonts, Adobe Fonts, etc.)
+- For PlaywrightRasterizer (rasterization only), font embedding is typically acceptable as it produces images, not redistributable font files
+- Consult with legal counsel if uncertain about font license compliance
+
 ## CI/CD
 
 ### Automated Testing
