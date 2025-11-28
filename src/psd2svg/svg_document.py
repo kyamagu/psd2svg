@@ -51,6 +51,7 @@ class SVGDocument:
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
         enable_text: bool = True,
+        enable_title: bool = True,
         text_letter_spacing_offset: float = 0.0,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
@@ -63,6 +64,10 @@ class SVGDocument:
                 accurate, but less editable.
             enable_text: Enable text layer conversion. If False, text layers
                 are rasterized as images.
+            enable_title: Enable insertion of <title> elements with layer names.
+                When True (default), each layer in the SVG will have a <title>
+                element containing the Photoshop layer name for accessibility and
+                debugging. Set to False to omit title elements and reduce file size.
             text_letter_spacing_offset: Global offset (in pixels) to add to all
                 letter-spacing values. This can be used to compensate for differences
                 between Photoshop's text rendering and SVG's text rendering. Typical
@@ -74,6 +79,7 @@ class SVGDocument:
             psdimage,
             enable_live_shapes=enable_live_shapes,
             enable_text=enable_text,
+            enable_title=enable_title,
             text_letter_spacing_offset=text_letter_spacing_offset,
         )
         converter.build()
@@ -206,6 +212,7 @@ def convert(
     input_path: str,
     output_path: str,
     image_prefix: str | None = None,
+    enable_title: bool = True,
     text_letter_spacing_offset: float = 0.0,
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
@@ -214,6 +221,10 @@ def convert(
         input_path: Path to the input PSD file.
         output_path: Path to the output SVG file.
         image_prefix: Optional path prefix to save extracted images. If None, images will be embedded.
+        enable_title: Enable insertion of <title> elements with layer names.
+            When True (default), each layer in the SVG will have a <title> element
+            containing the Photoshop layer name for accessibility and debugging.
+            Set to False to omit title elements and reduce file size.
         text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
             values. This can be used to compensate for differences between Photoshop's
             text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
@@ -221,7 +232,9 @@ def convert(
     """
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
-        psdimage, text_letter_spacing_offset=text_letter_spacing_offset
+        psdimage,
+        enable_title=enable_title,
+        text_letter_spacing_offset=text_letter_spacing_offset,
     )
     document.save(
         output_path, embed_images=image_prefix is None, image_prefix=image_prefix

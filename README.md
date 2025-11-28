@@ -92,7 +92,30 @@ exported = document.export()
 document = SVGDocument.load(exported["svg"], exported["images"])
 ```
 
-### Text Letter Spacing Adjustment
+### Configuration Options
+
+#### Title Elements
+
+By default, each layer in the SVG includes a `<title>` element with the Photoshop layer name for accessibility and debugging. You can disable this to reduce file size:
+
+```python
+from psd2svg import SVGDocument, convert
+from psd_tools import PSDImage
+
+# Using SVGDocument
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(
+    psdimage,
+    enable_title=False  # omit <title> elements
+)
+
+# Using convert()
+convert('input.psd', 'output.svg', enable_title=False)
+```
+
+**Note:** Text layers never include title elements (even with `enable_title=True`) since the layer name is typically the same as the visible text content.
+
+#### Text Letter Spacing Adjustment
 
 Photoshop and SVG renderers may have slightly different default letter spacing. You can adjust this with the `text_letter_spacing_offset` parameter:
 

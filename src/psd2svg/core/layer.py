@@ -236,7 +236,6 @@ class LayerConverter(ConverterProtocol):
             with self.set_current(defs):
                 node = self.create_text_node(layer)
                 svg_utils.set_attribute(node, "id", self.auto_id("text"))
-                svg_utils.set_attribute(node, "title", layer.name)
                 svg_utils.append_attribute(node, "class", layer.kind)
                 # Apply any additional attributes
                 for key, value in attrib.items():

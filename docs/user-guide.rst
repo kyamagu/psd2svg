@@ -25,10 +25,11 @@ From PSD File
    # Create SVG document
    document = SVGDocument.from_psd(psdimage)
 
-   # Create with custom letter spacing offset
+   # Create with custom options
    document = SVGDocument.from_psd(
        psdimage,
-       text_letter_spacing_offset=-0.015
+       enable_title=False,  # Omit <title> elements to reduce file size
+       text_letter_spacing_offset=-0.015  # Adjust text spacing
    )
 
 Saving SVG Documents
@@ -157,8 +158,9 @@ For simple one-step conversions, use the ``convert()`` convenience function:
            image_prefix='images/img_',
            image_format='webp')
 
-   # With custom letter spacing offset
+   # With custom options
    convert('input.psd', 'output.svg',
+           enable_title=False,
            text_letter_spacing_offset=-0.015)
 
 Parameters
@@ -169,7 +171,64 @@ Parameters
 * ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
 * ``image_prefix`` (str, optional): Prefix for external image files
 * ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
+* ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: True)
 * ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)
+
+Configuration Options
+---------------------
+
+Title Elements
+~~~~~~~~~~~~~~
+
+By default, each layer in the SVG includes a ``<title>`` element containing the Photoshop layer name. This provides:
+
+* **Accessibility**: Screen readers can announce layer names
+* **Debugging**: Layer names are preserved in the SVG structure
+* **Documentation**: The SVG structure is self-documenting
+
+However, title elements increase file size. You can disable them:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument, convert
+
+   # Using SVGDocument
+   document = SVGDocument.from_psd(psdimage, enable_title=False)
+
+   # Using convert()
+   convert('input.psd', 'output.svg', enable_title=False)
+
+**Important Notes:**
+
+* Text layers never include title elements (even with ``enable_title=True``)
+* Text layer names are typically the same as the visible text content
+* Title elements are separate from layer IDs and classes which are always preserved
+
+Text Letter Spacing
+~~~~~~~~~~~~~~~~~~~
+
+Photoshop and SVG renderers may have slightly different default letter spacing due to differences in kerning algorithms. You can compensate using the ``text_letter_spacing_offset`` parameter:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument, convert
+
+   # Using SVGDocument
+   document = SVGDocument.from_psd(
+       psdimage,
+       text_letter_spacing_offset=-0.015  # Tighten spacing by 0.015 pixels
+   )
+
+   # Using convert()
+   convert('input.psd', 'output.svg', text_letter_spacing_offset=-0.015)
+
+The offset (in pixels) is added to all letter-spacing values:
+
+* **Negative values** (e.g., -0.02): Tighten letter spacing
+* **Positive values** (e.g., 0.02): Loosen letter spacing
+* **Typical range**: -0.02 to 0.02 pixels
+
+Experiment with different values to find the best match for your specific fonts and target renderers.
 
 Working with Images
 -------------------

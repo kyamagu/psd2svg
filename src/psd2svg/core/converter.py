@@ -50,6 +50,10 @@ class Converter(
         psdimage: Source PSDImage to convert.
         enable_live_shapes: Enable live shape conversion when possible.
         enable_text: Enable text layer conversion when possible.
+        enable_title: Enable insertion of <title> elements with layer names. When True
+            (default), each layer in the SVG will have a <title> element containing the
+            Photoshop layer name for accessibility and debugging. Set to False to omit
+            title elements and reduce file size.
         text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
             values. This can be used to compensate for differences between Photoshop's
             text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
@@ -63,6 +67,7 @@ class Converter(
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
         enable_text: bool = True,
+        enable_title: bool = True,
         text_letter_spacing_offset: float = 0.0,
     ) -> None:
         """Initialize the converter internal state."""
@@ -73,6 +78,7 @@ class Converter(
         self.psd = psdimage
         self.enable_live_shapes = enable_live_shapes
         self.enable_text = enable_text
+        self.enable_title = enable_title
         self.text_letter_spacing_offset = text_letter_spacing_offset
 
         # Initialize the SVG root element.
@@ -141,6 +147,11 @@ class Converter(
         """
         if parent is None:
             parent = self.current
+
+        # Conditionally suppress title based on enable_title flag
+        if not self.enable_title:
+            title = ""
+
         return svg_utils.create_node(
             tag,
             parent=parent,
