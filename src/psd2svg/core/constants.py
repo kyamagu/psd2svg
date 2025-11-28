@@ -35,7 +35,6 @@ BLEND_MODE: dict[Union[BlendMode, bytes], str] = {
     BlendMode.COLOR: "color",
     BlendMode.LUMINOSITY: "luminosity",
     # Descriptor values.
-    # TODO: Check bytes values.
     Enum.Normal: "normal",
     Enum.Dissolve: "normal",
     Enum.Darken: "darken",
