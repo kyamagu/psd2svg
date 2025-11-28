@@ -53,20 +53,20 @@ When the output path is a directory or omitted, the tool infers the output name 
 External Image Resources
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use the ``--images-path`` flag to export PNG resources to external files:
+Use the ``--image-prefix`` flag to export PNG resources to external files:
 
 .. code-block:: bash
 
    # Export images to current directory
-   psd2svg input.psd output.svg --images-path .
+   psd2svg input.psd output.svg --image-prefix .
    # => output.svg, xxx1.png, xxx2.png, ...
 
    # Export images to specific directory
-   psd2svg input.psd output/ --images-path resources/
+   psd2svg input.psd output/ --image-prefix resources/
    # => output/input.svg, output/resources/xxx1.png, ...
 
    # Export images to parent directory
-   psd2svg input.psd svg/ --images-path=../png/
+   psd2svg input.psd svg/ --image-prefix=../png/
    # => svg/input.svg, png/xxx1.png, ...
 
 Python API - Quick Start

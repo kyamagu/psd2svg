@@ -19,11 +19,11 @@ def parse_args() -> argparse.Namespace:
         help="Output file.",
     )
     parser.add_argument(
-        "--images-path",
+        "--image-prefix",
         metavar="PATH",
         type=str,
         default=None,
-        help="Path to images directory relative to output.",
+        help="Path prefix for saving extracted images relative to output.",
     )
     parser.add_argument(
         "--loglevel",
@@ -38,7 +38,7 @@ def main() -> None:
     """Main function to convert PSD to SVG or raster image."""
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(), "WARNING"))
-    convert(args.input, args.output, args.images_path)
+    convert(args.input, args.output, args.image_prefix)
 
 
 if __name__ == "__main__":
