@@ -14,9 +14,7 @@ except ImportError:
     HAS_PLAYWRIGHT = False
 
 # Skip all tests if playwright is not available
-pytestmark = pytest.mark.skipif(
-    not HAS_PLAYWRIGHT, reason="Playwright not installed"
-)
+pytestmark = pytest.mark.skipif(not HAS_PLAYWRIGHT, reason="Playwright not installed")
 
 
 @pytest.fixture
@@ -149,7 +147,8 @@ def test_rasterizer_viewbox_only(svg_with_viewbox_only: str) -> None:
     ["chromium", "firefox", "webkit"],
 )
 def test_rasterizer_browser_types(
-    simple_svg: str, browser_type: str  # type: ignore[misc]
+    simple_svg: str,
+    browser_type: str,  # type: ignore[misc]
 ) -> None:
     """Test different browser types."""
     # Note: This test may fail if browsers aren't installed

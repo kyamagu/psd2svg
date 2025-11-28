@@ -158,8 +158,8 @@ class PlaywrightRasterizer(BaseRasterizer):
         body {{
             margin: 0;
             padding: 0;
-            width: {dimensions['width']}px;
-            height: {dimensions['height']}px;
+            width: {dimensions["width"]}px;
+            height: {dimensions["height"]}px;
         }}
         svg {{
             display: block;
@@ -178,9 +178,7 @@ class PlaywrightRasterizer(BaseRasterizer):
             viewport_width = int(dimensions["width"] * scale)
             viewport_height = int(dimensions["height"] * scale)
 
-            page.set_viewport_size(
-                {"width": viewport_width, "height": viewport_height}
-            )
+            page.set_viewport_size({"width": viewport_width, "height": viewport_height})
 
             # Take screenshot with transparency
             screenshot_bytes = page.screenshot(type="png", omit_background=True)
