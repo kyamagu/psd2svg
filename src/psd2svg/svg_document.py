@@ -273,61 +273,122 @@ class SVGDocument:
 
         # Handle image resources.
         if embed_images:
-            for node, image in zip(nodes, self.images):
-                data_uri = image_utils.encode_data_uri(image, image_format)
-                node.set("href", data_uri)
+            self._embed_images_as_data_uris(nodes, image_format)
         elif image_prefix is not None:
-            # Determine the base directory for saving images
-            if svg_filepath:
-                svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
-                # Special handling for "." - treat as "no prefix, just counter"
-                if image_prefix == ".":
-                    base_dir = svg_dir
-                    prefix = ""
-                else:
-                    # image_prefix is relative to SVG file's directory
-                    base_dir = os.path.join(svg_dir, os.path.dirname(image_prefix))
-                    prefix = os.path.basename(image_prefix)
-            else:
-                # No svg_filepath provided (tostring() case)
-                # Special handling for "." - treat as "no prefix, just counter"
-                if image_prefix == ".":
-                    base_dir = os.getcwd()
-                    prefix = ""
-                else:
-                    base_dir = os.path.dirname(image_prefix) or os.getcwd()
-                    prefix = os.path.basename(image_prefix)
-
-            # Create directory if needed
-            if base_dir and not os.path.exists(base_dir):
-                logger.debug("Creating directory: %s", base_dir)
-                os.makedirs(base_dir)
-
-            for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
-                # Construct filename: prefix + counter + extension
-                filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
-                filepath = os.path.join(base_dir, filename)
-
-                # Convert RGBA to RGB for JPEG format (JPEG doesn't support alpha)
-                if image_format.lower() == "jpeg" and image.mode == "RGBA":
-                    # Create white background and paste image on it
-                    rgb_image = Image.new("RGB", image.size, (255, 255, 255))
-                    rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
-                    rgb_image.save(filepath)
-                else:
-                    image.save(filepath)
-
-                # Set href: if svg_filepath provided, use relative path; otherwise use filename
-                if svg_filepath:
-                    svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
-                    href = os.path.relpath(filepath, svg_dir)
-                else:
-                    href = filename
-                node.set("href", href)
+            self._save_images_to_files(nodes, image_prefix, image_format, svg_filepath)
         else:
             raise ValueError("Either embed must be True or path must be provided.")
 
         return svg
+
+    def _embed_images_as_data_uris(
+        self, nodes: list[ET.Element], image_format: str
+    ) -> None:
+        """Embed images as base64 data URIs in image nodes.
+
+        Args:
+            nodes: List of <image> elements to update.
+            image_format: Image format to use for encoding.
+        """
+        for node, image in zip(nodes, self.images):
+            data_uri = image_utils.encode_data_uri(image, image_format)
+            node.set("href", data_uri)
+
+    def _save_images_to_files(
+        self,
+        nodes: list[ET.Element],
+        image_prefix: str,
+        image_format: str,
+        svg_filepath: str | None,
+    ) -> None:
+        """Save images to files and update image nodes with file paths.
+
+        Args:
+            nodes: List of <image> elements to update.
+            image_prefix: Path prefix for saving images.
+            image_format: Image format to use for saving.
+            svg_filepath: Optional path to the SVG file for relative path calculation.
+        """
+        # Determine base directory and filename prefix
+        base_dir, prefix = self._resolve_image_output_paths(image_prefix, svg_filepath)
+
+        # Create directory if needed
+        if base_dir and not os.path.exists(base_dir):
+            logger.debug("Creating directory: %s", base_dir)
+            os.makedirs(base_dir)
+
+        # Save each image and update node href
+        for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
+            filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
+            filepath = os.path.join(base_dir, filename)
+
+            # Save image (with JPEG conversion if needed)
+            self._save_image_file(image, filepath, image_format)
+
+            # Set href: if svg_filepath provided, use relative path; otherwise use filename
+            if svg_filepath:
+                svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+                href = os.path.relpath(filepath, svg_dir)
+            else:
+                href = filename
+            node.set("href", href)
+
+    def _resolve_image_output_paths(
+        self, image_prefix: str, svg_filepath: str | None
+    ) -> tuple[str, str]:
+        """Resolve base directory and filename prefix for image output.
+
+        Args:
+            image_prefix: Path prefix for saving images.
+            svg_filepath: Optional path to the SVG file for relative path calculation.
+
+        Returns:
+            Tuple of (base_dir, filename_prefix).
+
+        Note:
+            Special handling for "." prefix - treats it as "no prefix, just counter".
+        """
+        if svg_filepath:
+            svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
+            # Special handling for "." - treat as "no prefix, just counter"
+            if image_prefix == ".":
+                return svg_dir, ""
+            else:
+                # image_prefix is relative to SVG file's directory
+                base_dir = os.path.join(svg_dir, os.path.dirname(image_prefix))
+                prefix = os.path.basename(image_prefix)
+                return base_dir, prefix
+        else:
+            # No svg_filepath provided (tostring() case)
+            # Special handling for "." - treat as "no prefix, just counter"
+            if image_prefix == ".":
+                return os.getcwd(), ""
+            else:
+                base_dir = os.path.dirname(image_prefix) or os.getcwd()
+                prefix = os.path.basename(image_prefix)
+                return base_dir, prefix
+
+    def _save_image_file(
+        self, image: Image.Image, filepath: str, image_format: str
+    ) -> None:
+        """Save a PIL Image to file, with JPEG conversion if needed.
+
+        Args:
+            image: PIL Image to save.
+            filepath: Output file path.
+            image_format: Image format (used for JPEG RGBA conversion).
+
+        Note:
+            JPEG doesn't support alpha channel, so RGBA images are converted
+            to RGB with a white background.
+        """
+        if image_format.lower() == "jpeg" and image.mode == "RGBA":
+            # Create white background and paste image on it
+            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+            rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
+            rgb_image.save(filepath)
+        else:
+            image.save(filepath)
 
     def _embed_fonts(self, svg: ET.Element) -> None:
         """Embed fonts as @font-face rules in a <style> element.
