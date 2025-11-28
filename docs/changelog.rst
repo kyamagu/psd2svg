@@ -8,6 +8,16 @@ Version 0.3.0 (In Development)
 
 **Added:**
 
+* Font subsetting support with pyftsubset for web optimization
+
+  * Reduces embedded font file sizes by 90%+ (150KB → 10KB typical)
+  * Support for TTF, OTF, and WOFF2 output formats
+  * Automatic character extraction from SVG text elements
+  * Optional dependency group: ``pip install psd2svg[fonts]``
+  * New parameters: ``subset_fonts`` and ``font_format`` in ``SVGDocument.save()`` and ``tostring()``
+  * WOFF2 format automatically enables subsetting for best compression
+  * New module: ``psd2svg.font_subsetting`` with ``extract_used_unicode()`` and ``subset_font()``
+
 * SVGDocument API for more control over conversions
 * Export and load functionality
 * Comprehensive Sphinx documentation

@@ -241,6 +241,190 @@ The offset (in pixels) is added to all letter-spacing values:
 
 Experiment with different values to find the best match for your specific fonts and target renderers.
 
+Font Embedding and Subsetting
+------------------------------
+
+psd2svg can embed fonts directly in SVG files using ``@font-face`` CSS rules. For web delivery, you can use font subsetting to drastically reduce file sizes.
+
+Font Embedding Basics
+~~~~~~~~~~~~~~~~~~~~~~
+
+Embed fonts as base64-encoded data URIs in the SVG:
+
+.. code-block:: python
+
+   from psd_tools import PSDImage
+   from psd2svg import SVGDocument
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage)
+
+   # Embed fonts (full font files, large size)
+   document.save("output.svg", embed_images=True, embed_fonts=True)
+
+   # Get string with embedded fonts
+   svg_string = document.tostring(embed_images=True, embed_fonts=True)
+
+**Important**: Font embedding may be subject to licensing restrictions. Ensure you have appropriate rights before distributing SVG files with embedded fonts.
+
+Font Subsetting (Recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Font subsetting creates minimal font files containing only the glyphs actually used in your SVG. This typically reduces file sizes by 90-95%.
+
+**Installation:**
+
+.. code-block:: bash
+
+   pip install psd2svg[fonts]
+   # or with uv:
+   uv sync --group fonts
+
+**Basic Usage:**
+
+.. code-block:: python
+
+   from psd_tools import PSDImage
+   from psd2svg import SVGDocument
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage)
+
+   # Subset fonts and embed as TTF
+   document.save(
+       "output.svg",
+       embed_images=True,
+       embed_fonts=True,
+       subset_fonts=True,
+       font_format="ttf"
+   )
+
+   # Subset and convert to WOFF2 (best compression)
+   document.save(
+       "output.svg",
+       embed_images=True,
+       embed_fonts=True,
+       font_format="woff2"  # Auto-enables subsetting
+   )
+
+**WOFF2 Format (Recommended for Web):**
+
+WOFF2 provides the best compression and automatically enables subsetting:
+
+.. code-block:: python
+
+   # WOFF2 format automatically enables subsetting
+   document.save(
+       "output.svg",
+       embed_images=True,
+       embed_fonts=True,
+       font_format="woff2"
+   )
+
+Font Subsetting Options
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Supported Font Formats:**
+
+* ``ttf`` - TrueType Font (default, good compatibility)
+* ``otf`` - OpenType Font (good compatibility)
+* ``woff2`` - Web Open Font Format 2 (best compression, auto-enables subsetting)
+
+**How It Works:**
+
+1. Extract all text content from SVG ``<text>`` and ``<tspan>`` elements
+2. Identify which Unicode characters are used by each font family
+3. Create minimal font files containing only those glyphs
+4. Embed optimized fonts as base64 data URIs in ``@font-face`` rules
+
+**Performance Benefits:**
+
+.. code-block:: text
+
+   Format          Full Font    Subset Font   Reduction
+   ================================================
+   TTF/OTF         150 KB       15 KB         90%
+   WOFF2           100 KB       8 KB          92%
+
+   Example: "Hello World" in Arial
+   - Full Arial.ttf: 150 KB
+   - Subset TTF: 12 KB (only H, e, l, o, W, r, d glyphs)
+   - Subset WOFF2: 6 KB (with compression)
+
+**Complete Workflow Example:**
+
+.. code-block:: python
+
+   from psd_tools import PSDImage
+   from psd2svg import SVGDocument
+
+   # Load PSD with text layers
+   psdimage = PSDImage.open("design_with_text.psd")
+
+   # Create SVG document
+   document = SVGDocument.from_psd(psdimage)
+
+   # Option 1: Full fonts (large files, ~150KB per font)
+   document.save(
+       "output_full.svg",
+       embed_images=True,
+       embed_fonts=True,
+       font_format="ttf"
+   )
+
+   # Option 2: Subset fonts (90%+ smaller, ~15KB per font)
+   document.save(
+       "output_subset.svg",
+       embed_images=True,
+       embed_fonts=True,
+       subset_fonts=True,
+       font_format="ttf"
+   )
+
+   # Option 3: WOFF2 with subsetting (best compression, ~8KB per font)
+   document.save(
+       "output_woff2.svg",
+       embed_images=True,
+       embed_fonts=True,
+       font_format="woff2"  # Auto-enables subsetting
+   )
+
+**When to Use Font Subsetting:**
+
+✅ **Use subsetting when:**
+
+* Delivering SVG files over the web
+* File size is a concern
+* Your document uses only a small portion of a font's glyphs
+* You need self-contained SVG files for distribution
+
+❌ **Don't use subsetting when:**
+
+* You may edit the text content later (missing glyphs won't render)
+* You need to preserve all font features (ligatures, alternate glyphs)
+* You're generating dynamic content with unpredictable text
+* Font licensing prohibits modification/subsetting
+
+**Font License Considerations:**
+
+Font embedding and subsetting may be subject to licensing restrictions. Before distributing SVG files with embedded fonts:
+
+* **Commercial fonts**: Check if your license permits embedding/redistribution
+* **Open source fonts**: Verify the license (e.g., OFL, Apache) allows embedding
+* **System fonts**: May have restrictions on redistribution
+* **Web use**: Some fonts require web-specific licenses
+
+Consult with legal counsel if uncertain about font license compliance.
+
+**Troubleshooting:**
+
+If font subsetting isn't working:
+
+1. Check that fonttools is installed: ``pip show fonttools``
+2. Verify fonts are available on your system
+3. Check logs for warnings about missing characters
+4. Ensure text elements have proper font-family attributes
+
 Working with Images
 -------------------
 
