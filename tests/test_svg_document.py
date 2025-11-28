@@ -81,6 +81,7 @@ class TestEncodeFontDataUri:
         # Make file unreadable (only works on Unix-like systems)
         import os
         import sys
+
         if sys.platform != "win32":
             os.chmod(font_file, 0o000)
             try:
@@ -182,9 +183,7 @@ class TestSVGDocumentImageHandling:
         ET.SubElement(svg_elem, "image")
 
         document = SVGDocument(
-            svg=svg_elem,
-            images=[Image.new("RGB", (10, 10), color="red")],
-            fonts=[]
+            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="red")], fonts=[]
         )
 
         # Should embed images by default
@@ -199,15 +198,13 @@ class TestSVGDocumentImageHandling:
         ET.SubElement(svg_elem, "image")
 
         document = SVGDocument(
-            svg=svg_elem,
-            images=[Image.new("RGB", (10, 10), color="red")],
-            fonts=[]
+            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="red")], fonts=[]
         )
 
         # Should raise ValueError when images exist but no output method specified
         with pytest.raises(
             ValueError,
-            match="Either embed_images must be True or image_prefix must be provided"
+            match="Either embed_images must be True or image_prefix must be provided",
         ):
             document.tostring(embed_images=False)
 
@@ -217,9 +214,7 @@ class TestSVGDocumentImageHandling:
         ET.SubElement(svg_elem, "image")
 
         document = SVGDocument(
-            svg=svg_elem,
-            images=[Image.new("RGB", (10, 10), color="blue")],
-            fonts=[]
+            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="blue")], fonts=[]
         )
 
         # Use image_prefix to save files
@@ -425,6 +420,7 @@ class TestSVGDocumentEmbedFonts:
         self, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test embedding multiple different fonts."""
+
         def mock_encode_func(path: str) -> str:
             return f"data:font/ttf;base64,MOCK_{Path(path).stem}"
 
