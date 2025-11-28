@@ -200,7 +200,14 @@ class SVGDocument:
                 os.makedirs(dirname)
             for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
                 filepath = "{}{:02d}.{}".format(image_prefix, i, image_format.lower())
-                image.save(filepath)
+                # Convert RGBA to RGB for JPEG format (JPEG doesn't support alpha)
+                if image_format.lower() == "jpeg" and image.mode == "RGBA":
+                    # Create white background and paste image on it
+                    rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+                    rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
+                    rgb_image.save(filepath)
+                else:
+                    image.save(filepath)
                 node.set("href", filepath)
         else:
             raise ValueError("Either embed must be True or path must be provided.")
@@ -212,7 +219,10 @@ def convert(
     input_path: str,
     output_path: str,
     image_prefix: str | None = None,
+    enable_text: bool = True,
+    enable_live_shapes: bool = True,
     enable_title: bool = True,
+    image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
@@ -221,10 +231,17 @@ def convert(
         input_path: Path to the input PSD file.
         output_path: Path to the output SVG file.
         image_prefix: Optional path prefix to save extracted images. If None, images will be embedded.
+        enable_text: Enable text layer conversion. If False, text layers are rasterized as images.
+            Default is True.
+        enable_live_shapes: Enable live shape conversion when possible. Disabling live shapes
+            results in <path> elements instead of shape primitives like <rect> or <circle>.
+            This may be more accurate, but less editable. Default is True.
         enable_title: Enable insertion of <title> elements with layer names.
             When True (default), each layer in the SVG will have a <title> element
             containing the Photoshop layer name for accessibility and debugging.
             Set to False to omit title elements and reduce file size.
+        image_format: Image format to use when embedding or saving images.
+            Supported formats: 'webp', 'png', 'jpeg'. Default is 'webp'.
         text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
             values. This can be used to compensate for differences between Photoshop's
             text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
@@ -233,9 +250,14 @@ def convert(
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
         psdimage,
+        enable_text=enable_text,
+        enable_live_shapes=enable_live_shapes,
         enable_title=enable_title,
         text_letter_spacing_offset=text_letter_spacing_offset,
     )
     document.save(
-        output_path, embed_images=image_prefix is None, image_prefix=image_prefix
+        output_path,
+        embed_images=image_prefix is None,
+        image_prefix=image_prefix,
+        image_format=image_format,
     )
