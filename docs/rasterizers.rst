@@ -8,6 +8,28 @@ Overview
 
 The rasterizer system provides a high-performance interface for converting SVG to PIL Image objects using the resvg rendering engine.
 
+Platform Support
+~~~~~~~~~~~~~~~~
+
+**psd2svg Core Platform Support:**
+
+* **Linux**: Full support for all features including text layer conversion
+* **macOS**: Full support for all features including text layer conversion
+* **Windows**: Supported - text layers are rasterized as images (fontconfig not available)
+
+**Text Layer Conversion:**
+
+Text layer conversion requires fontconfig for font resolution:
+
+* **Linux/macOS**: Text layers are converted to native SVG ``<text>`` elements (fontconfig installed automatically)
+* **Windows**: Text layers are automatically rasterized as images (fontconfig not available on Windows)
+* **All platforms**: Can explicitly disable text conversion with ``enable_text=False``
+
+**Rasterizer Platform Support:**
+
+* **ResvgRasterizer**: Supports Linux, macOS, and Windows
+* **PlaywrightRasterizer**: Supports Linux, macOS, and Windows (browsers automatically downloaded)
+
 Resvg Rasterizer
 ----------------
 
@@ -195,6 +217,70 @@ If resvg-py fails to install:
 
    # Install resvg-py
    pip install resvg-py
+
+Known Issues with resvg-py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The underlying resvg-py library has some stability issues with edge cases:
+
+**Crashes (SIGABRT):**
+
+The resvg-py library may crash with SIGABRT instead of raising proper Python exceptions when encountering:
+
+* **Severely malformed SVG content** - Invalid or corrupted SVG markup
+* **Missing files** - Attempting to load non-existent SVG files
+* **Empty SVG documents** - SVG files with 0x0 dimensions
+
+**Impact:**
+
+These crashes cannot be caught with Python's exception handling (``try/except``), which means:
+
+* Your application may terminate unexpectedly
+* Error recovery is not possible for these cases
+* Proper error messages are not available
+
+**Workarounds:**
+
+1. **Validate SVG before rasterizing** - Use a separate XML parser to validate SVG content:
+
+   .. code-block:: python
+
+      import xml.etree.ElementTree as ET
+      from psd2svg.rasterizer import ResvgRasterizer
+
+      def safe_rasterize(svg_path):
+          # Validate SVG first
+          try:
+              tree = ET.parse(svg_path)
+              root = tree.getroot()
+              if root.tag != '{http://www.w3.org/2000/svg}svg':
+                  return None
+          except ET.ParseError:
+              return None
+
+          # Now safe to rasterize
+          rasterizer = ResvgRasterizer()
+          return rasterizer.from_file(svg_path)
+
+2. **Check file existence** - Verify files exist before attempting to load:
+
+   .. code-block:: python
+
+      import os
+      from psd2svg.rasterizer import ResvgRasterizer
+
+      def safe_rasterize_file(svg_path):
+          if not os.path.exists(svg_path):
+              raise FileNotFoundError(f"SVG file not found: {svg_path}")
+
+          rasterizer = ResvgRasterizer()
+          return rasterizer.from_file(svg_path)
+
+3. **Use PlaywrightRasterizer for edge cases** - The browser-based rasterizer handles errors more gracefully (see Playwright Rasterizer section below)
+
+**Status:**
+
+These are limitations of the underlying resvg-py wrapper library, not psd2svg. For production use, implement proper validation and error handling as shown above.
 
 Resizing Output Images
 ~~~~~~~~~~~~~~~~~~~~~~

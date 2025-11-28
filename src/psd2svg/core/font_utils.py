@@ -6,7 +6,12 @@ try:
 except ImportError:
     from typing_extensions import Self
 
-import fontconfig
+try:
+    import fontconfig
+
+    HAS_FONTCONFIG = True
+except ImportError:
+    HAS_FONTCONFIG = False
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +149,14 @@ class FontInfo:
     @staticmethod
     def find(postscriptname: str) -> Self | None:
         """Find the font family name for the given span index."""
+        if not HAS_FONTCONFIG:
+            logger.warning(
+                "fontconfig-py is not available. Text layer conversion is disabled. "
+                "On Windows, fontconfig is not available - text layers will be rasterized. "
+                "On Linux/macOS, ensure fontconfig-py is installed."
+            )
+            return None
+
         match = fontconfig.match(
             pattern=f":postscriptname={postscriptname}",
             select=("file", "family", "style", "weight"),

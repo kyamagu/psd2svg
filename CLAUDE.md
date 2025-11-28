@@ -2,6 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Platform Support
+
+**Supported Platforms:**
+
+* **Linux**: Full support for all features including text layer conversion
+* **macOS**: Full support for all features including text layer conversion
+* **Windows**: Supported - text layers are rasterized as images (fontconfig not available)
+
+**Text Layer Conversion:**
+
+Text layer conversion requires fontconfig, which is automatically installed on Linux and macOS but not available on Windows:
+
+* **Linux/macOS**: Text layers are converted to native SVG `<text>` elements (fontconfig installed automatically)
+* **Windows**: Text layers are automatically rasterized as images (fontconfig not available on Windows)
+* **All platforms**: Can explicitly disable text conversion with `enable_text=False`
+
+Both ResvgRasterizer and PlaywrightRasterizer support all three platforms for SVG rasterization.
+
 ## Commands
 
 ### Development and Testing
@@ -16,6 +34,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `uv sync` - Install dependencies
 - `uv sync --group docs` - Install documentation dependencies
+- `uv sync --group browser` - Install browser-based rasterizer dependencies (Playwright)
+- `uv run playwright install chromium` - Install Chromium browser for Playwright (after installing browser group)
 - `uv build` - Build distribution packages
 
 ### Documentation
@@ -152,9 +172,10 @@ The package follows a modular converter architecture with multiple inheritance:
 **Rasterizer** (`src/psd2svg/rasterizer/`):
 
 - `base_rasterizer.py` - Abstract base class defining the rasterizer interface
-- `resvg_rasterizer.py` - Production-ready resvg-based renderer (only supported implementation)
+- `resvg_rasterizer.py` - Production-ready resvg-based renderer (default implementation)
+- `playwright_rasterizer.py` - Optional browser-based renderer using Playwright (requires `browser` dependency group)
 
-The rasterizer uses the resvg library via resvg-py for fast, accurate SVG to raster image conversion.
+The default rasterizer uses the resvg library via resvg-py for fast, accurate SVG to raster image conversion. The optional PlaywrightRasterizer provides browser-based rendering for advanced SVG 2.0 features.
 
 ### Rasterizer API
 
@@ -169,7 +190,9 @@ The `BaseRasterizer` abstract class defines a clean interface for SVG rasterizat
 
 - `_composite_background(image: Image.Image) -> Image.Image` - Utility for normalizing alpha channel
 
-**Usage Example:**
+**Usage Examples:**
+
+Default resvg rasterization (fast, production-ready):
 
 ```python
 from psd2svg.rasterizer import ResvgRasterizer
@@ -186,6 +209,45 @@ svg_content = '<svg>...</svg>'
 image = rasterizer.from_string(svg_content)
 image.save('output.png')
 ```
+
+Browser-based rasterization (better SVG 2.0 support, slower):
+
+```python
+from psd2svg.rasterizer import PlaywrightRasterizer
+
+# Requires: uv sync --group browser && uv run playwright install chromium
+
+# Create browser rasterizer
+with PlaywrightRasterizer(dpi=96) as rasterizer:
+    image = rasterizer.from_file('input.svg')
+    image.save('output.png')
+
+# Or use with SVGDocument
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open('input.psd')
+document = SVGDocument.from_psd(psdimage)
+
+# Rasterize with browser (better vertical text support)
+with PlaywrightRasterizer(dpi=96) as rasterizer:
+    image = document.rasterize(rasterizer=rasterizer)
+    image.save('output.png')
+```
+
+**When to use PlaywrightRasterizer:**
+
+- Testing/validation of advanced SVG features (vertical text, text-orientation, dominant-baseline)
+- SVG 2.0 features not supported by resvg
+- Quality assurance against browser rendering
+- Comparing rendering output with browser behavior
+
+**When to use ResvgRasterizer (default):**
+
+- Production rasterization (faster, no external dependencies)
+- Batch processing
+- Server deployments
+- Standard SVG features
 
 ### Dependencies
 
