@@ -240,6 +240,55 @@ Font subsetting creates derivative font files. Ensure your font license permits:
 
 Most open-source fonts (OFL, Apache) explicitly allow subsetting. Commercial fonts vary - check your license agreement.
 
+#### Text Wrapping
+
+For bounding box text (ShapeType=1), you can enable text wrapping using `<foreignObject>` with XHTML/CSS:
+
+```python
+from psd2svg import SVGDocument
+from psd2svg.core.text import TextWrappingMode
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+
+# Enable foreignObject text wrapping for bounding box text
+document = SVGDocument.from_psd(
+    psdimage,
+    text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+)
+
+document.save('output.svg')
+
+# Or use the convert() function
+from psd2svg import convert
+convert('input.psd', 'output.svg', text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT)
+```
+
+**How it works:**
+
+- Bounding box text (ShapeType=1) is rendered as `<foreignObject>` containing XHTML `<div>`, `<p>`, and `<span>` elements
+- CSS styling provides natural text wrapping within the bounding box
+- Point text (ShapeType=0) always uses native SVG `<text>` elements regardless of this setting
+
+**When to use foreignObject wrapping:**
+
+- ✅ Bounding box text with long paragraphs that need to wrap
+- ✅ When targeting modern browsers (Chrome, Firefox, Safari, Edge)
+- ✅ For web-only SVG display
+- ✅ When using PlaywrightRasterizer for rasterization (browser-based)
+
+**Limitations:**
+
+- ❌ Not supported by ResvgRasterizer (resvg/resvg-py cannot render foreignObject elements)
+- ❌ Not supported by many SVG renderers (PDF converters, design tools like Sketch/Figma, Inkscape)
+- ❌ Text cannot be edited in vector graphics editors (appears as embedded HTML)
+- ❌ Some advanced text features may have subtle rendering differences vs. native SVG
+- ❌ Point text (ShapeType=0) always uses native SVG `<text>` elements
+
+**Default behavior:**
+
+By default, text wrapping is disabled (`TextWrappingMode.NONE`). Bounding box text uses native SVG `<text>` elements without wrapping.
+
 ## CI/CD
 
 ### Automated Testing

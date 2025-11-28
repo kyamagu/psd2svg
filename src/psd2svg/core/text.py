@@ -18,6 +18,13 @@ from psd2svg.core.base import ConverterProtocol
 logger = logging.getLogger(__name__)
 
 
+class TextWrappingMode(IntEnum):
+    """Text wrapping mode values."""
+
+    NONE = 0  # No wrapping, use native SVG <text> (current behavior)
+    FOREIGN_OBJECT = 1  # Use <foreignObject> with XHTML for text wrapping
+
+
 class Justification(IntEnum):
     """Text justification values from Photoshop."""
 
@@ -70,6 +77,31 @@ class TextConverter(ConverterProtocol):
         """Create SVG text node from a TypeLayer."""
         text_setting = TypeSetting(layer._data)
 
+        # Determine if we should use foreignObject
+        # Only use for bounding box text when explicitly enabled
+        use_foreign_object = (
+            hasattr(self, "text_wrapping_mode")
+            and self.text_wrapping_mode == TextWrappingMode.FOREIGN_OBJECT
+            and text_setting.shape_type == ShapeType.BOUNDING_BOX
+        )
+
+        if use_foreign_object:
+            return self._create_foreign_object_text(layer, text_setting)
+        else:
+            return self._create_native_svg_text(layer, text_setting)
+
+    def _create_native_svg_text(
+        self, layer: layers.TypeLayer, text_setting: "TypeSetting"
+    ) -> ET.Element:
+        """Create native SVG <text> element (current implementation).
+
+        Args:
+            layer: TypeLayer to convert.
+            text_setting: TypeSetting object with text data.
+
+        Returns:
+            text element with nested tspan elements.
+        """
         # Use native x, y attributes for translation-only transforms
         transform = text_setting.transform
         uses_native_positioning = transform.is_translation_only()
@@ -88,8 +120,7 @@ class TextConverter(ConverterProtocol):
 
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
             svg_utils.set_attribute(text_node, "writing-mode", "vertical-rl")
-        # TODO: Support text wrapping when ShapeType is 1 (Bounding box).
-        # TODO: Support adjustments.
+
         for i, paragraph in enumerate(paragraphs):
             paragraph_node = self._add_paragraph(
                 text_setting,
@@ -107,6 +138,59 @@ class TextConverter(ConverterProtocol):
         svg_utils.merge_singleton_children(text_node)
         svg_utils.merge_attribute_less_children(text_node)
         return text_node
+
+    def _create_foreign_object_text(
+        self, layer: layers.TypeLayer, text_setting: "TypeSetting"
+    ) -> ET.Element:
+        """Create <foreignObject> with XHTML content for text wrapping.
+
+        This method creates a foreignObject element containing XHTML div/p/span
+        elements with CSS styling. This enables proper text wrapping for bounding
+        box text, which is not natively supported by SVG.
+
+        Args:
+            layer: TypeLayer to convert.
+            text_setting: TypeSetting object with text data.
+
+        Returns:
+            foreignObject element containing XHTML content.
+
+        Note:
+            - Requires XHTML namespace for proper rendering
+            - Supported by modern browsers (Chrome, Firefox, Safari, Edge)
+            - Not supported by resvg/resvg-py or many other SVG renderers (PDF converters, design tools)
+        """
+        bounds = text_setting.box_bounds
+        transform = text_setting.transform
+
+        # Create foreignObject element with bounding box dimensions
+        foreign_obj = self.create_node(
+            "foreignObject",
+            x=transform.tx + bounds.left,
+            y=transform.ty + bounds.top,
+            width=bounds.width,
+            height=bounds.height,
+        )
+
+        # Apply non-translation transform if needed
+        if not transform.is_translation_only():
+            svg_utils.set_attribute(foreign_obj, "transform", transform.to_svg_matrix())
+
+        # Create XHTML div container with proper namespace
+        container_styles = self._get_foreign_object_container_styles(
+            text_setting, bounds
+        )
+        div = svg_utils.create_xhtml_node(
+            "div",
+            parent=foreign_obj,
+            style=svg_utils.styles_to_string(container_styles),
+        )
+
+        # Add paragraphs
+        for paragraph in text_setting:
+            self._add_foreign_object_paragraph(div, paragraph, text_setting)
+
+        return foreign_obj
 
     def _add_paragraph(
         self,
@@ -391,6 +475,230 @@ class TextConverter(ConverterProtocol):
             # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
             # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
         return tspan
+
+    def _get_foreign_object_container_styles(
+        self, text_setting: "TypeSetting", bounds: "Rectangle"
+    ) -> dict[str, str]:
+        """Get CSS styles for foreignObject container div.
+
+        Args:
+            text_setting: TypeSetting object with writing direction.
+            bounds: Bounding box dimensions.
+
+        Returns:
+            Dictionary of CSS property names to values.
+        """
+        styles = {
+            "width": f"{bounds.width}px",
+            "height": f"{bounds.height}px",
+            "margin": "0",
+            "padding": "0",
+            "overflow": "hidden",  # Match Photoshop clipping behavior
+            "box-sizing": "border-box",
+            "font-family": "sans-serif",  # Default fallback
+        }
+
+        if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
+            styles["writing-mode"] = "vertical-rl"
+
+        return styles
+
+    def _add_foreign_object_paragraph(
+        self, container: ET.Element, paragraph: "Paragraph", text_setting: "TypeSetting"
+    ) -> None:
+        """Add a paragraph as XHTML <p> element.
+
+        Args:
+            container: Parent XHTML div element.
+            paragraph: Paragraph object containing style and spans.
+            text_setting: TypeSetting object for font info lookup.
+        """
+        # Get paragraph CSS styles
+        p_styles = self._get_foreign_object_paragraph_styles(paragraph)
+
+        # Create <p> element
+        p_elem = svg_utils.create_xhtml_node(
+            "p",
+            parent=container,
+            style=svg_utils.styles_to_string(p_styles),
+        )
+
+        # Add spans
+        for span in paragraph:
+            self._add_foreign_object_span(p_elem, span, text_setting)
+
+    def _get_foreign_object_paragraph_styles(
+        self, paragraph: "Paragraph"
+    ) -> dict[str, str]:
+        """Convert paragraph settings to CSS styles.
+
+        Args:
+            paragraph: Paragraph object containing justification and leading.
+
+        Returns:
+            Dictionary of CSS property names to values.
+        """
+        styles = {
+            "margin": "0",
+            "padding": "0",
+        }
+
+        # Text alignment mapping
+        justification_map = {
+            Justification.LEFT: "left",
+            Justification.RIGHT: "right",
+            Justification.CENTER: "center",
+            Justification.JUSTIFY_LAST_LEFT: "justify",
+            Justification.JUSTIFY_LAST_RIGHT: "justify",
+            Justification.JUSTIFY_LAST_CENTER: "justify",
+            Justification.JUSTIFY_ALL: "justify",
+        }
+        text_align = justification_map.get(paragraph.justification, "left")
+        if text_align != "left":  # Skip default
+            styles["text-align"] = text_align
+
+        # Line height
+        leading = paragraph.compute_leading()
+        if leading > 0:
+            styles["line-height"] = f"{leading}px"
+
+        return styles
+
+    def _add_foreign_object_span(
+        self, p_elem: ET.Element, span: "Span", text_setting: "TypeSetting"
+    ) -> None:
+        """Add a text span as XHTML <span> element.
+
+        Args:
+            p_elem: Parent XHTML <p> element.
+            span: Span object containing text and style.
+            text_setting: TypeSetting object for font info lookup.
+        """
+        # Get span CSS styles
+        span_styles = self._get_foreign_object_span_styles(span, text_setting)
+
+        # Create <span> element
+        # If no styles needed, add text directly to paragraph
+        if not span_styles:
+            # Append text to parent
+            if len(p_elem) > 0:
+                # Has children, append to last child's tail
+                if p_elem[-1].tail:
+                    p_elem[-1].tail += span.text.strip("\r")
+                else:
+                    p_elem[-1].tail = span.text.strip("\r")
+            else:
+                # No children, append to parent text
+                if p_elem.text:
+                    p_elem.text += span.text.strip("\r")
+                else:
+                    p_elem.text = span.text.strip("\r")
+        else:
+            svg_utils.create_xhtml_node(
+                "span",
+                parent=p_elem,
+                text=span.text.strip("\r"),
+                style=svg_utils.styles_to_string(span_styles),
+            )
+
+    def _get_foreign_object_span_styles(
+        self, span: "Span", text_setting: "TypeSetting"
+    ) -> dict[str, str]:
+        """Convert span style settings to CSS styles.
+
+        Args:
+            span: Span object containing text style information.
+            text_setting: TypeSetting object for font info and calculations.
+
+        Returns:
+            Dictionary of CSS property names to values.
+        """
+        style = span.style
+        font_info = text_setting.get_font_info(style.font)
+
+        # Collect font info for later use in rasterization
+        if font_info and font_info.postscript_name not in self.fonts:
+            self.fonts[font_info.postscript_name] = font_info
+
+        styles = {}
+
+        # Font family
+        if font_info:
+            styles["font-family"] = f"'{font_info.family_name}'"
+
+        # Font size
+        if style.font_size:
+            styles["font-size"] = f"{style.font_size}px"
+
+        # Font weight
+        if font_info:
+            css_weight = font_info.css_weight
+            if style.faux_bold and css_weight < 700:
+                css_weight = 700
+            if css_weight != 400:  # Skip default
+                styles["font-weight"] = str(css_weight)
+        elif style.faux_bold:
+            styles["font-weight"] = "bold"
+
+        # Font style
+        if (font_info and font_info.italic) or style.faux_italic:
+            styles["font-style"] = "italic"
+
+        # Color
+        fill_color = style.get_fill_color()
+        if fill_color and fill_color != "none":
+            styles["color"] = fill_color
+
+        # Text decoration
+        decorations = []
+        if style.underline:
+            decorations.append("underline")
+        if style.strikethrough:
+            decorations.append("line-through")
+        if decorations:
+            styles["text-decoration"] = " ".join(decorations)
+
+        # Text transform
+        if style.font_caps == FontCaps.ALL_CAPS:
+            styles["text-transform"] = "uppercase"
+        elif style.font_caps == FontCaps.SMALL_CAPS:
+            styles["font-variant"] = "small-caps"
+
+        # Letter spacing
+        letter_spacing = style.tracking / 1000 * style.font_size
+        if hasattr(self, "text_letter_spacing_offset"):
+            letter_spacing += self.text_letter_spacing_offset
+        if letter_spacing != 0:
+            styles["letter-spacing"] = f"{letter_spacing}px"
+
+        # Vertical alignment (superscript/subscript)
+        if style.font_baseline == FontBaseline.SUPERSCRIPT:
+            styles["vertical-align"] = "super"
+            styles["font-size"] = f"{style.font_size * text_setting.superscript_size}px"
+        elif style.font_baseline == FontBaseline.SUBSCRIPT:
+            styles["vertical-align"] = "sub"
+            styles["font-size"] = f"{style.font_size * text_setting.subscript_size}px"
+        elif style.baseline_shift != 0.0:
+            # Custom baseline shift
+            styles["vertical-align"] = f"{style.baseline_shift}px"
+
+        # Horizontal/vertical scale
+        if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
+            styles["transform"] = (
+                f"scale({style.horizontal_scale}, {style.vertical_scale})"
+            )
+            styles["display"] = (
+                "inline-block"  # Required for transform on inline elements
+            )
+            styles["transform-origin"] = "center"
+
+        # Stroke (text outline) - CSS supports this with -webkit-text-stroke
+        stroke_color = style.get_stroke_color()
+        if stroke_color and stroke_color != "none":
+            # Note: This is a webkit-specific property but widely supported
+            styles["-webkit-text-stroke"] = f"1px {stroke_color}"
+
+        return styles
 
 
 @dataclasses.dataclass

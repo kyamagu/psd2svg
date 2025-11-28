@@ -58,6 +58,10 @@ class Converter(
             values. This can be used to compensate for differences between Photoshop's
             text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
             Default is 0.0 (no offset).
+        text_wrapping_mode: Text wrapping mode for bounding box text. Use 0 for no wrapping
+            (default, native SVG <text>), or 1 for <foreignObject> with XHTML wrapping.
+            Import TextWrappingMode from psd2svg.core.text for enum values. Only affects
+            bounding box text (ShapeType=1); point text always uses native SVG <text> elements.
     """
 
     _id_counter: AutoCounter | None = None
@@ -69,6 +73,7 @@ class Converter(
         enable_text: bool = True,
         enable_title: bool = True,
         text_letter_spacing_offset: float = 0.0,
+        text_wrapping_mode: int = 0,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -80,6 +85,7 @@ class Converter(
         self.enable_text = enable_text
         self.enable_title = enable_title
         self.text_letter_spacing_offset = text_letter_spacing_offset
+        self.text_wrapping_mode = text_wrapping_mode
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(

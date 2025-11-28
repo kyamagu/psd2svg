@@ -625,3 +625,114 @@ def test_text_japanese_notosans_cjk_jp() -> None:
     # Verify font-family attribute is set (font substitution may occur)
     font_family = text_node.attrib.get("font-family")
     assert font_family is not None, "font-family should be set"
+
+
+def test_text_wrapping_foreign_object_basic() -> None:
+    """Test basic foreignObject text wrapping for bounding box text."""
+    from psd2svg.core.text import TextWrappingMode
+
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype1-justification0.psd")
+    )
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    # Should have foreignObject instead of text
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None, "Should have foreignObject element"
+    assert foreign_obj.attrib.get("width") is not None
+    assert foreign_obj.attrib.get("height") is not None
+
+    # Should have XHTML div with proper namespace
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None, "Should have XHTML div element"
+    assert div.attrib.get("style") is not None
+
+    # Should have XHTML paragraph
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None, "Should have XHTML p element"
+
+
+def test_text_wrapping_foreign_object_multiple_paragraphs() -> None:
+    """Test foreignObject with multiple paragraphs."""
+    from psd2svg.core.text import TextWrappingMode
+
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-shapetype1-multiple.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    # Should have multiple <p> elements
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+    paragraphs = div.findall(".//{http://www.w3.org/1999/xhtml}p")
+    assert len(paragraphs) == 3, "Should have 3 paragraphs"
+
+
+def test_text_wrapping_foreign_object_text_content() -> None:
+    """Test that text content is preserved in foreignObject."""
+    from psd2svg.core.text import TextWrappingMode
+
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype1-justification0.psd")
+    )
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    # Extract all text from XHTML elements
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+    text_content = "".join(div.itertext())
+
+    # Should contain actual text (exact content depends on PSD file)
+    assert len(text_content.strip()) > 0, "Should have text content"
+
+
+def test_text_wrapping_point_text_unchanged() -> None:
+    """Test that point text (ShapeType=0) uses native SVG even with foreignObject mode."""
+    from psd2svg.core.text import TextWrappingMode
+
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype0-justification0.psd")
+    )
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    # Point text should still use native <text> element
+    text_node = doc.svg.find(".//text")
+    assert text_node is not None, "Point text should use native SVG text"
+
+    # Should NOT have foreignObject
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is None, "Point text should not use foreignObject"
+
+
+def test_text_wrapping_foreign_object_vertical() -> None:
+    """Test foreignObject with vertical writing mode."""
+    from psd2svg.core.text import TextWrappingMode
+
+    psdimage = PSDImage.open(
+        get_fixture(
+            "texts/shapetype1-writingdirection2-baselinedirection2-justification0.psd"
+        )
+    )
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    # Check for vertical writing mode in container div
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+    style = div.attrib.get("style", "")
+    assert "writing-mode: vertical-rl" in style or "writing-mode:vertical-rl" in style
