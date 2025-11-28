@@ -420,6 +420,31 @@ def test_stroke_effects(psd_file: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "psd_file, quality",
+    [
+        pytest.param(
+            "effects/color-overlay-8-text.psd",
+            0.05,
+            marks=pytest.mark.requires_arial,
+        ),
+        pytest.param(
+            "effects/drop-shadow-7-text.psd",
+            0.05,
+            marks=pytest.mark.requires_arial,
+        ),
+        pytest.param(
+            "effects/stroke-3-text.psd",
+            0.05,
+            marks=pytest.mark.requires_arial,
+        ),
+    ],
+)
+def test_text_effects_quality(psd_file: str, quality: float) -> None:
+    """Test conversion quality for text layers with effects."""
+    evaluate_quality(psd_file, quality)
+
+
+@pytest.mark.parametrize(
     "psd_file",
     [
         "layer-types/gradient-fill.psd",

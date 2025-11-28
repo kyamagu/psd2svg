@@ -66,16 +66,10 @@ class FontBaseline(IntEnum):
 class TextConverter(ConverterProtocol):
     """Mixin for text layers."""
 
-    def add_type(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None:
-        """Add a type layer to the svg document."""
-        if not self.enable_text:
-            return self.add_pixel(layer, **attrib)
-
+    def create_text_node(self, layer: layers.TypeLayer) -> ET.Element:
+        """Create SVG text node from a TypeLayer."""
         text_setting = TypeSetting(layer._data)
-        return self._create_text_node(text_setting)
 
-    def _create_text_node(self, text_setting: "TypeSetting") -> ET.Element:
-        """Create SVG text node from type setting."""
         # Use native x, y attributes for translation-only transforms
         transform = text_setting.transform
         uses_native_positioning = transform.is_translation_only()
