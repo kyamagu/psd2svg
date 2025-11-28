@@ -8,6 +8,7 @@ from PIL import Image
 from psd_tools import PSDImage
 
 from psd2svg import image_utils, svg_utils
+from psd2svg.core import font_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
 from psd2svg.rasterizer import BaseRasterizer, ResvgRasterizer
@@ -350,8 +351,6 @@ class SVGDocument:
         if not self.fonts:
             return
 
-        from psd2svg.core.font_utils import encode_font_data_uri
-
         # Collect @font-face rules
         font_face_rules = []
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
@@ -368,7 +367,9 @@ class SVGDocument:
                 # Use cache to avoid re-encoding
                 if font_path not in self._font_data_cache:
                     logger.debug(f"Encoding font: {font_path}")
-                    self._font_data_cache[font_path] = encode_font_data_uri(font_path)
+                    self._font_data_cache[font_path] = font_utils.encode_font_data_uri(
+                        font_path
+                    )
 
                 data_uri = self._font_data_cache[font_path]
                 css_rule = font_info.to_font_face_css(data_uri)
@@ -385,8 +386,26 @@ class SVGDocument:
         # Create CSS content
         css_content = "\n".join(font_face_rules)
 
-        # Find or create <style> element
-        # Check if first child is already a <style> element with our fonts
+        # Insert or update <style> element with CSS content
+        self._insert_or_update_style_element(svg, css_content)
+
+        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
+
+    def _insert_or_update_style_element(
+        self, svg: ET.Element, css_content: str
+    ) -> None:
+        """Insert or update a <style> element in the SVG root.
+
+        Args:
+            svg: SVG root element to modify.
+            css_content: CSS content to insert or append.
+
+        Note:
+            - If a <style> element exists as first child, appends to it
+            - Otherwise creates a new <style> element as first child
+            - Idempotent: skips if CSS content already present
+        """
+        # Find existing <style> element (check first child only)
         style_element = None
         if len(svg) > 0:
             first_child = svg[0]
@@ -400,8 +419,8 @@ class SVGDocument:
             # Update existing style element
             existing_text = style_element.text or ""
             # Check if our fonts are already embedded (idempotent check)
-            if "@font-face" in existing_text and css_content in existing_text:
-                logger.debug("Fonts already embedded, skipping")
+            if css_content in existing_text:
+                logger.debug("CSS content already present, skipping")
                 return
             # Append to existing styles
             style_element.text = existing_text + "\n" + css_content
@@ -410,8 +429,6 @@ class SVGDocument:
             style_element = ET.Element("style")
             style_element.text = css_content
             svg.insert(0, style_element)
-
-        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
 
 
 def convert(
