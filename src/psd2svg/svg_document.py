@@ -45,6 +45,9 @@ class SVGDocument:
     svg: ET.Element
     images: list[Image.Image] = dataclasses.field(default_factory=list)
     fonts: list[FontInfo] = dataclasses.field(default_factory=list)
+    _font_data_cache: dict[str, str] = dataclasses.field(
+        default_factory=dict, init=False, repr=False
+    )
 
     @staticmethod
     def from_psd(
@@ -92,14 +95,19 @@ class SVGDocument:
     def tostring(
         self,
         embed_images: bool = False,
+        embed_fonts: bool = False,
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
     ) -> str:
-        """Embed images as base64 data URIs.
+        """Convert SVG document to string.
 
         Args:
             embed_images: If True, embed images as base64 data URIs.
+            embed_fonts: If True, embed fonts as @font-face rules in <style> element.
+                WARNING: Font embedding may be subject to licensing restrictions.
+                Ensure you have appropriate rights before distributing SVG files
+                with embedded fonts.
             image_prefix: If provided, save images to files with this prefix.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
@@ -107,12 +115,17 @@ class SVGDocument:
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=None
         )
+
+        if embed_fonts and self.fonts:
+            self._embed_fonts(svg)
+
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
         self,
         filepath: str,
         embed_images: bool = False,
+        embed_fonts: bool = False,
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -122,6 +135,10 @@ class SVGDocument:
         Args:
             filepath: Path to the output SVG file.
             embed_images: If True, embed images as base64 data URIs.
+            embed_fonts: If True, embed fonts as @font-face rules in <style> element.
+                WARNING: Font embedding may be subject to licensing restrictions.
+                Ensure you have appropriate rights before distributing SVG files
+                with embedded fonts.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
@@ -130,6 +147,10 @@ class SVGDocument:
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=filepath
         )
+
+        if embed_fonts and self.fonts:
+            self._embed_fonts(svg)
+
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
@@ -151,6 +172,10 @@ class SVGDocument:
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
 
+        Note:
+            When using PlaywrightRasterizer, fonts are automatically embedded
+            in the SVG content to ensure correct rendering in the browser.
+
         Example:
             >>> # Default resvg rasterization
             >>> image = document.rasterize()
@@ -158,7 +183,7 @@ class SVGDocument:
             >>> # High DPI rasterization
             >>> image = document.rasterize(dpi=300)
 
-            >>> # Browser-based rasterization
+            >>> # Browser-based rasterization (fonts auto-embedded)
             >>> from psd2svg.rasterizer import PlaywrightRasterizer
             >>> browser_rasterizer = PlaywrightRasterizer(dpi=96)
             >>> image = document.rasterize(rasterizer=browser_rasterizer)
@@ -166,7 +191,20 @@ class SVGDocument:
         if rasterizer is None:
             rasterizer = ResvgRasterizer(dpi=dpi)
 
-        svg = self.tostring(embed_images=True)
+        # Check if we need to auto-embed fonts for PlaywrightRasterizer
+        # Import here to avoid circular dependency issues
+        try:
+            from psd2svg.rasterizer.playwright_rasterizer import PlaywrightRasterizer
+
+            is_playwright = isinstance(rasterizer, PlaywrightRasterizer)
+        except ImportError:
+            is_playwright = False
+
+        # Auto-embed fonts for PlaywrightRasterizer
+        if is_playwright and self.fonts:
+            svg = self.tostring(embed_images=True, embed_fonts=True)
+        else:
+            svg = self.tostring(embed_images=True)
 
         # Font files are only supported by ResvgRasterizer
         if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
@@ -289,6 +327,91 @@ class SVGDocument:
             raise ValueError("Either embed must be True or path must be provided.")
 
         return svg
+
+    def _embed_fonts(self, svg: ET.Element) -> None:
+        """Embed fonts as @font-face rules in a <style> element.
+
+        This modifies the provided SVG element in-place by inserting or updating
+        a <style> element with @font-face CSS rules for all fonts in self.fonts.
+
+        Args:
+            svg: SVG element to modify.
+
+        Warning:
+            Font embedding may be subject to licensing restrictions. Ensure you
+            have appropriate rights before distributing SVG files with embedded fonts.
+
+        Note:
+            - Caches encoded font data URIs to avoid re-encoding
+            - Logs warnings for missing/unreadable fonts but continues
+            - Creates <style> element as first child of <svg> root
+            - Idempotent: calling multiple times won't duplicate fonts
+        """
+        if not self.fonts:
+            return
+
+        from psd2svg.core.font_utils import encode_font_data_uri
+
+        # Collect @font-face rules
+        font_face_rules = []
+        seen_fonts = set()  # Track fonts by file path to avoid duplicates
+
+        for font_info in self.fonts:
+            font_path = font_info.file
+
+            # Skip duplicates
+            if font_path in seen_fonts:
+                continue
+            seen_fonts.add(font_path)
+
+            try:
+                # Use cache to avoid re-encoding
+                if font_path not in self._font_data_cache:
+                    logger.debug(f"Encoding font: {font_path}")
+                    self._font_data_cache[font_path] = encode_font_data_uri(font_path)
+
+                data_uri = self._font_data_cache[font_path]
+                css_rule = font_info.to_font_face_css(data_uri)
+                font_face_rules.append(css_rule)
+
+            except (FileNotFoundError, IOError) as e:
+                logger.warning(f"Failed to embed font '{font_path}': {e}")
+                continue
+
+        if not font_face_rules:
+            logger.warning("No fonts were successfully embedded")
+            return
+
+        # Create CSS content
+        css_content = "\n".join(font_face_rules)
+
+        # Find or create <style> element
+        # Check if first child is already a <style> element with our fonts
+        style_element = None
+        if len(svg) > 0:
+            first_child = svg[0]
+            # Check if it's a style element (handle namespaced tags)
+            tag = first_child.tag
+            local_name = tag.split("}")[-1] if "}" in tag else tag
+            if local_name == "style":
+                style_element = first_child
+
+        if style_element is not None:
+            # Update existing style element
+            existing_text = style_element.text or ""
+            # Check if our fonts are already embedded (idempotent check)
+            if "@font-face" in existing_text and css_content in existing_text:
+                logger.debug("Fonts already embedded, skipping")
+                return
+            # Append to existing styles
+            style_element.text = existing_text + "\n" + css_content
+        else:
+            # Create new style element as first child
+            style_element = ET.Element("style")
+            style_element.text = css_content
+            svg.insert(0, style_element)
+
+        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
 
 
 def convert(
