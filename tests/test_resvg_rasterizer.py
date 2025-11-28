@@ -365,3 +365,38 @@ def test_rasterizer_from_string_optimized() -> None:
 
     assert image_str.size == (100, 100)
     assert image_bytes.size == (100, 100)
+
+
+def test_rasterizer_ignores_foreign_object() -> None:
+    """Test that resvg ignores foreignObject elements.
+
+    When a foreignObject contains text, resvg should not render it,
+    resulting in a flat/empty image (all pixels transparent or uniform).
+    This verifies that foreignObject is not supported by resvg/resvg-py.
+    """
+    # SVG with only a foreignObject containing text
+    svg_with_foreign_object = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+    <foreignObject x="10" y="10" width="180" height="80">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 20px; color: red;">
+            This text should not be rendered by resvg
+        </div>
+    </foreignObject>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    image = rasterizer.from_string(svg_with_foreign_object)
+
+    assert isinstance(image, Image.Image)
+    assert image.mode == "RGBA"
+    assert image.size == (200, 100)
+
+    # Check that all pixels are transparent (alpha = 0)
+    # If resvg rendered the foreignObject text, there would be non-transparent pixels
+    pixels = list(image.getdata())
+    all_transparent = all(pixel[3] == 0 for pixel in pixels)
+
+    assert all_transparent, (
+        "resvg should ignore foreignObject elements, "
+        "but some pixels are not transparent (foreignObject may have been rendered)"
+    )

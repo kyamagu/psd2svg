@@ -43,6 +43,13 @@ Fast, accurate, and pure Rust implementation via resvg-py.
 * Simple installation
 * Production-ready
 
+**Limitations:**
+
+* Does not support SVG ``<foreignObject>`` elements (they are ignored during rendering)
+* Does not support some SVG 2.0 features (e.g., ``text-orientation: upright``, ``dominant-baseline`` for vertical text)
+
+**Note:** If you need ``<foreignObject>`` support for text wrapping, use PlaywrightRasterizer instead (see below).
+
 **Installation:**
 
 The ``resvg-py`` package is included as a dependency when you install psd2svg:

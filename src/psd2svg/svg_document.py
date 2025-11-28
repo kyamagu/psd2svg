@@ -57,6 +57,7 @@ class SVGDocument:
         enable_text: bool = True,
         enable_title: bool = True,
         text_letter_spacing_offset: float = 0.0,
+        text_wrapping_mode: int = 0,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -76,6 +77,11 @@ class SVGDocument:
                 letter-spacing values. This can be used to compensate for differences
                 between Photoshop's text rendering and SVG's text rendering. Typical
                 values range from -0.02 to 0.02. Default is 0.0 (no offset).
+            text_wrapping_mode: Text wrapping mode for bounding box text. Use 0 for no
+                wrapping (default, native SVG <text>), or 1 for <foreignObject> with
+                XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
+                enum values. Only affects bounding box text (ShapeType=1); point text
+                always uses native SVG <text> elements.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
@@ -85,6 +91,7 @@ class SVGDocument:
             enable_text=enable_text,
             enable_title=enable_title,
             text_letter_spacing_offset=text_letter_spacing_offset,
+            text_wrapping_mode=text_wrapping_mode,
         )
         converter.build()
         return SVGDocument(
@@ -612,6 +619,7 @@ def convert(
     enable_title: bool = True,
     image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
+    text_wrapping_mode: int = 0,
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
@@ -634,6 +642,11 @@ def convert(
             values. This can be used to compensate for differences between Photoshop's
             text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
             Default is 0.0 (no offset).
+        text_wrapping_mode: Text wrapping mode for bounding box text. Use 0 for no
+            wrapping (default, native SVG <text>), or 1 for <foreignObject> with
+            XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
+            enum values. Only affects bounding box text (ShapeType=1); point text
+            always uses native SVG <text> elements.
     """
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
@@ -642,6 +655,7 @@ def convert(
         enable_live_shapes=enable_live_shapes,
         enable_title=enable_title,
         text_letter_spacing_offset=text_letter_spacing_offset,
+        text_wrapping_mode=text_wrapping_mode,
     )
     document.save(
         output_path,

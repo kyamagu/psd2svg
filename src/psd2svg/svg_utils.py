@@ -8,6 +8,7 @@ from typing import Any, Optional, Sequence
 logger = logging.getLogger(__name__)
 
 NAMESPACE = "http://www.w3.org/2000/svg"
+XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml"
 
 ILLEGAL_XML_RE: Pattern[str] = re.compile(
     "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
@@ -73,6 +74,76 @@ def create_node(
     if parent is not None:
         parent.append(node)
     return node
+
+
+def create_xhtml_node(
+    tag: str,
+    parent: Optional[ET.Element] = None,
+    text: str = "",
+    **kwargs: Any,
+) -> ET.Element:
+    """Create an XHTML node with proper namespace.
+
+    This helper creates elements in the XHTML namespace for use within
+    SVG <foreignObject> elements. The namespace is required for proper
+    rendering in modern browsers (Chrome, Firefox, Safari, Edge).
+    Note: resvg/resvg-py does not support foreignObject rendering.
+
+    Args:
+        tag: HTML tag name (e.g., 'div', 'p', 'span').
+        parent: Optional parent element to append this node to.
+        text: Optional text content.
+        **kwargs: Additional attributes. Underscores in keys are converted
+                 to hyphens (e.g., 'font_size' becomes 'font-size').
+
+    Returns:
+        XHTML element with namespace prefix.
+
+    Example:
+        >>> foreign_obj = create_node("foreignObject", x=0, y=0, width=100, height=50)
+        >>> div = create_xhtml_node("div", parent=foreign_obj)
+        >>> p = create_xhtml_node("p", parent=div, text="Hello")
+        >>> span = create_xhtml_node("span", parent=p, text="World", style="color: red")
+    """
+    # Create element with XHTML namespace
+    node = ET.Element(f"{{{XHTML_NAMESPACE}}}{tag}")
+
+    # Set attributes
+    for key, value in kwargs.items():
+        if value is None:
+            continue
+        key = key.rstrip("_")  # allow trailing underscore for keywords
+        key = key.replace("_", "-")  # convert underscores to hyphens
+        set_attribute(node, key, value)
+
+    # Set text content
+    if text:
+        node.text = safe_utf8(text)
+
+    # Append to parent if provided
+    if parent is not None:
+        parent.append(node)
+
+    return node
+
+
+def styles_to_string(styles: dict[str, str]) -> str:
+    """Convert a dictionary of CSS styles to a CSS string.
+
+    Args:
+        styles: Dictionary of CSS property names to values.
+
+    Returns:
+        CSS string suitable for use in a 'style' attribute.
+
+    Example:
+        >>> styles = {"color": "red", "font-size": "12px"}
+        >>> styles_to_string(styles)
+        'color: red; font-size: 12px'
+    """
+    if not styles:
+        return ""
+    return "; ".join(f"{key}: {value}" for key, value in styles.items())
 
 
 def _strip_text_element_whitespace(node: ET.Element) -> None:
