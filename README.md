@@ -28,19 +28,19 @@ psd2svg input.psd output/  # => output/input.svg
 psd2svg input.psd          # => input.svg
 ```
 
-When `--images-path` flag is specified, all png resources are exported to the path specified by `--images-path`:
+When `--image-prefix` flag is specified, all png resources are exported to the path specified by `--image-prefix`:
 
 ```bash
-psd2svg input.psd output.svg --images-path .
+psd2svg input.psd output.svg --image-prefix .
 # => output.svg, xxx1.png, ...
 
-psd2svg input.psd output/ --images-path .
+psd2svg input.psd output/ --image-prefix .
 # => output/input.svg, output/xxx1.png, ...
 
-psd2svg input.psd output/ --images-path=resources/
+psd2svg input.psd output/ --image-prefix=resources/
 # => output/input.svg, output/resources/xxx1.png, ...
 
-psd2svg input.psd svg/ --images-path=../png/
+psd2svg input.psd svg/ --image-prefix=../png/
 # => svg/input.svg, png/xxx1.png, ...
 ```
 
