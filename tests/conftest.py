@@ -16,6 +16,11 @@ def get_fixture(name: str) -> str:
 def has_font(family: str) -> bool:
     """Check if a font family is available on the system.
 
+    This function is intended for future rendering tests where the exact font
+    matters (e.g., comparing rendered output against reference images). For
+    tests that validate SVG attribute generation, font checks are typically
+    unnecessary as font substitution happens automatically via fontconfig.
+
     Args:
         family: Font family name to check.
 
@@ -45,6 +50,11 @@ def has_font(family: str) -> bool:
 
 def has_postscript_font(postscript_name: str) -> bool:
     """Check if a font with the given PostScript name is available.
+
+    This function is intended for future rendering tests where the exact font
+    matters (e.g., comparing rendered output against reference images). For
+    tests that validate SVG attribute generation, font checks are typically
+    unnecessary as font substitution happens automatically via fontconfig.
 
     Args:
         postscript_name: PostScript name of the font.
