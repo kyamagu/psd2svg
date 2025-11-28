@@ -570,3 +570,78 @@ def test_convert_with_options(tmp_path: Path) -> None:
         text_letter_spacing_offset=-0.015,
     )
     assert os.path.exists(output_path5)
+
+
+def test_image_prefix_dot(tmp_path: Path) -> None:
+    """Test image_prefix='.' saves images in same directory as SVG."""
+    input_path = get_fixture("layer-types/pixel-layer.psd")
+
+    # Create a subdirectory for output
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    output_path = str(output_dir / "pixel-layer.svg")
+
+    # Convert with image_prefix="."
+    convert(input_path, output_path, image_prefix=".")
+
+    # Check that SVG exists
+    assert os.path.exists(output_path)
+
+    # Check that image file exists in the same directory
+    expected_image = output_dir / "01.webp"
+    assert expected_image.exists(), f"Expected image file at {expected_image}"
+
+    # Verify the href in the SVG is correct (relative path)
+    with open(output_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+        assert 'href="01.webp"' in svg_content, "Expected href='01.webp' in SVG"
+
+
+def test_image_prefix_with_subdirectory(tmp_path: Path) -> None:
+    """Test image_prefix with subdirectory path."""
+    input_path = get_fixture("layer-types/pixel-layer.psd")
+    output_path = str(tmp_path / "output.svg")
+
+    # Convert with image_prefix="images/"
+    convert(input_path, output_path, image_prefix="images/img")
+
+    # Check that SVG exists
+    assert os.path.exists(output_path)
+
+    # Check that image file exists in subdirectory
+    expected_image = tmp_path / "images" / "img01.webp"
+    assert expected_image.exists(), f"Expected image file at {expected_image}"
+
+    # Verify the href in the SVG is correct (relative path)
+    with open(output_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+        # On Windows, path separator might be different
+        assert (
+            'href="images/img01.webp"' in svg_content
+            or 'href="images\\img01.webp"' in svg_content
+        ), "Expected href='images/img01.webp' in SVG"
+
+
+def test_image_prefix_nested_output_directory(tmp_path: Path) -> None:
+    """Test image_prefix with nested output directory structure."""
+    input_path = get_fixture("layer-types/pixel-layer.psd")
+
+    # Create nested directory structure
+    output_dir = tmp_path / "nested" / "deep" / "path"
+    output_dir.mkdir(parents=True)
+    output_path = str(output_dir / "output.svg")
+
+    # Convert with image_prefix="."
+    convert(input_path, output_path, image_prefix=".")
+
+    # Check that SVG exists
+    assert os.path.exists(output_path)
+
+    # Check that image file exists in the same directory
+    expected_image = output_dir / "01.webp"
+    assert expected_image.exists(), f"Expected image file at {expected_image}"
+
+    # Verify the href in the SVG is correct
+    with open(output_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+        assert 'href="01.webp"' in svg_content, "Expected href='01.webp' in SVG"

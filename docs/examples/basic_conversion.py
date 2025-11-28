@@ -11,8 +11,8 @@ print("✓ Created output.svg with embedded images")
 
 # Example 2: Conversion with external images
 print("\nExample 2: External images")
-convert("input.psd", "output.svg", image_prefix="images/img_")
-print("✓ Created output.svg and images/img_*.webp files")
+convert("input.psd", "output.svg", image_prefix="images/img")
+print("✓ Created output.svg and images/img*.webp files")
 
 # Example 3: Using SVGDocument for more control
 print("\nExample 3: Using SVGDocument")
@@ -24,8 +24,8 @@ document.save("embedded.svg", embed_images=True)
 print("✓ Created embedded.svg")
 
 # Save with external PNG images
-document.save("external.svg", image_prefix="img_", image_format="png")
-print("✓ Created external.svg and img_*.png files")
+document.save("external.svg", image_prefix="img", image_format="png")
+print("✓ Created external.svg and img*.png files")
 
 # Example 4: Get SVG as string
 print("\nExample 4: Get SVG as string")
