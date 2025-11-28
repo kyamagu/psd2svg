@@ -152,6 +152,97 @@ class TestFontInfoToFontFaceCss:
         assert "font-style: italic;" in css
 
 
+class TestSVGDocumentImageHandling:
+    """Tests for SVGDocument image handling behavior."""
+
+    def test_tostring_default_no_images(self) -> None:
+        """Test tostring() with default parameters works when no images present."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "rect", x="10", y="10", width="80", height="80")
+
+        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+
+        # Should work with no parameters (embed_images=True by default)
+        result = document.tostring()
+
+        assert "<svg>" in result
+        assert "<rect" in result
+        assert 'x="10"' in result
+
+    def test_tostring_default_with_images(self) -> None:
+        """Test tostring() with default parameters embeds images."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images=[Image.new("RGB", (10, 10), color="red")],
+            fonts=[]
+        )
+
+        # Should embed images by default
+        result = document.tostring()
+
+        assert "data:image/webp;base64," in result
+        assert "href=" in result
+
+    def test_tostring_embed_images_false_no_prefix_raises_error(self) -> None:
+        """Test tostring() with embed_images=False and no prefix raises error."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images=[Image.new("RGB", (10, 10), color="red")],
+            fonts=[]
+        )
+
+        # Should raise ValueError when images exist but no output method specified
+        with pytest.raises(
+            ValueError,
+            match="Either embed_images must be True or image_prefix must be provided"
+        ):
+            document.tostring(embed_images=False)
+
+    def test_tostring_with_image_prefix_saves_files(self, tmp_path: Path) -> None:
+        """Test tostring() with image_prefix saves images to files."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images=[Image.new("RGB", (10, 10), color="blue")],
+            fonts=[]
+        )
+
+        # Use image_prefix to save files
+        prefix = str(tmp_path / "img")
+        result = document.tostring(image_prefix=prefix)
+
+        # Should contain filename reference, not data URI
+        assert "data:image/" not in result
+        assert "img01.webp" in result
+
+        # File should be created
+        assert (tmp_path / "img01.webp").exists()
+
+    def test_handle_images_empty_document(self) -> None:
+        """Test _handle_images() returns early when no images present."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "rect")
+
+        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+
+        # Should work with any combination when no images
+        result1 = document.tostring(embed_images=True)
+        result2 = document.tostring(embed_images=False)
+
+        assert "<rect" in result1
+        assert "<rect" in result2
+        # Both should produce same output since no images to handle
+        assert result1 == result2
+
+
 class TestSVGDocumentEmbedFonts:
     """Tests for SVGDocument font embedding functionality."""
 

@@ -277,10 +277,11 @@ class SVGDocument:
         if len(nodes) == 0:
             return svg
 
-        if embed_images:
-            self._embed_images_as_data_uris(nodes, image_format)
-        elif image_prefix is not None:
+        # image_prefix takes precedence over embed_images (as documented)
+        if image_prefix is not None:
             self._save_images_to_files(nodes, image_prefix, image_format, svg_filepath)
+        elif embed_images:
+            self._embed_images_as_data_uris(nodes, image_format)
         else:
             raise ValueError(
                 "Either embed_images must be True or image_prefix must be provided "
