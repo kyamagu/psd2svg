@@ -1,4 +1,11 @@
-"""Tests for font embedding functionality."""
+"""Tests for SVGDocument class functionality.
+
+This module tests various SVGDocument methods including:
+- Font encoding and embedding (@font-face CSS generation)
+- Image handling (embedding vs file saving)
+- String and file serialization (tostring, save)
+- Rasterization with different backends
+"""
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
