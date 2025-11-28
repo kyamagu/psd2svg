@@ -289,6 +289,85 @@ brew install --cask font-noto-sans font-noto-sans-cjk-jp
 
 Tests requiring specific fonts use markers like `@requires_noto_sans_jp` or `@requires_noto_sans_cjk`. These tests are automatically skipped if fonts are unavailable. See [tests/conftest.py](tests/conftest.py) for available markers and the full list of supported fonts.
 
+### Pull Request Workflow
+
+**IMPORTANT:** Always run formatting and type checking before pushing to remote to ensure CI tests pass.
+
+**Pre-push checklist:**
+
+1. **Format code:**
+
+   ```bash
+   uv run ruff format src/ tests/
+   ```
+
+2. **Run linting:**
+
+   ```bash
+   uv run ruff check src/ tests/
+   ```
+
+3. **Run type checking:**
+
+   ```bash
+   uv run mypy src/ tests/
+   ```
+
+4. **Run tests:**
+
+   ```bash
+   uv run pytest
+   ```
+
+5. **Stage and commit changes:**
+
+   ```bash
+   git add .
+   git commit -m "Your commit message"
+   ```
+
+6. **Push to remote:**
+
+   ```bash
+   git push -u origin your-branch-name
+   ```
+
+7. **Create pull request:**
+
+   ```bash
+   gh pr create --title "Your PR title" --body "PR description"
+   ```
+
+**Complete workflow example:**
+
+```bash
+# Make your changes
+# ...
+
+# Format and check code
+uv run ruff format src/ tests/
+uv run ruff check src/ tests/
+uv run mypy src/ tests/
+uv run pytest
+
+# Commit and push
+git add .
+git commit -m "Add feature X"
+git push -u origin feature/x
+
+# Create PR
+gh pr create --title "Add feature X" --body "Description of feature X"
+```
+
+**Why this matters:**
+
+The CI workflow runs these same checks on every push and PR. Running them locally first:
+
+- Catches issues before pushing (faster feedback)
+- Avoids failed CI checks that require additional commits
+- Keeps the git history clean
+- Saves CI resources
+
 ### Release Process
 
 Releases are automated via GitHub Actions:
