@@ -20,6 +20,15 @@ Text layer conversion requires fontconfig, which is automatically installed on L
 
 Both ResvgRasterizer and PlaywrightRasterizer support all three platforms for SVG rasterization.
 
+**SVG 2.0 Features:**
+
+The library uses modern SVG 2.0 features for cleaner output:
+
+* **`transform-origin` attribute**: Gradients use `transform-origin` for rotation/scaling instead of nested `translate()` transforms
+  * Produces cleaner, more readable SVG output
+  * Supported by modern browsers (Chrome 90+, Firefox 88+, Safari 14.1+) and resvg-py 0.28+
+  * When gradients have offset transforms, falls back to the translate-rotate-translate pattern for compatibility
+
 ## Commands
 
 ### Development and Testing
