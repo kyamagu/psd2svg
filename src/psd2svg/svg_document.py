@@ -585,9 +585,7 @@ class SVGDocument:
 
         try:
             # Get subset characters for this font (if subsetting enabled)
-            subset_chars = (
-                font_usage.get(font_info.family) if subset_fonts else None
-            )
+            subset_chars = font_usage.get(font_info.family) if subset_fonts else None
 
             # Handle missing characters in subsetting mode
             if subset_fonts and not subset_chars:
