@@ -467,3 +467,148 @@ def merge_singleton_children(element: ET.Element) -> None:
 
         # Remove the now-merged child
         element.remove(child)
+
+
+def consolidate_defs(svg: ET.Element) -> None:
+    """Consolidate all <defs> and definition elements into a global <defs>.
+
+    This optimization improves SVG structure by:
+    1. Creating a single global <defs> element at the beginning of the SVG
+    2. Moving all definition elements (filters, gradients, patterns, etc.) into it
+    3. Removing now-empty inline <defs> elements
+
+    Definition elements that are moved:
+    - <defs> (contents merged into global defs)
+    - <filter>
+    - <linearGradient>
+    - <radialGradient>
+    - <pattern>
+    - <clipPath>
+    - <marker>
+    - <symbol>
+
+    Args:
+        svg: The root SVG element to optimize (modified in-place).
+
+    Note:
+        This function preserves all id references and element ordering within defs.
+        It does NOT move <mask> elements as they can contain rendered content.
+
+    Example:
+        Before:
+            <svg>
+                <rect fill="url(#g1)"/>
+                <linearGradient id="g1">...</linearGradient>
+                <defs><filter id="f1">...</filter></defs>
+            </svg>
+
+        After:
+            <svg>
+                <defs>
+                    <linearGradient id="g1">...</linearGradient>
+                    <filter id="f1">...</filter>
+                </defs>
+                <rect fill="url(#g1)"/>
+            </svg>
+    """
+    # Definition element tags to consolidate (without namespace)
+    definition_tags = {
+        "filter",
+        "linearGradient",
+        "radialGradient",
+        "pattern",
+        "clipPath",
+        "marker",
+        "symbol",
+    }
+
+    # Find or create global <defs> element at the beginning
+    global_defs = None
+    for child in svg:
+        tag = child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+        if local_name == "defs":
+            global_defs = child
+            break
+
+    if global_defs is None:
+        # Create new global defs as first child
+        global_defs = ET.Element("defs")
+        svg.insert(0, global_defs)
+    else:
+        # Ensure global_defs is the first child
+        if svg[0] is not global_defs:
+            svg.remove(global_defs)
+            svg.insert(0, global_defs)
+
+    # Collect all definition elements from the entire SVG tree
+    definitions_to_move: list[tuple[ET.Element, ET.Element]] = []  # (element, parent)
+
+    def collect_definitions(element: ET.Element) -> None:
+        """Recursively collect definition elements to move."""
+        for child in list(element):
+            tag = child.tag
+            local_name = tag.split("}")[-1] if "}" in tag else tag
+
+            # If it's a <defs> element (not the global one), collect its children
+            if local_name == "defs" and child is not global_defs:
+                for def_child in list(child):
+                    definitions_to_move.append((def_child, child))
+                # Continue recursing into defs (in case of nested structures)
+                collect_definitions(child)
+            # If it's a definition element (not inside global defs), collect it
+            elif local_name in definition_tags and element is not global_defs:
+                definitions_to_move.append((child, element))
+                # Still recurse into the element (e.g., filters can contain other elements)
+                collect_definitions(child)
+            else:
+                # Recurse into other elements
+                collect_definitions(child)
+
+    # Collect definitions directly from SVG root level
+    for child in list(svg):
+        if child is global_defs:
+            continue
+
+        tag = child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+
+        # If it's a <defs> element, collect its children
+        if local_name == "defs":
+            for def_child in list(child):
+                definitions_to_move.append((def_child, child))
+            # Also recurse into it
+            collect_definitions(child)
+        # If it's a definition element, collect it
+        elif local_name in definition_tags:
+            definitions_to_move.append((child, svg))
+            # Also recurse into it
+            collect_definitions(child)
+        else:
+            # For non-definition elements, recurse to find nested definitions
+            collect_definitions(child)
+
+    # Move all collected definitions to global defs
+    for element, parent in definitions_to_move:
+        # Skip if element has already been moved (e.g., parent was removed)
+        if element not in parent:
+            continue
+        parent.remove(element)
+        global_defs.append(element)
+
+    # Remove now-empty <defs> elements
+    def remove_empty_defs(element: ET.Element) -> None:
+        """Recursively remove empty <defs> elements."""
+        for child in list(element):
+            tag = child.tag
+            local_name = tag.split("}")[-1] if "}" in tag else tag
+            if local_name == "defs" and child is not global_defs and len(child) == 0:
+                element.remove(child)
+            else:
+                remove_empty_defs(child)
+
+    remove_empty_defs(svg)
+
+    # Remove global defs if it's empty (no definitions were found)
+    if len(global_defs) == 0:
+        svg.remove(global_defs)

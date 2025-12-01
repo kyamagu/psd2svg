@@ -51,6 +51,65 @@ Both ResvgRasterizer and PlaywrightRasterizer support all three platforms for SV
 
 ### Advanced Options
 
+#### SVG Optimization
+
+The library includes SVG optimization features that improve document structure, reduce file size, and enhance rendering performance. Optimization is **enabled by default** when saving or converting SVG documents.
+
+**Consolidate Definitions (enabled by default):**
+
+Merges all `<defs>` elements and moves definition elements (filters, gradients, patterns, etc.) into a single global `<defs>` at the beginning of the SVG document. This follows SVG best practices and improves browser parsing performance.
+
+```python
+from psd2svg import SVGDocument
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+document = SVGDocument.from_psd(psdimage)
+
+# Optimization is enabled by default
+document.save('output.svg')  # Automatically optimized
+svg_string = document.tostring()  # Automatically optimized
+
+# Explicitly control optimization
+document.save('output.svg', optimize=True)  # Explicitly enable (default)
+document.save('output.svg', optimize=False)  # Disable optimization
+
+# Or use the optimize() method directly
+document.optimize()  # Apply optimizations in-place
+```
+
+**What gets consolidated:**
+
+- `<defs>` - Contents merged into global defs
+- `<filter>` - Filter definitions
+- `<linearGradient>` and `<radialGradient>` - Gradient definitions
+- `<pattern>` - Pattern definitions
+- `<clipPath>` - Clipping paths
+- `<marker>` - Marker definitions
+- `<symbol>` - Symbol definitions
+
+**Note:** `<mask>` elements are NOT moved as they can contain rendered content.
+
+**Benefits:**
+
+- Cleaner, more maintainable SVG structure
+- Better browser parsing performance
+- Easier debugging (all definitions in one place)
+- Follows SVG best practices
+- Slight file size reduction (fewer `<defs>` tags)
+
+**Fine-grained control:**
+
+```python
+# Use the optimize() method for more control
+document.optimize(
+    consolidate_defs=True,  # Consolidate definitions (default: True)
+    deduplicate_defs=False,  # Remove duplicates (not yet implemented)
+    minify_ids=False,        # Shorten IDs (not yet implemented)
+    remove_unused=False,     # Remove unused defs (not yet implemented)
+)
+```
+
 #### Text Letter Spacing Offset
 
 Photoshop and SVG renderers may have slightly different default letter spacing due to differences in kerning algorithms. You can compensate for these differences using the `text_letter_spacing_offset` parameter:
