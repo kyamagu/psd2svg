@@ -15,6 +15,15 @@ try:
 except ImportError:
     HAS_FONTCONFIG = False
 
+# Import font_subsetting conditionally to avoid import errors when fonttools not installed
+try:
+    from psd2svg import font_subsetting as _font_subsetting
+
+    HAS_FONT_SUBSETTING = True
+except ImportError:
+    HAS_FONT_SUBSETTING = False
+    _font_subsetting = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -323,15 +332,12 @@ def encode_font_with_options(
     """
     # Subsetting path
     if subset_chars:
-        # Import here to provide better error message
-        try:
-            from psd2svg import font_subsetting
-        except ImportError as e:
-            logger.error(
-                f"Font subsetting requires fonttools package: {e}. "
+        # Check if font_subsetting is available
+        if not HAS_FONT_SUBSETTING:
+            raise ImportError(
+                "Font subsetting requires fonttools package. "
                 "Install with: uv sync --group fonts"
             )
-            raise
 
         # Create cache key for subset fonts (include format and char count)
         cache_key = f"{font_path}:{font_format}:{len(subset_chars)}"
@@ -342,7 +348,7 @@ def encode_font_with_options(
                 f"({len(subset_chars)} chars)"
             )
             try:
-                font_bytes = font_subsetting.subset_font(
+                font_bytes = _font_subsetting.subset_font(  # type: ignore
                     input_path=font_path,
                     output_format=font_format,
                     unicode_chars=subset_chars,
