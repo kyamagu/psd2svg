@@ -480,7 +480,7 @@ class EffectConverter(ConverterProtocol):
             if isinstance(layer, layers.ShapeLayer):
                 use = self.add_vector_gradient_overlay_effect(gradient, target)
             else:
-                use = self.add_raster_gradient_overlay_effect(gradient, target)
+                use = self.add_raster_gradient_overlay_effect(gradient, target, effect)
 
             if effect.blend_mode != Enum.Normal:
                 self.set_blend_mode(effect.blend_mode, use)
@@ -488,7 +488,7 @@ class EffectConverter(ConverterProtocol):
                 self.set_opacity(effect.opacity / 100.0, use)
 
     def add_raster_gradient_overlay_effect(
-        self, gradient: ET.Element, target: ET.Element
+        self, gradient: ET.Element, target: ET.Element, effect: effects.GradientOverlay
     ) -> ET.Element:
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = self.create_node("defs")
@@ -501,13 +501,37 @@ class EffectConverter(ConverterProtocol):
             height=target.get("height", "100%"),
             fill=svg_utils.get_funciri(gradient),
         )
-        # Filter origin should be set to (0, 0) instead of (-10%, -10%).
-        filter = self.create_node(
-            "filter",
-            id=self.auto_id("gradientoverlay"),
-            x="0",
-            y="0",
-        )
+
+        # When gradient is aligned to layer bounds (Aligned=True), use objectBoundingBox
+        # coordinates for the filter. Otherwise use userSpaceOnUse.
+        # Note: The key is b'Algn', not Key.Aligned (which is b'Algd')
+        aligned = bool(effect.value.get(b"Algn", False))
+        filter_attrs = {"id": self.auto_id("gradientoverlay")}
+
+        if aligned:
+            # Use objectBoundingBox coordinates (filter positioned relative to target element)
+            filter_attrs["x"] = "0%"
+            filter_attrs["y"] = "0%"
+            filter_attrs["width"] = "100%"
+            filter_attrs["height"] = "100%"
+            filter_attrs["filterUnits"] = "objectBoundingBox"
+        else:
+            # Use userSpaceOnUse coordinates (filter positioned in absolute coordinates)
+            # Get target position if available
+            if "x" in target.attrib and "y" in target.attrib:
+                x_val = target.get("x")
+                y_val = target.get("y")
+                filter_attrs["x"] = x_val if x_val is not None else "0"
+                filter_attrs["y"] = y_val if y_val is not None else "0"
+            else:
+                filter_attrs["x"] = "0"
+                filter_attrs["y"] = "0"
+            filter_attrs["filterUnits"] = "userSpaceOnUse"
+
+        filter = self.create_node("filter", id=filter_attrs["id"])
+        for key, value in filter_attrs.items():
+            if key != "id":
+                svg_utils.set_attribute(filter, key, value)
         svg_utils.create_node(
             "feImage",
             parent=filter,
@@ -546,7 +570,8 @@ class EffectConverter(ConverterProtocol):
     ) -> None:
         """Set gradient transformations based on the effect properties."""
         transforms = []
-        aligned = effect.value.get(Key.Aligned) is True
+        # Note: The key is b'Algn', not Key.Aligned (which is b'Algd')
+        aligned = bool(effect.value.get(b"Algn", False))
         if aligned:
             # Gradient aligned to layer bounds.
             landscape = layer.width >= layer.height
