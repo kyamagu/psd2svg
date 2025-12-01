@@ -7,7 +7,7 @@ from copy import deepcopy
 from PIL import Image
 from psd_tools import PSDImage
 
-from psd2svg import image_utils, svg_utils
+from psd2svg import font_subsetting, image_utils, svg_utils
 from psd2svg.core import font_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
@@ -500,22 +500,45 @@ class SVGDocument:
         # Extract Unicode usage if subsetting is enabled
         font_usage: dict[str, set[str]] = {}
         if subset_fonts:
-            try:
-                from psd2svg import font_subsetting
+            font_usage = font_subsetting.get_font_usage_from_svg(svg)
 
-                font_usage = font_subsetting.extract_used_unicode(svg)
-                logger.debug(
-                    f"Extracted {len(font_usage)} font(s) with "
-                    f"{sum(len(chars) for chars in font_usage.values())} unique char(s)"
-                )
-            except ImportError as e:
-                logger.error(
-                    f"Font subsetting requires fonttools package: {e}. "
-                    "Install with: uv sync --group fonts"
-                )
-                raise
+        # Generate @font-face CSS rules
+        font_face_rules = self._generate_font_face_rules(
+            font_usage, subset_fonts, font_format
+        )
 
-        # Collect @font-face rules
+        if not font_face_rules:
+            logger.warning("No fonts were successfully embedded")
+            return
+
+        # Create CSS content and insert into SVG
+        css_content = "\n".join(font_face_rules)
+        self._insert_or_update_style_element(svg, css_content)
+
+        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
+
+    def _generate_font_face_rules(
+        self,
+        font_usage: dict[str, set[str]],
+        subset_fonts: bool,
+        font_format: str,
+    ) -> list[str]:
+        """Generate @font-face CSS rules for all fonts.
+
+        Args:
+            font_usage: Dictionary mapping font families to character sets.
+                Empty dict if subsetting is disabled.
+            subset_fonts: Whether to subset fonts.
+            font_format: Font format for embedding ("ttf", "otf", "woff2").
+
+        Returns:
+            List of @font-face CSS rule strings.
+
+        Note:
+            - Uses self._font_data_cache for caching encoded fonts
+            - Skips duplicate fonts (same file path)
+            - Logs warnings for missing/unreadable fonts but continues
+        """
         font_face_rules = []
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
 
@@ -527,80 +550,73 @@ class SVGDocument:
                 continue
             seen_fonts.add(font_path)
 
-            try:
-                if subset_fonts:
-                    # Subset and convert font
-                    from psd2svg import font_subsetting
-
-                    # Get characters used by this specific font family
-                    chars = font_usage.get(font_info.family, set())
-
-                    if not chars:
-                        logger.warning(
-                            f"No characters found for font '{font_info.family}', "
-                            "skipping subsetting"
-                        )
-                        # Fall back to full font encoding
-                        if font_path not in self._font_data_cache:
-                            logger.debug(f"Encoding full font: {font_path}")
-                            self._font_data_cache[font_path] = (
-                                font_utils.encode_font_data_uri(font_path)
-                            )
-                        data_uri = self._font_data_cache[font_path]
-                    else:
-                        # Create cache key for subset fonts (include format and chars)
-                        cache_key = f"{font_path}:{font_format}:{len(chars)}"
-
-                        if cache_key not in self._font_data_cache:
-                            logger.debug(
-                                f"Subsetting font: {font_path} -> {font_format} "
-                                f"({len(chars)} chars)"
-                            )
-                            font_bytes = font_subsetting.subset_font(
-                                input_path=font_path,
-                                output_format=font_format,
-                                unicode_chars=chars,
-                            )
-                            data_uri = font_utils.encode_font_bytes_to_data_uri(
-                                font_bytes, font_format
-                            )
-                            self._font_data_cache[cache_key] = data_uri
-                        else:
-                            data_uri = self._font_data_cache[cache_key]
-                else:
-                    # Use full font encoding (original behavior)
-                    if font_path not in self._font_data_cache:
-                        logger.debug(f"Encoding font: {font_path}")
-                        self._font_data_cache[font_path] = (
-                            font_utils.encode_font_data_uri(font_path)
-                        )
-
-                    data_uri = self._font_data_cache[font_path]
-
-                css_rule = font_info.to_font_face_css(data_uri)
+            # Generate CSS rule for this font
+            css_rule = self._generate_single_font_face_rule(
+                font_info, font_usage, subset_fonts, font_format
+            )
+            if css_rule:
                 font_face_rules.append(css_rule)
 
-            except (FileNotFoundError, IOError) as e:
-                logger.warning(f"Failed to embed font '{font_path}': {e}")
-                continue
-            except ImportError as e:
-                logger.error(f"Font subsetting failed (missing dependency): {e}")
-                raise
-            except Exception as e:
-                logger.warning(f"Failed to subset font '{font_path}': {e}")
-                continue
+        return font_face_rules
 
-        if not font_face_rules:
-            logger.warning("No fonts were successfully embedded")
-            return
+    def _generate_single_font_face_rule(
+        self,
+        font_info: FontInfo,
+        font_usage: dict[str, set[str]],
+        subset_fonts: bool,
+        font_format: str,
+    ) -> str | None:
+        """Generate a single @font-face CSS rule for a font.
 
-        # Create CSS content
-        css_content = "\n".join(font_face_rules)
+        Args:
+            font_info: Font information.
+            font_usage: Dictionary mapping font families to character sets.
+            subset_fonts: Whether to subset fonts.
+            font_format: Font format for embedding ("ttf", "otf", "woff2").
 
-        # Insert or update <style> element with CSS content
-        self._insert_or_update_style_element(svg, css_content)
+        Returns:
+            CSS @font-face rule string, or None if font processing failed.
 
-        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
+        Note:
+            - Logs warnings for non-critical errors and returns None
+            - Re-raises ImportError for missing dependencies
+        """
+        font_path = font_info.file
+
+        try:
+            # Get subset characters for this font (if subsetting enabled)
+            subset_chars = (
+                font_usage.get(font_info.family) if subset_fonts else None
+            )
+
+            # Handle missing characters in subsetting mode
+            if subset_fonts and not subset_chars:
+                logger.warning(
+                    f"No characters found for font '{font_info.family}', "
+                    "using full font"
+                )
+                subset_chars = None
+
+            # Encode font with caching
+            data_uri = font_utils.encode_font_with_options(
+                font_path=font_path,
+                cache=self._font_data_cache,
+                subset_chars=subset_chars,
+                font_format=font_format,
+            )
+
+            # Generate CSS rule
+            return font_info.to_font_face_css(data_uri)
+
+        except (FileNotFoundError, IOError) as e:
+            logger.warning(f"Failed to embed font '{font_path}': {e}")
+            return None
+        except ImportError as e:
+            logger.error(f"Font subsetting failed (missing dependency): {e}")
+            raise
+        except Exception as e:
+            logger.warning(f"Failed to process font '{font_path}': {e}")
+            return None
 
     def _insert_or_update_style_element(
         self, svg: ET.Element, css_content: str

@@ -325,6 +325,35 @@ def _extract_direct_text_content(element: ET.Element) -> str:
     return ""
 
 
+def get_font_usage_from_svg(svg_tree: ET.Element) -> dict[str, set[str]]:
+    """Get font usage information from SVG for subsetting.
+
+    This is a convenience wrapper around extract_used_unicode() that
+    checks for fonttools availability and logs appropriate messages.
+
+    Args:
+        svg_tree: Root SVG element to analyze.
+
+    Returns:
+        Dictionary mapping font-family names to sets of Unicode characters.
+
+    Raises:
+        ImportError: If fonttools package is not installed.
+    """
+    if not HAS_FONTTOOLS:
+        raise ImportError(
+            "Font subsetting requires fonttools package. "
+            "Install with: uv sync --group fonts"
+        )
+
+    font_usage = extract_used_unicode(svg_tree)
+    logger.debug(
+        f"Extracted {len(font_usage)} font(s) with "
+        f"{sum(len(chars) for chars in font_usage.values())} unique char(s)"
+    )
+    return font_usage
+
+
 def _chars_to_unicode_list(chars: set[str]) -> list[int]:
     """Convert set of characters to list of Unicode code points.
 

@@ -288,3 +288,81 @@ def encode_font_bytes_to_data_uri(font_bytes: bytes, font_format: str) -> str:
     mime_type = mime_types[font_format]
     base64_data = base64.b64encode(font_bytes).decode("utf-8")
     return f"data:{mime_type};base64,{base64_data}"
+
+
+def encode_font_with_options(
+    font_path: str,
+    cache: dict[str, str],
+    subset_chars: set[str] | None = None,
+    font_format: str = "ttf",
+) -> str:
+    """Encode a font file as a data URI with optional subsetting and caching.
+
+    This helper consolidates the logic for encoding fonts with subsetting
+    support and cache management.
+
+    Args:
+        font_path: Path to the font file.
+        cache: Dictionary to use for caching encoded data URIs.
+        subset_chars: Optional set of characters to subset the font to.
+            If None, the full font is encoded.
+        font_format: Font format for output: "ttf", "otf", or "woff2".
+
+    Returns:
+        Data URI string for the encoded font.
+
+    Raises:
+        ImportError: If subsetting is requested but fonttools is not available.
+        FileNotFoundError: If font file doesn't exist.
+        IOError: If font file can't be read.
+
+    Note:
+        - Cache keys include format and character count for subset fonts
+        - Full fonts use just the file path as cache key
+        - Missing characters trigger fallback to full font with warning
+    """
+    # Subsetting path
+    if subset_chars:
+        # Import here to provide better error message
+        try:
+            from psd2svg import font_subsetting
+        except ImportError as e:
+            logger.error(
+                f"Font subsetting requires fonttools package: {e}. "
+                "Install with: uv sync --group fonts"
+            )
+            raise
+
+        # Create cache key for subset fonts (include format and char count)
+        cache_key = f"{font_path}:{font_format}:{len(subset_chars)}"
+
+        if cache_key not in cache:
+            logger.debug(
+                f"Subsetting font: {font_path} -> {font_format} "
+                f"({len(subset_chars)} chars)"
+            )
+            try:
+                font_bytes = font_subsetting.subset_font(
+                    input_path=font_path,
+                    output_format=font_format,
+                    unicode_chars=subset_chars,
+                )
+                data_uri = encode_font_bytes_to_data_uri(font_bytes, font_format)
+                cache[cache_key] = data_uri
+            except Exception as e:
+                logger.warning(
+                    f"Failed to subset font '{font_path}': {e}. "
+                    "Falling back to full font"
+                )
+                # Fall back to full font
+                if font_path not in cache:
+                    logger.debug(f"Encoding full font: {font_path}")
+                    cache[font_path] = encode_font_data_uri(font_path)
+                return cache[font_path]
+        return cache[cache_key]
+
+    # Full font encoding path
+    if font_path not in cache:
+        logger.debug(f"Encoding font: {font_path}")
+        cache[font_path] = encode_font_data_uri(font_path)
+    return cache[font_path]
