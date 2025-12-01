@@ -95,7 +95,7 @@ class Converter(
             height=psdimage.height,
             viewBox=svg_utils.seq2str([0, 0, psdimage.width, psdimage.height], sep=" "),
         )
-        self.images: list[Image.Image] = []  # Store PIL images here.
+        self.images: dict[str, Image.Image] = {}  # Store PIL images keyed by image ID.
         self.fonts: dict[
             str, FontInfo
         ] = {}  # Store font info keyed by postscript name.
@@ -109,12 +109,14 @@ class Converter(
 
         if len(self.psd) == 0 and self.psd.has_preview():
             # Special case: No layers, just a flat image.
+            image_id = self.auto_id("image")
             self.create_node(
                 "image",
+                id=image_id,
                 width=self.psd.width,
                 height=self.psd.height,
             )
-            self.images.append(self.psd.composite())
+            self.images[image_id] = self.psd.composite()
         else:
             self.add_children(self.psd)
 

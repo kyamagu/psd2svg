@@ -44,7 +44,7 @@ class SVGDocument:
     """
 
     svg: ET.Element
-    images: list[Image.Image] = dataclasses.field(default_factory=list)
+    images: dict[str, Image.Image] = dataclasses.field(default_factory=dict)
     fonts: list[FontInfo] = dataclasses.field(default_factory=list)
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
@@ -259,13 +259,14 @@ class SVGDocument:
         self,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
-    ) -> dict[str, str | list[bytes] | list[dict[str, str | float]]]:
+    ) -> dict[str, str | dict[str, bytes] | list[dict[str, str | float]]]:
         """Export the SVG document in a serializable format."""
         return {
             "svg": svg_utils.tostring(self.svg, indent=indent),
-            "images": [
-                image_utils.encode_image(image, image_format) for image in self.images
-            ],
+            "images": {
+                image_id: image_utils.encode_image(image, image_format)
+                for image_id, image in self.images.items()
+            },
             "fonts": [font_info.to_dict() for font_info in self.fonts],
         }
 
@@ -273,22 +274,25 @@ class SVGDocument:
     def load(
         cls,
         svg: str,
-        images: list[bytes],
+        images: dict[str, bytes],
         fonts: list[dict[str, str | float]] | None = None,
     ) -> "SVGDocument":
         """Load an SVGDocument from SVG content and image bytes.
 
         Args:
             svg: SVG content as a string.
-            images: List of image bytes corresponding to <image> nodes in the SVG.
+            images: Dictionary mapping image IDs to image bytes.
             fonts: Optional list of font information dictionaries.
         """
         svg_node = ET.fromstring(svg)
-        pil_images = [image_utils.decode_image(img_bytes) for img_bytes in images]
+        images_dict = {
+            image_id: image_utils.decode_image(img_bytes)
+            for image_id, img_bytes in images.items()
+        }
         font_infos = (
             [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
         )
-        return SVGDocument(svg=svg_node, images=pil_images, fonts=font_infos)
+        return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
 
     def _handle_images(
         self,
@@ -309,8 +313,19 @@ class SVGDocument:
         """
         svg = deepcopy(self.svg)  # Avoid modifying the original SVG.
         nodes = svg.findall(".//image")
-        if len(nodes) != len(self.images):
-            raise RuntimeError("Number of <image> nodes and images do not match.")
+
+        # Validate that all image nodes have IDs and corresponding images exist
+        for node in nodes:
+            image_id = node.get("id")
+            if image_id is None:
+                raise RuntimeError(
+                    f"<image> element missing required 'id' attribute: "
+                    f"{ET.tostring(node, encoding='unicode')}"
+                )
+            if image_id not in self.images:
+                raise RuntimeError(
+                    f"No image found for <image> element with id='{image_id}'"
+                )
 
         # Handle image resources (skip if no images).
         if len(nodes) == 0:
@@ -338,7 +353,15 @@ class SVGDocument:
             nodes: List of <image> elements to update.
             image_format: Image format to use for encoding.
         """
-        for node, image in zip(nodes, self.images):
+        for node in nodes:
+            image_id = node.get("id")
+            if image_id is None:
+                raise RuntimeError("<image> element missing required 'id' attribute")
+            if image_id not in self.images:
+                raise RuntimeError(
+                    f"No image found for <image> element with id='{image_id}'"
+                )
+            image = self.images[image_id]
             data_uri = image_utils.encode_data_uri(image, image_format)
             node.set("href", data_uri)
 
@@ -366,7 +389,16 @@ class SVGDocument:
             os.makedirs(base_dir)
 
         # Save each image and update node href
-        for i, (node, image) in enumerate(zip(nodes, self.images), start=1):
+        for i, node in enumerate(nodes, start=1):
+            image_id = node.get("id")
+            if image_id is None:
+                raise RuntimeError("<image> element missing required 'id' attribute")
+            if image_id not in self.images:
+                raise RuntimeError(
+                    f"No image found for <image> element with id='{image_id}'"
+                )
+
+            image = self.images[image_id]
             filename = "{}{:02d}.{}".format(prefix, i, image_format.lower())
             filepath = os.path.join(base_dir, filename)
 

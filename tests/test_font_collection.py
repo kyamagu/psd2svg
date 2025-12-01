@@ -73,7 +73,7 @@ class TestFontExportLoad:
         # Load it back
         loaded_document = SVGDocument.load(
             cast(str, exported["svg"]),
-            cast(list[bytes], exported["images"]),
+            cast(dict[str, bytes], exported["images"]),
             cast(list[dict[str, str | float]], exported["fonts"]),
         )
 
@@ -95,7 +95,7 @@ class TestFontExportLoad:
 
         # Load without fonts parameter
         loaded_document = SVGDocument.load(
-            cast(str, exported["svg"]), cast(list[bytes], exported["images"])
+            cast(str, exported["svg"]), cast(dict[str, bytes], exported["images"])
         )
 
         # Should have empty fonts list

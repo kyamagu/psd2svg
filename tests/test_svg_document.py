@@ -168,7 +168,7 @@ class TestSVGDocumentImageHandling:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect", x="10", y="10", width="80", height="80")
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
 
         # Should work with no parameters (embed_images=True by default)
         result = document.tostring()
@@ -180,10 +180,12 @@ class TestSVGDocumentImageHandling:
     def test_tostring_default_with_images(self) -> None:
         """Test tostring() with default parameters embeds images."""
         svg_elem = ET.Element("svg")
-        ET.SubElement(svg_elem, "image")
+        ET.SubElement(svg_elem, "image", id="image")
 
         document = SVGDocument(
-            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="red")], fonts=[]
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="red")},
+            fonts=[],
         )
 
         # Should embed images by default
@@ -195,10 +197,12 @@ class TestSVGDocumentImageHandling:
     def test_tostring_embed_images_false_no_prefix_raises_error(self) -> None:
         """Test tostring() with embed_images=False and no prefix raises error."""
         svg_elem = ET.Element("svg")
-        ET.SubElement(svg_elem, "image")
+        ET.SubElement(svg_elem, "image", id="image")
 
         document = SVGDocument(
-            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="red")], fonts=[]
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="red")},
+            fonts=[],
         )
 
         # Should raise ValueError when images exist but no output method specified
@@ -211,10 +215,12 @@ class TestSVGDocumentImageHandling:
     def test_tostring_with_image_prefix_saves_files(self, tmp_path: Path) -> None:
         """Test tostring() with image_prefix saves images to files."""
         svg_elem = ET.Element("svg")
-        ET.SubElement(svg_elem, "image")
+        ET.SubElement(svg_elem, "image", id="image")
 
         document = SVGDocument(
-            svg=svg_elem, images=[Image.new("RGB", (10, 10), color="blue")], fonts=[]
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="blue")},
+            fonts=[],
         )
 
         # Use image_prefix to save files
@@ -233,7 +239,7 @@ class TestSVGDocumentImageHandling:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
 
         # Should work with any combination when no images
         result1 = document.tostring(embed_images=True)
@@ -253,7 +259,7 @@ class TestSVGDocumentEmbedFonts:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
         result = document.tostring(embed_images=True, embed_fonts=False)
 
         assert "<style>" not in result
@@ -264,7 +270,7 @@ class TestSVGDocumentEmbedFonts:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         assert "<style>" not in result
@@ -288,7 +294,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         assert "<style>" in result
@@ -317,7 +323,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
         document.save(str(output_file), embed_images=True, embed_fonts=True)
 
         content = output_file.read_text()
@@ -352,7 +358,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font1, font2])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         # Should only encode once
@@ -380,7 +386,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
 
         # Call tostring twice
         document.tostring(embed_images=True, embed_fonts=True)
@@ -405,7 +411,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         # Should not raise exception
@@ -447,7 +453,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font1, font2])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         assert result.count("@font-face") == 2
@@ -479,7 +485,7 @@ class TestSVGDocumentRasterizeWithFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
 
         with patch.object(ResvgRasterizer, "from_string") as mock_from_string:
             mock_from_string.return_value = Image.new("RGBA", (100, 100))
@@ -521,7 +527,7 @@ class TestSVGDocumentRasterizeWithFonts:
             weight=80.0,
         )
 
-        document = SVGDocument(svg=svg_elem, images=[], fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
 
         with patch.object(PlaywrightRasterizer, "from_string") as mock_from_string:
             mock_from_string.return_value = Image.new("RGBA", (100, 100))
