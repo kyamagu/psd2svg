@@ -1,6 +1,7 @@
 """Font subsetting utilities for reducing embedded font file sizes."""
 
 import html
+import io
 import logging
 import re
 import xml.etree.ElementTree as ET
@@ -154,8 +155,6 @@ def subset_font(
         subsetter.subset(font)
 
         # Save to bytes (using a temporary in-memory approach)
-        import io
-
         output_buffer = io.BytesIO()
 
         # Set flavor for WOFF2 on the font object before saving
