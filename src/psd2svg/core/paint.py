@@ -286,22 +286,7 @@ class PaintConverter(ConverterProtocol):
             svg_utils.set_attribute(gradient, "x2", "100%")
             svg_utils.set_attribute(gradient, "y2", "0%")
 
-        # Apply offset transform.
-        if Key.Offset in setting:
-            # Offset is given in percentage of layer size.
-            offset = (
-                setting[Key.Offset][Key.Horizontal].value / 100.0,
-                setting[Key.Offset][Key.Vertical].value / 100.0,
-            )
-            if not aligned:
-                offset = (offset[0] * layer._psd.width, offset[1] * layer._psd.height)
-            svg_utils.append_attribute(
-                gradient,
-                "gradientTransform",
-                "translate(%s)" % svg_utils.seq2str(offset, digit=4),
-            )
-
-        # Apply angle, scale, and offset transforms.
+        # Apply angle, scale transforms.
         angle = -float(
             setting.get(Key.Angle, UnitFloat(unit=Unit.Angle, value=0.0)).value
         )
@@ -325,24 +310,30 @@ class PaintConverter(ConverterProtocol):
                     f"scale({svg_utils.num2str(scale / 100.0, digit=4)} 1)"
                 )
 
-        if transforms:
-            # Move to the reference point, apply transforms, then move back.
-            if reference != (0.0, 0.0):
-                svg_utils.append_attribute(
-                    gradient,
-                    "gradientTransform",
-                    "translate(%s)" % svg_utils.seq2str(reference, digit=4),
-                )
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", " ".join(transforms)
+        # Apply offset transform.
+        # Note: Offset must be applied AFTER rotation/scale with transform-origin,
+        # as it operates in a different coordinate space.
+        has_offset = Key.Offset in setting
+        if has_offset:
+            # Offset is given in percentage of layer size.
+            offset = (
+                setting[Key.Offset][Key.Horizontal].value / 100.0,
+                setting[Key.Offset][Key.Vertical].value / 100.0,
             )
-            if reference != (0.0, 0.0):
-                svg_utils.append_attribute(
-                    gradient,
-                    "gradientTransform",
-                    "translate(%s)"
-                    % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
-                )
+            if not aligned:
+                offset = (offset[0] * layer._psd.width, offset[1] * layer._psd.height)
+            # Prepend the offset translate to the transform list
+            svg_utils.append_attribute(
+                gradient,
+                "gradientTransform",
+                "translate(%s)" % svg_utils.seq2str(offset, digit=4),
+            )
+
+        if transforms:
+            # Use transform-origin for rotate/scale, appended after offset
+            svg_utils.set_transform_with_origin(
+                gradient, "gradientTransform", transforms, reference
+            )
 
         if b"gradientsInterpolationMethod" in setting:
             method = setting[b"gradientsInterpolationMethod"]
@@ -392,20 +383,22 @@ class PaintConverter(ConverterProtocol):
 
         The order is likely the following in Photoshop:
 
-        1. Reference point translation
+        1. Reference point translation (prepended)
         2. Scale
         3. Rotation
+
+        Note: For patterns, the reference point is a simple translate, not a pivot point.
         """
-        # Reference point
+        # Reference point is prepended as a translate (not a pivot)
         reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0)))
         if reference != (0.0, 0.0):
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
-                "translate(%s)" % svg_utils.seq2str(reference),
+                f"translate({svg_utils.seq2str(reference)})",
             )
 
-        # Scale and rotation
+        # Scale and rotation (applied after reference translation)
         transforms = []
 
         # TODO: Maybe check the valid values for pattern fill settings.

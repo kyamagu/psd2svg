@@ -251,6 +251,66 @@ def append_attribute(
         set_attribute(node, key, value)
 
 
+def set_transform_with_origin(
+    element: ET.Element,
+    transform_attr: str,
+    transforms: list[str],
+    origin: tuple[float, float] | None = None,
+) -> None:
+    """Set transform attribute with optional transform-origin.
+
+    This function sets transform operations on gradient, pattern, or other SVG elements
+    using the modern SVG 2.0 transform-origin attribute instead of translate wrappers.
+
+    Args:
+        element: SVG element to modify (e.g., linearGradient, pattern)
+        transform_attr: Name of the transform attribute (e.g., "gradientTransform", "patternTransform")
+        transforms: List of transform functions (e.g., ['rotate(45)', 'scale(2)'])
+        origin: Transform origin point (x, y). If provided, sets transform-origin attribute.
+                Default SVG transform-origin is (0, 0).
+
+    Example:
+        Instead of: gradientTransform="translate(50,50) rotate(45) translate(-50,-50)"
+        Produces:   gradientTransform="rotate(45)" transform-origin="50 50"
+
+    Note:
+        SVG 2.0 feature. Supported by modern browsers and resvg-py.
+        When origin is provided but no transforms, uses translate() instead.
+        When the attribute already exists (from append_attribute), appends to it instead.
+    """
+    if transforms:
+        # Check if there's already a transform attribute (e.g., from offset)
+        has_existing = transform_attr in element.attrib
+
+        if has_existing and origin is not None and origin != (0.0, 0.0):
+            # If there's an existing transform (e.g., offset), we can't use transform-origin
+            # because it would apply to all transforms. Use the old translate pattern instead.
+            append_attribute(
+                element,
+                transform_attr,
+                f"translate({seq2str(origin, sep=',', digit=4)})",
+            )
+            append_attribute(element, transform_attr, " ".join(transforms))
+            append_attribute(
+                element,
+                transform_attr,
+                f"translate({seq2str((-origin[0], -origin[1]), sep=',', digit=4)})",
+            )
+        elif origin is not None and origin != (0.0, 0.0):
+            # No existing transform, use transform-origin
+            set_attribute(element, transform_attr, " ".join(transforms))
+            set_attribute(element, "transform-origin", seq2str(origin, sep=" "))
+        else:
+            # No origin or origin is (0, 0)
+            if has_existing:
+                append_attribute(element, transform_attr, " ".join(transforms))
+            else:
+                set_attribute(element, transform_attr, " ".join(transforms))
+    elif origin is not None and origin != (0.0, 0.0):
+        # If we have origin but no transforms, use translate instead
+        set_attribute(element, transform_attr, f"translate({seq2str(origin)})")
+
+
 def get_uri(node: ET.Element) -> str:
     """Get an uri string for the given node."""
     id_ = node.get("id")

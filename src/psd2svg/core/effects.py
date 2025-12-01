@@ -615,23 +615,10 @@ class EffectConverter(ConverterProtocol):
                 )
 
         if transforms:
-            # Move to the reference point, apply transforms, then move back.
-            if reference != (0.0, 0.0):
-                svg_utils.append_attribute(
-                    gradient,
-                    "gradientTransform",
-                    "translate(%s)" % svg_utils.seq2str(reference, digit=4),
-                )
-            svg_utils.append_attribute(
-                gradient, "gradientTransform", " ".join(transforms)
+            # Use transform-origin instead of translate-rotate-translate pattern
+            svg_utils.set_transform_with_origin(
+                gradient, "gradientTransform", transforms, reference
             )
-            if reference != (0.0, 0.0):
-                svg_utils.append_attribute(
-                    gradient,
-                    "gradientTransform",
-                    "translate(%s)"
-                    % svg_utils.seq2str((-reference[0], -reference[1]), digit=4),
-                )
 
         if b"gs99" in effect.value:
             method = effect.value[b"gs99"]
@@ -733,13 +720,19 @@ class EffectConverter(ConverterProtocol):
         effect: effects.PatternOverlay | effects.Stroke,
         reference: tuple[float, float],
     ) -> None:
-        """Set pattern transformations based on the effect properties."""
+        """Set pattern transformations based on the effect properties.
+
+        Note: For patterns, reference and phase are simple translates, not pivot points.
+        """
+        # Apply reference point as a translate (prepended)
         if reference != (0, 0):
             svg_utils.append_attribute(
                 pattern,
                 "patternTransform",
                 f"translate({svg_utils.seq2str(reference)})",
             )
+
+        # Apply phase offset as a translate (prepended after reference)
         if effect.phase is not None:
             assert effect.phase.classID == Klass.Point
             offset = (
@@ -752,6 +745,8 @@ class EffectConverter(ConverterProtocol):
                     "patternTransform",
                     f"translate({svg_utils.seq2str(offset)})",
                 )
+
+        # Scale and rotation (applied after translations)
         scale = float(
             effect.value.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value
         )
@@ -761,6 +756,7 @@ class EffectConverter(ConverterProtocol):
                 "patternTransform",
                 f"scale({svg_utils.num2str(scale / 100.0)})",
             )
+
         angle = -float(
             effect.value.get(Key.Angle, UnitFloat(unit=Unit.Angle, value=0.0)).value
         )

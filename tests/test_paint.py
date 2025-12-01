@@ -79,7 +79,7 @@ class TestPatternTransform:
     def test_pattern_transform_with_offset(
         self, converter: Any, offset_layer: Any, node: Any, angle_scale_setting: Any
     ) -> None:
-        """Test that setting angle and scale with offset updates pattern transform."""
+        """Test that setting angle and scale with offset prepends translate."""
         converter.set_pattern_transform(offset_layer, angle_scale_setting, node)
         assert "patternTransform" in node.attrib
         assert (
