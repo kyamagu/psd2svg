@@ -109,6 +109,7 @@ class SVGDocument:
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
+        optimize: bool = True,
     ) -> str:
         """Convert SVG document to string.
 
@@ -129,6 +130,8 @@ class SVGDocument:
                 When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
+            optimize: If True, apply SVG optimizations (consolidate defs, etc.).
+                Default is True.
         """
         # Validate font subsetting parameters
         if subset_fonts and not embed_fonts:
@@ -145,6 +148,9 @@ class SVGDocument:
         if embed_fonts and self.fonts:
             self._embed_fonts(svg, subset_fonts=subset_fonts, font_format=font_format)
 
+        if optimize:
+            svg_utils.consolidate_defs(svg)
+
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
@@ -157,6 +163,7 @@ class SVGDocument:
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
+        optimize: bool = True,
     ) -> None:
         """Save the SVG to a file.
 
@@ -177,6 +184,8 @@ class SVGDocument:
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
             indent: Indentation string for pretty-printing the SVG.
+            optimize: If True, apply SVG optimizations (consolidate defs, etc.).
+                Default is True.
         """
         # Validate font subsetting parameters
         if subset_fonts and not embed_fonts:
@@ -192,6 +201,9 @@ class SVGDocument:
 
         if embed_fonts and self.fonts:
             self._embed_fonts(svg, subset_fonts=subset_fonts, font_format=font_format)
+
+        if optimize:
+            svg_utils.consolidate_defs(svg)
 
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
@@ -654,6 +666,34 @@ class SVGDocument:
             style_element = ET.Element("style")
             style_element.text = css_content
             svg.insert(0, style_element)
+
+    def optimize(self, consolidate_defs: bool = True) -> None:
+        """Optimize SVG structure in-place.
+
+        This method applies optimizations to improve SVG structure,
+        file size, and rendering performance. All optimizations modify the
+        SVG element tree directly.
+
+        Args:
+            consolidate_defs: Merge all <defs> elements and move definition
+                elements (filters, gradients, patterns, etc.) into a global
+                <defs> at the beginning of the SVG document. This improves
+                document structure and follows SVG best practices. Default: True.
+
+        Example:
+            >>> document = SVGDocument.from_psd(psdimage)
+            >>> document.optimize()  # Apply default optimizations
+            >>> document.save('output.svg')
+
+            >>> # Disable optimization
+            >>> document.optimize(consolidate_defs=False)
+
+        Note:
+            Additional optimizations (deduplication, ID minification, unused
+            removal) may be added in future versions.
+        """
+        if consolidate_defs:
+            svg_utils.consolidate_defs(self.svg)
 
 
 def convert(
