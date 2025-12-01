@@ -131,7 +131,10 @@ class LayerConverter(ConverterProtocol):
                 f"Layer has no image data, skipping: '{layer.name}' ({layer.kind})."
             )
             return None
-        self.images.append(image.convert("RGBA"))
+
+        # Generate image ID before creating the <image> element
+        image_id = self.auto_id("image")
+        self.images[image_id] = image.convert("RGBA")
 
         # Raster layers can have both fill opacity and overall opacity.
         fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
@@ -147,7 +150,7 @@ class LayerConverter(ConverterProtocol):
                 width=layer.width,
                 height=layer.height,
                 title=layer.name,
-                id=self.auto_id("image"),
+                id=image_id,
                 class_=layer.kind,
                 **attrib,
             )
@@ -161,6 +164,7 @@ class LayerConverter(ConverterProtocol):
         else:
             node = self.create_node(
                 "image",
+                id=image_id,
                 x=layer.left,
                 y=layer.top,
                 width=layer.width,
@@ -542,10 +546,12 @@ class LayerConverter(ConverterProtocol):
         # Mask image.
         mask_image = layer.mask.topil()
         if mask_image is not None:
-            self.images.append(mask_image.convert("L"))
+            image_id = self.auto_id("image")
+            self.images[image_id] = mask_image.convert("L")
             svg_utils.create_node(
                 "image",
                 parent=mask,
+                id=image_id,
                 x=layer.mask.left,
                 y=layer.mask.top,
                 width=layer.mask.width,

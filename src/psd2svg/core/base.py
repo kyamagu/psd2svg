@@ -18,7 +18,7 @@ class ConverterProtocol(Protocol):
     psd: PSDImage
     svg: ET.Element
     current: ET.Element
-    images: list[Image.Image]
+    images: dict[str, Image.Image]
     fonts: dict[str, "FontInfo"]
 
     # Flags to control the conversion.

@@ -365,6 +365,7 @@ class PaintConverter(ConverterProtocol):
         if pattern_data is None:
             raise ValueError(f"Pattern data not found: {pattern_id}")
         image = pil_io.convert_pattern_to_pil(pattern_data)
+        image_id = self.auto_id("image")
 
         node = self.create_node(
             "pattern",
@@ -374,10 +375,14 @@ class PaintConverter(ConverterProtocol):
             patternUnits="userSpaceOnUse",
         )
         svg_utils.create_node(
-            "image", parent=node, width=image.width, height=image.height
+            "image",
+            parent=node,
+            id=image_id,
+            width=image.width,
+            height=image.height,
         )
         # We will later fill in the href attribute when embedding images.
-        self.images.append(image)
+        self.images[image_id] = image
         return node
 
     def set_pattern_transform(
