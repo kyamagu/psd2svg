@@ -371,9 +371,8 @@ class LayerConverter(ConverterProtocol):
             target.set("id", self.auto_id("clippingbase"))
 
         self.apply_background_effects(layer, target, insert_before_target=False)
-        # Create a <use> element to reference the target object.
-        with self.set_current(mask):
-            self.create_node("use", href=svg_utils.get_uri(target))
+        # Create a <use> element to reference the target object in the current context (outside the mask).
+        self.create_node("use", href=svg_utils.get_uri(target))
         self.apply_overlay_effects(layer, target)
         # Yield to the context block.
         yield {"mask": svg_utils.get_funciri(mask)}
