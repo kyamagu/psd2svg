@@ -56,6 +56,7 @@ class SVGDocument:
         enable_live_shapes: bool = True,
         enable_text: bool = True,
         enable_title: bool = True,
+        enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
     ) -> "SVGDocument":
@@ -73,6 +74,11 @@ class SVGDocument:
                 When True (default), each layer in the SVG will have a <title>
                 element containing the Photoshop layer name for accessibility and
                 debugging. Set to False to omit title elements and reduce file size.
+            enable_class: Enable insertion of class attributes on SVG elements for
+                debugging purposes. When False (default), elements will not have class
+                attributes, producing cleaner SVG output. Set to True to add class
+                attributes for layer types, effects, and semantic roles (e.g.,
+                "shape-layer", "drop-shadow-effect", "fill") for debugging or styling.
             text_letter_spacing_offset: Global offset (in pixels) to add to all
                 letter-spacing values. This can be used to compensate for differences
                 between Photoshop's text rendering and SVG's text rendering. Typical
@@ -90,6 +96,7 @@ class SVGDocument:
             enable_live_shapes=enable_live_shapes,
             enable_text=enable_text,
             enable_title=enable_title,
+            enable_class=enable_class,
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
         )
@@ -703,6 +710,7 @@ def convert(
     enable_text: bool = True,
     enable_live_shapes: bool = True,
     enable_title: bool = True,
+    enable_class: bool = False,
     image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
     text_wrapping_mode: int = 0,
@@ -722,6 +730,11 @@ def convert(
             When True (default), each layer in the SVG will have a <title> element
             containing the Photoshop layer name for accessibility and debugging.
             Set to False to omit title elements and reduce file size.
+        enable_class: Enable insertion of class attributes on SVG elements for debugging
+            purposes. When False (default), elements will not have class attributes,
+            producing cleaner SVG output. Set to True to add class attributes for layer
+            types, effects, and semantic roles (e.g., "shape-layer", "drop-shadow-effect",
+            "fill") for debugging or styling.
         image_format: Image format to use when embedding or saving images.
             Supported formats: 'webp', 'png', 'jpeg'. Default is 'webp'.
         text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
@@ -740,6 +753,7 @@ def convert(
         enable_text=enable_text,
         enable_live_shapes=enable_live_shapes,
         enable_title=enable_title,
+        enable_class=enable_class,
         text_letter_spacing_offset=text_letter_spacing_offset,
         text_wrapping_mode=text_wrapping_mode,
     )
