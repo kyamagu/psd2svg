@@ -8,11 +8,14 @@ that may not be supported by other rasterizers.
 import logging
 import xml.etree.ElementTree as ET
 from io import BytesIO
-from typing import Literal, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 from PIL import Image
 
 from .base_rasterizer import BaseRasterizer
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser, Playwright
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +72,10 @@ class PlaywrightRasterizer(BaseRasterizer):
         """
         self.dpi = dpi
         self.browser_type = browser_type
-        self._playwright = None
-        self._browser = None
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._executor: Any = None  # ThreadPoolExecutor if running in event loop
+        self._in_event_loop = False
 
     def _ensure_browser(self) -> None:
         """Lazily initialize the browser instance.
@@ -86,7 +91,7 @@ class PlaywrightRasterizer(BaseRasterizer):
             return
 
         try:
-            from playwright.sync_api import sync_playwright
+            from playwright.sync_api import sync_playwright  # noqa: F401
         except ImportError as e:
             raise ImportError(
                 "Playwright is required for PlaywrightRasterizer. "
@@ -94,7 +99,31 @@ class PlaywrightRasterizer(BaseRasterizer):
                 "uv run playwright install chromium"
             ) from e
 
-        logger.debug(f"Starting Playwright with {self.browser_type} browser")
+        # Check if we're in an asyncio event loop (e.g., Jupyter notebook)
+        import asyncio
+
+        try:
+            asyncio.get_running_loop()
+            # We're inside an event loop - need to run sync code in a dedicated thread
+            import concurrent.futures
+
+            logger.debug(
+                f"Starting Playwright with {self.browser_type} browser "
+                "(running in dedicated thread due to existing event loop)"
+            )
+            self._in_event_loop = True
+            self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            future = self._executor.submit(self._start_browser_sync)
+            future.result()
+        except RuntimeError:
+            # No event loop running - we can use sync API directly
+            logger.debug(f"Starting Playwright with {self.browser_type} browser")
+            self._start_browser_sync()
+
+    def _start_browser_sync(self) -> None:
+        """Start the browser using sync API (helper for thread execution)."""
+        from playwright.sync_api import sync_playwright
+
         self._playwright = sync_playwright().start()
         browser_launcher = getattr(self._playwright, self.browser_type)
         self._browser = browser_launcher.launch(headless=True)
@@ -134,6 +163,16 @@ class PlaywrightRasterizer(BaseRasterizer):
         """
         self._ensure_browser()
 
+        # If running in event loop, delegate to thread executor
+        if self._in_event_loop and self._executor is not None:
+            future = self._executor.submit(self._rasterize_sync, svg_content)
+            return future.result()
+
+        # Otherwise run directly
+        return self._rasterize_sync(svg_content)
+
+    def _rasterize_sync(self, svg_content: Union[str, bytes]) -> Image.Image:
+        """Internal synchronous rasterization method (runs in thread if needed)."""
         # Convert bytes to string if necessary
         svg_str = (
             svg_content.decode("utf-8")
@@ -184,8 +223,13 @@ class PlaywrightRasterizer(BaseRasterizer):
             screenshot_bytes = page.screenshot(type="png", omit_background=True)
 
             # Convert to PIL Image
-            image = Image.open(BytesIO(screenshot_bytes))
-            return self._composite_background(image)
+            pil_image: Image.Image = Image.open(BytesIO(screenshot_bytes))
+
+            # Ensure image is in RGBA mode (sometimes PNG can be RGB)
+            if pil_image.mode != "RGBA":
+                pil_image = pil_image.convert("RGBA")
+
+            return self._composite_background(pil_image)
 
         finally:
             page.close()
@@ -226,7 +270,7 @@ class PlaywrightRasterizer(BaseRasterizer):
             raise ValueError("Could not determine SVG dimensions")
 
         except ET.ParseError as e:
-            raise ValueError(f"Invalid SVG content: {e}") from e
+            raise ValueError("Could not determine SVG dimensions") from e
 
     def _parse_dimension(self, value: str) -> float | None:
         """Parse dimension value from SVG attribute.
@@ -256,6 +300,18 @@ class PlaywrightRasterizer(BaseRasterizer):
         to free browser resources. Alternatively, use the context manager
         interface (with statement) for automatic cleanup.
         """
+        # If running in event loop, cleanup must happen in the same thread
+        if self._in_event_loop and self._executor is not None:
+            future = self._executor.submit(self._close_sync)
+            future.result()
+            # Shutdown executor
+            self._executor.shutdown(wait=True)
+            self._executor = None
+        else:
+            self._close_sync()
+
+    def _close_sync(self) -> None:
+        """Internal synchronous cleanup method (runs in thread if needed)."""
         if self._browser is not None:
             logger.debug("Closing Playwright browser")
             self._browser.close()

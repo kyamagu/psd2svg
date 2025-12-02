@@ -110,3 +110,20 @@ requires_arial = pytest.mark.skipif(
     not has_postscript_font("ArialMT"),
     reason="Arial font not installed (from MS Core Fonts)",
 )
+
+
+# Check if playwright is available
+def has_playwright() -> bool:
+    """Check if playwright is installed."""
+    try:
+        import playwright  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+requires_playwright = pytest.mark.skipif(
+    not has_playwright(),
+    reason="Playwright not installed",
+)
