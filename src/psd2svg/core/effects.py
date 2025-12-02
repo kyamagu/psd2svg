@@ -611,11 +611,13 @@ class EffectConverter(ConverterProtocol):
             )
             if not aligned:
                 offset = (offset[0] * self.psd.width, offset[1] * self.psd.height)
-            svg_utils.append_attribute(
-                gradient,
-                "gradientTransform",
-                "translate(%s)" % svg_utils.seq2str(offset),
-            )
+            # Only add translate if offset is non-zero (with tolerance for floating point)
+            if abs(offset[0]) > 1e-6 or abs(offset[1]) > 1e-6:
+                svg_utils.append_attribute(
+                    gradient,
+                    "gradientTransform",
+                    "translate(%s)" % svg_utils.seq2str(offset),
+                )
 
         # Apply angle, scale, and offset transforms.
         angle = -float(effect.angle or 0)
