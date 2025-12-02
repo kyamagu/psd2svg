@@ -240,7 +240,8 @@ class LayerConverter(ConverterProtocol):
             with self.set_current(defs):
                 node = self.create_text_node(layer)
                 svg_utils.set_attribute(node, "id", self.auto_id("text"))
-                svg_utils.append_attribute(node, "class", layer.kind)
+                if self.enable_class:
+                    svg_utils.append_attribute(node, "class", layer.kind)
                 # Apply any additional attributes
                 for key, value in attrib.items():
                     svg_utils.set_attribute(node, key, value)
@@ -364,7 +365,8 @@ class LayerConverter(ConverterProtocol):
                 )
             # TODO: Maybe move clip-path or mask out of the outer mask container?
 
-        svg_utils.append_attribute(target, "class", "clipping-base")
+        if self.enable_class:
+            svg_utils.append_attribute(target, "class", "clipping-base")
         if "id" not in target.attrib:
             target.set("id", self.auto_id("clippingbase"))
 

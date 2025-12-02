@@ -44,6 +44,12 @@ def parse_args() -> argparse.Namespace:
         help="Disable insertion of <title> elements with layer names.",
     )
     parser.add_argument(
+        "--enable-class",
+        dest="enable_class",
+        action="store_true",
+        help="Enable insertion of class attributes on SVG elements for debugging.",
+    )
+    parser.add_argument(
         "--image-format",
         metavar="FORMAT",
         type=str,
@@ -78,6 +84,7 @@ def main() -> None:
         enable_text=args.enable_text,
         enable_live_shapes=args.enable_live_shapes,
         enable_title=args.enable_title,
+        enable_class=args.enable_class,
         image_format=args.image_format,
         text_letter_spacing_offset=args.text_letter_spacing_offset,
     )

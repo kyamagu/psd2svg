@@ -25,6 +25,7 @@ class ConverterProtocol(Protocol):
     enable_live_shapes: bool
     enable_text: bool
     enable_title: bool
+    enable_class: bool
 
     def add_layer(self, layer: layers.Layer, **attrib: str) -> ET.Element | None: ...
     def add_group(self, layer: layers.Group, **attrib: str) -> ET.Element | None: ...

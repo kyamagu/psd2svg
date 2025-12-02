@@ -119,6 +119,54 @@ document.optimize(
 )
 ```
 
+#### Class Attribute Control
+
+By default, the converter does not add class attributes to SVG elements for cleaner, minimal output. You can enable class attribute insertion for debugging purposes using the `enable_class` parameter:
+
+**Python API:**
+
+```python
+from psd2svg import SVGDocument, convert
+from psd_tools import PSDImage
+
+psdimage = PSDImage.open("input.psd")
+
+# Option 1: Enable class attributes via SVGDocument
+document = SVGDocument.from_psd(psdimage, enable_class=True)
+document.save('output.svg')
+
+# Option 2: Enable via convert() function
+convert('input.psd', 'output.svg', enable_class=True)
+```
+
+**Command Line:**
+
+```bash
+# Enable class attributes for debugging
+psd2svg input.psd output.svg --enable-class
+```
+
+**Class attributes added when enabled:**
+
+- **Layer types**: `group`, `pixel-layer`, `shape-layer`, `type-layer`, `artboard`
+- **Effects**: `drop-shadow-effect`, `outer-glow-effect`, `color-overlay-effect`, `gradient-overlay-effect`, `pattern-overlay-effect`, `stroke-effect`, `inner-shadow-effect`, `inner-glow-effect`
+- **Semantic roles**: `fill`, `stroke`, `text-content`, `clipping`, `clipping-base`, `layer-mask`
+- **Adjustment layers**: `invert`, etc.
+
+**When to enable class attributes:**
+
+- ✅ Debugging SVG output to identify layer types
+- ✅ Targeting specific elements with CSS for styling
+- ✅ JavaScript manipulation of specific layer types
+- ✅ Understanding the SVG structure
+
+**When to keep disabled (default):**
+
+- ✅ Cleaner, more minimal SVG output
+- ✅ Smaller file size (modest reduction)
+- ✅ Production SVG files
+- ✅ When class attributes are not needed
+
 #### Text Letter Spacing Offset
 
 Photoshop and SVG renderers may have slightly different default letter spacing due to differences in kerning algorithms. You can compensate for these differences using the `text_letter_spacing_offset` parameter:
