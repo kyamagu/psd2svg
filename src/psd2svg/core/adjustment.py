@@ -29,7 +29,6 @@ import xml.etree.ElementTree as ET
 
 from psd_tools.api import adjustments, layers
 
-from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 
 logger = logging.getLogger(__name__)
@@ -52,18 +51,14 @@ class AdjustmentConverter(ConverterProtocol):
     ) -> ET.Element | None:
         """Add an invert adjustment layer to the svg document."""
         filter, use = self._create_filter(layer, name="invert", **attrib)
-        fe_component = svg_utils.create_node(
-            "feComponentTransfer", parent=filter, color_interpolation_filters="sRGB"
-        )
-        svg_utils.create_node(
-            "feFuncR", parent=fe_component, type="table", tableValues="1 0"
-        )
-        svg_utils.create_node(
-            "feFuncG", parent=fe_component, type="table", tableValues="1 0"
-        )
-        svg_utils.create_node(
-            "feFuncB", parent=fe_component, type="table", tableValues="1 0"
-        )
+        with self.set_current(filter):
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                self.create_node("feFuncR", type="table", tableValues="1 0")
+                self.create_node("feFuncG", type="table", tableValues="1 0")
+                self.create_node("feFuncB", type="table", tableValues="1 0")
         return use
 
     def _create_filter(
