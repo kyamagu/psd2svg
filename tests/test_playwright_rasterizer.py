@@ -7,11 +7,13 @@ from PIL import Image
 
 # Check if playwright is available
 try:
-    from psd2svg.rasterizer import PlaywrightRasterizer
+    import playwright  # noqa: F401
 
     HAS_PLAYWRIGHT = True
+    from psd2svg.rasterizer import PlaywrightRasterizer
 except ImportError:
     HAS_PLAYWRIGHT = False
+    PlaywrightRasterizer = None  # type: ignore[assignment,misc]
 
 # Skip all tests if playwright is not available
 pytestmark = pytest.mark.skipif(not HAS_PLAYWRIGHT, reason="Playwright not installed")
