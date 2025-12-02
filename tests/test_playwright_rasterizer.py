@@ -228,6 +228,28 @@ def test_rasterizer_missing_file() -> None:
             rasterizer.from_file("/nonexistent/file.svg")
 
 
+@pytest.mark.requires_playwright
+def test_rasterizer_in_async_context(simple_svg: str) -> None:
+    """Test that PlaywrightRasterizer works inside an asyncio event loop.
+
+    This simulates usage in Jupyter notebooks or other async environments
+    where an event loop is already running.
+    """
+    import asyncio
+
+    async def test_async() -> None:
+        """Test rasterization inside an async context."""
+        with PlaywrightRasterizer(dpi=96) as rasterizer:
+            image = rasterizer.from_string(simple_svg)
+
+            assert isinstance(image, Image.Image)
+            assert image.mode == "RGBA"
+            assert image.size == (100, 100)
+
+    # Run inside asyncio event loop (simulates Jupyter environment)
+    asyncio.run(test_async())
+
+
 def test_import_without_playwright() -> None:
     """Test that importing without Playwright installed fails gracefully."""
     # This test runs even if Playwright is installed

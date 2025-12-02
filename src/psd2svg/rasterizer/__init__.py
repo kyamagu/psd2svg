@@ -12,9 +12,8 @@ __all__ = ["BaseRasterizer", "ResvgRasterizer"]
 
 # Optional browser-based rasterizer (requires playwright)
 try:
-    from .playwright_rasterizer import PlaywrightRasterizer
+    from .playwright_rasterizer import PlaywrightRasterizer  # noqa: F401
 
     __all__.append("PlaywrightRasterizer")
-    del PlaywrightRasterizer  # Re-exported, suppress F401
 except ImportError:
     pass
