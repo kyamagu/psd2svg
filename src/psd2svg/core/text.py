@@ -314,15 +314,15 @@ class TextConverter(ConverterProtocol):
 
         # Create paragraph node
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
-        return svg_utils.create_node(
-            "tspan",
-            parent=text_node,
-            text_anchor=text_anchor,
-            x=x if should_set_x else None,
-            y=y if should_set_y else None,
-            dy=line_height if not first_paragraph else None,
-            dominant_baseline=dominant_baseline,
-        )
+        with self.set_current(text_node):
+            return self.create_node(
+                "tspan",
+                text_anchor=text_anchor,
+                x=x if should_set_x else None,
+                y=y if should_set_y else None,
+                dy=line_height if not first_paragraph else None,
+                dominant_baseline=dominant_baseline,
+            )
 
     def _apply_justification(
         self,
@@ -373,22 +373,22 @@ class TextConverter(ConverterProtocol):
         elif style.faux_bold:
             font_weight = "bold"
 
-        tspan = svg_utils.create_node(
-            "tspan",
-            parent=paragraph_node,
-            text=span.text.strip("\r"),  # Remove carriage return characters
-            font_size=style.font_size,
-            font_family=font_info.family_name if font_info else None,
-            font_weight=font_weight,
-            font_style="italic"
-            if (font_info and font_info.italic) or style.faux_italic
-            else None,
-            fill=style.get_fill_color(),
-            stroke=style.get_stroke_color(),
-            baseline_shift=style.baseline_shift
-            if style.baseline_shift != 0.0
-            else None,
-        )
+        with self.set_current(paragraph_node):
+            tspan = self.create_node(
+                "tspan",
+                text=span.text.strip("\r"),  # Remove carriage return characters
+                font_size=style.font_size,
+                font_family=font_info.family_name if font_info else None,
+                font_weight=font_weight,
+                font_style="italic"
+                if (font_info and font_info.italic) or style.faux_italic
+                else None,
+                fill=style.get_fill_color(),
+                stroke=style.get_stroke_color(),
+                baseline_shift=style.baseline_shift
+                if style.baseline_shift != 0.0
+                else None,
+            )
         if style.font_caps == FontCaps.ALL_CAPS:
             svg_utils.add_style(tspan, "text-transform", "uppercase")
         elif style.font_caps == FontCaps.SMALL_CAPS:
