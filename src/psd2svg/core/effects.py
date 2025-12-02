@@ -66,17 +66,16 @@ class EffectConverter(ConverterProtocol):
         SVG does not allow coloring a raster image directly, so we create a filter.
         """
         filter = self.create_node("filter", id=self.auto_id("coloroverlay"))
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="SourceAlpha",
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feFlood",
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="SourceAlpha",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -89,12 +88,11 @@ class EffectConverter(ConverterProtocol):
         self, effect: effects.ColorOverlay, target: ET.Element
     ) -> ET.Element:
         """Add a color overlay effect to the current element using vector path."""
-        return svg_utils.create_node(
+        return self.create_node(
             "use",
-            parent=self.current,
+            class_="color-overlay-effect",
             href=svg_utils.get_uri(target),
             fill=color_utils.descriptor2hex(effect.color),
-            class_="color-overlay-effect",
         )
 
     def apply_stroke_effect(self, layer: layers.Layer, target: ET.Element) -> None:
@@ -124,138 +122,127 @@ class EffectConverter(ConverterProtocol):
         SVG does not allow stroking a raster image directly, so we create a filter.
         """
         filter = self.create_node("filter", id=self.auto_id("stroke"))
-
-        # Create stroke area using morphology and composite.
-        if effect.position == Enum.OutsetFrame:
-            svg_utils.create_node(
-                "feMorphology",
-                parent=filter,
-                operator="dilate",
-                radius=float(effect.size),
-                in_="SourceAlpha",
-            )
-            svg_utils.create_node(
-                "feComposite",
-                parent=filter,
-                operator="xor",
-                in2="SourceAlpha",
-                result="STROKEAREA",
-            )
-        elif effect.position == Enum.InsetFrame:
-            svg_utils.create_node(
-                "feMorphology",
-                parent=filter,
-                operator="erode",
-                radius=float(effect.size),
-                in_="SourceAlpha",
-            )
-            svg_utils.create_node(
-                "feComposite",
-                parent=filter,
-                operator="xor",
-                in2="SourceAlpha",
-                result="STROKEAREA",
-            )
-        elif effect.position == Enum.CenteredFrame:
-            svg_utils.create_node(
-                "feMorphology",
-                parent=filter,
-                operator="dilate",
-                radius=float(effect.size) / 2.0,
-                in_="SourceAlpha",
-                result="DILATED",
-            )
-            svg_utils.create_node(
-                "feMorphology",
-                parent=filter,
-                operator="erode",
-                radius=float(effect.size) / 2.0,
-                in_="SourceAlpha",
-                result="ERODED",
-            )
-            svg_utils.create_node(
-                "feComposite",
-                parent=filter,
-                operator="xor",
-                in_="DILATED",
-                in2="ERODED",
-                result="STROKEAREA",
-            )
-        else:
-            position_str = (
-                effect.position.decode()
-                if isinstance(effect.position, bytes)
-                else str(effect.position)
-            )
-            raise ValueError(f"Unsupported stroke position: {position_str}")
-
-        # Gradient and pattern strokes needs feImage.
-        if effect.fill_type == Enum.SolidColor:
-            svg_utils.create_node(
-                "feFlood",
-                parent=filter,
-                flood_color=color_utils.descriptor2hex(effect.color),
-            )
-        elif effect.fill_type == Enum.Pattern:
-            if effect.pattern is None:
-                raise ValueError("Stroke pattern is None for pattern fill type.")
-            pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
-            self.set_pattern_effect_transform(pattern, effect, (0, 0))
-            defs = self.create_node("defs")
-            rect = svg_utils.create_node(
-                "rect",
-                parent=defs,
-                id=self.auto_id("patternstroke"),
-                width="100%",
-                height="100%",
-                fill=svg_utils.get_funciri(pattern),
-            )
-            svg_utils.create_node(
-                "feImage",
-                parent=filter,
-                href=svg_utils.get_uri(rect),
-            )
-        elif effect.fill_type == Enum.GradientFill:
-            if effect.gradient is None:
-                raise ValueError("Stroke gradient is None for gradient fill type.")
-            gradient = None
-            if effect.type == Enum.Linear:
-                gradient = self.add_linear_gradient(effect.gradient)
-            elif effect.type == Enum.Radial:
-                gradient = self.add_radial_gradient(effect.gradient)
+        with self.set_current(filter):
+            # Create stroke area using morphology and composite.
+            if effect.position == Enum.OutsetFrame:
+                self.create_node(
+                    "feMorphology",
+                    operator="dilate",
+                    radius=float(effect.size),
+                    in_="SourceAlpha",
+                )
+                self.create_node(
+                    "feComposite",
+                    operator="xor",
+                    in2="SourceAlpha",
+                    result="STROKEAREA",
+                )
+            elif effect.position == Enum.InsetFrame:
+                self.create_node(
+                    "feMorphology",
+                    operator="erode",
+                    radius=float(effect.size),
+                    in_="SourceAlpha",
+                )
+                self.create_node(
+                    "feComposite",
+                    operator="xor",
+                    in2="SourceAlpha",
+                    result="STROKEAREA",
+                )
+            elif effect.position == Enum.CenteredFrame:
+                self.create_node(
+                    "feMorphology",
+                    operator="dilate",
+                    radius=float(effect.size) / 2.0,
+                    in_="SourceAlpha",
+                    result="DILATED",
+                )
+                self.create_node(
+                    "feMorphology",
+                    operator="erode",
+                    radius=float(effect.size) / 2.0,
+                    in_="SourceAlpha",
+                    result="ERODED",
+                )
+                self.create_node(
+                    "feComposite",
+                    operator="xor",
+                    in_="DILATED",
+                    in2="ERODED",
+                    result="STROKEAREA",
+                )
             else:
-                logger.warning(
-                    f"Only linear and radial gradient strokes are supported: {effect}"
+                position_str = (
+                    effect.position.decode()
+                    if isinstance(effect.position, bytes)
+                    else str(effect.position)
                 )
-                # Fallback to simple color.
-                flood_color = (
-                    color_utils.descriptor2hex(effect.color)
-                    if effect.color
-                    else "#ffffff"
+                raise ValueError(f"Unsupported stroke position: {position_str}")
+
+            # Gradient and pattern strokes needs feImage.
+            if effect.fill_type == Enum.SolidColor:
+                self.create_node(
+                    "feFlood",
+                    flood_color=color_utils.descriptor2hex(effect.color),
                 )
-                svg_utils.create_node("feFlood", parent=filter, flood_color=flood_color)
-            if gradient is not None:
-                self.set_gradient_transform(layer, gradient, effect)
+            elif effect.fill_type == Enum.Pattern:
+                if effect.pattern is None:
+                    raise ValueError("Stroke pattern is None for pattern fill type.")
+                pattern = self.add_pattern(cast(PSDImage, layer._psd), effect.pattern)
+                self.set_pattern_effect_transform(pattern, effect, (0, 0))
                 defs = self.create_node("defs")
-                rect = svg_utils.create_node(
-                    "rect",
-                    parent=defs,
-                    id=self.auto_id("gradientstroke"),
-                    width="100%",
-                    height="100%",
-                    fill=svg_utils.get_funciri(gradient),
-                )
-                svg_utils.create_node(
+                with self.set_current(defs):
+                    rect = self.create_node(
+                        "rect",
+                        id=self.auto_id("patternstroke"),
+                        width="100%",
+                        height="100%",
+                        fill=svg_utils.get_funciri(pattern),
+                    )
+                self.create_node(
                     "feImage",
-                    parent=filter,
                     href=svg_utils.get_uri(rect),
                 )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="STROKEAREA",
-        )
+            elif effect.fill_type == Enum.GradientFill:
+                if effect.gradient is None:
+                    raise ValueError("Stroke gradient is None for gradient fill type.")
+                gradient = None
+                if effect.type == Enum.Linear:
+                    gradient = self.add_linear_gradient(effect.gradient)
+                elif effect.type == Enum.Radial:
+                    gradient = self.add_radial_gradient(effect.gradient)
+                else:
+                    logger.warning(
+                        f"Only linear and radial gradient strokes are supported: {effect}"
+                    )
+                    # Fallback to simple color.
+                    flood_color = (
+                        color_utils.descriptor2hex(effect.color)
+                        if effect.color
+                        else "#ffffff"
+                    )
+                    self.create_node("feFlood", flood_color=flood_color)
+                if gradient is not None:
+                    self.set_gradient_transform(layer, gradient, effect)
+                    defs = self.create_node("defs")
+                    with self.set_current(defs):
+                        rect = self.create_node(
+                            "rect",
+                            id=self.auto_id("gradientstroke"),
+                            width="100%",
+                            height="100%",
+                            fill=svg_utils.get_funciri(gradient),
+                        )
+                    self.create_node(
+                        "feImage",
+                        href=svg_utils.get_uri(rect),
+                    )
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="STROKEAREA",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -351,37 +338,33 @@ class EffectConverter(ConverterProtocol):
             width="150%",
             height="150%",
         )
-        svg_utils.create_node(
-            "feMorphology",
-            parent=filter,
-            operator="dilate",
-            radius=choke / 100.0 * size,
-            in_="SourceAlpha",
-        )
-        svg_utils.create_node(
-            "feGaussianBlur",
-            parent=filter,
-            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
-        )
-        dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
-        svg_utils.create_node(
-            "feOffset",
-            parent=filter,
-            dx=dx,
-            dy=dy,
-            result="SHADOW",
-        )
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="SHADOW",
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feMorphology",
+                operator="dilate",
+                radius=choke / 100.0 * size,
+                in_="SourceAlpha",
+            )
+            self.create_node(
+                "feGaussianBlur",
+                stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+            )
+            dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
+            self.create_node(
+                "feOffset",
+                dx=dx,
+                dy=dy,
+                result="SHADOW",
+            )
+            self.create_node(
+                "feFlood",
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="SHADOW",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -422,30 +405,27 @@ class EffectConverter(ConverterProtocol):
             id=self.auto_id("outerglow"),
         )
         # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
-        svg_utils.create_node(
-            "feMorphology",
-            parent=filter,
-            operator="dilate",
-            radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
-            in_="SourceAlpha",
-        )
-        svg_utils.create_node(
-            "feGaussianBlur",
-            parent=filter,
-            stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
-            result="GLOW",
-        )
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="GLOW",
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feMorphology",
+                operator="dilate",
+                radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
+                in_="SourceAlpha",
+            )
+            self.create_node(
+                "feGaussianBlur",
+                stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
+                result="GLOW",
+            )
+            self.create_node(
+                "feFlood",
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="GLOW",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -493,14 +473,14 @@ class EffectConverter(ConverterProtocol):
         # feFlood does not support fill with gradient, so we use feImage and feComposite.
         defs = self.create_node("defs")
         # Rect here should have the target size.
-        rect = svg_utils.create_node(
-            "rect",
-            parent=defs,
-            id=self.auto_id("gradientfill"),
-            width=target.get("width", "100%"),
-            height=target.get("height", "100%"),
-            fill=svg_utils.get_funciri(gradient),
-        )
+        with self.set_current(defs):
+            rect = self.create_node(
+                "rect",
+                id=self.auto_id("gradientfill"),
+                width=target.get("width", "100%"),
+                height=target.get("height", "100%"),
+                fill=svg_utils.get_funciri(gradient),
+            )
 
         # When gradient is aligned to layer bounds (Aligned=True), use objectBoundingBox
         # coordinates for the filter. Otherwise use userSpaceOnUse.
@@ -532,17 +512,16 @@ class EffectConverter(ConverterProtocol):
         for key, value in filter_attrs.items():
             if key != "id":
                 svg_utils.set_attribute(filter, key, value)
-        svg_utils.create_node(
-            "feImage",
-            parent=filter,
-            href=svg_utils.get_uri(rect),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            in2="SourceAlpha",
-            operator="in",
-            parent=filter,
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feImage",
+                href=svg_utils.get_uri(rect),
+            )
+            self.create_node(
+                "feComposite",
+                in2="SourceAlpha",
+                operator="in",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -554,12 +533,12 @@ class EffectConverter(ConverterProtocol):
     def add_vector_gradient_overlay_effect(
         self, gradient: ET.Element, target: ET.Element
     ) -> ET.Element:
-        return svg_utils.create_node(
+        return self.create_node(
             "use",
             parent=self.current,
+            class_="gradient-overlay-effect",
             href=svg_utils.get_uri(target),
             fill=svg_utils.get_funciri(gradient),
-            class_="gradient-overlay-effect",
         )
 
     def set_gradient_transform(
@@ -693,16 +672,16 @@ class EffectConverter(ConverterProtocol):
                 "Assuming (0, 0) as the origin."
             )
         # Rect here should have the target size and location.
-        rect = svg_utils.create_node(
-            "rect",
-            parent=defs,
-            id=self.auto_id("patternfill"),
-            x=target.get("x", "0"),
-            y=target.get("y", "0"),
-            width=target.get("width", "100%"),
-            height=target.get("height", "100%"),
-            fill=svg_utils.get_funciri(pattern),
-        )
+        with self.set_current(defs):
+            rect = self.create_node(
+                "rect",
+                id=self.auto_id("patternfill"),
+                x=target.get("x", "0"),
+                y=target.get("y", "0"),
+                width=target.get("width", "100%"),
+                height=target.get("height", "100%"),
+                fill=svg_utils.get_funciri(pattern),
+            )
         # Filter should use the user space coordinates here.
         filter = self.create_node(
             "filter",
@@ -711,17 +690,16 @@ class EffectConverter(ConverterProtocol):
             y=0,
             filterUnits="userSpaceOnUse",
         )
-        svg_utils.create_node(
-            "feImage",
-            parent=filter,
-            href=svg_utils.get_uri(rect),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            in2="SourceAlpha",
-            operator="in",
-            parent=filter,
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feImage",
+                href=svg_utils.get_uri(rect),
+            )
+            self.create_node(
+                "feComposite",
+                in2="SourceAlpha",
+                operator="in",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -733,12 +711,12 @@ class EffectConverter(ConverterProtocol):
     def add_vector_pattern_overlay_effect(
         self, pattern: ET.Element, target: ET.Element
     ) -> ET.Element:
-        return svg_utils.create_node(
+        return self.create_node(
             "use",
             parent=self.current,
+            class_="pattern-overlay-effect",
             href=svg_utils.get_uri(target),
             fill=svg_utils.get_funciri(pattern),
-            class_="pattern-overlay-effect",
         )
 
     def set_pattern_effect_transform(
@@ -817,44 +795,39 @@ class EffectConverter(ConverterProtocol):
             "filter",
             id=self.auto_id("innershadow"),
         )
-        svg_utils.create_node(
-            "feMorphology",
-            parent=filter,
-            operator="erode",
-            radius=choke / 100.0 * size,
-            in_="SourceAlpha",
-        )
-        svg_utils.create_node(
-            "feGaussianBlur",
-            parent=filter,
-            stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
-        )
-        dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
-        svg_utils.create_node(
-            "feOffset",
-            parent=filter,
-            dx=dx,
-            dy=dy,
-            result="SHADOW",
-        )
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="out",
-            in2="SHADOW",
-        )
-        # Restrict the shadow to the inside of the original shape.
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="SourceAlpha",
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feMorphology",
+                operator="erode",
+                radius=choke / 100.0 * size,
+                in_="SourceAlpha",
+            )
+            self.create_node(
+                "feGaussianBlur",
+                stdDeviation=(100.0 - choke) / 100.0 * size / 2.0,
+            )
+            dx, dy = polar_to_cartesian(float(effect.angle), float(effect.distance))
+            self.create_node(
+                "feOffset",
+                dx=dx,
+                dy=dy,
+                result="SHADOW",
+            )
+            self.create_node(
+                "feFlood",
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+            self.create_node(
+                "feComposite",
+                operator="out",
+                in2="SHADOW",
+            )
+            # Restrict the shadow to the inside of the original shape.
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="SourceAlpha",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
@@ -893,36 +866,32 @@ class EffectConverter(ConverterProtocol):
             id=self.auto_id("innerglow"),
         )
         # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
-        svg_utils.create_node(
-            "feMorphology",
-            parent=filter,
-            operator="erode",
-            radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
-            in_="SourceAlpha",
-        )
-        svg_utils.create_node(
-            "feGaussianBlur",
-            parent=filter,
-            stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
-            result="GLOW",
-        )
-        svg_utils.create_node(
-            "feFlood",
-            parent=filter,
-            flood_color=color_utils.descriptor2hex(effect.color),
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="out" if effect.glow_source == Enum.EdgeGlow else "in",
-            in2="GLOW",
-        )
-        svg_utils.create_node(
-            "feComposite",
-            parent=filter,
-            operator="in",
-            in2="SourceAlpha",
-        )
+        with self.set_current(filter):
+            self.create_node(
+                "feMorphology",
+                operator="erode",
+                radius=choke / 100.0 * size + (100.0 - choke) / 100.0 * size / 6.0,
+                in_="SourceAlpha",
+            )
+            self.create_node(
+                "feGaussianBlur",
+                stdDeviation=(100.0 - choke) / 100.0 * size / 4.0,
+                result="GLOW",
+            )
+            self.create_node(
+                "feFlood",
+                flood_color=color_utils.descriptor2hex(effect.color),
+            )
+            self.create_node(
+                "feComposite",
+                operator="out" if effect.glow_source == Enum.EdgeGlow else "in",
+                in2="GLOW",
+            )
+            self.create_node(
+                "feComposite",
+                operator="in",
+                in2="SourceAlpha",
+            )
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),

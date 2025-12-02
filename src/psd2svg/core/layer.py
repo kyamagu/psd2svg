@@ -142,7 +142,7 @@ class LayerConverter(ConverterProtocol):
         # When the layer has effects, we need to create a separate <image> to handle fill opacity.
         if layer.has_effects():
             defs = self.create_node("defs")
-            node = svg_utils.create_node(
+            node = self.create_node(
                 "image",
                 parent=defs,
                 x=layer.left,
@@ -150,8 +150,8 @@ class LayerConverter(ConverterProtocol):
                 width=layer.width,
                 height=layer.height,
                 title=layer.name,
-                id=image_id,
                 class_=layer.kind,
+                id=image_id,
                 **attrib,
             )
             self.set_opacity(layer.opacity / 255, node)
@@ -254,11 +254,11 @@ class LayerConverter(ConverterProtocol):
             self.apply_background_effects(layer, node, insert_before_target=False)
 
             # Create main visible text using <use>
-            svg_utils.create_node(
+            self.create_node(
                 "use",
                 parent=self.current,
-                href=svg_utils.get_uri(node),
                 class_="text-content",
+                href=svg_utils.get_uri(node),
             )
 
             self.apply_overlay_effects(layer, node)
@@ -350,12 +350,12 @@ class LayerConverter(ConverterProtocol):
         """
 
         # Create a clipping mask definition.
-        mask = svg_utils.create_node(
+        mask = self.create_node(
             "mask",
             parent=self.current,
+            class_="clipping",
             id=self.auto_id("mask"),
             mask_type="alpha",
-            class_="clipping",
         )
         with self.set_current(mask):
             target = self.add_layer(layer)
@@ -371,10 +371,8 @@ class LayerConverter(ConverterProtocol):
             target.set("id", self.auto_id("clippingbase"))
 
         self.apply_background_effects(layer, target, insert_before_target=False)
-        # Create a <use> element to reference the target object.
-        svg_utils.create_node(
-            "use", parent=self.current, href=svg_utils.get_uri(target)
-        )
+        # Create a <use> element to reference the target object in the current context (outside the mask).
+        self.create_node("use", href=svg_utils.get_uri(target))
         self.apply_overlay_effects(layer, target)
         # Yield to the context block.
         yield {"mask": svg_utils.get_funciri(mask)}
@@ -393,17 +391,17 @@ class LayerConverter(ConverterProtocol):
         if viewbox == (0, 0, 0, 0):
             viewbox = (0, 0, self.psd.width, self.psd.height)
         if layer.has_effects():
-            defs = svg_utils.create_node("defs", parent=self.current)
-            node = svg_utils.create_node(
+            defs = self.create_node("defs", parent=self.current)
+            node = self.create_node(
                 "rect",
                 parent=defs,
                 x=viewbox[0],
                 y=viewbox[1],
                 width=viewbox[2] - viewbox[0],
                 height=viewbox[3] - viewbox[1],
-                id=self.auto_id("fill"),
                 title=layer.name,
                 class_=layer.kind,
+                id=self.auto_id("fill"),
                 **attrib,
             )
 
@@ -415,7 +413,7 @@ class LayerConverter(ConverterProtocol):
             self.apply_vector_stroke(layer, node)
             self.apply_stroke_effect(layer, node)
         else:
-            node = svg_utils.create_node(
+            node = self.create_node(
                 "rect",
                 parent=self.current,
                 x=viewbox[0],
@@ -433,11 +431,11 @@ class LayerConverter(ConverterProtocol):
 
     def apply_raster_fill(self, layer: layers.Layer, node: ET.Element) -> ET.Element:
         """Add a raster main fill to the svg document."""
-        use = svg_utils.create_node(
+        use = self.create_node(
             "use",
             parent=self.current,
-            href=svg_utils.get_uri(node),
             class_="fill",
+            href=svg_utils.get_uri(node),
         )
         fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
         if fill_opacity < 255:
@@ -526,39 +524,39 @@ class LayerConverter(ConverterProtocol):
             viewbox = (0, 0, self.psd.width, self.psd.height)
 
         # Create the mask node.
-        mask = svg_utils.create_node(
+        mask = self.create_node(
             "mask",
             parent=self.current,
-            id=self.auto_id("mask"),
             class_="layer-mask",
+            id=self.auto_id("mask"),
         )
 
         # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
-            svg_utils.create_node(
-                "rect",
-                parent=mask,
-                x=viewbox[0],
-                y=viewbox[1],
-                width=viewbox[2] - viewbox[0],
-                height=viewbox[3] - viewbox[1],
-                fill="#ffffff",
-            )
+            with self.set_current(mask):
+                self.create_node(
+                    "rect",
+                    x=viewbox[0],
+                    y=viewbox[1],
+                    width=viewbox[2] - viewbox[0],
+                    height=viewbox[3] - viewbox[1],
+                    fill="#ffffff",
+                )
 
         # Mask image.
         mask_image = layer.mask.topil()
         if mask_image is not None:
             image_id = self.auto_id("image")
             self.images[image_id] = mask_image.convert("L")
-            svg_utils.create_node(
-                "image",
-                parent=mask,
-                id=image_id,
-                x=layer.mask.left,
-                y=layer.mask.top,
-                width=layer.mask.width,
-                height=layer.mask.height,
-            )
+            with self.set_current(mask):
+                self.create_node(
+                    "image",
+                    id=image_id,
+                    x=layer.mask.left,
+                    y=layer.mask.top,
+                    width=layer.mask.width,
+                    height=layer.mask.height,
+                )
 
         # If the target already has a mask, we need to combine them.
         # We cannot set clip-path to <mask> elements, so we don't pop clip-path here.
@@ -570,11 +568,10 @@ class LayerConverter(ConverterProtocol):
             if "id" not in target.attrib:
                 target.set("id", self.auto_id(target.tag.lower()))
             if self.current.tag != "defs":
-                defs = svg_utils.create_node("defs", parent=self.current)
+                defs = self.create_node("defs")
                 svg_utils.wrap_element(target, self.current, defs)
-            use = svg_utils.create_node(
+            use = self.create_node(
                 "use",
-                parent=self.current,
                 href=svg_utils.get_uri(target),
                 mask=svg_utils.get_funciri(mask),
             )

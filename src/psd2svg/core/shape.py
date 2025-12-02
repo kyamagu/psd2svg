@@ -136,9 +136,7 @@ class ShapeConverter(ConverterProtocol):
         with self.set_current(current):
             if len(current) == 0:
                 # First shape: fill white.
-                svg_utils.create_node(
-                    "rect", fill="#ffffff", width="100%", height="100%"
-                )
+                self.create_node("rect", fill="#ffffff", width="100%", height="100%")
             # Subtract (Make a hole).
             if len(path_group) > 1:
                 self.create_composite_path(path_group, rule, fill="#000000")

@@ -231,14 +231,14 @@ class PaintConverter(ConverterProtocol):
     def set_gradient_stops(self, gradient: Descriptor, node: ET.Element) -> ET.Element:
         """Set gradient stops to the given gradient element."""
         interpolator = GradientInterpolation(gradient)
-        for location, color, opacity in interpolator:
-            svg_utils.create_node(
-                "stop",
-                parent=node,
-                offset=f"{location:.0%}",
-                stop_color=color_utils.descriptor2hex(color),
-                stop_opacity=f"{opacity:.0%}",
-            )
+        with self.set_current(node):
+            for location, color, opacity in interpolator:
+                self.create_node(
+                    "stop",
+                    offset=f"{location:.0%}",
+                    stop_color=color_utils.descriptor2hex(color),
+                    stop_opacity=f"{opacity:.0%}",
+                )
 
         # TODO: Midpoint support?
         if any(stop[Key.Midpoint] != 50 for stop in gradient[Key.Colors]) or any(
@@ -365,13 +365,13 @@ class PaintConverter(ConverterProtocol):
             height=image.height,
             patternUnits="userSpaceOnUse",
         )
-        svg_utils.create_node(
-            "image",
-            parent=node,
-            id=image_id,
-            width=image.width,
-            height=image.height,
-        )
+        with self.set_current(node):
+            self.create_node(
+                "image",
+                id=image_id,
+                width=image.width,
+                height=image.height,
+            )
         # We will later fill in the href attribute when embedding images.
         self.images[image_id] = image
         return node
