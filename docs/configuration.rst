@@ -126,25 +126,31 @@ The offset (in pixels) is added to all letter-spacing values:
 
 **Example SVG output:**
 
-If Photoshop specifies ``letter-spacing: 2px``:
+If Photoshop tracking results in a ``letter-spacing`` value of 2px:
 
 **Default (offset = 0):**
 
 .. code-block:: xml
 
-   <text x="10" y="20" style="letter-spacing: 2px;">Hello World</text>
+   <text x="10" y="20">
+     <tspan letter-spacing="2">Hello World</tspan>
+   </text>
 
 **With offset = -0.5:**
 
 .. code-block:: xml
 
-   <text x="10" y="20" style="letter-spacing: 1.5px;">Hello World</text>
+   <text x="10" y="20">
+     <tspan letter-spacing="1.5">Hello World</tspan>
+   </text>
 
 **With offset = 0.5:**
 
 .. code-block:: xml
 
-   <text x="10" y="20" style="letter-spacing: 2.5px;">Hello World</text>
+   <text x="10" y="20">
+     <tspan letter-spacing="2.5">Hello World</tspan>
+   </text>
 
 Finding the Right Value
 ~~~~~~~~~~~~~~~~~~~~~~~
