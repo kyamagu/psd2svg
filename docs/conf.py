@@ -5,6 +5,12 @@
 
 import os
 import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib  # type: ignore
 
 # Add the src directory to the path so autodoc can find the modules
 sys.path.insert(0, os.path.abspath("../src"))
@@ -12,10 +18,15 @@ sys.path.insert(0, os.path.abspath("../src"))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+# Read version from pyproject.toml
+_pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+with open(_pyproject_path, "rb") as f:
+    _pyproject = tomllib.load(f)
+
 project = "psd2svg"
 copyright = "2025, Kota Yamaguchi"
 author = "Kota Yamaguchi"
-release = "0.3.0"
+release = _pyproject["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

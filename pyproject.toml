@@ -45,6 +45,7 @@ docs = [
     "sphinx-rtd-theme>=2.0",
     "sphinx-autodoc-typehints>=1.25",
     "myst-parser>=2.0",
+    "tomli>=2.0.0; python_version < '3.11'",
 ]
 browser = [
     "playwright>=1.40.0",
