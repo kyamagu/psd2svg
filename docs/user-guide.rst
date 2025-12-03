@@ -3,6 +3,114 @@ User Guide
 
 This guide provides detailed information about using psd2svg for converting PSD files to SVG format.
 
+Command Line Usage
+------------------
+
+Basic Conversion
+~~~~~~~~~~~~~~~~
+
+The simplest way to convert a PSD file to SVG:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg
+
+Automatic Output Naming
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When the output path is a directory or omitted, the tool infers the output name from the input:
+
+.. code-block:: bash
+
+   # Output to directory
+   psd2svg input.psd output/
+   # => output/input.svg
+
+   # Output to current directory
+   psd2svg input.psd
+   # => input.svg
+
+Command Line Options
+~~~~~~~~~~~~~~~~~~~~
+
+**Image handling:**
+
+* ``--image-prefix PATH`` - Save extracted images to external files with this prefix, relative to the output SVG file's directory (default: embed images)
+* ``--image-format FORMAT`` - Image format for rasterized layers: webp, png, jpeg (default: webp)
+
+**Feature flags:**
+
+* ``--no-text`` - Disable text layer conversion (rasterize text instead)
+* ``--no-live-shapes`` - Disable live shape conversion (use paths instead of shape primitives)
+* ``--no-title`` - Disable insertion of ``<title>`` elements with layer names
+
+**Text adjustment:**
+
+* ``--text-letter-spacing-offset OFFSET`` - Global offset (in pixels) to add to letter-spacing values (default: 0.0)
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Export images to same directory as SVG (using "." prefix)
+   psd2svg input.psd output.svg --image-prefix .
+   # => output.svg, 01.webp, 02.webp, ...
+
+   # Export images to subdirectory
+   psd2svg input.psd output.svg --image-prefix images/img
+   # => output.svg, images/img01.webp, images/img02.webp, ...
+
+   # Export images as PNG
+   psd2svg input.psd output.svg --image-prefix . --image-format png
+   # => output.svg, 01.png, 02.png, ...
+
+   # Disable text layer conversion
+   psd2svg input.psd output.svg --no-text
+
+   # Compact output: disable titles and use paths
+   psd2svg input.psd output.svg --no-title --no-live-shapes
+
+Python API
+----------
+
+The convert() Function
+~~~~~~~~~~~~~~~~~~~~~~
+
+For simple one-step conversions, use the ``convert()`` convenience function:
+
+.. code-block:: python
+
+   from psd2svg import convert
+
+   # Basic conversion with embedded images
+   convert('input.psd', 'output.svg')
+
+   # With external images in same directory
+   convert('input.psd', 'output.svg', image_prefix='.')
+
+   # With external images in subdirectory
+   convert('input.psd', 'output.svg', image_prefix='images/img')
+
+   # With custom image format
+   convert('input.psd', 'output.svg',
+           image_prefix='images/img',
+           image_format='webp')
+
+   # With custom options
+   convert('input.psd', 'output.svg',
+           enable_title=False,
+           text_letter_spacing_offset=-0.015)
+
+**Parameters:**
+
+* ``input_path`` (str): Path to input PSD file
+* ``output_path`` (str): Path to output SVG file
+* ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
+* ``image_prefix`` (str, optional): Prefix for external image files, relative to the output SVG file's directory
+* ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
+* ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: True)
+* ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)
+
 SVGDocument Class
 -----------------
 
@@ -145,45 +253,6 @@ psd2svg uses **resvg** for rasterization, which provides fast and accurate rende
 with no external dependencies beyond the resvg-py Python package.
 
 See :doc:`rasterizers` for detailed documentation and examples.
-
-The convert() Function
-----------------------
-
-For simple one-step conversions, use the ``convert()`` convenience function:
-
-.. code-block:: python
-
-   from psd2svg import convert
-
-   # Basic conversion with embedded images
-   convert('input.psd', 'output.svg')
-
-   # With external images in same directory
-   convert('input.psd', 'output.svg', image_prefix='.')
-
-   # With external images in subdirectory
-   convert('input.psd', 'output.svg', image_prefix='images/img')
-
-   # With custom image format
-   convert('input.psd', 'output.svg',
-           image_prefix='images/img',
-           image_format='webp')
-
-   # With custom options
-   convert('input.psd', 'output.svg',
-           enable_title=False,
-           text_letter_spacing_offset=-0.015)
-
-Parameters
-~~~~~~~~~~
-
-* ``input_path`` (str): Path to input PSD file
-* ``output_path`` (str): Path to output SVG file
-* ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
-* ``image_prefix`` (str, optional): Prefix for external image files, relative to the output SVG file's directory
-* ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
-* ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: True)
-* ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)
 
 Configuration Options
 ---------------------
