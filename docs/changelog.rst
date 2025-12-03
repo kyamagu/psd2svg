@@ -3,8 +3,35 @@ Changelog
 
 This document tracks changes across versions of psd2svg.
 
-Version 0.3.0 (In Development)
-------------------------------
+Version 0.4.0
+-------------
+
+**Added:**
+
+* Text wrapping support with foreignObject for bounding box text
+* Font embedding support with configurable formats (TTF, OTF, WOFF, WOFF2)
+* SVG optimization with ``consolidate_defs()`` function (enabled by default)
+* ``enable_class`` flag to control class attribute insertion (disabled by default)
+* PlaywrightRasterizer support for Windows platform
+* Text letter-spacing configuration option for renderer-specific adjustments
+
+**Fixed:**
+
+* Context management for element creation using consistent ``set_current()`` pattern
+* Blend subtraction constant in ``BLEND_MODE`` and ``INACCURATE_BLEND_MODES``
+* PlaywrightRasterizer to work in asyncio event loops (Jupyter notebooks)
+* Omit no-op ``translate(0,0)`` in gradient transforms
+
+**Changed:**
+
+* ``enable_title`` default changed from ``True`` to ``False`` for cleaner output
+* Refactored gradient transforms to use SVG 2.0 ``transform-origin`` attribute
+* Refactored image handling from list-based to ID-based mapping
+* Improved font embedding implementation for better maintainability
+* Documentation improvements: reorganized user guide, fixed inaccuracies, added examples
+
+Version 0.3.0
+-------------
 
 **Added:**
 
