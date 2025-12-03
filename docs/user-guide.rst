@@ -1,77 +1,39 @@
 User Guide
 ==========
 
-This guide provides detailed information about using psd2svg for converting PSD files to SVG format.
+This guide provides an overview of using psd2svg for converting PSD files to SVG format.
 
-Command Line Usage
-------------------
+For detailed information on specific topics, see the feature-specific guides linked below.
 
-Basic Conversion
-~~~~~~~~~~~~~~~~
+Quick Start
+-----------
 
-The simplest way to convert a PSD file to SVG:
+Command Line
+~~~~~~~~~~~~
+
+Convert a PSD file to SVG with a single command:
 
 .. code-block:: bash
 
    psd2svg input.psd output.svg
 
-Automatic Output Naming
-~~~~~~~~~~~~~~~~~~~~~~~
-
-When the output path is a directory or omitted, the tool infers the output name from the input:
-
-.. code-block:: bash
-
-   # Output to directory
-   psd2svg input.psd output/
-   # => output/input.svg
-
-   # Output to current directory
-   psd2svg input.psd
-   # => input.svg
-
-Command Line Options
-~~~~~~~~~~~~~~~~~~~~
-
-**Image handling:**
-
-* ``--image-prefix PATH`` - Save extracted images to external files with this prefix, relative to the output SVG file's directory (default: embed images)
-* ``--image-format FORMAT`` - Image format for rasterized layers: webp, png, jpeg (default: webp)
-
-**Feature flags:**
-
-* ``--no-text`` - Disable text layer conversion (rasterize text instead)
-* ``--no-live-shapes`` - Disable live shape conversion (use paths instead of shape primitives)
-* ``--no-title`` - Disable insertion of ``<title>`` elements with layer names
-
-**Text adjustment:**
-
-* ``--text-letter-spacing-offset OFFSET`` - Global offset (in pixels) to add to letter-spacing values (default: 0.0)
-
-**Examples:**
-
-.. code-block:: bash
-
-   # Export images to same directory as SVG (using "." prefix)
-   psd2svg input.psd output.svg --image-prefix .
-   # => output.svg, 01.webp, 02.webp, ...
-
-   # Export images to subdirectory
-   psd2svg input.psd output.svg --image-prefix images/img
-   # => output.svg, images/img01.webp, images/img02.webp, ...
-
-   # Export images as PNG
-   psd2svg input.psd output.svg --image-prefix . --image-format png
-   # => output.svg, 01.png, 02.png, ...
-
-   # Disable text layer conversion
-   psd2svg input.psd output.svg --no-text
-
-   # Compact output: disable titles and use paths
-   psd2svg input.psd output.svg --no-title --no-live-shapes
+For comprehensive command-line documentation, see :doc:`command-line`.
 
 Python API
-----------
+~~~~~~~~~~
+
+Use the ``convert()`` convenience function for simple conversions:
+
+.. code-block:: python
+
+   from psd2svg import convert
+
+   convert('input.psd', 'output.svg')
+
+For advanced usage with the ``SVGDocument`` class, see the sections below.
+
+Python API Reference
+--------------------
 
 The convert() Function
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -122,23 +84,39 @@ Creating SVGDocument
 From PSD File
 ^^^^^^^^^^^^^
 
+Create an SVGDocument from a PSD file:
+
 .. code-block:: python
 
-   from psd_tools import PSDImage
    from psd2svg import SVGDocument
+   from psd_tools import PSDImage
 
-   # Load PSD
+   # Load PSD file
    psdimage = PSDImage.open("input.psd")
 
-   # Create SVG document
+   # Convert to SVGDocument
    document = SVGDocument.from_psd(psdimage)
 
-   # Create with custom options
-   document = SVGDocument.from_psd(
-       psdimage,
-       enable_title=False,  # Omit <title> elements to reduce file size
-       text_letter_spacing_offset=-0.015  # Adjust text spacing
-   )
+   # Save to file
+   document.save("output.svg")
+
+**Common Options:**
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+
+   # Disable text conversion (rasterize text)
+   document = SVGDocument.from_psd(psdimage, enable_text=False)
+
+   # Disable title elements
+   document = SVGDocument.from_psd(psdimage, enable_title=False)
+
+   # Embed fonts
+   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
 
 Saving SVG Documents
 ~~~~~~~~~~~~~~~~~~~~
@@ -150,7 +128,7 @@ Embed all images as base64-encoded data URIs within the SVG file:
 
 .. code-block:: python
 
-   document.save("output.svg", embed_images=True)
+   document.save("output.svg")  # Default behavior
 
 With External Images
 ^^^^^^^^^^^^^^^^^^^^
@@ -159,28 +137,28 @@ Export images to external files. The ``image_prefix`` is interpreted relative to
 
 .. code-block:: python
 
-   # Export to same directory as SVG (using "." prefix)
-   document.save("output.svg", image_prefix=".", image_format="png")
-   # => output.svg, 01.png, 02.png, ...
+   # Images in same directory as SVG
+   document.save("output.svg", image_prefix=".")
+   # => output.svg, 01.webp, 02.webp, ...
 
-   # Export to subdirectory
-   document.save("output.svg", image_prefix="images/img", image_format="webp")
+   # Images in subdirectory
+   document.save("output.svg", image_prefix="images/img")
    # => output.svg, images/img01.webp, images/img02.webp, ...
 
-   # Export as JPEG with custom prefix
-   document.save("output.svg", image_prefix="images/photo", image_format="jpeg")
-   # => output.svg, images/photo01.jpg, images/photo02.jpg, ...
+**For more details on image handling, see** :doc:`images`.
 
 Getting SVG as String
-^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~
+
+Get the SVG content as a string instead of saving to a file:
 
 .. code-block:: python
 
-   # With embedded images
-   svg_string = document.tostring(embed_images=True)
+   svg_string = document.tostring()
+   print(svg_string)  # => "<svg>...</svg>"
 
-   # With external image references
-   svg_string = document.tostring(image_prefix="img_", image_format="png")
+   # With external images (relative paths)
+   svg_string = document.tostring(image_prefix="images/img")
 
 Export and Load
 ~~~~~~~~~~~~~~~
@@ -189,375 +167,166 @@ Export the document to a dictionary format:
 
 .. code-block:: python
 
-   # Export
-   exported = document.export()
-   # Returns: {
-   #     "svg": "<svg>...</svg>",
-   #     "images": [<bytes>, <bytes>, ...],
-   #     "fonts": [{"family": "Arial", "style": "normal", ...}, ...]
-   # }
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
 
-   # Load back
-   document = SVGDocument.load(
-       exported["svg"],
-       exported["images"],
-       exported["fonts"]
-   )
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage)
+
+   # Export document and resources
+   data = document.export()
+   # => {"svg": "<svg>...</svg>", "resources": {"001": <PIL.Image>, ...}}
+
+   # Load from exported data
+   restored = SVGDocument.load(data["svg"], data["resources"])
 
 This is useful for serialization or transferring documents between processes.
 
 Rasterization
--------------
+~~~~~~~~~~~~~
 
 Convert SVG documents to raster images using the built-in rasterizer support.
 
 Using Built-in Method
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
    from psd2svg import SVGDocument
+   from psd_tools import PSDImage
 
+   psdimage = PSDImage.open("input.psd")
    document = SVGDocument.from_psd(psdimage)
 
-   # Rasterize using default settings
+   # Rasterize to PIL Image
    image = document.rasterize()
    image.save('output.png')
 
    # Rasterize with custom DPI
-   image = document.rasterize(dpi=300)  # High resolution
+   image = document.rasterize(dpi=300)
    image.save('output_high_res.png')
 
 Using Rasterizer Directly
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
    from psd2svg.rasterizer import ResvgRasterizer
 
-   # Create rasterizer instance
    rasterizer = ResvgRasterizer(dpi=96)
 
-   # Rasterize from string
-   svg_string = document.tostring(embed_images=True)
-   image = rasterizer.from_string(svg_string)
-   image.save('output.png')
-
    # Rasterize from file
-   image = rasterizer.from_file('input.svg')
+   image = rasterizer.from_file('output.svg')
+   image.save('rasterized.png')
 
-The Rasterizer
-~~~~~~~~~~~~~~
+**For comprehensive rasterization documentation, see** :doc:`rasterizers`.
 
-psd2svg uses **resvg** for rasterization, which provides fast and accurate rendering
-with no external dependencies beyond the resvg-py Python package.
+Feature Guides
+--------------
 
-See :doc:`rasterizers` for detailed documentation and examples.
+For detailed information on specific features, see these dedicated guides:
 
-Configuration Options
----------------------
-
-Title Elements
-~~~~~~~~~~~~~~
-
-By default, each layer in the SVG includes a ``<title>`` element containing the Photoshop layer name. This provides:
-
-* **Accessibility**: Screen readers can announce layer names
-* **Debugging**: Layer names are preserved in the SVG structure
-* **Documentation**: The SVG structure is self-documenting
-
-However, title elements increase file size. You can disable them:
-
-.. code-block:: python
-
-   from psd2svg import SVGDocument, convert
-
-   # Using SVGDocument
-   document = SVGDocument.from_psd(psdimage, enable_title=False)
-
-   # Using convert()
-   convert('input.psd', 'output.svg', enable_title=False)
-
-**Important Notes:**
-
-* Text layers never include title elements (even with ``enable_title=True``)
-* Text layer names are typically the same as the visible text content
-* Title elements are separate from layer IDs and classes which are always preserved
-
-Text Letter Spacing
-~~~~~~~~~~~~~~~~~~~
-
-Photoshop and SVG renderers may have slightly different default letter spacing due to differences in kerning algorithms. You can compensate using the ``text_letter_spacing_offset`` parameter:
-
-.. code-block:: python
-
-   from psd2svg import SVGDocument, convert
-
-   # Using SVGDocument
-   document = SVGDocument.from_psd(
-       psdimage,
-       text_letter_spacing_offset=-0.015  # Tighten spacing by 0.015 pixels
-   )
-
-   # Using convert()
-   convert('input.psd', 'output.svg', text_letter_spacing_offset=-0.015)
-
-The offset (in pixels) is added to all letter-spacing values:
-
-* **Negative values** (e.g., -0.02): Tighten letter spacing
-* **Positive values** (e.g., 0.02): Loosen letter spacing
-* **Typical range**: -0.02 to 0.02 pixels
-
-Experiment with different values to find the best match for your specific fonts and target renderers.
-
-Font Embedding and Subsetting
-------------------------------
-
-psd2svg can embed fonts directly in SVG files using ``@font-face`` CSS rules. For web delivery, you can use font subsetting to drastically reduce file sizes.
-
-Font Embedding Basics
-~~~~~~~~~~~~~~~~~~~~~~
-
-Embed fonts as base64-encoded data URIs in the SVG:
-
-.. code-block:: python
-
-   from psd_tools import PSDImage
-   from psd2svg import SVGDocument
-
-   psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage)
-
-   # Embed fonts (full font files, large size)
-   document.save("output.svg", embed_images=True, embed_fonts=True)
-
-   # Get string with embedded fonts
-   svg_string = document.tostring(embed_images=True, embed_fonts=True)
-
-**Important**: Font embedding may be subject to licensing restrictions. Ensure you have appropriate rights before distributing SVG files with embedded fonts.
-
-Font Subsetting (Recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Font subsetting creates minimal font files containing only the glyphs actually used in your SVG. This typically reduces file sizes by 90-95%.
-
-**Installation:**
-
-.. code-block:: bash
-
-   pip install psd2svg[fonts]
-   # or with uv:
-   uv sync --group fonts
-
-**Basic Usage:**
-
-.. code-block:: python
-
-   from psd_tools import PSDImage
-   from psd2svg import SVGDocument
-
-   psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage)
-
-   # Subset fonts and embed as TTF
-   document.save(
-       "output.svg",
-       embed_images=True,
-       embed_fonts=True,
-       subset_fonts=True,
-       font_format="ttf"
-   )
-
-   # Subset and convert to WOFF2 (best compression)
-   document.save(
-       "output.svg",
-       embed_images=True,
-       embed_fonts=True,
-       font_format="woff2"  # Auto-enables subsetting
-   )
-
-**WOFF2 Format (Recommended for Web):**
-
-WOFF2 provides the best compression and automatically enables subsetting:
-
-.. code-block:: python
-
-   # WOFF2 format automatically enables subsetting
-   document.save(
-       "output.svg",
-       embed_images=True,
-       embed_fonts=True,
-       font_format="woff2"
-   )
-
-Font Subsetting Options
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Supported Font Formats:**
-
-* ``ttf`` - TrueType Font (default, good compatibility)
-* ``otf`` - OpenType Font (good compatibility)
-* ``woff2`` - Web Open Font Format 2 (best compression, auto-enables subsetting)
-
-**How It Works:**
-
-1. Extract all text content from SVG ``<text>`` and ``<tspan>`` elements
-2. Identify which Unicode characters are used by each font family
-3. Create minimal font files containing only those glyphs
-4. Embed optimized fonts as base64 data URIs in ``@font-face`` rules
-
-**Performance Benefits:**
-
-.. code-block:: text
-
-   Format          Full Font    Subset Font   Reduction
-   ================================================
-   TTF/OTF         150 KB       15 KB         90%
-   WOFF2           100 KB       8 KB          92%
-
-   Example: "Hello World" in Arial
-   - Full Arial.ttf: 150 KB
-   - Subset TTF: 12 KB (only H, e, l, o, W, r, d glyphs)
-   - Subset WOFF2: 6 KB (with compression)
-
-**Complete Workflow Example:**
-
-.. code-block:: python
-
-   from psd_tools import PSDImage
-   from psd2svg import SVGDocument
-
-   # Load PSD with text layers
-   psdimage = PSDImage.open("design_with_text.psd")
-
-   # Create SVG document
-   document = SVGDocument.from_psd(psdimage)
-
-   # Option 1: Full fonts (large files, ~150KB per font)
-   document.save(
-       "output_full.svg",
-       embed_images=True,
-       embed_fonts=True,
-       font_format="ttf"
-   )
-
-   # Option 2: Subset fonts (90%+ smaller, ~15KB per font)
-   document.save(
-       "output_subset.svg",
-       embed_images=True,
-       embed_fonts=True,
-       subset_fonts=True,
-       font_format="ttf"
-   )
-
-   # Option 3: WOFF2 with subsetting (best compression, ~8KB per font)
-   document.save(
-       "output_woff2.svg",
-       embed_images=True,
-       embed_fonts=True,
-       font_format="woff2"  # Auto-enables subsetting
-   )
-
-**When to Use Font Subsetting:**
-
-✅ **Use subsetting when:**
-
-* Delivering SVG files over the web
-* File size is a concern
-* Your document uses only a small portion of a font's glyphs
-* You need self-contained SVG files for distribution
-
-❌ **Don't use subsetting when:**
-
-* You may edit the text content later (missing glyphs won't render)
-* You need to preserve all font features (ligatures, alternate glyphs)
-* You're generating dynamic content with unpredictable text
-* Font licensing prohibits modification/subsetting
-
-**Font License Considerations:**
-
-Font embedding and subsetting may be subject to licensing restrictions. Before distributing SVG files with embedded fonts:
-
-* **Commercial fonts**: Check if your license permits embedding/redistribution
-* **Open source fonts**: Verify the license (e.g., OFL, Apache) allows embedding
-* **System fonts**: May have restrictions on redistribution
-* **Web use**: Some fonts require web-specific licenses
-
-Consult with legal counsel if uncertain about font license compliance.
-
-**Troubleshooting:**
-
-If font subsetting isn't working:
-
-1. Check that fonttools is installed: ``pip show fonttools``
-2. Verify fonts are available on your system
-3. Check logs for warnings about missing characters
-4. Ensure text elements have proper font-family attributes
-
-Working with Images
--------------------
-
-Image Encoding
-~~~~~~~~~~~~~~
-
-The ``image_utils`` module provides utilities for encoding images:
-
-.. code-block:: python
-
-   from psd2svg.image_utils import encode_image_to_base64
-   from PIL import Image
-
-   # Load an image
-   image = Image.open("photo.png")
-
-   # Encode as base64 data URI
-   data_uri = encode_image_to_base64(image, format='png')
-   # => "data:image/png;base64,iVBORw0KG..."
-
-Image Formats
-~~~~~~~~~~~~~
-
-Supported image formats for export:
-
-* **PNG** - Lossless, supports transparency, larger file size
-* **WebP** - Modern format, good compression, supports transparency
-* **JPEG** - Lossy, smaller file size, no transparency
-
-Choose based on your needs:
-
-* Use PNG for images requiring transparency or lossless quality
-* Use WebP for modern web applications with good compression
-* Use JPEG for photographs where small file size is important
+* **:doc:`command-line`** - Complete command-line interface reference
+* **:doc:`images`** - Image embedding, formats, and optimization
+* **:doc:`fonts`** - Font embedding and subsetting
+* **:doc:`rasterizers`** - SVG to raster image conversion
+* **:doc:`configuration`** - Advanced configuration options
 
 Best Practices
 --------------
 
-Performance Tips
+For Web Delivery
 ~~~~~~~~~~~~~~~~
 
-1. **Use external images for large PSDs**: Embedding many large images can create huge SVG files
-2. **Choose WebP format**: Provides good quality with smaller file sizes
-3. **Use appropriate DPI**: Default DPI (96) is suitable for screen display, use 300+ for print
-
-Quality Considerations
-~~~~~~~~~~~~~~~~~~~~~~
-
-1. **SVG limitations**: Some Photoshop effects and blending modes aren't supported in SVG 1.1
-2. **Browser compatibility**: Chrome provides best SVG rendering quality
-3. **Test output**: Always verify the output in your target browser/application
-
-Thread Safety
-~~~~~~~~~~~~~
-
-**Important**: The psd2svg API is NOT thread-safe. Do not share ``SVGDocument`` instances across threads.
-
-Error Handling
-~~~~~~~~~~~~~~
+Optimize for web applications:
 
 .. code-block:: python
 
-   from psd_tools import PSDImage
    from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+
+   document.save(
+       "output.svg",
+       image_prefix="images/img",  # External images
+       image_format="webp",        # Best compression
+       font_format="woff2",        # Font subsetting
+       enable_title=False          # Remove layer names
+   )
+
+**Topics covered:**
+
+* :doc:`images` - Image format selection and optimization
+* :doc:`fonts` - Font subsetting with WOFF2
+* :doc:`configuration` - Title elements and other options
+
+For Print Quality
+~~~~~~~~~~~~~~~~~
+
+Optimize for print or archival:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage)
+
+   document.save(
+       "output.svg",
+       image_prefix="images/img",  # External images
+       image_format="png"           # Lossless format
+   )
+
+   # Rasterize at high DPI for print
+   image = document.rasterize(dpi=300)
+   image.save("output_print.png")
+
+**Topics covered:**
+
+* :doc:`images` - PNG format for lossless quality
+* :doc:`rasterizers` - High DPI rasterization
+
+For Maximum Compatibility
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Optimize for maximum compatibility across viewers:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")
+
+   # Rasterize text, use simple paths
+   document = SVGDocument.from_psd(
+       psdimage,
+       enable_text=False,        # Rasterize text
+       enable_live_shapes=False  # Use paths instead of primitives
+   )
+
+   document.save(
+       "output.svg",
+       image_format="png"  # Universal format
+   )
+
+**Topics covered:**
+
+* :doc:`configuration` - Text conversion and live shapes
+
+Error Handling
+--------------
+
+Always wrap conversion operations in try-except blocks:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
 
    try:
        psdimage = PSDImage.open("input.psd")
@@ -567,3 +336,14 @@ Error Handling
        print("PSD file not found")
    except Exception as e:
        print(f"Conversion failed: {e}")
+
+**For more error handling information, see** :doc:`configuration`.
+
+Next Steps
+----------
+
+* Learn about :doc:`command-line` options for batch processing
+* Optimize file sizes with :doc:`fonts` subsetting
+* Handle images efficiently with :doc:`images`
+* Choose the right :doc:`rasterizers` for your needs
+* Fine-tune output with :doc:`configuration` options

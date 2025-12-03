@@ -84,9 +84,12 @@ Text layer conversion requires ``fontconfig`` (available on Linux/macOS).
 Next Steps
 ~~~~~~~~~~
 
-* Read the :doc:`user-guide` for detailed usage and configuration options
+* Read the :doc:`user-guide` for an overview and API reference
+* Learn :doc:`command-line` usage for batch processing
+* Optimize with :doc:`images` and :doc:`fonts` guides
+* Explore :doc:`rasterizers` for SVG to raster conversion
+* Fine-tune with :doc:`configuration` options
 * Check the :doc:`api-reference` for complete API documentation
-* Learn about :doc:`rasterizers` for rendering SVG to raster images
 * Review :doc:`limitations` to understand current constraints
 
 Documentation Contents
@@ -97,7 +100,11 @@ Documentation Contents
    :caption: User Guide
 
    user-guide
+   command-line
+   images
+   fonts
    rasterizers
+   configuration
    limitations
 
 .. toctree::

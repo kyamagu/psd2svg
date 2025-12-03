@@ -324,3 +324,326 @@ By default, rasterized images have a transparent background. To add a custom bac
    background = Image.new('RGB', image.size, (255, 255, 255))
    background.paste(image, (0, 0), image)
    background.save('output_white_bg.png')
+
+Playwright Rasterizer
+----------------------
+
+Browser-based SVG rasterizer with full SVG 2.0 support using Playwright/Chromium.
+
+**Installation:**
+
+The Playwright rasterizer requires the ``browser`` optional dependency group:
+
+.. code-block:: bash
+
+   pip install psd2svg[browser]
+   playwright install chromium
+
+**Pros:**
+
+* Full SVG 2.0 support
+* Supports ``<foreignObject>`` elements (text wrapping)
+* Excellent support for advanced SVG features
+* Browser-accurate rendering
+* Better support for variable fonts
+
+**Cons:**
+
+* Slower than ResvgRasterizer
+* Requires Chromium installation (~200MB)
+* Higher memory usage
+* Not suitable for serverless environments
+
+**When to use:**
+
+* Testing SVG 2.0 features (vertical text, text-orientation, dominant-baseline)
+* Quality assurance against browser rendering
+* Text wrapping with ``<foreignObject>``
+* Variable font rendering (resvg-py has known issues)
+* Advanced SVG features not supported by resvg
+
+Usage
+~~~~~
+
+Basic Usage
+^^^^^^^^^^^
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   # Use as context manager (automatically cleans up browser)
+   with PlaywrightRasterizer(dpi=96) as rasterizer:
+       image = rasterizer.from_file('input.svg')
+       image.save('output.png')
+
+**Important:** Always use PlaywrightRasterizer as a context manager to ensure proper browser cleanup.
+
+With SVGDocument
+^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd2svg.rasterizer import PlaywrightRasterizer
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open('input.psd')
+   document = SVGDocument.from_psd(psdimage)
+
+   # Rasterize using Playwright
+   with PlaywrightRasterizer(dpi=96) as rasterizer:
+       image = document.rasterize(rasterizer=rasterizer)
+       image.save('output.png')
+
+Rasterizing from String
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   svg_string = '<svg>...</svg>'
+
+   with PlaywrightRasterizer(dpi=96) as rasterizer:
+       image = rasterizer.from_string(svg_string)
+       image.save('output.png')
+
+API Reference
+^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   class PlaywrightRasterizer(BaseRasterizer):
+       def __init__(self, dpi: int = 0) -> None:
+           """Initialize the Playwright rasterizer.
+
+           Args:
+               dpi: Dots per inch for rendering. If 0 (default), uses 96 DPI.
+                   Higher values produce larger, higher resolution images.
+           """
+
+       def __enter__(self) -> PlaywrightRasterizer:
+           """Enter context manager - starts browser."""
+
+       def __exit__(self, *args) -> None:
+           """Exit context manager - closes browser and cleans up resources."""
+
+       def from_file(self, filepath: str) -> Image.Image:
+           """Rasterize an SVG file to a PIL Image.
+
+           Args:
+               filepath: Path to the SVG file to rasterize.
+
+           Returns:
+               PIL Image object in RGBA mode containing the rasterized SVG.
+           """
+
+       def from_string(self, svg_content: Union[str, bytes]) -> Image.Image:
+           """Rasterize SVG content from a string to a PIL Image.
+
+           Args:
+               svg_content: SVG content as string or bytes.
+
+           Returns:
+               PIL Image object in RGBA mode containing the rasterized SVG.
+           """
+
+Examples
+~~~~~~~~
+
+High DPI Rendering
+^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   # Render at 300 DPI for print quality
+   with PlaywrightRasterizer(dpi=300) as rasterizer:
+       image = rasterizer.from_file('input.svg')
+       image.save('output_print.png')
+
+Batch Processing
+^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   from pathlib import Path
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   svg_dir = Path("svg_files")
+   png_dir = Path("png_output")
+   png_dir.mkdir(exist_ok=True)
+
+   # Reuse browser instance for better performance
+   with PlaywrightRasterizer() as rasterizer:
+       for svg_file in svg_dir.glob("*.svg"):
+           output_path = png_dir / f"{svg_file.stem}.png"
+           image = rasterizer.from_file(str(svg_file))
+           image.save(output_path)
+
+Testing SVG 2.0 Features
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd2svg.rasterizer import PlaywrightRasterizer
+   from psd_tools import PSDImage
+
+   # Convert PSD with vertical text (SVG 2.0 feature)
+   psdimage = PSDImage.open('vertical_text.psd')
+   document = SVGDocument.from_psd(psdimage)
+
+   # Render with Playwright (supports SVG 2.0)
+   with PlaywrightRasterizer() as rasterizer:
+       image = document.rasterize(rasterizer=rasterizer)
+       image.save('output_vertical_text.png')
+
+Comparing Rasterizers
+---------------------
+
+Feature Comparison
+~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Feature
+     - ResvgRasterizer
+     - PlaywrightRasterizer
+   * - Performance
+     - Fast (Rust-based)
+     - Slower (browser-based)
+   * - Installation Size
+     - Small (~5MB)
+     - Large (~200MB)
+   * - SVG 1.1 Support
+     - Excellent
+     - Excellent
+   * - SVG 2.0 Support
+     - Partial
+     - Full
+   * - ``<foreignObject>``
+     - Not supported
+     - Supported
+   * - Variable Fonts
+     - Known issues
+     - Works correctly
+   * - Memory Usage
+     - Low
+     - Higher
+   * - Serverless Friendly
+     - Yes
+     - No
+   * - Production Ready
+     - Yes
+     - Yes
+
+When to Use Which
+~~~~~~~~~~~~~~~~~
+
+**Use ResvgRasterizer when:**
+
+* Performance is critical
+* Deploying to serverless environments
+* Memory constraints exist
+* Standard SVG features are sufficient
+* Installation size matters
+
+**Use PlaywrightRasterizer when:**
+
+* SVG 2.0 features are required
+* Text wrapping with ``<foreignObject>`` is needed
+* Variable font rendering is important
+* Browser-accurate rendering is required
+* Testing/QA against browser rendering
+
+**Example: Fallback Strategy:**
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd2svg.rasterizer import ResvgRasterizer
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open('input.psd')
+   document = SVGDocument.from_psd(psdimage)
+
+   # Try ResvgRasterizer first (faster)
+   try:
+       image = document.rasterize()
+       image.save('output.png')
+   except Exception:
+       # Fall back to Playwright if needed
+       from psd2svg.rasterizer import PlaywrightRasterizer
+       with PlaywrightRasterizer() as rasterizer:
+           image = document.rasterize(rasterizer=rasterizer)
+           image.save('output.png')
+
+Performance Tips
+~~~~~~~~~~~~~~~~
+
+**For ResvgRasterizer:**
+
+* Reuse rasterizer instances when possible
+* Use appropriate DPI (higher DPI = larger output)
+* Validate SVG before rasterizing (see Known Issues section)
+
+**For PlaywrightRasterizer:**
+
+* Reuse browser instance for batch operations (use context manager once)
+* Close browser when done (use context manager)
+* Minimize page loads (process multiple SVGs in one session)
+* Consider headless mode overhead
+
+Troubleshooting
+---------------
+
+PlaywrightRasterizer Issues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Browser not installed:**
+
+.. code-block:: bash
+
+   playwright install chromium
+
+**Import error:**
+
+Ensure the ``browser`` group is installed:
+
+.. code-block:: bash
+
+   pip install psd2svg[browser]
+
+**Timeout errors:**
+
+For large or complex SVGs, increase timeout:
+
+.. code-block:: python
+
+   with PlaywrightRasterizer(dpi=96) as rasterizer:
+       # Timeout is handled internally
+       image = rasterizer.from_file('large.svg')
+
+**Memory issues:**
+
+Close and reopen browser periodically for long-running processes:
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   svg_files = list(Path("svg_files").glob("*.svg"))
+
+   # Process in batches to manage memory
+   batch_size = 50
+   for i in range(0, len(svg_files), batch_size):
+       batch = svg_files[i:i+batch_size]
+       with PlaywrightRasterizer() as rasterizer:
+           for svg_file in batch:
+               image = rasterizer.from_file(str(svg_file))
+               image.save(f"{svg_file.stem}.png")
