@@ -6,9 +6,9 @@ This guide covers image embedding, external image export, and format selection f
 Overview
 --------
 
-psd2svg extracts raster image data from PSD layers when needed. For pixel-based layers (photos, rasterized content, smart objects), Photoshop stores composite preview images within the PSD file that show the layer's visual appearance. psd2svg retrieves these preview images and includes them in the SVG output.
+psd2svg extracts raster image data from PSD layers when needed. For pixel-based layers (photos, rasterized content, smart objects), Photoshop stores raw pixel data within the PSD file. psd2svg retrieves this pixel data and includes it in the SVG output.
 
-Note that layer effects (drop shadows, glows, etc.) are converted to SVG filters rather than being part of the extracted image data. The preview images represent the base layer content before effects are applied.
+Note that layer effects (drop shadows, glows, etc.) are not part of the stored pixel data. They are converted to SVG filters separately. The extracted images represent the base layer content before any effects or filters are applied.
 
 These extracted images can be:
 
