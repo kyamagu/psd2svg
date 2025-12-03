@@ -55,7 +55,7 @@ class SVGDocument:
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
         enable_text: bool = True,
-        enable_title: bool = True,
+        enable_title: bool = False,
         enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
@@ -71,9 +71,9 @@ class SVGDocument:
             enable_text: Enable text layer conversion. If False, text layers
                 are rasterized as images.
             enable_title: Enable insertion of <title> elements with layer names.
-                When True (default), each layer in the SVG will have a <title>
-                element containing the Photoshop layer name for accessibility and
-                debugging. Set to False to omit title elements and reduce file size.
+                When False (default), title elements are omitted to reduce file size.
+                Set to True to include <title> elements containing the Photoshop layer
+                name for accessibility and debugging.
             enable_class: Enable insertion of class attributes on SVG elements for
                 debugging purposes. When False (default), elements will not have class
                 attributes, producing cleaner SVG output. Set to True to add class
@@ -709,7 +709,7 @@ def convert(
     image_prefix: str | None = None,
     enable_text: bool = True,
     enable_live_shapes: bool = True,
-    enable_title: bool = True,
+    enable_title: bool = False,
     enable_class: bool = False,
     image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
@@ -727,9 +727,9 @@ def convert(
             results in <path> elements instead of shape primitives like <rect> or <circle>.
             This may be more accurate, but less editable. Default is True.
         enable_title: Enable insertion of <title> elements with layer names.
-            When True (default), each layer in the SVG will have a <title> element
-            containing the Photoshop layer name for accessibility and debugging.
-            Set to False to omit title elements and reduce file size.
+            When False (default), title elements are omitted to reduce file size.
+            Set to True to include <title> elements containing the Photoshop layer
+            name for accessibility and debugging.
         enable_class: Enable insertion of class attributes on SVG elements for debugging
             purposes. When False (default), elements will not have class attributes,
             producing cleaner SVG output. Set to True to add class attributes for layer

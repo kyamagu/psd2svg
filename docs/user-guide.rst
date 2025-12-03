@@ -70,7 +70,7 @@ For simple one-step conversions, use the ``convert()`` convenience function:
 * ``embed_images`` (bool): Whether to embed images as data URIs (default: True if no image_prefix)
 * ``image_prefix`` (str, optional): Prefix for external image files, relative to the output SVG file's directory
 * ``image_format`` (str): Image format - 'png', 'jpeg', or 'webp' (default: 'webp')
-* ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: True)
+* ``enable_title`` (bool): Enable insertion of <title> elements with layer names (default: False)
 * ``text_letter_spacing_offset`` (float): Global offset (in pixels) to add to all letter-spacing values (default: 0.0)
 
 SVGDocument Class

@@ -273,10 +273,10 @@ def test_enable_live_shapes_flag() -> None:
 
 
 def test_enable_title_flag() -> None:
-    """Test that disabling title elements works."""
+    """Test that enabling title elements works."""
     psdimage = PSDImage.open(get_fixture("layer-types/group.psd"))
 
-    # Test with enable_title=True (default behavior)
+    # Test with enable_title=True
     converter = Converter(psdimage, enable_title=True)
     converter.build()
     title_elements = converter.svg.findall(".//title")
@@ -284,7 +284,7 @@ def test_enable_title_flag() -> None:
         "Expected <title> elements in SVG with enable_title=True."
     )
 
-    # Test with enable_title=False
+    # Test with enable_title=False (default behavior)
     converter = Converter(psdimage, enable_title=False)
     converter.build()
     title_elements = converter.svg.findall(".//title")
