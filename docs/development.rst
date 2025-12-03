@@ -31,8 +31,10 @@ The project uses ``uv`` for dependency management:
    # Install dependencies
    uv sync
 
-   # Install with documentation dependencies
-   uv sync --group docs
+   # Optional dependencies
+   uv sync --group docs             # Documentation tools
+   uv sync --group browser          # Playwright rasterizer
+   uv sync --group fonts            # Font subsetting tools
 
 Development Commands
 --------------------
@@ -59,7 +61,7 @@ The project uses mypy for static type checking:
 
 .. code-block:: bash
 
-   uv run mypy src/
+   uv run mypy src/ tests/
 
    # Check specific module
    uv run mypy src/psd2svg/svg_document.py
@@ -71,10 +73,10 @@ Ruff is used for fast linting:
 
 .. code-block:: bash
 
-   uv run ruff check src/
+   uv run ruff check src/ tests/
 
    # Auto-fix issues
-   uv run ruff check --fix src/
+   uv run ruff check --fix src/ tests/
 
 Code Formatting
 ~~~~~~~~~~~~~~~
@@ -83,10 +85,10 @@ Format code with ruff:
 
 .. code-block:: bash
 
-   uv run ruff format src/
+   uv run ruff format src/ tests/
 
    # Check formatting without changes
-   uv run ruff format --check src/
+   uv run ruff format --check src/ tests/
 
 Building
 ~~~~~~~~
@@ -156,9 +158,8 @@ The core converter uses multiple inheritance with specialized mixins:
 * ``EffectConverter`` (``effects.py``) - Processes layer effects
 * ``LayerConverter`` (``layer.py``) - Core layer conversion logic
 * ``ShapeConverter`` (``shape.py``) - Converts vector shapes
-* ``PaintConverter`` (``paint.py``) - Handles painting logic
-* ``TextConverter`` (``text.py``) - Processes text layers
 * ``PaintConverter`` (``paint.py``) - Handles fill and stroke patterns
+* ``TextConverter`` (``text.py``) - Processes text layers
 
 **Supporting Modules:**
 
@@ -173,10 +174,11 @@ Rasterizer Layer
 
 **Location:** ``src/psd2svg/rasterizer/``
 
-Provides SVG to raster image conversion using resvg:
+Provides SVG to raster image conversion:
 
 * ``base_rasterizer.py`` - Abstract base class defining the interface
-* ``resvg_rasterizer.py`` - Resvg-based renderer (production-ready)
+* ``resvg_rasterizer.py`` - Default, fast production rasterizer (resvg-py)
+* ``playwright_rasterizer.py`` - Optional browser-based renderer (better SVG 2.0 support)
 
 Code Quality Standards
 ----------------------
@@ -280,10 +282,10 @@ Workflow
 
    .. code-block:: bash
 
+      uv run ruff format src/ tests/
+      uv run ruff check src/ tests/
+      uv run mypy src/ tests/
       uv run pytest
-      uv run mypy src/
-      uv run ruff check src/
-      uv run ruff format src/
 
 6. **Commit your changes**: ``git commit -m "Add my feature"``
 7. **Push to your fork**: ``git push origin feature/my-feature``
@@ -360,18 +362,16 @@ Example structure:
            # Implementation here
            ...
 
-Working with the Rasterizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Working with Rasterizers
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The package uses resvg for SVG rasterization. The rasterizer converts SVG documents
-to PIL Images with high quality and performance.
+The package provides two rasterization backends:
 
-Example usage:
+**ResvgRasterizer** (default):
 
 .. code-block:: python
 
    from psd2svg.rasterizer import ResvgRasterizer
-   from PIL import Image
 
    # Create rasterizer instance
    rasterizer = ResvgRasterizer(dpi=96)
@@ -384,6 +384,17 @@ Example usage:
    # Rasterize from file
    image = rasterizer.from_file('input.svg')
    image.save('output.png')
+
+**PlaywrightRasterizer** (optional, requires ``browser`` group):
+
+.. code-block:: python
+
+   from psd2svg.rasterizer import PlaywrightRasterizer
+
+   # Use as context manager (automatically cleans up browser)
+   with PlaywrightRasterizer(dpi=96) as rasterizer:
+       image = rasterizer.from_file('input.svg')
+       image.save('output.png')
 
 Debugging
 ---------
@@ -445,17 +456,13 @@ For maintainers:
 1. **Update version** in ``pyproject.toml``
 2. **Update CHANGELOG** with release notes
 3. **Run full test suite**
-4. **Build and test package**:
-
-   .. code-block:: bash
-
-      uv build
-      # Test installation
-      pip install dist/psd2svg-*.whl
-
+4. **Commit changes**: ``git commit -m "Bump version to 0.3.0"``
 5. **Create git tag**: ``git tag v0.3.0``
 6. **Push tag**: ``git push origin v0.3.0``
-7. **Publish to PyPI**: ``uv publish``
+7. **GitHub Actions** automatically builds and publishes to PyPI via OIDC
+
+**Note:** The release is fully automated via GitHub Actions (``.github/workflows/release.yml``).
+Manual publishing with ``uv publish`` is not recommended.
 
 Getting Help
 ------------

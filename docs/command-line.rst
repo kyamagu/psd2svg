@@ -1,0 +1,221 @@
+Command Line Usage
+==================
+
+This guide covers the psd2svg command-line interface for converting PSD files to SVG.
+
+Basic Usage
+-----------
+
+Simple Conversion
+~~~~~~~~~~~~~~~~~
+
+The simplest way to convert a PSD file to SVG:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg
+
+Automatic Output Naming
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the output path is a directory or omitted, the tool infers the output name from the input:
+
+.. code-block:: bash
+
+   # Output to directory
+   psd2svg input.psd output/
+   # => output/input.svg
+
+   # Output to current directory
+   psd2svg input.psd
+   # => input.svg
+
+Command Line Options
+--------------------
+
+Image Handling
+~~~~~~~~~~~~~~
+
+**--image-prefix PATH**
+
+Save extracted images to external files with the specified prefix, relative to the output SVG file's directory. By default, images are embedded as data URIs.
+
+.. code-block:: bash
+
+   # Export images to same directory as SVG (using "." prefix)
+   psd2svg input.psd output.svg --image-prefix .
+   # => output.svg, 01.webp, 02.webp, ...
+
+   # Export images to subdirectory
+   psd2svg input.psd output.svg --image-prefix images/img
+   # => output.svg, images/img01.webp, images/img02.webp, ...
+
+**--image-format FORMAT**
+
+Specify the image format for rasterized layers. Supported formats:
+
+* ``webp`` - Modern format with excellent compression (default)
+* ``png`` - Lossless format with transparency support
+* ``jpeg`` - Lossy format, best for photographs
+
+.. code-block:: bash
+
+   # Export images as PNG
+   psd2svg input.psd output.svg --image-prefix . --image-format png
+   # => output.svg, 01.png, 02.png, ...
+
+   # Export images as JPEG
+   psd2svg input.psd output.svg --image-prefix . --image-format jpeg
+   # => output.svg, 01.jpeg, 02.jpeg, ...
+
+Feature Flags
+~~~~~~~~~~~~~
+
+**--no-text**
+
+Disable text layer conversion and rasterize text as images instead. This is useful when:
+
+* Font rendering differences are unacceptable
+* Fonts are not available on the system
+* Maximum visual accuracy is required
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg --no-text
+
+**--no-live-shapes**
+
+Disable live shape conversion and use paths instead of shape primitives (``<rect>``, ``<circle>``). This produces more compact SVG but loses semantic information.
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg --no-live-shapes
+
+**--no-title**
+
+Disable insertion of ``<title>`` elements with layer names. This reduces file size but removes layer identification:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg --no-title
+
+   # Compact output: disable titles and use paths
+   psd2svg input.psd output.svg --no-title --no-live-shapes
+
+Text Adjustment
+~~~~~~~~~~~~~~~
+
+**--text-letter-spacing-offset OFFSET**
+
+Apply a global offset (in pixels) to all letter-spacing values. This compensates for rendering differences between Photoshop and SVG renderers:
+
+.. code-block:: bash
+
+   # Increase letter spacing by 0.5 pixels
+   psd2svg input.psd output.svg --text-letter-spacing-offset 0.5
+
+   # Decrease letter spacing by 0.015 pixels
+   psd2svg input.psd output.svg --text-letter-spacing-offset -0.015
+
+Experiment with different values to achieve the best match for your fonts and target renderers.
+
+Common Workflows
+----------------
+
+Web Optimization
+~~~~~~~~~~~~~~~~
+
+For web delivery, use external WebP images with no titles:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg \
+     --image-prefix images/img \
+     --image-format webp \
+     --no-title
+
+Print Quality
+~~~~~~~~~~~~~
+
+For high-quality output with PNG images:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg \
+     --image-prefix . \
+     --image-format png
+
+Maximum Compatibility
+~~~~~~~~~~~~~~~~~~~~~
+
+For maximum compatibility across renderers, rasterize text and use simple paths:
+
+.. code-block:: bash
+
+   psd2svg input.psd output.svg \
+     --no-text \
+     --no-live-shapes \
+     --image-format png
+
+Batch Processing
+~~~~~~~~~~~~~~~~
+
+Process multiple PSD files:
+
+.. code-block:: bash
+
+   # Using shell loop
+   for file in *.psd; do
+     psd2svg "$file" "svg/${file%.psd}.svg"
+   done
+
+   # Using find and xargs
+   find . -name "*.psd" -print0 | \
+     xargs -0 -I {} psd2svg {} {}.svg
+
+Exit Codes
+----------
+
+The command returns the following exit codes:
+
+* ``0`` - Success
+* ``1`` - General error (file not found, invalid PSD, etc.)
+* ``2`` - Command-line argument error
+
+You can use these in scripts:
+
+.. code-block:: bash
+
+   if psd2svg input.psd output.svg; then
+     echo "Conversion successful"
+   else
+     echo "Conversion failed with exit code $?"
+     exit 1
+   fi
+
+Environment Variables
+---------------------
+
+The command respects standard environment variables:
+
+* ``NO_COLOR`` - Disable colored output
+* ``FORCE_COLOR`` - Force colored output even in non-TTY environments
+
+.. code-block:: bash
+
+   # Disable colors
+   NO_COLOR=1 psd2svg input.psd output.svg
+
+Getting Help
+------------
+
+Display help information:
+
+.. code-block:: bash
+
+   psd2svg --help
+
+   # Display version
+   psd2svg --version
+
+For more detailed documentation, visit the `online documentation <https://psd2svg.readthedocs.io/>`_.
