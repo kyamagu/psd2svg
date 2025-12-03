@@ -16,13 +16,28 @@ By default, each layer in the SVG includes a ``<title>`` element containing the 
 * Accessibility improvements
 * Better debugging experience
 
-Example output:
+**With titles enabled (default):**
 
 .. code-block:: xml
 
    <g id="layer-1">
      <title>Background Layer</title>
-     <!-- layer content -->
+     <rect x="0" y="0" width="100" height="100" fill="#ff0000" />
+   </g>
+   <g id="layer-2">
+     <title>Logo</title>
+     <path d="M10,10 L50,50" stroke="#000000" />
+   </g>
+
+**With titles disabled:**
+
+.. code-block:: xml
+
+   <g id="layer-1">
+     <rect x="0" y="0" width="100" height="100" fill="#ff0000" />
+   </g>
+   <g id="layer-2">
+     <path d="M10,10 L50,50" stroke="#000000" />
    </g>
 
 Disabling Titles
@@ -109,9 +124,27 @@ The offset (in pixels) is added to all letter-spacing values:
 * **Negative values** decrease spacing between letters
 * **Zero** (default) applies no adjustment
 
-**Example:**
+**Example SVG output:**
 
-If Photoshop specifies ``letter-spacing: 2px`` and you set ``text_letter_spacing_offset=-0.5``, the SVG will have ``letter-spacing: 1.5px``.
+If Photoshop specifies ``letter-spacing: 2px``:
+
+**Default (offset = 0):**
+
+.. code-block:: xml
+
+   <text x="10" y="20" style="letter-spacing: 2px;">Hello World</text>
+
+**With offset = -0.5:**
+
+.. code-block:: xml
+
+   <text x="10" y="20" style="letter-spacing: 1.5px;">Hello World</text>
+
+**With offset = 0.5:**
+
+.. code-block:: xml
+
+   <text x="10" y="20" style="letter-spacing: 2.5px;">Hello World</text>
 
 Finding the Right Value
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,13 +179,22 @@ For debugging purposes, you can enable CSS class attributes on SVG elements:
    document = SVGDocument.from_psd(psdimage, enable_class=True)
    document.save("output.svg")
 
-**Result:** SVG elements include class attributes for debugging:
+**With classes disabled (default):**
+
+.. code-block:: xml
+
+   <g id="layer-1">
+     <title>Background</title>
+     <rect x="0" y="0" width="100" height="100" fill="#ff0000" />
+   </g>
+
+**With classes enabled:**
 
 .. code-block:: xml
 
    <g class="layer" id="layer-1">
      <title>Background</title>
-     <rect class="shape" x="0" y="0" width="100" height="100" />
+     <rect class="shape" x="0" y="0" width="100" height="100" fill="#ff0000" />
    </g>
 
 **Purpose:**
@@ -208,7 +250,29 @@ Text Wrapping Modes
 * Requires SVG 1.1+ support
 * May not render in some viewers (e.g., resvg)
 
-**Example:**
+**Example SVG output:**
+
+For a text layer with wrapping in a 200px wide box:
+
+**TextWrappingMode.NONE (default):**
+
+.. code-block:: xml
+
+   <text x="10" y="20" style="font-size: 16px;">
+     This is a long line of text that may overflow the bounding box
+   </text>
+
+**TextWrappingMode.FOREIGN_OBJECT:**
+
+.. code-block:: xml
+
+   <foreignObject x="10" y="10" width="200" height="100">
+     <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 16px; width: 200px;">
+       This is a long line of text that wraps within the bounding box
+     </div>
+   </foreignObject>
+
+**Python example:**
 
 .. code-block:: python
 
@@ -256,6 +320,50 @@ By default, psd2svg optimizes SVG output by consolidating all ``<defs>`` element
    # Unoptimized (preserves original structure)
    document.save("output.svg", optimize=False)
 
+**With optimization disabled:**
+
+.. code-block:: xml
+
+   <svg>
+     <g id="layer-1">
+       <defs>
+         <linearGradient id="gradient-1">
+           <stop offset="0%" stop-color="#ff0000" />
+         </linearGradient>
+       </defs>
+       <rect fill="url(#gradient-1)" />
+     </g>
+     <g id="layer-2">
+       <defs>
+         <filter id="shadow-1">
+           <feGaussianBlur stdDeviation="2" />
+         </filter>
+       </defs>
+       <circle filter="url(#shadow-1)" />
+     </g>
+   </svg>
+
+**With optimization enabled (default):**
+
+.. code-block:: xml
+
+   <svg>
+     <defs>
+       <linearGradient id="gradient-1">
+         <stop offset="0%" stop-color="#ff0000" />
+       </linearGradient>
+       <filter id="shadow-1">
+         <feGaussianBlur stdDeviation="2" />
+       </filter>
+     </defs>
+     <g id="layer-1">
+       <rect fill="url(#gradient-1)" />
+     </g>
+     <g id="layer-2">
+       <circle filter="url(#shadow-1)" />
+     </g>
+   </svg>
+
 **Optimization benefits:**
 
 * Consolidates duplicate definitions
@@ -296,6 +404,26 @@ psd2svg can convert Photoshop live shapes (rectangles, ellipses) to native SVG s
 
    # Disable live shapes (use paths instead)
    psd2svg input.psd output.svg --no-live-shapes
+
+**Example SVG output:**
+
+For a Photoshop rectangle and circle:
+
+**With live shapes enabled (default):**
+
+.. code-block:: xml
+
+   <rect x="10" y="10" width="100" height="50" fill="#ff0000" />
+   <circle cx="60" cy="35" r="20" fill="#0000ff" />
+   <ellipse cx="120" cy="60" rx="30" ry="20" fill="#00ff00" />
+
+**With live shapes disabled:**
+
+.. code-block:: xml
+
+   <path d="M10,10 L110,10 L110,60 L10,60 Z" fill="#ff0000" />
+   <path d="M60,15 A20,20 0 1,1 60,55 A20,20 0 1,1 60,15 Z" fill="#0000ff" />
+   <path d="M120,40 A30,20 0 1,1 120,80 A30,20 0 1,1 120,40 Z" fill="#00ff00" />
 
 Benefits of Live Shapes
 ~~~~~~~~~~~~~~~~~~~~~~~~
