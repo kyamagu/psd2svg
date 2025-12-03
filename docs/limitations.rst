@@ -94,7 +94,7 @@ The converter does its best to approximate these effects, but results may vary.
 Adjustment Layers
 -----------------
 
-Adjustment layers are **not implemented**:
+Most adjustment layers are **not implemented**:
 
 * Curves
 * Levels
@@ -104,7 +104,29 @@ Adjustment layers are **not implemented**:
 * Channel Mixer
 * And others
 
-**Workaround:** Flatten adjustment layers in Photoshop before conversion, or export a flattened version.
+**Experimental Support:**
+
+* **Invert** adjustment layer is partially supported (experimental)
+
+**Technical Limitations:**
+
+Adjustment layers in Photoshop apply filters to the combined backdrop of all layers below them. SVG has fundamental architectural limitations that make this difficult to implement correctly:
+
+* **CSS backdrop-filter**: Would be ideal but does not work on SVG elements (only HTML elements)
+* **SVG BackgroundImage**: SVG filters' ``BackgroundImage`` feature has poor browser support and is not available in most rasterizers (including resvg)
+* **Current workaround**: The experimental implementation wraps backdrop layers in a ``<symbol>`` and uses two ``<use>`` elements—one for the original backdrop and one with the filter applied
+
+**Critical Limitation - Transparency Not Supported:**
+
+The current implementation **does not work correctly when the backdrop has transparency**. Stacking two semi-transparent ``<use>`` elements produces incorrect visual results, as the layers are composited twice.
+
+This means:
+
+* **Opaque backdrops only**: Adjustment layers work reasonably well when all backdrop layers are fully opaque
+* **Transparency breaks**: Any transparency in backdrop layers (layer opacity, transparent pixels, or blend modes) will render incorrectly
+* **No clean solution**: Without native backdrop-filter support on SVG elements, there is no straightforward way to implement adjustment layers that handle transparency correctly
+
+**Workaround:** Flatten adjustment layers in Photoshop before conversion, or export a flattened version. This is the recommended approach for production use.
 
 Smart Objects
 -------------
