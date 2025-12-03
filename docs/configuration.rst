@@ -9,14 +9,14 @@ Title Elements
 Overview
 ~~~~~~~~
 
-By default, each layer in the SVG includes a ``<title>`` element containing the Photoshop layer name. This provides:
+By default, title elements are omitted from the SVG output to reduce file size for production workflows. When enabled, each layer includes a ``<title>`` element containing the Photoshop layer name, which provides:
 
 * Layer identification in SVG editors
 * Tooltips when hovering in browsers
 * Accessibility improvements
 * Better debugging experience
 
-**With titles enabled (default):**
+**With titles disabled (default):**
 
 .. code-block:: xml
 
@@ -29,21 +29,23 @@ By default, each layer in the SVG includes a ``<title>`` element containing the 
      <path d="M10,10 L50,50" stroke="#000000" />
    </g>
 
-**With titles disabled:**
+**With titles enabled:**
 
 .. code-block:: xml
 
    <g id="layer-1">
+     <title>Background Layer</title>
      <rect x="0" y="0" width="100" height="100" fill="#ff0000" />
    </g>
    <g id="layer-2">
+     <title>Logo</title>
      <path d="M10,10 L50,50" stroke="#000000" />
    </g>
 
-Disabling Titles
-~~~~~~~~~~~~~~~~
+Enabling Titles
+~~~~~~~~~~~~~~~
 
-Title elements increase file size. You can disable them for production:
+You can enable title elements for development and debugging:
 
 .. code-block:: python
 
@@ -51,28 +53,28 @@ Title elements increase file size. You can disable them for production:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, enable_title=False)
+   document = SVGDocument.from_psd(psdimage, enable_title=True)
    document.save("output.svg")
 
 **Command Line:**
 
 .. code-block:: bash
 
-   psd2svg input.psd output.svg --no-title
+   psd2svg input.psd output.svg --enable-title
 
-**When to disable:**
+**When to enable:**
+
+* Development/debugging
+* SVG will be opened in editors
+* Accessibility is important
+* Layer identification needed
+
+**When to keep disabled (default):**
 
 * Production builds (file size matters)
 * Minified output
 * Layer names contain sensitive information
 * SVG will not be edited further
-
-**When to keep enabled:**
-
-* Development/debugging
-* SVG will be opened in editors
-* Accessibility is important
-* File size is not critical
 
 Text Letter Spacing
 -------------------

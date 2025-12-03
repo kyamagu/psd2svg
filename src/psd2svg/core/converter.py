@@ -76,7 +76,7 @@ class Converter(
         psdimage: PSDImage,
         enable_live_shapes: bool = True,
         enable_text: bool = True,
-        enable_title: bool = True,
+        enable_title: bool = False,
         enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,

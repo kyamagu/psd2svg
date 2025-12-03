@@ -38,10 +38,10 @@ def parse_args() -> argparse.Namespace:
         help="Disable live shape conversion (use paths instead of shape primitives).",
     )
     parser.add_argument(
-        "--no-title",
+        "--enable-title",
         dest="enable_title",
-        action="store_false",
-        help="Disable insertion of <title> elements with layer names.",
+        action="store_true",
+        help="Enable insertion of <title> elements with layer names.",
     )
     parser.add_argument(
         "--enable-class",
