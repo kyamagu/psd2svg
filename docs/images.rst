@@ -6,7 +6,7 @@ This guide covers image embedding, external image export, and format selection f
 Overview
 --------
 
-psd2svg rasterizes complex layers (effects, filters, etc.) that cannot be represented in SVG. These rasterized images can be:
+psd2svg extracts raster image previews from PSD layers that cannot be fully converted to SVG (layers with effects, filters, pixel data, etc.). Photoshop stores these previews within the PSD file, and psd2svg uses them for the final SVG output. These extracted images can be:
 
 * **Embedded** as base64-encoded data URIs within the SVG file
 * **Exported** as external files referenced by the SVG
@@ -356,10 +356,10 @@ For web applications:
 3. **Lazy load images** - Load images as they enter viewport
 4. **Use CDN** - Serve images from CDN for faster delivery
 
-Working with Resources
-----------------------
+Working with Images
+-------------------
 
-The ``SVGDocument`` class provides access to image resources:
+The ``SVGDocument`` class provides access to extracted images through the ``images`` field:
 
 .. code-block:: python
 
@@ -369,42 +369,43 @@ The ``SVGDocument`` class provides access to image resources:
    psdimage = PSDImage.open("input.psd")
    document = SVGDocument.from_psd(psdimage)
 
-   # Access resources dictionary
-   print(f"Number of images: {len(document.resources)}")
+   # Access images dictionary
+   print(f"Number of images: {len(document.images)}")
 
-   # Iterate through resources
-   for key, image in document.resources.items():
-       print(f"{key}: {image.size} {image.mode}")
+   # Iterate through images
+   for image_id, image in document.images.items():
+       print(f"{image_id}: {image.size} {image.mode}")
 
-**Resource Keys:**
+**Image IDs:**
 
-Resources are keyed by counter values (e.g., "001", "002", etc.) corresponding to the order they appear in the SVG.
+Images are keyed by auto-generated IDs (e.g., "image-1", "image-2", etc.) corresponding to the order they appear in the SVG.
 
-Export and Load Resources
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Export and Load Images
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Resources can be exported and loaded separately:
+Images can be exported and loaded separately:
 
 .. code-block:: python
 
    from psd2svg import SVGDocument
    from psd_tools import PSDImage
 
-   # Export document with resources
+   # Export document with images
    psdimage = PSDImage.open("input.psd")
    document = SVGDocument.from_psd(psdimage)
    data = document.export()
 
    # data = {
    #     "svg": "<svg>...</svg>",
-   #     "resources": {
-   #         "001": <PIL.Image>,
-   #         "002": <PIL.Image>,
-   #     }
+   #     "images": {
+   #         "image-1": b"...",  # Encoded image bytes
+   #         "image-2": b"...",
+   #     },
+   #     "fonts": [...]
    # }
 
    # Load from exported data
-   restored = SVGDocument.load(data["svg"], data["resources"])
+   restored = SVGDocument.load(data["svg"], data["images"], data["fonts"])
 
 This is useful for serialization or transferring documents between processes.
 
