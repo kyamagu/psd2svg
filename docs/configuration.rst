@@ -152,7 +152,7 @@ For debugging purposes, you can enable CSS class attributes on SVG elements:
 
    <g class="layer" id="layer-1">
      <title>Background</title>
-     <rect class="shape" ... />
+     <rect class="shape" x="0" y="0" width="100" height="100" />
    </g>
 
 **Purpose:**
