@@ -182,6 +182,32 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
+### Git Workflow
+
+**IMPORTANT**: This project uses a pull request workflow for all changes to the main branch.
+
+**Never commit directly to main.** All changes must:
+
+1. Be developed on a feature branch
+2. Be pushed to the remote repository
+3. Go through a pull request targeting `main`
+4. Pass CI checks before merging
+
+**Workflow example:**
+
+```bash
+# Create feature branch
+git checkout -b feature/my-change
+
+# Make changes and commit
+git add .
+git commit -m "Description of changes"
+
+# Push branch and create PR
+git push -u origin feature/my-change
+gh pr create --title "My Change" --body "Description"
+```
+
 ## Code Quality Standards
 
 - **Type hints**: Full type annotation coverage
