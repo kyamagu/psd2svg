@@ -8,15 +8,7 @@ Overview
 
 psd2svg can embed fonts directly in SVG files using ``@font-face`` CSS rules. For web delivery, font subsetting dramatically reduces file sizes by including only the glyphs actually used.
 
-**Installation:**
-
-Font subsetting requires the ``fonts`` optional dependency group:
-
-.. code-block:: bash
-
-   pip install psd2svg[fonts]
-
-This installs ``fontTools`` and other required packages for font manipulation.
+**Note:** Font subsetting is enabled by default when embedding fonts. The required ``fonttools`` package is automatically installed with psd2svg.
 
 Font Embedding Basics
 ----------------------
@@ -32,8 +24,8 @@ Embed fonts as base64-encoded data URIs in the SVG:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
-   document.save("output.svg")
+   document = SVGDocument.from_psd(psdimage)
+   document.save("output.svg", embed_fonts=True)
 
 **Result:** Fonts are embedded as base64-encoded TTF/OTF files in ``@font-face`` rules.
 
@@ -48,6 +40,244 @@ Embed fonts as base64-encoded data URIs in the SVG:
 * Much larger file sizes (100KB+ per font)
 * Base64 encoding adds ~33% overhead
 * May include glyphs not used in the document
+
+Automatic Font Fallback Chains
+-------------------------------
+
+When psd2svg embeds fonts, it automatically generates CSS font fallback chains to handle font substitutions gracefully.
+
+How It Works
+~~~~~~~~~~~~
+
+When a requested font is not available on the system, font rendering engines substitute it with another font. psd2svg detects these substitutions and generates proper CSS fallback chains:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")  # Uses "Arial"
+   document = SVGDocument.from_psd(psdimage)
+   document.save("output.svg", embed_fonts=True)
+
+If Arial is not installed and the system substitutes DejaVu Sans, the generated SVG will contain:
+
+.. code-block:: css
+
+   /* CSS fallback chain in SVG */
+   font-family: 'Arial', 'DejaVu Sans';
+
+   /* @font-face embeds DejaVu Sans (the actual font) */
+   @font-face {
+     font-family: 'DejaVu Sans';
+     src: url(data:font/ttf;base64,...);
+   }
+
+**Benefits:**
+
+* **Correct rendering**: Browser uses the embedded fallback font when primary font unavailable
+* **Transparent**: Automatic detection and handling of font substitutions
+* **No configuration**: Works out-of-the-box with fontconfig (Linux/macOS)
+
+**Logging:**
+
+Font substitutions are logged at INFO level:
+
+.. code-block:: text
+
+   INFO Font fallback: 'Arial' → 'DejaVu Sans'
+
+Platform Behavior
+~~~~~~~~~~~~~~~~~
+
+**Linux/macOS** (with fontconfig):
+
+* Automatically detects font substitutions
+* Generates fallback chains for all substituted fonts
+* Embeds actual system fonts in SVG
+
+**Windows** (without fontconfig):
+
+* Fonts with file paths embed normally
+* Fonts without file paths cannot be embedded (warning logged)
+* Custom font mappings enable text conversion but not embedding
+
+Note About Generic Families
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+psd2svg does not automatically add generic font families (``sans-serif``, ``serif``, ``monospace``) to fallback chains. Determining the appropriate generic family automatically is non-trivial and would require font classification heuristics or external databases.
+
+You can manually add generic families in post-processing if needed.
+
+Custom Font Mapping
+-------------------
+
+For fonts not in the default mapping (572 common fonts), you can provide custom font mappings to enable text conversion.
+
+Understanding Font Mapping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+psd2svg uses PostScript font names (e.g., "ArialMT", "TimesNewRomanPSMT") to resolve fonts. The mapping provides:
+
+* **Font family** name (e.g., "Arial")
+* **Font style** (e.g., "Regular", "Bold")
+* **Font weight** (numeric value, 0-250, where 80 = Regular, 200 = Bold)
+
+This information is used to generate SVG ``<text>`` elements with correct font properties.
+
+**Font Resolution Priority:**
+
+1. Custom mapping (if provided via ``font_mapping`` parameter)
+2. Default static mapping (572 common fonts)
+3. fontconfig query (Linux/macOS, for file path discovery)
+
+Custom mappings take priority, allowing you to override built-in font resolution.
+
+Generating Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the CLI tool to extract fonts from your PSD files:
+
+.. code-block:: bash
+
+   # Extract all fonts from a PSD file
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.json
+
+   # Show only fonts NOT in default mapping
+   python -m psd2svg.tools.generate_font_mapping input.psd --only-missing
+
+   # Query fontconfig to auto-fill font details (Linux/macOS)
+   python -m psd2svg.tools.generate_font_mapping input.psd --query-fontconfig -o fonts.json
+
+   # Multiple PSD files
+   python -m psd2svg.tools.generate_font_mapping *.psd -o fonts.json
+
+   # Python format output (for embedding in code)
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.py --format python
+
+   # Verbose mode shows progress and font details
+   python -m psd2svg.tools.generate_font_mapping input.psd -v
+
+**Output Formats:**
+
+* ``json`` (default): JSON file for use with Python API
+* ``python``: Python dict literal for embedding in source code
+
+**What the tool does:**
+
+1. Opens PSD file(s) and scans all visible text layers
+2. Extracts PostScript font names actually used
+3. Checks against default mapping
+4. Optionally queries fontconfig for font details
+5. Generates mapping file in requested format
+
+Using Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~
+
+Load and use custom font mappings in your conversion:
+
+.. code-block:: python
+
+   import json
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   # Load custom font mapping from JSON
+   with open("fonts.json") as f:
+       custom_fonts = json.load(f)
+
+   # Use custom mapping in conversion
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage, font_mapping=custom_fonts)
+   document.save("output.svg")
+
+**Font Mapping Structure:**
+
+.. code-block:: json
+
+   {
+       "MyCustomFont-Regular": {
+           "family": "My Custom Font",
+           "style": "Regular",
+           "weight": 80.0,
+           "_comment": "Optional comment for documentation"
+       },
+       "MyCustomFont-Bold": {
+           "family": "My Custom Font",
+           "style": "Bold",
+           "weight": 200.0
+       },
+       "AnotherFont-Italic": {
+           "family": "Another Font",
+           "style": "Italic",
+           "weight": 80.0
+       }
+   }
+
+**Required fields:**
+
+* ``family`` (string): Font family name
+* ``style`` (string): Font style (e.g., "Regular", "Bold", "Italic")
+* ``weight`` (float): Font weight (0-250, typical: 80 = Regular, 200 = Bold)
+
+**Optional fields:**
+
+* ``_comment`` (string): Human-readable comment (ignored during processing)
+
+When to Use Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Custom font mappings are useful when:
+
+* **Using custom or proprietary fonts** not in the default mapping
+* **Working with uncommon fonts** in PSD files
+* **Overriding default font resolution** for specific fonts
+* **Working on Windows** to enable text conversion for specific fonts
+* **Ensuring consistent font naming** across different systems
+
+**Example Use Cases:**
+
+1. **Corporate branding fonts**: Map proprietary brand fonts used in PSD files
+2. **Web font services**: Map PostScript names to web font equivalents
+3. **Font substitution**: Override mappings to use different fonts in output
+4. **Multi-language projects**: Add fonts for specific writing systems
+
+Font Embedding with Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Custom mappings enable text conversion but don't provide font file paths. For font embedding:
+
+**On Linux/macOS:**
+
+The ``FontInfo.resolve()`` method automatically queries fontconfig during conversion:
+
+* Resolves fonts to actual system fonts
+* Detects substitutions and generates fallback chains
+* Enables font embedding with ``embed_fonts=True``
+
+.. code-block:: python
+
+   # Font embedding works automatically on Linux/macOS
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(
+       psdimage,
+       font_mapping=custom_fonts,  # Provides font metadata
+       embed_fonts=True             # Fonts resolved and embedded automatically
+   )
+
+**On Windows:**
+
+Font embedding requires font files. Without fontconfig:
+
+* Text conversion works (generates SVG ``<text>`` elements)
+* Font embedding (``embed_fonts=True``) fails with warning
+
+**Workarounds for Windows:**
+
+1. Use WSL (Windows Subsystem for Linux) with fontconfig
+2. Run conversion in Docker container with fontconfig
+3. Convert on Linux/macOS, use resulting SVG on Windows
+4. Use system fonts or web fonts (no embedding needed)
 
 Font Subsetting (Recommended)
 ------------------------------
@@ -70,10 +300,10 @@ WOFF2 provides the best compression and automatically enables subsetting:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Save with WOFF2 subsetting
-   document.save("output.svg", font_format="woff2")
+   # Save with WOFF2 subsetting and font embedding
+   document.save("output.svg", embed_fonts=True, font_format="woff2")
 
 **Result:** Fonts are:
 
@@ -149,10 +379,10 @@ Font subsetting also works with the ``tostring()`` method:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Get SVG string with WOFF2 subsetting
-   svg_string = document.tostring(font_format="woff2")
+   # Get SVG string with WOFF2 subsetting and font embedding
+   svg_string = document.tostring(embed_fonts=True, font_format="woff2")
 
 Browser Compatibility
 ---------------------
@@ -272,11 +502,12 @@ Example: Optimized Web Delivery
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Optimize for web: WOFF2 subsetting, external images
+   # Optimize for web: WOFF2 subsetting, external images, font embedding
    document.save(
        "output.svg",
+       embed_fonts=True,
        font_format="woff2",
        image_prefix="images/img",
        image_format="webp",

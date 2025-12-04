@@ -32,15 +32,15 @@ class SVGDocument:
         document = SVGDocument.from_psd(psdimage)
 
         # Save to file or get as string.
-        document.save("output.svg", embed_images=True)
-        svg_string = document.tostring()  # Images embedded by default
+        document.save("output.svg")  # Images embedded by default
+        svg_string = document.tostring()
 
         # Rasterize to PIL Image.
         rasterized = document.rasterize()
 
         # Export and load back.
         exported = document.export()
-        document = SVGDocument.load(exported["svg"], exported["images"])
+        document = SVGDocument.load(exported["svg"], exported["images"], exported["fonts"])
     """
 
     svg: ET.Element
@@ -49,6 +49,10 @@ class SVGDocument:
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
+    _font_fallbacks: dict[str, str] = dataclasses.field(
+        default_factory=dict, init=False, repr=False
+    )
+    _fonts_resolved: bool = dataclasses.field(default=False, init=False, repr=False)
 
     @staticmethod
     def from_psd(
@@ -59,6 +63,8 @@ class SVGDocument:
         enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -88,9 +94,19 @@ class SVGDocument:
                 XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
                 enum values. Only affects bounding box text (ShapeType=1); point text
                 always uses native SVG <text> elements.
+            font_mapping: Optional custom font mapping dictionary for resolving PostScript
+                font names to font families without fontconfig. Useful on Windows or when
+                fonts are not installed. Format:
+                {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+                Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
+                When not provided, uses built-in mapping for common fonts.
+            enable_fontconfig: If True (default), fall back to fontconfig for fonts not in
+                static mapping. If False, only use static/custom mapping. Setting to False
+                can prevent unexpected font substitutions when fontconfig is available.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
+        # Build SVG tree with original font names
         converter = Converter(
             psdimage,
             enable_live_shapes=enable_live_shapes,
@@ -99,20 +115,25 @@ class SVGDocument:
             enable_class=enable_class,
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
+            font_mapping=font_mapping,
+            enable_fontconfig=enable_fontconfig,
         )
         converter.build()
-        return SVGDocument(
+
+        document = SVGDocument(
             svg=converter.svg,
             images=converter.images,
             fonts=list(converter.fonts.values()),
         )
 
+        return document
+
     def tostring(
         self,
         embed_images: bool = True,
         embed_fonts: bool = False,
-        subset_fonts: bool = False,
-        font_format: str = "ttf",
+        subset_fonts: bool = True,
+        font_format: str = "woff2",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -130,9 +151,9 @@ class SVGDocument:
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
                 Requires embed_fonts=True. Requires fonttools package (install with:
                 uv sync --group fonts). This significantly reduces file size (typically
-                90%+ reduction).
-            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
-                WOFF2 provides best compression and automatically enables subsetting.
+                90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+                WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix.
                 When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
@@ -140,14 +161,6 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Validate font subsetting parameters
-        if subset_fonts and not embed_fonts:
-            raise ValueError("subset_fonts=True requires embed_fonts=True")
-
-        # Auto-enable subsetting for WOFF2 (web-optimized format)
-        if font_format == "woff2" and embed_fonts:
-            subset_fonts = True
-
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=None
         )
@@ -163,10 +176,10 @@ class SVGDocument:
     def save(
         self,
         filepath: str,
-        embed_images: bool = False,
+        embed_images: bool = True,
         embed_fonts: bool = False,
-        subset_fonts: bool = False,
-        font_format: str = "ttf",
+        subset_fonts: bool = True,
+        font_format: str = "woff2",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -176,7 +189,8 @@ class SVGDocument:
 
         Args:
             filepath: Path to the output SVG file.
-            embed_images: If True, embed images as base64 data URIs.
+            embed_images: If True, embed images as base64 data URIs. Default is True.
+                Set to False and provide image_prefix to save images as external files.
             embed_fonts: If True, embed fonts as @font-face rules in <style> element.
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
@@ -184,9 +198,9 @@ class SVGDocument:
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
                 Requires embed_fonts=True. Requires fonttools package (install with:
                 uv sync --group fonts). This significantly reduces file size (typically
-                90%+ reduction).
-            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
-                WOFF2 provides best compression and automatically enables subsetting.
+                90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+                WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
@@ -194,14 +208,6 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Validate font subsetting parameters
-        if subset_fonts and not embed_fonts:
-            raise ValueError("subset_fonts=True requires embed_fonts=True")
-
-        # Auto-enable subsetting for WOFF2 (web-optimized format)
-        if font_format == "woff2" and embed_fonts:
-            subset_fonts = True
-
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=filepath
         )
@@ -269,7 +275,9 @@ class SVGDocument:
 
         # Font files are only supported by ResvgRasterizer
         if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
-            font_files = [info.file for info in self.fonts]
+            # Resolve fonts to get file paths (idempotent, safe to call multiple times)
+            self._resolve_fonts()
+            font_files = [info.file for info in self.fonts if info.file]
             return rasterizer.from_string(svg, font_files=font_files)
 
         return rasterizer.from_string(svg)
@@ -312,6 +320,115 @@ class SVGDocument:
             [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
         )
         return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
+
+    def _resolve_fonts(self) -> None:
+        """Resolve fonts and populate fallback mappings.
+
+        This method:
+        1. Resolves each font in self.fonts to actual system fonts
+        2. Replaces fonts in self.fonts with resolved versions (for embedding)
+        3. Populates self._font_fallbacks with substitution mappings
+
+        Note: Does NOT modify the SVG tree. Call _update_svg_font_fallbacks()
+        separately to update a specific SVG tree with fallback chains.
+
+        Called before font embedding (only when embed_fonts=True).
+        Idempotent - can be called multiple times safely.
+        """
+        # Skip if already resolved
+        if self._fonts_resolved:
+            return
+
+        # Resolve fonts and update the font list
+        resolved_fonts = []
+        for font_info in self.fonts:
+            resolved = font_info.resolve()
+            if resolved:
+                # Track substitution for fallback chain generation
+                if resolved.family != font_info.family:
+                    self._font_fallbacks[font_info.family] = resolved.family
+                    logger.info(
+                        f"Font fallback: '{font_info.family}' → '{resolved.family}'"
+                    )
+                # Use resolved font (has file path)
+                resolved_fonts.append(resolved)
+            else:
+                # Keep original if resolution fails
+                resolved_fonts.append(font_info)
+
+        # Replace font list with resolved versions
+        self.fonts = resolved_fonts
+
+        # Mark as resolved
+        self._fonts_resolved = True
+
+    def _update_svg_font_fallbacks(self, svg: ET.Element) -> None:
+        """Update SVG text elements with font fallback chains.
+
+        Traverses the SVG tree and updates font-family attributes to include
+        fallback fonts for any substituted fonts.
+
+        Args:
+            svg: SVG element tree to update (typically a copy, not the original).
+        """
+        for element in svg.iter():
+            # Check font-family attribute
+            font_family = element.get("font-family")
+            if font_family:
+                updated = self._add_fallback_to_font_family(font_family)
+                if updated != font_family:
+                    element.set("font-family", updated)
+
+            # Check style attribute for font-family
+            style = element.get("style")
+            if style and "font-family:" in style:
+                updated_style = self._add_fallback_to_style(style)
+                if updated_style != style:
+                    element.set("style", updated_style)
+
+    def _add_fallback_to_font_family(self, font_family: str) -> str:
+        """Add fallback to a font-family value.
+
+        Args:
+            font_family: Original font family (e.g., "'Arial'")
+
+        Returns:
+            Updated font family with fallback (e.g., "'Arial', 'DejaVu Sans'")
+        """
+        # Strip quotes to get clean family name
+        clean_family = font_family.strip("'\"")
+
+        # Check if substitution exists
+        if clean_family in self._font_fallbacks:
+            fallback = self._font_fallbacks[clean_family]
+            return f"'{clean_family}', '{fallback}'"
+
+        return font_family
+
+    def _add_fallback_to_style(self, style: str) -> str:
+        """Add fallback to font-family in a style attribute.
+
+        Args:
+            style: Style attribute value (e.g., "font-family: 'Arial'; color: red")
+
+        Returns:
+            Updated style with fallback in font-family
+        """
+        import re
+
+        def replace_font_family(match: re.Match[str]) -> str:
+            font_family_value = match.group(1).strip()
+            # Parse the first font (requested font)
+            # Font family values can be like: 'Arial' or Arial or "Arial"
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            if families and families[0] in self._font_fallbacks:
+                fallback = self._font_fallbacks[families[0]]
+                # Build fallback chain
+                return f"font-family: '{families[0]}', '{fallback}'"
+            return match.group(0)
+
+        # Replace font-family in style attribute
+        return re.sub(r"font-family:\s*([^;]+)", replace_font_family, style)
 
     def _handle_images(
         self,
@@ -422,7 +539,7 @@ class SVGDocument:
             filepath = os.path.join(base_dir, filename)
 
             # Save image (with JPEG conversion if needed)
-            self._save_image_file(image, filepath, image_format)
+            image_utils.save_image(image, filepath, image_format)
 
             # Set href: if svg_filepath provided, use relative path; otherwise use filename
             if svg_filepath:
@@ -467,28 +584,6 @@ class SVGDocument:
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
 
-    def _save_image_file(
-        self, image: Image.Image, filepath: str, image_format: str
-    ) -> None:
-        """Save a PIL Image to file, with JPEG conversion if needed.
-
-        Args:
-            image: PIL Image to save.
-            filepath: Output file path.
-            image_format: Image format (used for JPEG RGBA conversion).
-
-        Note:
-            JPEG doesn't support alpha channel, so RGBA images are converted
-            to RGB with a white background.
-        """
-        if image_format.lower() == "jpeg" and image.mode == "RGBA":
-            # Create white background and paste image on it
-            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
-            rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
-            rgb_image.save(filepath)
-        else:
-            image.save(filepath)
-
     def _embed_fonts(
         self, svg: ET.Element, subset_fonts: bool = False, font_format: str = "ttf"
     ) -> None:
@@ -516,10 +611,25 @@ class SVGDocument:
         if not self.fonts:
             return
 
+        # Resolve fonts before embedding (queries fontconfig if needed)
+        # This modifies self.fonts and self._font_fallbacks but NOT the SVG tree
+        self._resolve_fonts()
+
+        # Update this SVG copy with font fallback chains (if any substitutions occurred)
+        if self._font_fallbacks:
+            self._update_svg_font_fallbacks(svg)
+
         # Extract Unicode usage if subsetting is enabled
         font_usage: dict[str, set[str]] = {}
         if subset_fonts:
-            font_usage = font_subsetting.get_font_usage_from_svg(svg)
+            try:
+                font_usage = font_subsetting.get_font_usage_from_svg(svg)
+            except Exception as e:
+                logger.warning(
+                    f"Font subsetting failed: {e}. "
+                    "Fonts will be embedded without subsetting."
+                )
+                subset_fonts = False  # Disable subsetting for this call
 
         # Generate @font-face CSS rules
         font_face_rules = self._generate_font_face_rules(
@@ -562,9 +672,17 @@ class SVGDocument:
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
 
         for font_info in self.fonts:
-            font_path = font_info.file
+            # Skip fonts that haven't been resolved to system font files
+            # Note: _resolve_fonts() has already resolved fonts
+            if not font_info.is_resolved():
+                logger.info(
+                    f"Cannot embed font '{font_info.postscript_name}': "
+                    "no file path available"
+                )
+                continue
 
-            # Skip duplicates
+            # Skip duplicates (fonts with same file path)
+            font_path = font_info.file
             if font_path in seen_fonts:
                 continue
             seen_fonts.add(font_path)
@@ -597,9 +715,17 @@ class SVGDocument:
             CSS @font-face rule string, or None if font processing failed.
 
         Note:
-            - Logs warnings for non-critical errors and returns None
-            - Re-raises ImportError for missing dependencies
+            - Logs warnings for errors and returns None to skip problematic fonts
+            - FontInfo should already be resolved with file path populated
         """
+        # Check if font has been resolved to a system font file
+        # Note: _resolve_fonts() has already resolved fonts
+        if not font_info.is_resolved():
+            raise ValueError(
+                f"Cannot embed font '{font_info.postscript_name}': "
+                "no file path available"
+            )
+
         font_path = font_info.file
 
         try:
@@ -628,9 +754,6 @@ class SVGDocument:
         except (FileNotFoundError, IOError) as e:
             logger.warning(f"Failed to embed font '{font_path}': {e}")
             return None
-        except ImportError as e:
-            logger.error(f"Font subsetting failed (missing dependency): {e}")
-            raise
         except Exception as e:
             logger.warning(f"Failed to process font '{font_path}': {e}")
             return None
@@ -714,6 +837,9 @@ def convert(
     image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
     text_wrapping_mode: int = 0,
+    font_mapping: dict[str, dict[str, float | str]] | None = None,
+    embed_fonts: bool = False,
+    font_format: str = "woff2",
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
@@ -746,6 +872,17 @@ def convert(
             XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
             enum values. Only affects bounding box text (ShapeType=1); point text
             always uses native SVG <text> elements.
+        font_mapping: Optional custom font mapping dictionary for resolving PostScript
+            font names to font families without fontconfig. Useful on Windows or when
+            fonts are not installed. Format:
+            {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+            When not provided, uses built-in mapping for common fonts.
+        embed_fonts: Enable font embedding in SVG. When True, fonts used in text layers
+            are embedded as base64-encoded data URIs in @font-face rules. Default is False.
+            Requires fontconfig on Linux/macOS for font file discovery.
+        font_format: Font format for embedding. Supported formats: 'woff2' (best compression,
+            default), 'woff', 'ttf', 'otf'. Only used when embed_fonts=True. WOFF2 provides
+            90%+ size reduction through automatic font subsetting.
     """
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
@@ -756,10 +893,13 @@ def convert(
         enable_class=enable_class,
         text_letter_spacing_offset=text_letter_spacing_offset,
         text_wrapping_mode=text_wrapping_mode,
+        font_mapping=font_mapping,
     )
     document.save(
         output_path,
         embed_images=image_prefix is None,
         image_prefix=image_prefix,
         image_format=image_format,
+        embed_fonts=embed_fonts,
+        font_format=font_format,
     )

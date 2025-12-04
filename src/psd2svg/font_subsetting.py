@@ -6,16 +6,10 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 
+from fontTools import subset
+from fontTools.ttLib import TTFont
+
 logger = logging.getLogger(__name__)
-
-# Check for fonttools availability
-try:
-    from fontTools import subset
-    from fontTools.ttLib import TTFont
-
-    HAS_FONTTOOLS = True
-except ImportError:
-    HAS_FONTTOOLS = False
 
 
 def extract_used_unicode(svg_tree: ET.Element) -> dict[str, set[str]]:
@@ -101,12 +95,6 @@ def subset_font(
         >>> len(font_bytes)  # Much smaller than original
         8432
     """
-    if not HAS_FONTTOOLS:
-        raise ImportError(
-            "Font subsetting requires the fonttools package. "
-            "Install with: uv sync --group fonts"
-        )
-
     if output_format not in ("ttf", "otf", "woff2"):
         raise ValueError(
             f"Unsupported font format: {output_format}. "
@@ -197,16 +185,21 @@ def _get_local_tag_name(element: ET.Element) -> str:
 
 
 def _extract_font_family(element: ET.Element) -> str | None:
-    """Extract font-family from element's style or font-family attribute.
+    """Extract font-family from element, returning LAST font in fallback chain.
+
+    For fallback chains like "Arial", "DejaVu Sans", returns "DejaVu Sans"
+    (the actually embedded font for subsetting).
 
     Args:
         element: XML element (text or tspan).
 
     Returns:
-        Font family name, or None if not found.
+        Font family name (last in chain), or None if not found.
 
     Example:
-        >>> _extract_font_family(<text style="font-family: Arial; ...">)
+        >>> _extract_font_family(<text style="font-family: 'Arial', 'DejaVu Sans'; ...">)
+        "DejaVu Sans"
+        >>> _extract_font_family(<text font-family="'Helvetica', 'Arial'">)
         "Arial"
     """
     # Try style attribute first
@@ -214,15 +207,19 @@ def _extract_font_family(element: ET.Element) -> str | None:
     if style:
         match = re.search(r"font-family:\s*([^;]+)", style)
         if match:
-            font_family = match.group(1).strip()
-            # Remove quotes if present
-            font_family = font_family.strip("'\"")
-            return font_family
+            font_family_value = match.group(1).strip()
+            # Parse comma-separated list of fonts
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            # Return last font (the embedded one in fallback chain)
+            return families[-1] if families else None
 
     # Try direct font-family attribute
     font_family = element.get("font-family")
     if font_family:
-        return font_family.strip("'\"")
+        # Parse comma-separated list
+        families = [f.strip().strip("'\"") for f in font_family.split(",")]
+        # Return last font (the embedded one in fallback chain)
+        return families[-1] if families else None
 
     return None
 
@@ -328,23 +325,14 @@ def get_font_usage_from_svg(svg_tree: ET.Element) -> dict[str, set[str]]:
     """Get font usage information from SVG for subsetting.
 
     This is a convenience wrapper around extract_used_unicode() that
-    checks for fonttools availability and logs appropriate messages.
+    logs appropriate messages about font usage.
 
     Args:
         svg_tree: Root SVG element to analyze.
 
     Returns:
         Dictionary mapping font-family names to sets of Unicode characters.
-
-    Raises:
-        ImportError: If fonttools package is not installed.
     """
-    if not HAS_FONTTOOLS:
-        raise ImportError(
-            "Font subsetting requires fonttools package. "
-            "Install with: uv sync --group fonts"
-        )
-
     font_usage = extract_used_unicode(svg_tree)
     logger.debug(
         f"Extracted {len(font_usage)} font(s) with "

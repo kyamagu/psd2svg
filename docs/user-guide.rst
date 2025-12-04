@@ -115,9 +115,6 @@ Create an SVGDocument from a PSD file:
    # Disable title elements
    document = SVGDocument.from_psd(psdimage, enable_title=False)
 
-   # Embed fonts
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
-
 Saving SVG Documents
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -146,6 +143,21 @@ Export images to external files. The ``image_prefix`` is interpreted relative to
    # => output.svg, images/img01.webp, images/img02.webp, ...
 
 **For more details on image handling, see** :doc:`images`.
+
+With Embedded Fonts
+^^^^^^^^^^^^^^^^^^^
+
+Embed fonts directly in the SVG file for self-contained documents:
+
+.. code-block:: python
+
+   # Embed fonts as base64-encoded data URIs
+   document.save("output.svg", embed_fonts=True)
+
+   # Embed fonts with WOFF2 compression and subsetting
+   document.save("output.svg", embed_fonts=True, font_format="woff2")
+
+**For more details on font handling and subsetting, see** :doc:`fonts`.
 
 Getting SVG as String
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -246,10 +258,11 @@ Optimize for web applications:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
    document.save(
        "output.svg",
+       embed_fonts=True,           # Embed fonts
        image_prefix="images/img",  # External images
        image_format="webp",        # Best compression
        font_format="woff2",        # Font subsetting

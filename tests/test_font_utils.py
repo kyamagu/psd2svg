@@ -243,27 +243,44 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_success(self, mock_match: MagicMock) -> None:
-        """Test find method with successful font match."""
+        """Test find method with fontconfig fallback for font not in static mapping."""
         mock_match.return_value = {
-            "file": "/path/to/arial.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom.ttf",
+            "family": "CustomFont",
             "style": "Regular",
             "weight": 80.0,
         }
 
-        font = FontInfo.find("ArialMT")
+        # Use a font name that's definitely not in the static mapping
+        font = FontInfo.find("CustomFont-Regular")
 
         assert font is not None
-        assert font.postscript_name == "ArialMT"
-        assert font.file == "/path/to/arial.ttf"
-        assert font.family == "Arial"
+        assert font.postscript_name == "CustomFont-Regular"
+        assert font.file == "/path/to/custom.ttf"
+        assert font.family == "CustomFont"
         assert font.style == "Regular"
         assert font.weight == 80.0
 
         mock_match.assert_called_once_with(
-            pattern=":postscriptname=ArialMT",
+            pattern=":postscriptname=CustomFont-Regular",
             select=("file", "family", "style", "weight"),
         )
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_static_mapping_priority(self, mock_match: MagicMock) -> None:
+        """Test that static mapping is used first, fontconfig not called."""
+        # ArialMT is in the static mapping, so fontconfig should NOT be called
+        font = FontInfo.find("ArialMT")
+
+        assert font is not None
+        assert font.postscript_name == "ArialMT"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+        assert font.file == ""  # No file path from static mapping
+
+        # Fontconfig should not have been called
+        mock_match.assert_not_called()
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_not_found(
@@ -276,7 +293,7 @@ class TestFontInfoFind:
             font = FontInfo.find("NonExistentFont")
 
         assert font is None
-        assert "Font file for 'NonExistentFont' not found" in caplog.text
+        assert "Font 'NonExistentFont' not found" in caplog.text
         assert "Make sure the font is installed on your system" in caplog.text
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
@@ -290,19 +307,19 @@ class TestFontInfoFind:
             font = FontInfo.find("EmptyFont")
 
         assert font is None
-        assert "Font file for 'EmptyFont' not found" in caplog.text
+        assert "Font 'EmptyFont' not found" in caplog.text
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_font(self, mock_match: MagicMock) -> None:
-        """Test find method for bold font."""
+        """Test find method for bold font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-bold.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-bold.ttf",
+            "family": "CustomFont",
             "style": "Bold",
             "weight": 200.0,
         }
 
-        font = FontInfo.find("Arial-BoldMT")
+        font = FontInfo.find("CustomFont-Bold")
 
         assert font is not None
         assert font.bold is True
@@ -310,15 +327,15 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_italic_font(self, mock_match: MagicMock) -> None:
-        """Test find method for italic font."""
+        """Test find method for italic font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-italic.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-italic.ttf",
+            "family": "CustomFont",
             "style": "Italic",
             "weight": 80.0,
         }
 
-        font = FontInfo.find("Arial-ItalicMT")
+        font = FontInfo.find("CustomFont-Italic")
 
         assert font is not None
         assert font.bold is False
@@ -326,15 +343,15 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_italic_font(self, mock_match: MagicMock) -> None:
-        """Test find method for bold italic font."""
+        """Test find method for bold italic font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-bolditalic.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-bolditalic.ttf",
+            "family": "CustomFont",
             "style": "Bold Italic",
             "weight": 200.0,
         }
 
-        font = FontInfo.find("Arial-BoldItalicMT")
+        font = FontInfo.find("CustomFont-BoldItalic")
 
         assert font is not None
         assert font.bold is True
@@ -436,3 +453,356 @@ class TestFontInfoSerialization:
 
         assert font.weight == 80.0
         assert isinstance(font.weight, float)
+
+
+class TestFontInfoResolve:
+    """Tests for FontInfo.resolve() method."""
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_exact_match_no_substitution(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when font is found with exact match (no substitution)."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/arial.ttf",
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is not None
+        assert resolved.postscript_name == "ArialMT"
+        assert resolved.file == "/usr/share/fonts/truetype/arial.ttf"
+        assert resolved.family == "Arial"
+        assert resolved.style == "Regular"
+        assert resolved.weight == 80.0
+
+        # Original should be unchanged (immutable)
+        assert font.file == ""
+
+        # Called with correct pattern
+        mock_fc.match.assert_called_once_with(
+            pattern=":postscriptname=ArialMT",
+            select=("file", "family", "style", "weight"),
+        )
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_with_substitution(
+        self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve() when font is substituted (different family)."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "family": "DejaVu Sans",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo(
+            postscript_name="HelveticaMT",
+            file="",
+            family="Helvetica",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with caplog.at_level(logging.INFO):
+            resolved = font.resolve()
+
+        assert resolved is not None
+        assert resolved.postscript_name == "HelveticaMT"
+        assert resolved.file == "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        assert resolved.family == "DejaVu Sans"  # Different from original!
+        assert resolved.style == "Regular"
+        assert resolved.weight == 80.0
+
+        # Should log substitution
+        assert "Font substitution" in caplog.text
+        assert "Helvetica" in caplog.text
+        assert "DejaVu Sans" in caplog.text
+
+        # Original unchanged
+        assert font.family == "Helvetica"
+        assert font.file == ""
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_font_not_found(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when font is not found."""
+        mock_fc.match.return_value = None
+
+        font = FontInfo(
+            postscript_name="UnknownFont",
+            file="",
+            family="Unknown",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is None
+        # Original unchanged
+        assert font.family == "Unknown"
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_font_no_file_in_result(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when fontconfig returns result without file."""
+        mock_fc.match.return_value = {
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+            # Missing "file" key
+        }
+
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is None
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False)
+    def test_resolve_no_fontconfig_available(self) -> None:
+        """Test resolve() when fontconfig is not available."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is None
+        # Original unchanged
+        assert font.family == "Arial"
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_handles_exception(
+        self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve() handles fontconfig exceptions gracefully."""
+        mock_fc.match.side_effect = Exception("Fontconfig error")
+
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with caplog.at_level(logging.WARNING):
+            resolved = font.resolve()
+
+        assert resolved is None
+        assert "Font resolution failed" in caplog.text
+        assert "ArialMT" in caplog.text
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_immutability(self, mock_fc: MagicMock) -> None:
+        """Test that resolve() doesn't modify the original FontInfo."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+            "family": "DejaVu Sans",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        original = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Store original values
+        orig_file = original.file
+        orig_family = original.family
+
+        # Resolve
+        resolved = original.resolve()
+
+        # Original should be completely unchanged
+        assert original.file == orig_file
+        assert original.family == orig_family
+        assert resolved is not original  # Different object
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.os.path.exists")
+    def test_resolve_with_existing_file_path(self, mock_exists: MagicMock) -> None:
+        """Test that resolve() returns self when font already has valid file path."""
+        mock_exists.return_value = True
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/usr/share/fonts/truetype/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Should return self without querying fontconfig
+        resolved = font_info.resolve()
+
+        # Should return the same instance (self)
+        assert resolved is font_info
+        assert resolved.file == "/usr/share/fonts/truetype/arial.ttf"
+
+        # Verify os.path.exists was called
+        mock_exists.assert_called_once_with("/usr/share/fonts/truetype/arial.ttf")
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.os.path.exists")
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_with_invalid_file_path(
+        self, mock_fc: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that resolve() queries fontconfig when file path is invalid."""
+        mock_exists.return_value = False  # File doesn't exist
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu.ttf",
+            "family": "DejaVu Sans",
+            "style": "Book",
+            "weight": 80.0,
+        }
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/invalid/path/arial.ttf",  # Invalid path
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Should query fontconfig because file path is invalid
+        resolved = font_info.resolve()
+
+        # Should get resolved font from fontconfig
+        assert resolved is not None
+        assert resolved.file == "/usr/share/fonts/truetype/dejavu.ttf"
+        assert resolved.family == "DejaVu Sans"
+
+        # Verify both checks were made
+        mock_exists.assert_called_once_with("/invalid/path/arial.ttf")
+        mock_fc.match.assert_called_once()
+
+
+class TestFontInfoIsResolved:
+    """Test FontInfo.is_resolved() method."""
+
+    @patch("os.path.exists")
+    def test_is_resolved_with_valid_file(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns True when font has valid file path."""
+        mock_exists.return_value = True
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/usr/share/fonts/truetype/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is True
+        mock_exists.assert_called_once_with("/usr/share/fonts/truetype/arial.ttf")
+
+    def test_is_resolved_with_no_file(self) -> None:
+        """Test is_resolved() returns False when font has no file path."""
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+
+    def test_is_resolved_with_empty_string_file(self) -> None:
+        """Test is_resolved() returns False when font file is empty string."""
+        # Note: FontInfo.file is typed as str, not str | None, so we test empty string
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+
+    @patch("os.path.exists")
+    def test_is_resolved_with_nonexistent_file(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns False when file path doesn't exist."""
+        mock_exists.return_value = False
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/nonexistent/path/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+        mock_exists.assert_called_once_with("/nonexistent/path/arial.ttf")
+
+    @patch("os.path.exists")
+    def test_is_resolved_from_static_mapping(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns False for font from static mapping (no file)."""
+        # Static mapping doesn't provide file paths
+        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+
+        assert font_info is not None
+        assert font_info.file == ""
+        assert font_info.is_resolved() is False
+
+        # Should not call os.path.exists for empty string
+        mock_exists.assert_not_called()
+
+    @patch("os.path.exists")
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_is_resolved_after_resolve(
+        self, mock_fc: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test is_resolved() returns True after successful resolve()."""
+        mock_exists.return_value = True
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu.ttf",
+            "family": "DejaVu Sans",
+            "style": "Book",
+            "weight": 80.0,
+        }
+
+        # Start with unresolved font
+        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+        assert font_info is not None
+        assert font_info.is_resolved() is False
+
+        # Resolve to system font
+        resolved = font_info.resolve()
+        assert resolved is not None
+        assert resolved.is_resolved() is True

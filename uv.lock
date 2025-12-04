@@ -1325,10 +1325,11 @@ wheels = [
 
 [[package]]
 name = "psd2svg"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "fontconfig-py", marker = "sys_platform != 'win32'" },
+    { name = "fonttools", extra = ["woff"] },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pillow" },
@@ -1353,14 +1354,13 @@ docs = [
     { name = "sphinx-autodoc-typehints", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx-autodoc-typehints", version = "3.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sphinx-rtd-theme" },
-]
-fonts = [
-    { name = "fonttools", extra = ["woff"] },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fontconfig-py", marker = "sys_platform != 'win32'", specifier = ">=0.3.0" },
+    { name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "psd-tools", specifier = ">=1.12.0" },
@@ -1380,8 +1380,8 @@ docs = [
     { name = "sphinx", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints", specifier = ">=1.25" },
     { name = "sphinx-rtd-theme", specifier = ">=2.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
 ]
-fonts = [{ name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" }]
 
 [[package]]
 name = "psutil"

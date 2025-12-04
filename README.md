@@ -78,11 +78,15 @@ image.save('output.png')
 
 ## Platform Support
 
-- **Linux**: Full support including text layer conversion
-- **macOS**: Full support including text layer conversion
-- **Windows**: Supported (text layers rasterized as images)
+- **Linux/macOS**: Full support including text layer conversion and font embedding
+- **Windows**: Text layer conversion supported via static font mapping
 
-Text layer conversion requires `fontconfig` (available on Linux/macOS).
+Text layer conversion uses a hybrid approach:
+
+1. **Static font mapping** (572 common fonts) - works on all platforms
+2. **fontconfig** (Linux/macOS) - used for font file discovery when embedding fonts
+
+For fonts not in the default mapping, you can provide custom font mappings. See the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html#custom-font-mapping) for details.
 
 ## Documentation
 

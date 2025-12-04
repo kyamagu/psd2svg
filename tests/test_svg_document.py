@@ -295,7 +295,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        result = document.tostring(embed_images=True, embed_fonts=True)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         assert "<style>" in result
         assert "@font-face" in result
@@ -324,7 +326,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        document.save(str(output_file), embed_images=True, embed_fonts=True)
+        document.save(
+            str(output_file), embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         content = output_file.read_text()
         assert "<style>" in content
@@ -359,7 +363,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
-        result = document.tostring(embed_images=True, embed_fonts=True)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         # Should only encode once
         mock_encode.assert_called_once()
@@ -389,8 +395,8 @@ class TestSVGDocumentEmbedFonts:
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
 
         # Call tostring twice
-        document.tostring(embed_images=True, embed_fonts=True)
-        document.tostring(embed_images=True, embed_fonts=True)
+        document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
+        document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
 
         # Should only encode once due to caching
         mock_encode.assert_called_once()
@@ -412,14 +418,15 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        result = document.tostring(embed_images=True, embed_fonts=True)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         # Should not raise exception
         assert "<style>" not in result
 
-        # Should log warning
-        assert "Failed to embed font" in caplog.text
-        assert "/nonexistent/font.ttf" in caplog.text
+        # Should log warning about no fonts embedded (font is skipped early because file doesn't exist)
+        assert "No fonts were successfully embedded" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
     def test_embed_fonts_with_multiple_fonts(
@@ -454,7 +461,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
-        result = document.tostring(embed_images=True, embed_fonts=True)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         assert result.count("@font-face") == 2
         assert "font-family: 'Arial'" in result

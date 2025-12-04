@@ -61,6 +61,28 @@ class FontInfo:
         """Whether the font is italic."""
         return "italic" in self.style.lower()
 
+    def is_resolved(self) -> bool:
+        """Check if font has been resolved to an actual system font file.
+
+        A font is considered resolved if it has a valid file path pointing
+        to an existing font file on the system.
+
+        Returns:
+            True if font has a valid file path, False otherwise.
+
+        Example:
+            >>> # Font from static mapping (not resolved)
+            >>> font_info = FontInfo.find('ArialMT')
+            >>> font_info.is_resolved()
+            False
+            >>> # After resolution
+            >>> resolved = font_info.resolve()
+            >>> if resolved:
+            ...     resolved.is_resolved()
+            True
+        """
+        return bool(self.file and os.path.exists(self.file))
+
     def get_css_weight(self, semantic: bool = False) -> int | str:
         """Get CSS font-weight value from fontconfig weight.
 
@@ -188,34 +210,186 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
-    @staticmethod
-    def find(postscriptname: str) -> Self | None:
-        """Find the font family name for the given span index."""
+    def resolve(self) -> Self | None:
+        """Resolve font to actual available system font via fontconfig.
+
+        This method queries fontconfig to find the actual font file and complete
+        metadata for the font. If the resolved font differs from the requested font,
+        this enables generating proper CSS fallback chains.
+
+        Returns:
+            New FontInfo instance with resolved metadata, or None if font not found.
+            The original FontInfo instance is not modified (immutable pattern).
+
+        Note:
+            Generic family (sans-serif, serif, monospace) is not included in the
+            returned FontInfo. Determining the generic family automatically is
+            non-trivial and would require font classification heuristics or
+            external databases.
+
+        TODO:
+            Consider unicode-range detection for optimal font subsetting when
+            multiple fonts are used to cover different character ranges.
+
+        Example:
+            >>> # Font from static mapping (no file path)
+            >>> font_info = FontInfo.find('ArialMT')
+            >>> font_info.file
+            ''
+            >>> # Resolve to actual system font
+            >>> resolved = font_info.resolve()
+            >>> if resolved:
+            ...     print(f"Resolved: {resolved.family} at {resolved.file}")
+            ...     if resolved.family != font_info.family:
+            ...         print(f"Substitution: {font_info.family} → {resolved.family}")
+        """
+        # If font already has a valid file path, no need to resolve
+        if self.file and os.path.exists(self.file):
+            logger.debug(
+                f"Font '{self.postscript_name}' already has valid file path: {self.file}"
+            )
+            return self
+
+        # Check if fontconfig is available
         if not HAS_FONTCONFIG:
-            logger.warning(
-                "fontconfig-py is not available. Text layer conversion is disabled. "
-                "On Windows, fontconfig is not available - text layers will be rasterized. "
-                "On Linux/macOS, ensure fontconfig-py is installed."
+            logger.debug(
+                f"Cannot resolve font '{self.postscript_name}': "
+                "fontconfig not available"
             )
             return None
 
-        match = fontconfig.match(
-            pattern=f":postscriptname={postscriptname}",
-            select=("file", "family", "style", "weight"),
-        )
-        if not match:
-            logger.warning(
-                f"Font file for '{postscriptname}' not found. "
-                "Make sure the font is installed on your system."
+        # Query fontconfig for full font metadata
+        logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
+
+        try:
+            match = fontconfig.match(
+                pattern=f":postscriptname={self.postscript_name}",
+                select=("file", "family", "style", "weight"),
             )
+
+            if not match or not match.get("file"):
+                logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
+                return None
+
+            # Create new FontInfo with resolved metadata
+            resolved = FontInfo(
+                postscript_name=self.postscript_name,
+                file=str(match["file"]),  # type: ignore
+                family=str(match["family"]),  # type: ignore
+                style=str(match["style"]),  # type: ignore
+                weight=float(match["weight"]),  # type: ignore
+            )
+
+            # Log if font substitution occurred
+            if resolved.family != self.family:
+                logger.info(
+                    f"Font substitution: '{self.family}' → '{resolved.family}' "
+                    f"(file: {resolved.file})"
+                )
+            else:
+                logger.debug(
+                    f"Font '{self.postscript_name}' resolved to same family "
+                    f"'{resolved.family}' (file: {resolved.file})"
+                )
+
+            return resolved
+
+        except Exception as e:
+            logger.warning(f"Font resolution failed for '{self.postscript_name}': {e}")
             return None
-        return FontInfo(
-            postscript_name=postscriptname,
-            file=match["file"],  # type: ignore
-            family=match["family"],  # type: ignore
-            style=match["style"],  # type: ignore
-            weight=match["weight"],  # type: ignore
-        )
+
+    @staticmethod
+    def find(
+        postscriptname: str,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
+    ) -> Self | None:
+        """Find font information by PostScript name.
+
+        This method tries multiple strategies to resolve the font:
+        1. Try custom font mapping if provided (takes priority)
+        2. Try static font mapping (fast, deterministic, cross-platform)
+        3. Fall back to fontconfig if enabled (provides file path for embedding)
+
+        Args:
+            postscriptname: PostScript name of the font (e.g., "ArialMT").
+            font_mapping: Optional custom font mapping dictionary. Takes priority
+                         over default mapping. Format:
+                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+            enable_fontconfig: If True, fall back to fontconfig for fonts not in
+                              static mapping. If False, only use static/custom mapping.
+                              Default: True.
+
+        Returns:
+            FontInfo object with font metadata, or None if font not found.
+
+        Note:
+            Static mapping provides family/style/weight but no file path. This is
+            sufficient for SVG text rendering. Font embedding requires fontconfig
+            to locate the actual font files on the system.
+        """
+        # Try static font mapping first - fast, deterministic, cross-platform
+        from psd2svg.core import font_mapping as fm
+
+        mapping_data = fm.find_in_mapping(postscriptname, font_mapping)
+        if mapping_data:
+            logger.debug(
+                f"Resolved '{postscriptname}' via static font mapping: "
+                f"{mapping_data['family']}"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file="",  # No file path available from static mapping
+                family=str(mapping_data["family"]),
+                style=str(mapping_data["style"]),
+                weight=float(mapping_data["weight"]),
+            )
+
+        # Fall back to fontconfig (if available and enabled) for fonts not in static mapping
+        if enable_fontconfig and HAS_FONTCONFIG:
+            logger.debug(
+                f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
+            )
+            match = fontconfig.match(
+                pattern=f":postscriptname={postscriptname}",
+                select=("file", "family", "style", "weight"),
+            )
+            if match:
+                logger.info(
+                    f"Resolved '{postscriptname}' via fontconfig fallback: "
+                    f"{match['family']}"
+                )
+                return FontInfo(
+                    postscript_name=postscriptname,
+                    file=match["file"],  # type: ignore
+                    family=match["family"],  # type: ignore
+                    style=match["style"],  # type: ignore
+                    weight=match["weight"],  # type: ignore
+                )
+
+        # Font not found in any mapping
+        if not enable_fontconfig:
+            logger.warning(
+                f"Font '{postscriptname}' not found in static font mapping "
+                "(fontconfig lookup disabled). "
+                "Text will be converted without font-family attribute. "
+                "Consider providing a custom font mapping via the font_mapping parameter."
+            )
+        elif not HAS_FONTCONFIG:
+            logger.warning(
+                f"Font '{postscriptname}' not found in static font mapping "
+                "(fontconfig not available). "
+                "Text will be converted without font-family attribute. "
+                "Consider providing a custom font mapping via the font_mapping parameter."
+            )
+        else:
+            logger.warning(
+                f"Font '{postscriptname}' not found via static mapping or fontconfig. "
+                "Text will be converted without font-family attribute. "
+                "Make sure the font is installed on your system, or provide a custom "
+                "font mapping via the font_mapping parameter."
+            )
+        return None
 
 
 def encode_font_data_uri(font_path: str) -> str:
