@@ -4,8 +4,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+from psd_tools import PSDImage
 
-from psd2svg.core.font_utils import FontInfo
+from psd2svg import SVGDocument
+from psd2svg.core.font_utils import FontInfo, encode_font_bytes_to_data_uri
 from psd2svg.font_subsetting import (
     _chars_to_unicode_list,
     _extract_font_family,
@@ -14,6 +16,7 @@ from psd2svg.font_subsetting import (
     extract_used_unicode,
     subset_font,
 )
+from tests.conftest import get_fixture
 
 
 class TestUnicodeExtraction:
@@ -226,10 +229,6 @@ class TestSVGDocumentIntegration:
 
     def test_tostring_subset_ignored_without_embed(self) -> None:
         """Test that subset_fonts is silently ignored when embed_fonts=False."""
-        from psd_tools import PSDImage
-
-        from psd2svg import SVGDocument
-        from tests.conftest import get_fixture
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
@@ -241,10 +240,6 @@ class TestSVGDocumentIntegration:
 
     def test_save_subset_ignored_without_embed(self, tmp_path: Path) -> None:
         """Test that subset_fonts is silently ignored when embed_fonts=False in save()."""
-        from psd_tools import PSDImage
-
-        from psd2svg import SVGDocument
-        from tests.conftest import get_fixture
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
@@ -264,10 +259,6 @@ class TestSVGDocumentIntegration:
 
     def test_woff2_auto_enables_subsetting(self, tmp_path: Path) -> None:
         """Test that font_format='woff2' automatically enables subsetting."""
-        from psd_tools import PSDImage
-
-        from psd2svg import SVGDocument
-        from tests.conftest import get_fixture
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
@@ -297,10 +288,6 @@ class TestSVGDocumentIntegration:
             pytest.skip("Required font not available")
     def test_subset_fonts_reduces_output_size(self, tmp_path: Path) -> None:
         """Test that subsetting significantly reduces output file size."""
-        from psd_tools import PSDImage
-
-        from psd2svg import SVGDocument
-        from tests.conftest import get_fixture
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
@@ -332,10 +319,6 @@ class TestSVGDocumentIntegration:
         assert subset_size < full_size * 0.5
     def test_subset_fonts_with_woff2(self, tmp_path: Path) -> None:
         """Test subsetting with WOFF2 format provides maximum compression."""
-        from psd_tools import PSDImage
-
-        from psd2svg import SVGDocument
-        from tests.conftest import get_fixture
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
@@ -424,7 +407,6 @@ class TestFontUtilsExtensions:
 
     def test_encode_font_bytes_to_data_uri_ttf(self) -> None:
         """Test encoding font bytes to TTF data URI."""
-        from psd2svg.core.font_utils import encode_font_bytes_to_data_uri
 
         font_bytes = b"\x00\x01\x00\x00"  # Minimal TTF signature
         data_uri = encode_font_bytes_to_data_uri(font_bytes, "ttf")
@@ -434,7 +416,6 @@ class TestFontUtilsExtensions:
 
     def test_encode_font_bytes_to_data_uri_woff2(self) -> None:
         """Test encoding font bytes to WOFF2 data URI."""
-        from psd2svg.core.font_utils import encode_font_bytes_to_data_uri
 
         font_bytes = b"wOF2test"
         data_uri = encode_font_bytes_to_data_uri(font_bytes, "woff2")
@@ -443,7 +424,6 @@ class TestFontUtilsExtensions:
 
     def test_encode_font_bytes_invalid_format(self) -> None:
         """Test error with invalid font format."""
-        from psd2svg.core.font_utils import encode_font_bytes_to_data_uri
 
         with pytest.raises(ValueError, match="Unsupported font format"):
             encode_font_bytes_to_data_uri(b"test", "invalid")
