@@ -10,6 +10,11 @@ psd2svg can embed fonts directly in SVG files using ``@font-face`` CSS rules. Fo
 
 **Note:** Font subsetting is enabled by default when embedding fonts. The required ``fonttools`` package is automatically installed with psd2svg.
 
+**Platform Support:**
+
+* **Linux/macOS**: Full font resolution and embedding via fontconfig
+* **Windows**: Full font resolution and embedding via Windows registry + fontTools parsing
+
 Font Embedding Basics
 ----------------------
 
@@ -95,12 +100,15 @@ Platform Behavior
 * Automatically detects font substitutions
 * Generates fallback chains for all substituted fonts
 * Embeds actual system fonts in SVG
+* Uses fontconfig for font file discovery
 
-**Windows** (without fontconfig):
+**Windows** (with Windows registry):
 
-* Fonts with file paths embed normally
-* Fonts without file paths cannot be embedded (warning logged)
-* Custom font mappings enable text conversion but not embedding
+* Automatically detects font substitutions
+* Generates fallback chains for all substituted fonts
+* Embeds actual system fonts in SVG
+* Uses Windows registry + fontTools parsing for font file discovery
+* Supports both TrueType and OpenType fonts
 
 Note About Generic Families
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,7 +137,10 @@ This information is used to generate SVG ``<text>`` elements with correct font p
 
 1. Custom mapping (if provided via ``font_mapping`` parameter)
 2. Default static mapping (572 common fonts)
-3. fontconfig query (Linux/macOS, for file path discovery)
+3. Platform-specific font resolution for file path discovery:
+
+   * **Linux/macOS**: fontconfig query
+   * **Windows**: Windows registry + fontTools parsing
 
 Custom mappings take priority, allowing you to override built-in font resolution.
 
@@ -245,11 +256,19 @@ Custom font mappings are useful when:
 Font Embedding with Custom Mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Custom mappings enable text conversion but don't provide font file paths. For font embedding:
+Custom mappings enable text conversion but don't provide font file paths. For font embedding, the ``FontInfo.resolve()`` method automatically queries platform-specific font resolution:
 
 **On Linux/macOS:**
 
-The ``FontInfo.resolve()`` method automatically queries fontconfig during conversion:
+Automatically queries fontconfig during conversion:
+
+* Resolves fonts to actual system fonts
+* Detects substitutions and generates fallback chains
+* Enables font embedding with ``embed_fonts=True``
+
+**On Windows:**
+
+Automatically queries Windows registry + fontTools parsing during conversion:
 
 * Resolves fonts to actual system fonts
 * Detects substitutions and generates fallback chains
@@ -257,27 +276,13 @@ The ``FontInfo.resolve()`` method automatically queries fontconfig during conver
 
 .. code-block:: python
 
-   # Font embedding works automatically on Linux/macOS
+   # Font embedding works automatically on all platforms
    psdimage = PSDImage.open("input.psd")
    document = SVGDocument.from_psd(
        psdimage,
        font_mapping=custom_fonts,  # Provides font metadata
        embed_fonts=True             # Fonts resolved and embedded automatically
    )
-
-**On Windows:**
-
-Font embedding requires font files. Without fontconfig:
-
-* Text conversion works (generates SVG ``<text>`` elements)
-* Font embedding (``embed_fonts=True``) fails with warning
-
-**Workarounds for Windows:**
-
-1. Use WSL (Windows Subsystem for Linux) with fontconfig
-2. Run conversion in Docker container with fontconfig
-3. Convert on Linux/macOS, use resulting SVG on Windows
-4. Use system fonts or web fonts (no embedding needed)
 
 Font Subsetting (Recommended)
 ------------------------------
@@ -432,20 +437,20 @@ Subsetting Not Working
 
 If font subsetting isn't working:
 
-1. **Check installation:**
-
-   .. code-block:: bash
-
-      pip install psd2svg[fonts]
-
-2. **Verify fontTools is installed:**
+1. **Verify fontTools is installed:**
 
    .. code-block:: python
 
       import fontTools
       print(fontTools.__version__)
 
-3. **Check for errors** in the console output
+   If not installed, reinstall psd2svg:
+
+   .. code-block:: bash
+
+      pip install --force-reinstall psd2svg
+
+2. **Check for errors** in the console output
 
 Missing Glyphs
 ~~~~~~~~~~~~~~
