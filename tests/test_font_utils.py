@@ -1,13 +1,12 @@
 """Tests for psd2svg.core.font_utils module."""
 
 import logging
-import sys
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG, HAS_WINDOWS_FONTS
+from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG
 
 
 class TestFontInfo:
