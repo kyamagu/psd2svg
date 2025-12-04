@@ -797,33 +797,6 @@ class SVGDocument:
             style_element.text = css_content
             svg.insert(0, style_element)
 
-    def optimize(self, consolidate_defs: bool = True) -> None:
-        """Optimize SVG structure in-place.
-
-        This method applies optimizations to improve SVG structure,
-        file size, and rendering performance. All optimizations modify the
-        SVG element tree directly.
-
-        Args:
-            consolidate_defs: Merge all <defs> elements and move definition
-                elements (filters, gradients, patterns, etc.) into a global
-                <defs> at the beginning of the SVG document. This improves
-                document structure and follows SVG best practices. Default: True.
-
-        Example:
-            >>> document = SVGDocument.from_psd(psdimage)
-            >>> document.optimize()  # Apply default optimizations
-            >>> document.save('output.svg')
-
-            >>> # Disable optimization
-            >>> document.optimize(consolidate_defs=False)
-
-        Note:
-            Additional optimizations (deduplication, ID minification, unused
-            removal) may be added in future versions.
-        """
-        if consolidate_defs:
-            svg_utils.consolidate_defs(self.svg)
 
 
 def convert(
