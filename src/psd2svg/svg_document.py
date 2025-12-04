@@ -341,7 +341,9 @@ class SVGDocument:
         1. Resolves each font in self.fonts to actual system fonts
         2. Replaces fonts in self.fonts with resolved versions (for embedding)
         3. Populates self._font_fallbacks with substitution mappings
-        4. Updates SVG tree to add fallback chains to font-family attributes
+
+        Note: Does NOT modify the SVG tree. Call _update_svg_font_fallbacks()
+        separately to update a specific SVG tree with fallback chains.
 
         Called before font embedding (only when embed_fonts=True).
         Idempotent - can be called multiple times safely.
@@ -370,20 +372,19 @@ class SVGDocument:
         # Replace font list with resolved versions
         self.fonts = resolved_fonts
 
-        # Update SVG tree with fallback chains
-        if self._font_fallbacks:
-            self._update_svg_font_fallbacks()
-
         # Mark as resolved
         self._fonts_resolved = True
 
-    def _update_svg_font_fallbacks(self) -> None:
-        """Update existing SVG text elements with font fallback chains.
+    def _update_svg_font_fallbacks(self, svg: ET.Element) -> None:
+        """Update SVG text elements with font fallback chains.
 
         Traverses the SVG tree and updates font-family attributes to include
         fallback fonts for any substituted fonts.
+
+        Args:
+            svg: SVG element tree to update (typically a copy, not the original).
         """
-        for element in self.svg.iter():
+        for element in svg.iter():
             # Check font-family attribute
             font_family = element.get("font-family")
             if font_family:
@@ -646,7 +647,12 @@ class SVGDocument:
             return
 
         # Resolve fonts before embedding (queries fontconfig if needed)
+        # This modifies self.fonts and self._font_fallbacks but NOT the SVG tree
         self._resolve_fonts()
+
+        # Update this SVG copy with font fallback chains (if any substitutions occurred)
+        if self._font_fallbacks:
+            self._update_svg_font_fallbacks(svg)
 
         # Extract Unicode usage if subsetting is enabled
         font_usage: dict[str, set[str]] = {}
