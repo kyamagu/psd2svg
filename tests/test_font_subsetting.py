@@ -6,17 +6,13 @@ from pathlib import Path
 import pytest
 
 from psd2svg.core.font_utils import FontInfo
-
-# Check if fonttools is available
-try:
-    import fontTools  # noqa: F401
-
-    HAS_FONTTOOLS = True
-except ImportError:
-    HAS_FONTTOOLS = False
-
-requires_fonttools = pytest.mark.skipif(
-    not HAS_FONTTOOLS, reason="fonttools package not installed"
+from psd2svg.font_subsetting import (
+    _chars_to_unicode_list,
+    _extract_font_family,
+    _extract_text_content,
+    _get_local_tag_name,
+    extract_used_unicode,
+    subset_font,
 )
 
 
@@ -25,7 +21,6 @@ class TestUnicodeExtraction:
 
     def test_extract_simple_text(self) -> None:
         """Test extraction of simple ASCII text."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -40,7 +35,6 @@ class TestUnicodeExtraction:
 
     def test_extract_nested_tspans(self) -> None:
         """Test extraction from nested tspan elements."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -57,7 +51,6 @@ class TestUnicodeExtraction:
 
     def test_extract_unicode_characters(self) -> None:
         """Test extraction of non-ASCII Unicode characters."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -75,7 +68,6 @@ class TestUnicodeExtraction:
 
     def test_extract_with_entities(self) -> None:
         """Test extraction with XML entities."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -91,7 +83,6 @@ class TestUnicodeExtraction:
 
     def test_extract_with_font_family_attribute(self) -> None:
         """Test extraction using font-family attribute instead of style."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -106,7 +97,6 @@ class TestUnicodeExtraction:
 
     def test_extract_empty_text(self) -> None:
         """Test extraction with empty text elements."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -121,7 +111,6 @@ class TestUnicodeExtraction:
 
     def test_extract_no_text_elements(self) -> None:
         """Test extraction with SVG containing no text elements."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -135,7 +124,6 @@ class TestUnicodeExtraction:
 
     def test_extract_with_quotes_in_font_family(self) -> None:
         """Test extraction with quoted font-family names."""
-        from psd2svg.font_subsetting import extract_used_unicode
 
         svg = ET.fromstring(
             """<svg xmlns="http://www.w3.org/2000/svg">
@@ -154,12 +142,9 @@ class TestUnicodeExtraction:
 
 class TestFontSubsetting:
     """Tests for subset_font function."""
-
-    @requires_fonttools
     @pytest.mark.requires_arial
     def test_subset_font_basic(self) -> None:
         """Test basic font subsetting with ASCII characters."""
-        from psd2svg.font_subsetting import subset_font
 
         # Find Arial font
         font_info = FontInfo.find("ArialMT")
@@ -175,12 +160,9 @@ class TestFontSubsetting:
         assert len(font_bytes) > 0
         # TTF files should start with specific magic bytes
         assert font_bytes[:4] in (b"\x00\x01\x00\x00", b"OTTO", b"true")
-
-    @requires_fonttools
     @pytest.mark.requires_arial
     def test_subset_font_woff2_conversion(self) -> None:
         """Test font subsetting with WOFF2 format conversion."""
-        from psd2svg.font_subsetting import subset_font
 
         font_info = FontInfo.find("ArialMT")
         if not font_info:
@@ -193,12 +175,9 @@ class TestFontSubsetting:
         assert len(font_bytes) > 0
         # WOFF2 files start with 'wOF2' signature
         assert font_bytes[:4] == b"wOF2"
-
-    @requires_fonttools
     @pytest.mark.requires_arial
     def test_subset_font_reduces_size(self) -> None:
         """Test that subsetting significantly reduces font file size."""
-        from psd2svg.font_subsetting import subset_font
 
         font_info = FontInfo.find("ArialMT")
         if not font_info:
@@ -220,38 +199,14 @@ class TestFontSubsetting:
         # Both should be much smaller than typical full font (>100KB)
         assert len(small_subset) < 50000  # < 50KB
         assert len(large_subset) < 100000  # < 100KB
-
-    @requires_fonttools
-    def test_subset_font_missing_fonttools_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Test error when fonttools is not installed."""
-        # Temporarily hide fonttools
-        import sys
-
-        monkeypatch.setitem(sys.modules, "fontTools", None)
-
-        from psd2svg import font_subsetting
-
-        # Force reimport to trigger ImportError path
-        monkeypatch.setattr(font_subsetting, "HAS_FONTTOOLS", False)
-
-        with pytest.raises(ImportError, match="fonttools package"):
-            font_subsetting.subset_font("/fake/path.ttf", "ttf", {"A"})
-
-    @requires_fonttools
     def test_subset_font_invalid_format(self) -> None:
         """Test error with unsupported font format."""
-        from psd2svg.font_subsetting import subset_font
 
         with pytest.raises(ValueError, match="Unsupported font format"):
             subset_font("/fake/path.ttf", "invalid", {"A"})
-
-    @requires_fonttools
     @pytest.mark.requires_noto_sans_jp
     def test_subset_font_unicode_chars(self) -> None:
         """Test subsetting with non-ASCII Unicode characters."""
-        from psd2svg.font_subsetting import subset_font
 
         font_info = FontInfo.find("NotoSansJP-Regular")
         if not font_info:
@@ -319,9 +274,6 @@ class TestSVGDocumentIntegration:
 
         output_path = tmp_path / "output.svg"
 
-        if not HAS_FONTTOOLS:
-            pytest.skip("fonttools not installed")
-
         # This should work even without explicit subset_fonts=True
         # (woff2 auto-enables it internally)
         try:
@@ -343,8 +295,6 @@ class TestSVGDocumentIntegration:
             assert "@font-face" in content
         except FileNotFoundError:
             pytest.skip("Required font not available")
-
-    @requires_fonttools
     def test_subset_fonts_reduces_output_size(self, tmp_path: Path) -> None:
         """Test that subsetting significantly reduces output file size."""
         from psd_tools import PSDImage
@@ -380,8 +330,6 @@ class TestSVGDocumentIntegration:
 
         # Expect at least 50% reduction (typically 90%+)
         assert subset_size < full_size * 0.5
-
-    @requires_fonttools
     def test_subset_fonts_with_woff2(self, tmp_path: Path) -> None:
         """Test subsetting with WOFF2 format provides maximum compression."""
         from psd_tools import PSDImage
@@ -418,7 +366,6 @@ class TestHelperFunctions:
 
     def test_chars_to_unicode_list(self) -> None:
         """Test conversion of characters to Unicode code points."""
-        from psd2svg.font_subsetting import _chars_to_unicode_list
 
         chars = {"A", "B", "あ"}
         result = _chars_to_unicode_list(chars)
@@ -428,7 +375,6 @@ class TestHelperFunctions:
 
     def test_get_local_tag_name(self) -> None:
         """Test extraction of local tag name from namespaced element."""
-        from psd2svg.font_subsetting import _get_local_tag_name
 
         # Namespaced tag
         elem = ET.Element("{http://www.w3.org/2000/svg}text")
@@ -440,7 +386,6 @@ class TestHelperFunctions:
 
     def test_extract_font_family(self) -> None:
         """Test font-family extraction from style attribute."""
-        from psd2svg.font_subsetting import _extract_font_family
 
         # Style attribute
         elem = ET.fromstring('<text style="font-family: Arial; font-size: 12px"/>')
@@ -460,7 +405,6 @@ class TestHelperFunctions:
 
     def test_extract_text_content(self) -> None:
         """Test text content extraction with entity decoding."""
-        from psd2svg.font_subsetting import _extract_text_content
 
         # Simple text
         elem = ET.fromstring("<text>Hello</text>")
