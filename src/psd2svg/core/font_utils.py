@@ -2,6 +2,7 @@ import base64
 import dataclasses
 import logging
 import os
+import sys
 
 try:
     from typing import Self  # type: ignore
@@ -17,6 +18,15 @@ except ImportError:
 
 from psd2svg import font_subsetting
 from psd2svg.core import font_mapping as _font_mapping
+
+# Windows font resolution
+if sys.platform == "win32":
+    from psd2svg.core import windows_fonts as _windows_fonts  # type: ignore[import]
+
+    HAS_WINDOWS_FONTS = True
+else:
+    _windows_fonts = None  # type: ignore[assignment]
+    HAS_WINDOWS_FONTS = False
 
 logger = logging.getLogger(__name__)
 
@@ -303,24 +313,27 @@ class FontInfo:
         This method tries multiple strategies to resolve the font:
         1. Try custom font mapping if provided (takes priority)
         2. Try static font mapping (fast, deterministic, cross-platform)
-        3. Fall back to fontconfig if enabled (provides file path for embedding)
+        3. Fall back to platform-specific resolution:
+           - Linux/macOS: fontconfig (if enabled)
+           - Windows: Registry + fontTools parsing
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
             font_mapping: Optional custom font mapping dictionary. Takes priority
                          over default mapping. Format:
                          {"PostScriptName": {"family": str, "style": str, "weight": float}}
-            enable_fontconfig: If True, fall back to fontconfig for fonts not in
-                              static mapping. If False, only use static/custom mapping.
-                              Default: True.
+            enable_fontconfig: If True, fall back to platform-specific resolution
+                              for fonts not in static mapping. If False, only use
+                              static/custom mapping. Default: True.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
 
         Note:
             Static mapping provides family/style/weight but no file path. This is
-            sufficient for SVG text rendering. Font embedding requires fontconfig
-            to locate the actual font files on the system.
+            sufficient for SVG text rendering. Font embedding requires platform-
+            specific resolution (fontconfig or Windows registry) to locate the
+            actual font files on the system.
         """
         mapping_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
         if mapping_data:
@@ -336,46 +349,70 @@ class FontInfo:
                 weight=float(mapping_data["weight"]),
             )
 
-        # Fall back to fontconfig (if available and enabled) for fonts not in static mapping
-        if enable_fontconfig and HAS_FONTCONFIG:
-            logger.debug(
-                f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
-            )
-            match = fontconfig.match(
-                pattern=f":postscriptname={postscriptname}",
-                select=("file", "family", "style", "weight"),
-            )
-            if match:
-                logger.info(
-                    f"Resolved '{postscriptname}' via fontconfig fallback: "
-                    f"{match['family']}"
+        # Fall back to platform-specific resolution for fonts not in static mapping
+        if enable_fontconfig:
+            # Try fontconfig (Linux/macOS)
+            if HAS_FONTCONFIG:
+                logger.debug(
+                    f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
                 )
-                return FontInfo(
-                    postscript_name=postscriptname,
-                    file=match["file"],  # type: ignore
-                    family=match["family"],  # type: ignore
-                    style=match["style"],  # type: ignore
-                    weight=match["weight"],  # type: ignore
+                match = fontconfig.match(
+                    pattern=f":postscriptname={postscriptname}",
+                    select=("file", "family", "style", "weight"),
                 )
+                if match:
+                    logger.info(
+                        f"Resolved '{postscriptname}' via fontconfig fallback: "
+                        f"{match['family']}"
+                    )
+                    return FontInfo(
+                        postscript_name=postscriptname,
+                        file=match["file"],  # type: ignore
+                        family=match["family"],  # type: ignore
+                        style=match["style"],  # type: ignore
+                        weight=match["weight"],  # type: ignore
+                    )
+
+            # Try Windows registry (Windows)
+            elif HAS_WINDOWS_FONTS:
+                logger.debug(
+                    f"Font '{postscriptname}' not in static mapping, "
+                    "trying Windows registry..."
+                )
+                resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
+                match = resolver.find(postscriptname)
+                if match:
+                    logger.info(
+                        f"Resolved '{postscriptname}' via Windows registry fallback: "
+                        f"{match['family']}"
+                    )
+                    return FontInfo(
+                        postscript_name=postscriptname,
+                        file=str(match["file"]),
+                        family=str(match["family"]),
+                        style=str(match["style"]),
+                        weight=float(match["weight"]),
+                    )
 
         # Font not found in any mapping
         if not enable_fontconfig:
             logger.warning(
                 f"Font '{postscriptname}' not found in static font mapping "
-                "(fontconfig lookup disabled). "
+                "(platform-specific lookup disabled). "
                 "Text will be converted without font-family attribute. "
                 "Consider providing a custom font mapping via the font_mapping parameter."
             )
-        elif not HAS_FONTCONFIG:
+        elif not HAS_FONTCONFIG and not HAS_WINDOWS_FONTS:
             logger.warning(
                 f"Font '{postscriptname}' not found in static font mapping "
-                "(fontconfig not available). "
+                "(platform-specific resolution not available). "
                 "Text will be converted without font-family attribute. "
                 "Consider providing a custom font mapping via the font_mapping parameter."
             )
         else:
+            platform_name = "fontconfig" if HAS_FONTCONFIG else "Windows registry"
             logger.warning(
-                f"Font '{postscriptname}' not found via static mapping or fontconfig. "
+                f"Font '{postscriptname}' not found via static mapping or {platform_name}. "
                 "Text will be converted without font-family attribute. "
                 "Make sure the font is installed on your system, or provide a custom "
                 "font mapping via the font_mapping parameter."
