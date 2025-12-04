@@ -48,3 +48,24 @@ def decode_data_uri(data_uri: str, mode: str | None = None) -> Image.Image:
     _, base64_data = data_uri.split(",", 1)
     data = base64.b64decode(base64_data)
     return decode_image(data, mode)
+
+
+def save_image(image: Image.Image, filepath: str, image_format: str) -> None:
+    """Save a PIL Image to file, with JPEG conversion if needed.
+
+    Args:
+        image: PIL Image to save.
+        filepath: Output file path.
+        image_format: Image format (e.g., 'JPEG', 'PNG', 'WEBP').
+
+    Note:
+        JPEG doesn't support alpha channel, so RGBA images are converted
+        to RGB with a white background.
+    """
+    if image_format.upper() == "JPEG" and image.mode == "RGBA":
+        # Create white background and paste image on it
+        rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+        rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
+        rgb_image.save(filepath, format=image_format.upper())
+    else:
+        image.save(filepath, format=image_format.upper())

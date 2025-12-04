@@ -554,7 +554,7 @@ class SVGDocument:
             filepath = os.path.join(base_dir, filename)
 
             # Save image (with JPEG conversion if needed)
-            self._save_image_file(image, filepath, image_format)
+            image_utils.save_image(image, filepath, image_format)
 
             # Set href: if svg_filepath provided, use relative path; otherwise use filename
             if svg_filepath:
@@ -598,28 +598,6 @@ class SVGDocument:
                 base_dir = os.path.dirname(image_prefix) or os.getcwd()
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
-
-    def _save_image_file(
-        self, image: Image.Image, filepath: str, image_format: str
-    ) -> None:
-        """Save a PIL Image to file, with JPEG conversion if needed.
-
-        Args:
-            image: PIL Image to save.
-            filepath: Output file path.
-            image_format: Image format (used for JPEG RGBA conversion).
-
-        Note:
-            JPEG doesn't support alpha channel, so RGBA images are converted
-            to RGB with a white background.
-        """
-        if image_format.lower() == "jpeg" and image.mode == "RGBA":
-            # Create white background and paste image on it
-            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
-            rgb_image.paste(image, mask=image.split()[3])  # Use alpha as mask
-            rgb_image.save(filepath)
-        else:
-            image.save(filepath)
 
     def _embed_fonts(
         self, svg: ET.Element, subset_fonts: bool = False, font_format: str = "ttf"
