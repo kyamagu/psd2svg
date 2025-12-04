@@ -1325,7 +1325,7 @@ wheels = [
 
 [[package]]
 name = "psd2svg"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "fontconfig-py", marker = "sys_platform != 'win32'" },
@@ -1353,6 +1353,7 @@ docs = [
     { name = "sphinx-autodoc-typehints", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx-autodoc-typehints", version = "3.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sphinx-rtd-theme" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 fonts = [
     { name = "fonttools", extra = ["woff"] },
@@ -1380,6 +1381,7 @@ docs = [
     { name = "sphinx", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints", specifier = ">=1.25" },
     { name = "sphinx-rtd-theme", specifier = ">=2.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
 ]
 fonts = [{ name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" }]
 
