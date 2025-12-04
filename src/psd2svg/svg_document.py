@@ -290,7 +290,9 @@ class SVGDocument:
 
         # Font files are only supported by ResvgRasterizer
         if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
-            font_files = [info.file for info in self.fonts]
+            # Resolve fonts to get file paths (idempotent, safe to call multiple times)
+            self._resolve_fonts()
+            font_files = [info.file for info in self.fonts if info.file]
             return rasterizer.from_string(svg, font_files=font_files)
 
         return rasterizer.from_string(svg)
