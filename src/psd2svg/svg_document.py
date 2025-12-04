@@ -49,6 +49,9 @@ class SVGDocument:
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
+    _font_fallbacks: dict[str, str] = dataclasses.field(
+        default_factory=dict, init=False, repr=False
+    )
 
     @staticmethod
     def from_psd(
@@ -98,6 +101,7 @@ class SVGDocument:
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
+        # Build SVG tree with original font names
         converter = Converter(
             psdimage,
             enable_live_shapes=enable_live_shapes,
@@ -109,11 +113,17 @@ class SVGDocument:
             font_mapping=font_mapping,
         )
         converter.build()
-        return SVGDocument(
+
+        document = SVGDocument(
             svg=converter.svg,
             images=converter.images,
             fonts=list(converter.fonts.values()),
         )
+
+        # Resolve fonts and update SVG tree with fallback chains
+        document._resolve_fonts()
+
+        return document
 
     def tostring(
         self,
@@ -320,6 +330,106 @@ class SVGDocument:
             [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
         )
         return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
+
+    def _resolve_fonts(self) -> None:
+        """Resolve fonts and populate fallback mappings.
+
+        This method:
+        1. Resolves each font in self.fonts to actual system fonts
+        2. Replaces fonts in self.fonts with resolved versions (for embedding)
+        3. Populates self._font_fallbacks with substitution mappings
+        4. Updates SVG tree to add fallback chains to font-family attributes
+
+        Called after SVG tree is built but before embedding.
+        """
+        # Resolve fonts and update the font list
+        resolved_fonts = []
+        for font_info in self.fonts:
+            resolved = font_info.resolve()
+            if resolved:
+                # Track substitution for fallback chain generation
+                if resolved.family != font_info.family:
+                    self._font_fallbacks[font_info.family] = resolved.family
+                    logger.info(
+                        f"Font fallback: '{font_info.family}' → '{resolved.family}'"
+                    )
+                # Use resolved font (has file path)
+                resolved_fonts.append(resolved)
+            else:
+                # Keep original if resolution fails
+                resolved_fonts.append(font_info)
+
+        # Replace font list with resolved versions
+        self.fonts = resolved_fonts
+
+        # Update SVG tree with fallback chains
+        if self._font_fallbacks:
+            self._update_svg_font_fallbacks()
+
+    def _update_svg_font_fallbacks(self) -> None:
+        """Update existing SVG text elements with font fallback chains.
+
+        Traverses the SVG tree and updates font-family attributes to include
+        fallback fonts for any substituted fonts.
+        """
+        for element in self.svg.iter():
+            # Check font-family attribute
+            font_family = element.get("font-family")
+            if font_family:
+                updated = self._add_fallback_to_font_family(font_family)
+                if updated != font_family:
+                    element.set("font-family", updated)
+
+            # Check style attribute for font-family
+            style = element.get("style")
+            if style and "font-family:" in style:
+                updated_style = self._add_fallback_to_style(style)
+                if updated_style != style:
+                    element.set("style", updated_style)
+
+    def _add_fallback_to_font_family(self, font_family: str) -> str:
+        """Add fallback to a font-family value.
+
+        Args:
+            font_family: Original font family (e.g., "'Arial'")
+
+        Returns:
+            Updated font family with fallback (e.g., "'Arial', 'DejaVu Sans'")
+        """
+        # Strip quotes to get clean family name
+        clean_family = font_family.strip("'\"")
+
+        # Check if substitution exists
+        if clean_family in self._font_fallbacks:
+            fallback = self._font_fallbacks[clean_family]
+            return f"'{clean_family}', '{fallback}'"
+
+        return font_family
+
+    def _add_fallback_to_style(self, style: str) -> str:
+        """Add fallback to font-family in a style attribute.
+
+        Args:
+            style: Style attribute value (e.g., "font-family: 'Arial'; color: red")
+
+        Returns:
+            Updated style with fallback in font-family
+        """
+        import re
+
+        def replace_font_family(match: re.Match[str]) -> str:
+            font_family_value = match.group(1).strip()
+            # Parse the first font (requested font)
+            # Font family values can be like: 'Arial' or Arial or "Arial"
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            if families and families[0] in self._font_fallbacks:
+                fallback = self._font_fallbacks[families[0]]
+                # Build fallback chain
+                return f"font-family: '{families[0]}', '{fallback}'"
+            return match.group(0)
+
+        # Replace font-family in style attribute
+        return re.sub(r"font-family:\s*([^;]+)", replace_font_family, style)
 
     def _handle_images(
         self,
@@ -570,24 +680,22 @@ class SVGDocument:
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
 
         for font_info in self.fonts:
-            # Get font file path (with fontconfig fallback if needed)
-            font_path = font_info.get_font_file()
+            # Use font file path from resolved FontInfo
+            # Note: _resolve_fonts() has already resolved fonts and populated file paths
+            font_path = font_info.file
 
-            # Skip fonts without file paths
-            if not font_path:
-                continue
+            if font_path:
+                # Skip duplicates
+                if font_path in seen_fonts:
+                    continue
+                seen_fonts.add(font_path)
 
-            # Skip duplicates
-            if font_path in seen_fonts:
-                continue
-            seen_fonts.add(font_path)
-
-            # Generate CSS rule for this font
-            css_rule = self._generate_single_font_face_rule(
-                font_info, font_usage, subset_fonts, font_format
-            )
-            if css_rule:
-                font_face_rules.append(css_rule)
+                # Generate CSS rule for this font
+                css_rule = self._generate_single_font_face_rule(
+                    font_info, font_usage, subset_fonts, font_format
+                )
+                if css_rule:
+                    font_face_rules.append(css_rule)
 
         return font_face_rules
 
@@ -612,10 +720,11 @@ class SVGDocument:
         Note:
             - Logs warnings for non-critical errors and returns None
             - Re-raises ImportError for missing dependencies
-            - Queries fontconfig for file path if not available
+            - FontInfo should already be resolved with file path populated
         """
-        # Get font file path (with fontconfig fallback if needed)
-        font_path = font_info.get_font_file()
+        # Use font file path from resolved FontInfo
+        # Note: _resolve_fonts() has already resolved fonts and populated file paths
+        font_path = font_info.file
         if not font_path:
             logger.warning(
                 f"Cannot embed font '{font_info.postscript_name}': "

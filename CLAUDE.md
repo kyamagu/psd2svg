@@ -55,13 +55,25 @@ psd2svg uses a multi-tiered approach to resolve fonts:
 2. **fontconfig (fallback)**: Query system fonts when needed
    - Font file path discovery for embedding
    - Available on Linux/macOS only
-   - Automatically invoked by `FontInfo.get_font_file()` when file path needed
+   - Automatically invoked by `FontInfo.resolve()` when resolving fonts
 
 **Font resolution priority**:
 
 - Custom mapping (via `font_mapping` parameter) → Static mapping → fontconfig
 
 **Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter for fonts not in default mapping. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
+
+**Automatic Font Fallback Chains**:
+
+When fonts are embedded, psd2svg automatically:
+
+1. Resolves requested fonts to actual system fonts via `FontInfo.resolve()`
+2. Detects font substitutions (e.g., Arial → DejaVu Sans)
+3. Generates CSS fallback chains: `font-family: 'Arial', 'DejaVu Sans'`
+4. Embeds the actual substitute font in @font-face rules
+5. Updates SVG text elements with fallback chains
+
+This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level.
 
 ## Architecture Overview
 

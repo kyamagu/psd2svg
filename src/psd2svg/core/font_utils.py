@@ -188,59 +188,85 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
-    def get_font_file(self) -> str | None:
-        """Get the font file path, querying fontconfig if necessary.
+    def resolve(self) -> Self | None:
+        """Resolve font to actual available system font via fontconfig.
 
-        If the font file path is empty (e.g., from static mapping), this method
-        attempts to query fontconfig to find the font file on the system.
+        This method queries fontconfig to find the actual font file and complete
+        metadata for the font. If the resolved font differs from the requested font,
+        this enables generating proper CSS fallback chains.
 
         Returns:
-            Font file path, or None if font file cannot be located.
+            New FontInfo instance with resolved metadata, or None if font not found.
+            The original FontInfo instance is not modified (immutable pattern).
+
+        Note:
+            Generic family (sans-serif, serif, monospace) is not included in the
+            returned FontInfo. Determining the generic family automatically is
+            non-trivial and would require font classification heuristics or
+            external databases.
+
+        TODO:
+            Consider unicode-range detection for optimal font subsetting when
+            multiple fonts are used to cover different character ranges.
 
         Example:
-            >>> font_info = FontInfo.find('ArialMT')  # May have empty file path
-            >>> font_path = font_info.get_font_file()  # Queries fontconfig if needed
-            >>> if font_path:
-            ...     data_uri = encode_font_data_uri(font_path)
+            >>> # Font from static mapping (no file path)
+            >>> font_info = FontInfo.find('ArialMT')
+            >>> font_info.file
+            ''
+            >>> # Resolve to actual system font
+            >>> resolved = font_info.resolve()
+            >>> if resolved:
+            ...     print(f"Resolved: {resolved.family} at {resolved.file}")
+            ...     if resolved.family != font_info.family:
+            ...         print(f"Substitution: {font_info.family} → {resolved.family}")
         """
-        # Return existing file path if available
-        if self.file:
-            return self.file
-
-        # Try fontconfig fallback if available
+        # Check if fontconfig is available
         if not HAS_FONTCONFIG:
             logger.debug(
-                f"Font '{self.postscript_name}' has no file path and "
-                "fontconfig is not available"
+                f"Cannot resolve font '{self.postscript_name}': "
+                "fontconfig not available"
             )
             return None
 
-        logger.debug(
-            f"Font '{self.postscript_name}' has no file path, "
-            "querying fontconfig for fallback"
-        )
+        # Query fontconfig for full font metadata
+        logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
 
         try:
             match = fontconfig.match(
                 pattern=f":postscriptname={self.postscript_name}",
-                select=("file",),
+                select=("file", "family", "style", "weight"),
             )
-            if match and match.get("file"):
-                font_path: str = match["file"]  # type: ignore
+
+            if not match or not match.get("file"):
+                logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
+                return None
+
+            # Create new FontInfo with resolved metadata
+            resolved = FontInfo(
+                postscript_name=self.postscript_name,
+                file=str(match["file"]),  # type: ignore
+                family=str(match["family"]),  # type: ignore
+                style=str(match["style"]),  # type: ignore
+                weight=float(match["weight"]),  # type: ignore
+            )
+
+            # Log if font substitution occurred
+            if resolved.family != self.family:
                 logger.info(
-                    f"Found font file via fontconfig fallback: {font_path}"
+                    f"Font substitution: '{self.family}' → '{resolved.family}' "
+                    f"(file: {resolved.file})"
                 )
-                return font_path
             else:
                 logger.debug(
-                    f"Font '{self.postscript_name}' not found via "
-                    "fontconfig fallback"
+                    f"Font '{self.postscript_name}' resolved to same family "
+                    f"'{resolved.family}' (file: {resolved.file})"
                 )
-                return None
+
+            return resolved
+
         except Exception as e:
-            logger.warning(
-                f"Fontconfig fallback failed for '{self.postscript_name}': {e}"
-            )
+            logger.warning(f"Font resolution failed for '{self.postscript_name}': {e}")
             return None
 
     @staticmethod

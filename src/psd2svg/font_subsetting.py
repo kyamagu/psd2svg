@@ -197,16 +197,21 @@ def _get_local_tag_name(element: ET.Element) -> str:
 
 
 def _extract_font_family(element: ET.Element) -> str | None:
-    """Extract font-family from element's style or font-family attribute.
+    """Extract font-family from element, returning LAST font in fallback chain.
+
+    For fallback chains like "Arial", "DejaVu Sans", returns "DejaVu Sans"
+    (the actually embedded font for subsetting).
 
     Args:
         element: XML element (text or tspan).
 
     Returns:
-        Font family name, or None if not found.
+        Font family name (last in chain), or None if not found.
 
     Example:
-        >>> _extract_font_family(<text style="font-family: Arial; ...">)
+        >>> _extract_font_family(<text style="font-family: 'Arial', 'DejaVu Sans'; ...">)
+        "DejaVu Sans"
+        >>> _extract_font_family(<text font-family="'Helvetica', 'Arial'">)
         "Arial"
     """
     # Try style attribute first
@@ -214,15 +219,19 @@ def _extract_font_family(element: ET.Element) -> str | None:
     if style:
         match = re.search(r"font-family:\s*([^;]+)", style)
         if match:
-            font_family = match.group(1).strip()
-            # Remove quotes if present
-            font_family = font_family.strip("'\"")
-            return font_family
+            font_family_value = match.group(1).strip()
+            # Parse comma-separated list of fonts
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            # Return last font (the embedded one in fallback chain)
+            return families[-1] if families else None
 
     # Try direct font-family attribute
     font_family = element.get("font-family")
     if font_family:
-        return font_family.strip("'\"")
+        # Parse comma-separated list
+        families = [f.strip().strip("'\"") for f in font_family.split(",")]
+        # Return last font (the embedded one in fallback chain)
+        return families[-1] if families else None
 
     return None
 

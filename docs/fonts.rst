@@ -49,6 +49,74 @@ Embed fonts as base64-encoded data URIs in the SVG:
 * Base64 encoding adds ~33% overhead
 * May include glyphs not used in the document
 
+Automatic Font Fallback Chains
+-------------------------------
+
+When psd2svg embeds fonts, it automatically generates CSS font fallback chains to handle font substitutions gracefully.
+
+How It Works
+~~~~~~~~~~~~
+
+When a requested font is not available on the system, font rendering engines substitute it with another font. psd2svg detects these substitutions and generates proper CSS fallback chains:
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   psdimage = PSDImage.open("input.psd")  # Uses "Arial"
+   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document.save("output.svg")
+
+If Arial is not installed and the system substitutes DejaVu Sans, the generated SVG will contain:
+
+.. code-block:: css
+
+   /* CSS fallback chain in SVG */
+   font-family: 'Arial', 'DejaVu Sans';
+
+   /* @font-face embeds DejaVu Sans (the actual font) */
+   @font-face {
+     font-family: 'DejaVu Sans';
+     src: url(data:font/ttf;base64,...);
+   }
+
+**Benefits:**
+
+* **Correct rendering**: Browser uses the embedded fallback font when primary font unavailable
+* **Transparent**: Automatic detection and handling of font substitutions
+* **No configuration**: Works out-of-the-box with fontconfig (Linux/macOS)
+
+**Logging:**
+
+Font substitutions are logged at INFO level:
+
+.. code-block:: text
+
+   INFO Font fallback: 'Arial' → 'DejaVu Sans'
+
+Platform Behavior
+~~~~~~~~~~~~~~~~~
+
+**Linux/macOS** (with fontconfig):
+
+* Automatically detects font substitutions
+* Generates fallback chains for all substituted fonts
+* Embeds actual system fonts in SVG
+
+**Windows** (without fontconfig):
+
+* Fonts with file paths embed normally
+* Fonts without file paths cannot be embedded (warning logged)
+* Custom font mappings enable text conversion but not embedding
+
+Note About Generic Families
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+psd2svg does not automatically add generic font families (``sans-serif``, ``serif``, ``monospace``) to fallback chains. Determining the appropriate generic family automatically is non-trivial and would require font classification heuristics or external databases.
+
+You can manually add generic families in post-processing if needed.
+
 Custom Font Mapping
 -------------------
 
@@ -189,10 +257,11 @@ Custom mappings enable text conversion but don't provide font file paths. For fo
 
 **On Linux/macOS:**
 
-The ``FontInfo.get_font_file()`` method automatically queries fontconfig as a fallback when:
+The ``FontInfo.resolve()`` method automatically queries fontconfig during conversion:
 
-* Font is resolved via custom or static mapping
-* Font file path is needed for embedding (``embed_fonts=True``)
+* Resolves fonts to actual system fonts
+* Detects substitutions and generates fallback chains
+* Enables font embedding with ``embed_fonts=True``
 
 .. code-block:: python
 
@@ -201,7 +270,7 @@ The ``FontInfo.get_font_file()`` method automatically queries fontconfig as a fa
    document = SVGDocument.from_psd(
        psdimage,
        font_mapping=custom_fonts,  # Provides font metadata
-       embed_fonts=True             # fontconfig finds font files
+       embed_fonts=True             # Fonts resolved and embedded automatically
    )
 
 **On Windows:**

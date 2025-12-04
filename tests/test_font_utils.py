@@ -455,23 +455,20 @@ class TestFontInfoSerialization:
         assert isinstance(font.weight, float)
 
 
-class TestFontInfoGetFontFile:
-    """Tests for FontInfo.get_font_file() method."""
+class TestFontInfoResolve:
+    """Tests for FontInfo.resolve() method."""
 
-    def test_get_font_file_with_existing_path(self) -> None:
-        """Test get_font_file returns existing file path."""
-        font = FontInfo(
-            postscript_name="ArialMT",
-            file="/path/to/arial.ttf",
-            family="Arial",
-            style="Regular",
-            weight=80.0,
-        )
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_exact_match_no_substitution(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when font is found with exact match (no substitution)."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/arial.ttf",
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+        }
 
-        assert font.get_font_file() == "/path/to/arial.ttf"
-
-    def test_get_font_file_with_empty_path_no_fontconfig(self) -> None:
-        """Test get_font_file with empty path when fontconfig unavailable."""
         font = FontInfo(
             postscript_name="ArialMT",
             file="",
@@ -480,51 +477,95 @@ class TestFontInfoGetFontFile:
             weight=80.0,
         )
 
-        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False):
-            result = font.get_font_file()
+        resolved = font.resolve()
 
-        assert result is None
+        assert resolved is not None
+        assert resolved.postscript_name == "ArialMT"
+        assert resolved.file == "/usr/share/fonts/truetype/arial.ttf"
+        assert resolved.family == "Arial"
+        assert resolved.style == "Regular"
+        assert resolved.weight == 80.0
 
-    def test_get_font_file_with_empty_path_fontconfig_success(self) -> None:
-        """Test get_font_file queries fontconfig successfully."""
-        font = FontInfo(
-            postscript_name="ArialMT",
-            file="",
-            family="Arial",
-            style="Regular",
-            weight=80.0,
-        )
+        # Original should be unchanged (immutable)
+        assert font.file == ""
 
-        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
-            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
-                mock_fc.match.return_value = {"file": "/usr/share/fonts/arial.ttf"}
-                result = font.get_font_file()
-
-        assert result == "/usr/share/fonts/arial.ttf"
+        # Called with correct pattern
         mock_fc.match.assert_called_once_with(
             pattern=":postscriptname=ArialMT",
-            select=("file",),
+            select=("file", "family", "style", "weight"),
         )
 
-    def test_get_font_file_with_empty_path_fontconfig_not_found(self) -> None:
-        """Test get_font_file when fontconfig doesn't find font."""
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_with_substitution(
+        self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve() when font is substituted (different family)."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "family": "DejaVu Sans",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
         font = FontInfo(
-            postscript_name="NonExistentFont",
+            postscript_name="HelveticaMT",
             file="",
-            family="Non Existent",
+            family="Helvetica",
             style="Regular",
             weight=80.0,
         )
 
-        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
-            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
-                mock_fc.match.return_value = None
-                result = font.get_font_file()
+        with caplog.at_level(logging.INFO):
+            resolved = font.resolve()
 
-        assert result is None
+        assert resolved is not None
+        assert resolved.postscript_name == "HelveticaMT"
+        assert resolved.file == "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        assert resolved.family == "DejaVu Sans"  # Different from original!
+        assert resolved.style == "Regular"
+        assert resolved.weight == 80.0
 
-    def test_get_font_file_with_empty_path_fontconfig_error(self) -> None:
-        """Test get_font_file when fontconfig raises exception."""
+        # Should log substitution
+        assert "Font substitution" in caplog.text
+        assert "Helvetica" in caplog.text
+        assert "DejaVu Sans" in caplog.text
+
+        # Original unchanged
+        assert font.family == "Helvetica"
+        assert font.file == ""
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_font_not_found(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when font is not found."""
+        mock_fc.match.return_value = None
+
+        font = FontInfo(
+            postscript_name="UnknownFont",
+            file="",
+            family="Unknown",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is None
+        # Original unchanged
+        assert font.family == "Unknown"
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_font_no_file_in_result(self, mock_fc: MagicMock) -> None:
+        """Test resolve() when fontconfig returns result without file."""
+        mock_fc.match.return_value = {
+            "family": "Arial",
+            "style": "Regular",
+            "weight": 80.0,
+            # Missing "file" key
+        }
+
         font = FontInfo(
             postscript_name="ArialMT",
             file="",
@@ -533,9 +574,77 @@ class TestFontInfoGetFontFile:
             weight=80.0,
         )
 
-        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
-            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
-                mock_fc.match.side_effect = Exception("Fontconfig error")
-                result = font.get_font_file()
+        resolved = font.resolve()
 
-        assert result is None
+        assert resolved is None
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False)
+    def test_resolve_no_fontconfig_available(self) -> None:
+        """Test resolve() when fontconfig is not available."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        resolved = font.resolve()
+
+        assert resolved is None
+        # Original unchanged
+        assert font.family == "Arial"
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_handles_exception(
+        self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve() handles fontconfig exceptions gracefully."""
+        mock_fc.match.side_effect = Exception("Fontconfig error")
+
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with caplog.at_level(logging.WARNING):
+            resolved = font.resolve()
+
+        assert resolved is None
+        assert "Font resolution failed" in caplog.text
+        assert "ArialMT" in caplog.text
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_immutability(self, mock_fc: MagicMock) -> None:
+        """Test that resolve() doesn't modify the original FontInfo."""
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+            "family": "DejaVu Sans",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        original = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Store original values
+        orig_file = original.file
+        orig_family = original.family
+
+        # Resolve
+        resolved = original.resolve()
+
+        # Original should be completely unchanged
+        assert original.file == orig_file
+        assert original.family == orig_family
+        assert resolved is not original  # Different object

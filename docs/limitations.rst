@@ -29,7 +29,7 @@ psd2svg uses a hybrid font resolution approach:
 2. **fontconfig fallback** (Linux/macOS):
 
    * Queries system fonts when file paths needed
-   * Used automatically by ``FontInfo.get_font_file()`` method
+   * Used automatically by ``FontInfo.resolve()`` method during conversion
    * Enables font embedding with ``embed_fonts=True``
 
 **Font Embedding on Windows:**
