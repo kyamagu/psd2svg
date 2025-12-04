@@ -52,6 +52,7 @@ class SVGDocument:
     _font_fallbacks: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
+    _fonts_resolved: bool = dataclasses.field(default=False, init=False, repr=False)
 
     @staticmethod
     def from_psd(
@@ -124,9 +125,6 @@ class SVGDocument:
             images=converter.images,
             fonts=list(converter.fonts.values()),
         )
-
-        # Resolve fonts and update SVG tree with fallback chains
-        document._resolve_fonts()
 
         return document
 
@@ -345,8 +343,13 @@ class SVGDocument:
         3. Populates self._font_fallbacks with substitution mappings
         4. Updates SVG tree to add fallback chains to font-family attributes
 
-        Called after SVG tree is built but before embedding.
+        Called before font embedding (only when embed_fonts=True).
+        Idempotent - can be called multiple times safely.
         """
+        # Skip if already resolved
+        if self._fonts_resolved:
+            return
+
         # Resolve fonts and update the font list
         resolved_fonts = []
         for font_info in self.fonts:
@@ -370,6 +373,9 @@ class SVGDocument:
         # Update SVG tree with fallback chains
         if self._font_fallbacks:
             self._update_svg_font_fallbacks()
+
+        # Mark as resolved
+        self._fonts_resolved = True
 
     def _update_svg_font_fallbacks(self) -> None:
         """Update existing SVG text elements with font fallback chains.
@@ -638,6 +644,9 @@ class SVGDocument:
         """
         if not self.fonts:
             return
+
+        # Resolve fonts before embedding (queries fontconfig if needed)
+        self._resolve_fonts()
 
         # Extract Unicode usage if subsetting is enabled
         font_usage: dict[str, set[str]] = {}
