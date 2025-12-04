@@ -624,9 +624,9 @@ class SVGDocument:
         if subset_fonts:
             try:
                 font_usage = font_subsetting.get_font_usage_from_svg(svg)
-            except ImportError as e:
+            except Exception as e:
                 logger.warning(
-                    f"Font subsetting disabled: {e}. "
+                    f"Font subsetting failed: {e}. "
                     "Fonts will be embedded without subsetting."
                 )
                 subset_fonts = False  # Disable subsetting for this call
