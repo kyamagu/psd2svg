@@ -65,6 +65,20 @@ def parse_args() -> argparse.Namespace:
         help="Global offset (in pixels) to add to letter-spacing values. Default: 0.0",
     )
     parser.add_argument(
+        "--embed-fonts",
+        dest="embed_fonts",
+        action="store_true",
+        help="Embed fonts in SVG using @font-face rules. Requires fontconfig on Linux/macOS.",
+    )
+    parser.add_argument(
+        "--font-format",
+        metavar="FORMAT",
+        type=str,
+        choices=["woff2", "woff", "ttf", "otf"],
+        default="woff2",
+        help="Font format for embedding (woff2, woff, ttf, otf). Default: woff2",
+    )
+    parser.add_argument(
         "--loglevel",
         metavar="LEVEL",
         default="WARNING",
@@ -87,6 +101,8 @@ def main() -> None:
         enable_class=args.enable_class,
         image_format=args.image_format,
         text_letter_spacing_offset=args.text_letter_spacing_offset,
+        embed_fonts=args.embed_fonts,
+        font_format=args.font_format,
     )
 
 

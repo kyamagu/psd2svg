@@ -850,6 +850,8 @@ def convert(
     text_letter_spacing_offset: float = 0.0,
     text_wrapping_mode: int = 0,
     font_mapping: dict[str, dict[str, float | str]] | None = None,
+    embed_fonts: bool = False,
+    font_format: str = "woff2",
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
@@ -887,6 +889,12 @@ def convert(
             fonts are not installed. Format:
             {"PostScriptName": {"family": str, "style": str, "weight": float}}.
             When not provided, uses built-in mapping for common fonts.
+        embed_fonts: Enable font embedding in SVG. When True, fonts used in text layers
+            are embedded as base64-encoded data URIs in @font-face rules. Default is False.
+            Requires fontconfig on Linux/macOS for font file discovery.
+        font_format: Font format for embedding. Supported formats: 'woff2' (best compression,
+            default), 'woff', 'ttf', 'otf'. Only used when embed_fonts=True. WOFF2 provides
+            90%+ size reduction through automatic font subsetting.
     """
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
@@ -904,4 +912,6 @@ def convert(
         embed_images=image_prefix is None,
         image_prefix=image_prefix,
         image_format=image_format,
+        embed_fonts=embed_fonts,
+        font_format=font_format,
     )
