@@ -221,6 +221,13 @@ class FontInfo:
             ...     if resolved.family != font_info.family:
             ...         print(f"Substitution: {font_info.family} → {resolved.family}")
         """
+        # If font already has a valid file path, no need to resolve
+        if self.file and os.path.exists(self.file):
+            logger.debug(
+                f"Font '{self.postscript_name}' already has valid file path: {self.file}"
+            )
+            return self
+
         # Check if fontconfig is available
         if not HAS_FONTCONFIG:
             logger.debug(

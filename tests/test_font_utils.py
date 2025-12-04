@@ -648,3 +648,62 @@ class TestFontInfoResolve:
         assert original.file == orig_file
         assert original.family == orig_family
         assert resolved is not original  # Different object
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.os.path.exists")
+    def test_resolve_with_existing_file_path(self, mock_exists: MagicMock) -> None:
+        """Test that resolve() returns self when font already has valid file path."""
+        mock_exists.return_value = True
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/usr/share/fonts/truetype/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Should return self without querying fontconfig
+        resolved = font_info.resolve()
+
+        # Should return the same instance (self)
+        assert resolved is font_info
+        assert resolved.file == "/usr/share/fonts/truetype/arial.ttf"
+
+        # Verify os.path.exists was called
+        mock_exists.assert_called_once_with("/usr/share/fonts/truetype/arial.ttf")
+
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.os.path.exists")
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_resolve_with_invalid_file_path(
+        self, mock_fc: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that resolve() queries fontconfig when file path is invalid."""
+        mock_exists.return_value = False  # File doesn't exist
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu.ttf",
+            "family": "DejaVu Sans",
+            "style": "Book",
+            "weight": 80.0,
+        }
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/invalid/path/arial.ttf",  # Invalid path
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        # Should query fontconfig because file path is invalid
+        resolved = font_info.resolve()
+
+        # Should get resolved font from fontconfig
+        assert resolved is not None
+        assert resolved.file == "/usr/share/fonts/truetype/dejavu.ttf"
+        assert resolved.family == "DejaVu Sans"
+
+        # Verify both checks were made
+        mock_exists.assert_called_once_with("/invalid/path/arial.ttf")
+        mock_fc.match.assert_called_once()
