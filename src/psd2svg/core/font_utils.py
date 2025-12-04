@@ -188,6 +188,61 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
+    def get_font_file(self) -> str | None:
+        """Get the font file path, querying fontconfig if necessary.
+
+        If the font file path is empty (e.g., from static mapping), this method
+        attempts to query fontconfig to find the font file on the system.
+
+        Returns:
+            Font file path, or None if font file cannot be located.
+
+        Example:
+            >>> font_info = FontInfo.find('ArialMT')  # May have empty file path
+            >>> font_path = font_info.get_font_file()  # Queries fontconfig if needed
+            >>> if font_path:
+            ...     data_uri = encode_font_data_uri(font_path)
+        """
+        # Return existing file path if available
+        if self.file:
+            return self.file
+
+        # Try fontconfig fallback if available
+        if not HAS_FONTCONFIG:
+            logger.debug(
+                f"Font '{self.postscript_name}' has no file path and "
+                "fontconfig is not available"
+            )
+            return None
+
+        logger.debug(
+            f"Font '{self.postscript_name}' has no file path, "
+            "querying fontconfig for fallback"
+        )
+
+        try:
+            match = fontconfig.match(
+                pattern=f":postscriptname={self.postscript_name}",
+                select=("file",),
+            )
+            if match and match.get("file"):
+                font_path: str = match["file"]  # type: ignore
+                logger.info(
+                    f"Found font file via fontconfig fallback: {font_path}"
+                )
+                return font_path
+            else:
+                logger.debug(
+                    f"Font '{self.postscript_name}' not found via "
+                    "fontconfig fallback"
+                )
+                return None
+        except Exception as e:
+            logger.warning(
+                f"Fontconfig fallback failed for '{self.postscript_name}': {e}"
+            )
+            return None
+
     @staticmethod
     def find(
         postscriptname: str,

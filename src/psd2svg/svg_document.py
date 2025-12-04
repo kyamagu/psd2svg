@@ -607,8 +607,16 @@ class SVGDocument:
         Note:
             - Logs warnings for non-critical errors and returns None
             - Re-raises ImportError for missing dependencies
+            - Queries fontconfig for file path if not available
         """
-        font_path = font_info.file
+        # Get font file path (with fontconfig fallback if needed)
+        font_path = font_info.get_font_file()
+        if not font_path:
+            logger.warning(
+                f"Cannot embed font '{font_info.postscript_name}': "
+                "no file path available"
+            )
+            return None
 
         try:
             # Get subset characters for this font (if subsetting enabled)

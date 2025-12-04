@@ -453,3 +453,89 @@ class TestFontInfoSerialization:
 
         assert font.weight == 80.0
         assert isinstance(font.weight, float)
+
+
+class TestFontInfoGetFontFile:
+    """Tests for FontInfo.get_font_file() method."""
+
+    def test_get_font_file_with_existing_path(self) -> None:
+        """Test get_font_file returns existing file path."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="/path/to/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font.get_font_file() == "/path/to/arial.ttf"
+
+    def test_get_font_file_with_empty_path_no_fontconfig(self) -> None:
+        """Test get_font_file with empty path when fontconfig unavailable."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False):
+            result = font.get_font_file()
+
+        assert result is None
+
+    def test_get_font_file_with_empty_path_fontconfig_success(self) -> None:
+        """Test get_font_file queries fontconfig successfully."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
+            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
+                mock_fc.match.return_value = {"file": "/usr/share/fonts/arial.ttf"}
+                result = font.get_font_file()
+
+        assert result == "/usr/share/fonts/arial.ttf"
+        mock_fc.match.assert_called_once_with(
+            pattern=":postscriptname=ArialMT",
+            select=("file",),
+        )
+
+    def test_get_font_file_with_empty_path_fontconfig_not_found(self) -> None:
+        """Test get_font_file when fontconfig doesn't find font."""
+        font = FontInfo(
+            postscript_name="NonExistentFont",
+            file="",
+            family="Non Existent",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
+            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
+                mock_fc.match.return_value = None
+                result = font.get_font_file()
+
+        assert result is None
+
+    def test_get_font_file_with_empty_path_fontconfig_error(self) -> None:
+        """Test get_font_file when fontconfig raises exception."""
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True):
+            with patch("psd2svg.core.font_utils.fontconfig") as mock_fc:
+                mock_fc.match.side_effect = Exception("Fontconfig error")
+                result = font.get_font_file()
+
+        assert result is None
