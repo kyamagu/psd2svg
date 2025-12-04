@@ -59,6 +59,7 @@ class SVGDocument:
         enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -88,6 +89,12 @@ class SVGDocument:
                 XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
                 enum values. Only affects bounding box text (ShapeType=1); point text
                 always uses native SVG <text> elements.
+            font_mapping: Optional custom font mapping dictionary for resolving PostScript
+                font names to font families without fontconfig. Useful on Windows or when
+                fonts are not installed. Format:
+                {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+                Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
+                When not provided, uses built-in mapping for common fonts.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
@@ -99,6 +106,7 @@ class SVGDocument:
             enable_class=enable_class,
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
+            font_mapping=font_mapping,
         )
         converter.build()
         return SVGDocument(
@@ -714,6 +722,7 @@ def convert(
     image_format: str = DEFAULT_IMAGE_FORMAT,
     text_letter_spacing_offset: float = 0.0,
     text_wrapping_mode: int = 0,
+    font_mapping: dict[str, dict[str, float | str]] | None = None,
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
@@ -746,6 +755,11 @@ def convert(
             XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
             enum values. Only affects bounding box text (ShapeType=1); point text
             always uses native SVG <text> elements.
+        font_mapping: Optional custom font mapping dictionary for resolving PostScript
+            font names to font families without fontconfig. Useful on Windows or when
+            fonts are not installed. Format:
+            {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+            When not provided, uses built-in mapping for common fonts.
     """
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
@@ -756,6 +770,7 @@ def convert(
         enable_class=enable_class,
         text_letter_spacing_offset=text_letter_spacing_offset,
         text_wrapping_mode=text_wrapping_mode,
+        font_mapping=font_mapping,
     )
     document.save(
         output_path,

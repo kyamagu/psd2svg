@@ -276,7 +276,7 @@ class TestFontInfoFind:
             font = FontInfo.find("NonExistentFont")
 
         assert font is None
-        assert "Font file for 'NonExistentFont' not found" in caplog.text
+        assert "Font 'NonExistentFont' not found" in caplog.text
         assert "Make sure the font is installed on your system" in caplog.text
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
@@ -290,7 +290,7 @@ class TestFontInfoFind:
             font = FontInfo.find("EmptyFont")
 
         assert font is None
-        assert "Font file for 'EmptyFont' not found" in caplog.text
+        assert "Font 'EmptyFont' not found" in caplog.text
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_font(self, mock_match: MagicMock) -> None:

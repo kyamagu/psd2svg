@@ -80,6 +80,7 @@ class Converter(
         enable_class: bool = False,
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -93,6 +94,7 @@ class Converter(
         self.enable_class = enable_class
         self.text_letter_spacing_offset = text_letter_spacing_offset
         self.text_wrapping_mode = text_wrapping_mode
+        self.font_mapping = font_mapping
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(

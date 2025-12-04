@@ -189,33 +189,89 @@ class FontInfo:
 }}"""
 
     @staticmethod
-    def find(postscriptname: str) -> Self | None:
-        """Find the font family name for the given span index."""
+    def find(
+        postscriptname: str, font_mapping: dict[str, dict[str, float | str]] | None = None
+    ) -> Self | None:
+        """Find font information by PostScript name.
+
+        This method tries multiple strategies to resolve the font:
+        1. If fontconfig is available, use it (most accurate, provides file path)
+        2. Fall back to static font mapping (works without fontconfig)
+        3. Check custom font mapping if provided
+
+        Args:
+            postscriptname: PostScript name of the font (e.g., "ArialMT").
+            font_mapping: Optional custom font mapping dictionary. Takes priority
+                         over default mapping. Format:
+                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+
+        Returns:
+            FontInfo object with font metadata, or None if font not found.
+
+        Note:
+            When using static mapping (no fontconfig), the 'file' field will be
+            empty. This is acceptable for SVG rendering but prevents font embedding.
+        """
+        # Try fontconfig first (if available) - most accurate and provides file path
+        if HAS_FONTCONFIG:
+            match = fontconfig.match(
+                pattern=f":postscriptname={postscriptname}",
+                select=("file", "family", "style", "weight"),
+            )
+            if match:
+                logger.debug(
+                    f"Resolved '{postscriptname}' via fontconfig: {match['family']}"
+                )
+                return FontInfo(
+                    postscript_name=postscriptname,
+                    file=match["file"],  # type: ignore
+                    family=match["family"],  # type: ignore
+                    style=match["style"],  # type: ignore
+                    weight=match["weight"],  # type: ignore
+                )
+            # Fontconfig available but font not found
+            logger.debug(
+                f"Font '{postscriptname}' not found via fontconfig, "
+                "trying static font mapping..."
+            )
+
+        # Fall back to static font mapping
+        from psd2svg.core import font_mapping as fm
+
+        mapping_data = fm.find_in_mapping(postscriptname, font_mapping)
+        if mapping_data:
+            if not HAS_FONTCONFIG:
+                logger.info(
+                    f"Resolved '{postscriptname}' via static font mapping: "
+                    f"{mapping_data['family']} (fontconfig not available)"
+                )
+            else:
+                logger.info(
+                    f"Resolved '{postscriptname}' via static font mapping: "
+                    f"{mapping_data['family']}"
+                )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file="",  # No file path available from static mapping
+                family=str(mapping_data["family"]),
+                style=str(mapping_data["style"]),
+                weight=float(mapping_data["weight"]),
+            )
+
+        # Font not found in any mapping
         if not HAS_FONTCONFIG:
             logger.warning(
-                "fontconfig-py is not available. Text layer conversion is disabled. "
-                "On Windows, fontconfig is not available - text layers will be rasterized. "
-                "On Linux/macOS, ensure fontconfig-py is installed."
+                f"Font '{postscriptname}' not found in static font mapping. "
+                "Text layer will be rasterized. Consider providing a custom font mapping "
+                "via the font_mapping parameter."
             )
-            return None
-
-        match = fontconfig.match(
-            pattern=f":postscriptname={postscriptname}",
-            select=("file", "family", "style", "weight"),
-        )
-        if not match:
+        else:
             logger.warning(
-                f"Font file for '{postscriptname}' not found. "
-                "Make sure the font is installed on your system."
+                f"Font '{postscriptname}' not found via fontconfig or static mapping. "
+                "Make sure the font is installed on your system, or provide a custom "
+                "font mapping via the font_mapping parameter."
             )
-            return None
-        return FontInfo(
-            postscript_name=postscriptname,
-            file=match["file"],  # type: ignore
-            family=match["family"],  # type: ignore
-            style=match["style"],  # type: ignore
-            weight=match["weight"],  # type: ignore
-        )
+        return None
 
 
 def encode_font_data_uri(font_path: str) -> str:
