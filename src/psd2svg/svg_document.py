@@ -798,7 +798,6 @@ class SVGDocument:
             svg.insert(0, style_element)
 
 
-
 def convert(
     input_path: str,
     output_path: str,
