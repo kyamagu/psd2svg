@@ -269,8 +269,8 @@ class TestFontSubsetting:
 class TestSVGDocumentIntegration:
     """Integration tests for SVGDocument with font subsetting."""
 
-    def test_tostring_subset_requires_embed(self) -> None:
-        """Test that subset_fonts=True requires embed_fonts=True."""
+    def test_tostring_subset_ignored_without_embed(self) -> None:
+        """Test that subset_fonts is silently ignored when embed_fonts=False."""
         from psd_tools import PSDImage
 
         from psd2svg import SVGDocument
@@ -279,13 +279,13 @@ class TestSVGDocumentIntegration:
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)
 
-        with pytest.raises(
-            ValueError, match="subset_fonts=True requires embed_fonts=True"
-        ):
-            doc.tostring(embed_fonts=False, subset_fonts=True)
+        # Should not raise - subset_fonts is simply ignored when embed_fonts=False
+        svg_string = doc.tostring(embed_fonts=False, subset_fonts=True)
+        assert svg_string  # Conversion succeeds
+        assert "@font-face" not in svg_string  # No fonts embedded
 
-    def test_save_subset_requires_embed(self, tmp_path: Path) -> None:
-        """Test that subset_fonts=True requires embed_fonts=True in save()."""
+    def test_save_subset_ignored_without_embed(self, tmp_path: Path) -> None:
+        """Test that subset_fonts is silently ignored when embed_fonts=False in save()."""
         from psd_tools import PSDImage
 
         from psd2svg import SVGDocument
@@ -296,10 +296,14 @@ class TestSVGDocumentIntegration:
 
         output_path = tmp_path / "output.svg"
 
-        with pytest.raises(
-            ValueError, match="subset_fonts=True requires embed_fonts=True"
-        ):
-            doc.save(str(output_path), embed_fonts=False, subset_fonts=True)
+        # Should not raise - subset_fonts is simply ignored when embed_fonts=False
+        doc.save(str(output_path), embed_images=True, embed_fonts=False, subset_fonts=True)
+        assert output_path.exists()
+
+        # Verify no fonts were embedded
+        with open(output_path) as f:
+            content = f.read()
+            assert "@font-face" not in content
 
     def test_woff2_auto_enables_subsetting(self, tmp_path: Path) -> None:
         """Test that font_format='woff2' automatically enables subsetting."""

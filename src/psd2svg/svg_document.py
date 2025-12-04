@@ -132,8 +132,8 @@ class SVGDocument:
         self,
         embed_images: bool = True,
         embed_fonts: bool = False,
-        subset_fonts: bool = False,
-        font_format: str = "ttf",
+        subset_fonts: bool = True,
+        font_format: str = "woff2",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -151,9 +151,9 @@ class SVGDocument:
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
                 Requires embed_fonts=True. Requires fonttools package (install with:
                 uv sync --group fonts). This significantly reduces file size (typically
-                90%+ reduction).
-            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
-                WOFF2 provides best compression and automatically enables subsetting.
+                90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+                WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix.
                 When specified, embed_images is ignored.
             image_format: Image format to use when embedding or saving images.
@@ -161,14 +161,6 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Validate font subsetting parameters
-        if subset_fonts and not embed_fonts:
-            raise ValueError("subset_fonts=True requires embed_fonts=True")
-
-        # Auto-enable subsetting for WOFF2 (web-optimized format)
-        if font_format == "woff2" and embed_fonts:
-            subset_fonts = True
-
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=None
         )
@@ -186,8 +178,8 @@ class SVGDocument:
         filepath: str,
         embed_images: bool = False,
         embed_fonts: bool = False,
-        subset_fonts: bool = False,
-        font_format: str = "ttf",
+        subset_fonts: bool = True,
+        font_format: str = "woff2",
         image_prefix: str | None = None,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
@@ -205,9 +197,9 @@ class SVGDocument:
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
                 Requires embed_fonts=True. Requires fonttools package (install with:
                 uv sync --group fonts). This significantly reduces file size (typically
-                90%+ reduction).
-            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
-                WOFF2 provides best compression and automatically enables subsetting.
+                90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+                WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
             image_format: Image format to use when embedding or saving images.
@@ -215,14 +207,6 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Validate font subsetting parameters
-        if subset_fonts and not embed_fonts:
-            raise ValueError("subset_fonts=True requires embed_fonts=True")
-
-        # Auto-enable subsetting for WOFF2 (web-optimized format)
-        if font_format == "woff2" and embed_fonts:
-            subset_fonts = True
-
         svg = self._handle_images(
             embed_images, image_prefix, image_format, svg_filepath=filepath
         )
@@ -637,7 +621,14 @@ class SVGDocument:
         # Extract Unicode usage if subsetting is enabled
         font_usage: dict[str, set[str]] = {}
         if subset_fonts:
-            font_usage = font_subsetting.get_font_usage_from_svg(svg)
+            try:
+                font_usage = font_subsetting.get_font_usage_from_svg(svg)
+            except ImportError as e:
+                logger.warning(
+                    f"Font subsetting disabled: {e}. "
+                    "Fonts will be embedded without subsetting."
+                )
+                subset_fonts = False  # Disable subsetting for this call
 
         # Generate @font-face CSS rules
         font_face_rules = self._generate_font_face_rules(
