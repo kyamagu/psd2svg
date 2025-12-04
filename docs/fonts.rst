@@ -32,8 +32,8 @@ Embed fonts as base64-encoded data URIs in the SVG:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
-   document.save("output.svg")
+   document = SVGDocument.from_psd(psdimage)
+   document.save("output.svg", embed_fonts=True)
 
 **Result:** Fonts are embedded as base64-encoded TTF/OTF files in ``@font-face`` rules.
 
@@ -65,8 +65,8 @@ When a requested font is not available on the system, font rendering engines sub
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")  # Uses "Arial"
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
-   document.save("output.svg")
+   document = SVGDocument.from_psd(psdimage)
+   document.save("output.svg", embed_fonts=True)
 
 If Arial is not installed and the system substitutes DejaVu Sans, the generated SVG will contain:
 
@@ -308,10 +308,10 @@ WOFF2 provides the best compression and automatically enables subsetting:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Save with WOFF2 subsetting
-   document.save("output.svg", font_format="woff2")
+   # Save with WOFF2 subsetting and font embedding
+   document.save("output.svg", embed_fonts=True, font_format="woff2")
 
 **Result:** Fonts are:
 
@@ -387,10 +387,10 @@ Font subsetting also works with the ``tostring()`` method:
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Get SVG string with WOFF2 subsetting
-   svg_string = document.tostring(font_format="woff2")
+   # Get SVG string with WOFF2 subsetting and font embedding
+   svg_string = document.tostring(embed_fonts=True, font_format="woff2")
 
 Browser Compatibility
 ---------------------
@@ -510,11 +510,12 @@ Example: Optimized Web Delivery
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
-   document = SVGDocument.from_psd(psdimage, embed_fonts=True)
+   document = SVGDocument.from_psd(psdimage)
 
-   # Optimize for web: WOFF2 subsetting, external images
+   # Optimize for web: WOFF2 subsetting, external images, font embedding
    document.save(
        "output.svg",
+       embed_fonts=True,
        font_format="woff2",
        image_prefix="images/img",
        image_format="webp",
