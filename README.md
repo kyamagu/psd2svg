@@ -23,9 +23,6 @@ pip install psd2svg
 ### Optional Features
 
 ```bash
-# Font subsetting for web optimization (90%+ size reduction)
-pip install psd2svg[fonts]
-
 # Browser-based rasterization (better SVG 2.0 support)
 pip install psd2svg[browser]
 playwright install chromium
