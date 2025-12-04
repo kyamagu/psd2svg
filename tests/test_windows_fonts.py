@@ -122,15 +122,15 @@ class TestWindowsFontResolverParsing:
 
         # Create mock TTFont
         mock_font = MagicMock()
-        mock_font.__getitem__ = lambda self, key: MagicMock()
+        mock_font.__getitem__ = MagicMock(return_value=MagicMock())
+
+        # Create separate mocks for each method call
+        mock_get_name = MagicMock(side_effect=["ArialMT", "Arial", "Regular"])
+        mock_get_weight = MagicMock(return_value=80.0)
 
         with patch("psd2svg.core.windows_fonts.TTFont", return_value=mock_font):
-            with patch.object(
-                resolver,
-                "_get_name_table_entry",
-                side_effect=["ArialMT", "Arial", "Regular"],
-            ):
-                with patch.object(resolver, "_get_weight_from_os2", return_value=80.0):
+            with patch.object(resolver, "_get_name_table_entry", mock_get_name):
+                with patch.object(resolver, "_get_weight_from_os2", mock_get_weight):
                     result = resolver._parse_font_file("C:\\Windows\\Fonts\\arial.ttf")
 
         assert result is not None
@@ -171,16 +171,15 @@ class TestWindowsFontResolverParsing:
         resolver = windows_fonts.WindowsFontResolver()
 
         mock_font = MagicMock()
-        mock_font.__getitem__ = lambda self, key: MagicMock()
+        mock_font.__getitem__ = MagicMock(return_value=MagicMock())
+
+        # PostScript name exists (ID 6), family IDs return None (16, 1), style IDs return None (17, 2)
+        mock_get_name = MagicMock(side_effect=["TestFont", None, None, None, None])
+        mock_get_weight = MagicMock(return_value=80.0)
 
         with patch("psd2svg.core.windows_fonts.TTFont", return_value=mock_font):
-            # PostScript name exists (ID 6), family IDs return None (16, 1), style IDs return None (17, 2)
-            with patch.object(
-                resolver,
-                "_get_name_table_entry",
-                side_effect=["TestFont", None, None, None, None],
-            ):
-                with patch.object(resolver, "_get_weight_from_os2", return_value=80.0):
+            with patch.object(resolver, "_get_name_table_entry", mock_get_name):
+                with patch.object(resolver, "_get_weight_from_os2", mock_get_weight):
                     result = resolver._parse_font_file("C:\\Windows\\Fonts\\test.ttf")
 
         assert result is not None
