@@ -1079,4 +1079,196 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "Bold Italic",
         "weight": 200.0,
     },
+    # ===== Morisawa Fonts (Japanese) =====
+    # Ryumin family (classic Japanese serif, first PostScript Japanese font)
+    "RyuminPro-Light": {
+        "family": "Ryumin Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "RyuminPro-Regular": {
+        "family": "Ryumin Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "RyuminPro-Medium": {
+        "family": "Ryumin Pro",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "RyuminPro-Bold": {
+        "family": "Ryumin Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "RyuminPro-Heavy": {
+        "family": "Ryumin Pro",
+        "style": "Heavy",
+        "weight": 210.0,
+    },
+    "RyuminStd-Light": {
+        "family": "Ryumin Std",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "RyuminStd-Regular": {
+        "family": "Ryumin Std",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "RyuminStd-Medium": {
+        "family": "Ryumin Std",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "RyuminStd-Bold": {
+        "family": "Ryumin Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    # A1 Mincho family (elegant serif with French influence)
+    "A1MinchoStd-Regular": {
+        "family": "A1 Mincho Std",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "A1MinchoStd-Bold": {
+        "family": "A1 Mincho Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "A1MinchoStd-Light": {
+        "family": "A1 Mincho Std",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    # A1 Gothic family (sans-serif companion to A1 Mincho)
+    "A1GothicStd-Regular": {
+        "family": "A1 Gothic Std",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "A1GothicStd-Bold": {
+        "family": "A1 Gothic Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "A1GothicStd-Medium": {
+        "family": "A1 Gothic Std",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    # Shin Go family (modern Gothic with high legibility)
+    "ShinGoPro-Light": {
+        "family": "Shin Go Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "ShinGoPro-Regular": {
+        "family": "Shin Go Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "ShinGoPro-Medium": {
+        "family": "Shin Go Pro",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "ShinGoPro-DeBold": {
+        "family": "Shin Go Pro",
+        "style": "DeBold",
+        "weight": 180.0,
+    },
+    "ShinGoPro-Bold": {
+        "family": "Shin Go Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "ShinGoPro-Heavy": {
+        "family": "Shin Go Pro",
+        "style": "Heavy",
+        "weight": 210.0,
+    },
+    "ShinGoPro-Ultra": {
+        "family": "Shin Go Pro",
+        "style": "Ultra",
+        "weight": 210.0,
+    },
+    # Gothic MB101 family (classic sans-serif)
+    "GothicMB101Pro-Light": {
+        "family": "Gothic MB101 Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "GothicMB101Pro-Regular": {
+        "family": "Gothic MB101 Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "GothicMB101Pro-Bold": {
+        "family": "Gothic MB101 Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "GothicMB101Pro-Heavy": {
+        "family": "Gothic MB101 Pro",
+        "style": "Heavy",
+        "weight": 210.0,
+    },
+    # Jun family (rounded Gothic for friendly designs)
+    "Jun101Pro-Light": {
+        "family": "Jun 101 Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "Jun101Pro-Regular": {
+        "family": "Jun 101 Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "Jun101Pro-Bold": {
+        "family": "Jun 101 Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    # Tazugane Gothic family (modern sans-serif for UI/web)
+    "TazuganeGothicStd-Regular": {
+        "family": "Tazugane Gothic Std",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "TazuganeGothicStd-Bold": {
+        "family": "Tazugane Gothic Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "TazuganeGothicStd-ExtraBold": {
+        "family": "Tazugane Gothic Std",
+        "style": "ExtraBold",
+        "weight": 205.0,
+    },
+    # Futo Go family (extra bold Gothic)
+    "FutoGoB101Pro-Bold": {
+        "family": "Futo Go B101 Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    # Futo Min family (extra bold Mincho)
+    "FutoMinA101Pro-Bold": {
+        "family": "Futo Min A101 Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    # Midashi Go family (headline Gothic)
+    "MidashiGoMB31Pro-DeBold": {
+        "family": "Midashi Go MB31 Pro",
+        "style": "DeBold",
+        "weight": 180.0,
+    },
+    # Midashi Min family (headline Mincho)
+    "MidashiMinMA31Pro-DeBold": {
+        "family": "Midashi Min MA31 Pro",
+        "style": "DeBold",
+        "weight": 180.0,
+    },
 }
