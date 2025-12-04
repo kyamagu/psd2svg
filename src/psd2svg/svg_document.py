@@ -176,7 +176,7 @@ class SVGDocument:
     def save(
         self,
         filepath: str,
-        embed_images: bool = False,
+        embed_images: bool = True,
         embed_fonts: bool = False,
         subset_fonts: bool = True,
         font_format: str = "woff2",
@@ -189,7 +189,8 @@ class SVGDocument:
 
         Args:
             filepath: Path to the output SVG file.
-            embed_images: If True, embed images as base64 data URIs.
+            embed_images: If True, embed images as base64 data URIs. Default is True.
+                Set to False and provide image_prefix to save images as external files.
             embed_fonts: If True, embed fonts as @font-face rules in <style> element.
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
