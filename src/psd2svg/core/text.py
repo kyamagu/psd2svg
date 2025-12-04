@@ -353,7 +353,9 @@ class TextConverter(ConverterProtocol):
         style = span.style
         font_mapping = getattr(self, "font_mapping", None)
         enable_fontconfig = getattr(self, "enable_fontconfig", True)
-        font_info = text_setting.get_font_info(style.font, font_mapping, enable_fontconfig)
+        font_info = text_setting.get_font_info(
+            style.font, font_mapping, enable_fontconfig
+        )
 
         # Collect font info for later use in rasterization.
         if font_info and font_info.postscript_name not in self.fonts:
@@ -618,7 +620,9 @@ class TextConverter(ConverterProtocol):
         style = span.style
         font_mapping = getattr(self, "font_mapping", None)
         enable_fontconfig = getattr(self, "enable_fontconfig", True)
-        font_info = text_setting.get_font_info(style.font, font_mapping, enable_fontconfig)
+        font_info = text_setting.get_font_info(
+            style.font, font_mapping, enable_fontconfig
+        )
 
         # Collect font info for later use in rasterization
         if font_info and font_info.postscript_name not in self.fonts:

@@ -703,6 +703,10 @@ class SVGDocument:
             # Skip fonts that haven't been resolved to system font files
             # Note: _resolve_fonts() has already resolved fonts
             if not font_info.is_resolved():
+                logger.info(
+                    f"Cannot embed font '{font_info.postscript_name}': "
+                    "no file path available"
+                )
                 continue
 
             # Skip duplicates (fonts with same file path)
@@ -746,11 +750,10 @@ class SVGDocument:
         # Check if font has been resolved to a system font file
         # Note: _resolve_fonts() has already resolved fonts
         if not font_info.is_resolved():
-            logger.warning(
+            raise ValueError(
                 f"Cannot embed font '{font_info.postscript_name}': "
                 "no file path available"
             )
-            return None
 
         font_path = font_info.file
 
