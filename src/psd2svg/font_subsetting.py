@@ -86,7 +86,6 @@ def subset_font(
 
     Raises:
         ImportError: If fonttools package is not installed.
-        ValueError: If output_format is unsupported.
         Exception: If subsetting fails (invalid font, I/O error, etc.).
 
     Example:
