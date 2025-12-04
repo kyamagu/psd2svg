@@ -343,21 +343,22 @@ class FontInfo:
             logger.warning(
                 f"Font '{postscriptname}' not found in static font mapping "
                 "(fontconfig lookup disabled). "
-                "Text layer will be rasterized. Consider providing a custom font mapping "
-                "via the font_mapping parameter."
+                "Text will be converted without font-family attribute. "
+                "Consider providing a custom font mapping via the font_mapping parameter."
             )
         elif not HAS_FONTCONFIG:
             logger.warning(
                 f"Font '{postscriptname}' not found in static font mapping "
                 "(fontconfig not available). "
-                "Text layer will be rasterized. Consider providing a custom font mapping "
-                "via the font_mapping parameter."
+                "Text will be converted without font-family attribute. "
+                "Consider providing a custom font mapping via the font_mapping parameter."
             )
         else:
             logger.warning(
                 f"Font '{postscriptname}' not found via static mapping or fontconfig. "
-                "Text layer will be rasterized. Make sure the font is installed on your "
-                "system, or provide a custom font mapping via the font_mapping parameter."
+                "Text will be converted without font-family attribute. "
+                "Make sure the font is installed on your system, or provide a custom "
+                "font mapping via the font_mapping parameter."
             )
         return None
 
