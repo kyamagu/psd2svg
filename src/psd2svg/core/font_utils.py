@@ -15,14 +15,8 @@ try:
 except ImportError:
     HAS_FONTCONFIG = False
 
-# Import font_subsetting conditionally to avoid import errors when fonttools not installed
-try:
-    from psd2svg import font_subsetting as _font_subsetting
-
-    HAS_FONT_SUBSETTING = True
-except ImportError:
-    HAS_FONT_SUBSETTING = False
-    _font_subsetting = None  # type: ignore
+from psd2svg import font_subsetting
+from psd2svg.core import font_mapping as _font_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -328,10 +322,7 @@ class FontInfo:
             sufficient for SVG text rendering. Font embedding requires fontconfig
             to locate the actual font files on the system.
         """
-        # Try static font mapping first - fast, deterministic, cross-platform
-        from psd2svg.core import font_mapping as fm
-
-        mapping_data = fm.find_in_mapping(postscriptname, font_mapping)
+        mapping_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
         if mapping_data:
             logger.debug(
                 f"Resolved '{postscriptname}' via static font mapping: "
@@ -506,13 +497,6 @@ def encode_font_with_options(
     """
     # Subsetting path
     if subset_chars:
-        # Check if font_subsetting is available
-        if not HAS_FONT_SUBSETTING:
-            raise ImportError(
-                "Font subsetting requires fonttools package. "
-                "Install with: uv sync --group fonts"
-            )
-
         # Create cache key for subset fonts (include format and char count)
         cache_key = f"{font_path}:{font_format}:{len(subset_chars)}"
 
@@ -522,7 +506,7 @@ def encode_font_with_options(
                 f"({len(subset_chars)} chars)"
             )
             try:
-                font_bytes = _font_subsetting.subset_font(  # type: ignore
+                font_bytes = font_subsetting.subset_font(  # type: ignore
                     input_path=font_path,
                     output_format=font_format,
                     unicode_chars=subset_chars,
