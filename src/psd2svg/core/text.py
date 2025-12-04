@@ -352,7 +352,8 @@ class TextConverter(ConverterProtocol):
         """Add a text span to the paragraph node."""
         style = span.style
         font_mapping = getattr(self, "font_mapping", None)
-        font_info = text_setting.get_font_info(style.font, font_mapping)
+        enable_fontconfig = getattr(self, "enable_fontconfig", True)
+        font_info = text_setting.get_font_info(style.font, font_mapping, enable_fontconfig)
 
         # Collect font info for later use in rasterization.
         if font_info and font_info.postscript_name not in self.fonts:
@@ -616,7 +617,8 @@ class TextConverter(ConverterProtocol):
         """
         style = span.style
         font_mapping = getattr(self, "font_mapping", None)
-        font_info = text_setting.get_font_info(style.font, font_mapping)
+        enable_fontconfig = getattr(self, "enable_fontconfig", True)
+        font_info = text_setting.get_font_info(style.font, font_mapping, enable_fontconfig)
 
         # Collect font info for later use in rasterization
         if font_info and font_info.postscript_name not in self.fonts:
@@ -1405,12 +1407,16 @@ class TypeSetting:
         self,
         font_index: int,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
     ) -> font_utils.FontInfo | None:
         """Get the font family name for the given font index.
 
         Args:
             font_index: Index into the font set.
             font_mapping: Optional custom font mapping dictionary.
+            enable_fontconfig: If True, fall back to fontconfig for fonts not in
+                              static mapping. If False, only use static/custom mapping.
+                              Default: True.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
@@ -1420,7 +1426,9 @@ class TypeSetting:
         if postscriptname is None:
             logger.warning(f"PostScript name not found for font index {font_index}.")
             return None
-        return font_utils.FontInfo.find(postscriptname.value, font_mapping)
+        return font_utils.FontInfo.find(
+            postscriptname.value, font_mapping, enable_fontconfig
+        )
 
     def get_paragraph_sheet(self, sheet: ParagraphSheet) -> ParagraphSheet:
         """Get the merged paragraph sheet."""

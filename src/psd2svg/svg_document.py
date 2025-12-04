@@ -63,6 +63,7 @@ class SVGDocument:
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -98,6 +99,9 @@ class SVGDocument:
                 {"PostScriptName": {"family": str, "style": str, "weight": float}}.
                 Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
                 When not provided, uses built-in mapping for common fonts.
+            enable_fontconfig: If True (default), fall back to fontconfig for fonts not in
+                static mapping. If False, only use static/custom mapping. Setting to False
+                can prevent unexpected font substitutions when fontconfig is available.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
@@ -111,6 +115,7 @@ class SVGDocument:
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
             font_mapping=font_mapping,
+            enable_fontconfig=enable_fontconfig,
         )
         converter.build()
 

@@ -67,6 +67,10 @@ class Converter(
             (default, native SVG <text>), or 1 for <foreignObject> with XHTML wrapping.
             Import TextWrappingMode from psd2svg.core.text for enum values. Only affects
             bounding box text (ShapeType=1); point text always uses native SVG <text> elements.
+        font_mapping: Optional custom font mapping dictionary for fonts not in default mapping.
+        enable_fontconfig: If True (default), fall back to fontconfig for fonts not in static
+            mapping. If False, only use static/custom mapping. Setting to False can prevent
+            unexpected font substitutions when fontconfig is available.
     """
 
     _id_counter: AutoCounter | None = None
@@ -81,6 +85,7 @@ class Converter(
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -95,6 +100,7 @@ class Converter(
         self.text_letter_spacing_offset = text_letter_spacing_offset
         self.text_wrapping_mode = text_wrapping_mode
         self.font_mapping = font_mapping
+        self.enable_fontconfig = enable_fontconfig
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(

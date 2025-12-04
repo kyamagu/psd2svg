@@ -273,19 +273,23 @@ class FontInfo:
     def find(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        enable_fontconfig: bool = True,
     ) -> Self | None:
         """Find font information by PostScript name.
 
         This method tries multiple strategies to resolve the font:
-        1. Try static font mapping first (fast, deterministic, cross-platform)
-        2. Fall back to fontconfig if available (provides file path for embedding)
-        3. Check custom font mapping if provided (takes priority over default mapping)
+        1. Try custom font mapping if provided (takes priority)
+        2. Try static font mapping (fast, deterministic, cross-platform)
+        3. Fall back to fontconfig if enabled (provides file path for embedding)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
             font_mapping: Optional custom font mapping dictionary. Takes priority
                          over default mapping. Format:
                          {"PostScriptName": {"family": str, "style": str, "weight": float}}
+            enable_fontconfig: If True, fall back to fontconfig for fonts not in
+                              static mapping. If False, only use static/custom mapping.
+                              Default: True.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
@@ -312,8 +316,8 @@ class FontInfo:
                 weight=float(mapping_data["weight"]),
             )
 
-        # Fall back to fontconfig (if available) for fonts not in static mapping
-        if HAS_FONTCONFIG:
+        # Fall back to fontconfig (if available and enabled) for fonts not in static mapping
+        if enable_fontconfig and HAS_FONTCONFIG:
             logger.debug(
                 f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
             )
@@ -335,9 +339,17 @@ class FontInfo:
                 )
 
         # Font not found in any mapping
-        if not HAS_FONTCONFIG:
+        if not enable_fontconfig:
             logger.warning(
-                f"Font '{postscriptname}' not found in static font mapping. "
+                f"Font '{postscriptname}' not found in static font mapping "
+                "(fontconfig lookup disabled). "
+                "Text layer will be rasterized. Consider providing a custom font mapping "
+                "via the font_mapping parameter."
+            )
+        elif not HAS_FONTCONFIG:
+            logger.warning(
+                f"Font '{postscriptname}' not found in static font mapping "
+                "(fontconfig not available). "
                 "Text layer will be rasterized. Consider providing a custom font mapping "
                 "via the font_mapping parameter."
             )
