@@ -570,7 +570,12 @@ class SVGDocument:
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
 
         for font_info in self.fonts:
-            font_path = font_info.file
+            # Get font file path (with fontconfig fallback if needed)
+            font_path = font_info.get_font_file()
+
+            # Skip fonts without file paths
+            if not font_path:
+                continue
 
             # Skip duplicates
             if font_path in seen_fonts:
