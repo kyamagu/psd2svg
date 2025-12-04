@@ -17,7 +17,6 @@ uv run ruff format src/ tests/   # Format code
 # Optional dependencies
 uv sync --group docs             # Documentation tools
 uv sync --group browser          # Playwright rasterizer
-uv sync --group fonts            # Font subsetting tools
 
 # Documentation
 uv run sphinx-build -b html docs docs/_build/html
@@ -106,6 +105,7 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 - `numpy` - Numerical operations
 - `resvg-py` - SVG rasterization
 - `fontconfig-py` - Font resolution (Linux/macOS)
+- `fonttools[woff]` - Font subsetting and WOFF/WOFF2 conversion
 
 ## Important Considerations
 

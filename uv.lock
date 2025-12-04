@@ -1329,6 +1329,7 @@ version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "fontconfig-py", marker = "sys_platform != 'win32'" },
+    { name = "fonttools", extra = ["woff"] },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pillow" },
@@ -1355,13 +1356,11 @@ docs = [
     { name = "sphinx-rtd-theme" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
-fonts = [
-    { name = "fonttools", extra = ["woff"] },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "fontconfig-py", marker = "sys_platform != 'win32'", specifier = ">=0.3.0" },
+    { name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "psd-tools", specifier = ">=1.12.0" },
@@ -1383,7 +1382,6 @@ docs = [
     { name = "sphinx-rtd-theme", specifier = ">=2.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
 ]
-fonts = [{ name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" }]
 
 [[package]]
 name = "psutil"

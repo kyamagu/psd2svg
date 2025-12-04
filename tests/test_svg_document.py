@@ -295,7 +295,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        result = document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         assert "<style>" in result
         assert "@font-face" in result
@@ -324,7 +326,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        document.save(str(output_file), embed_images=True, embed_fonts=True, subset_fonts=False)
+        document.save(
+            str(output_file), embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         content = output_file.read_text()
         assert "<style>" in content
@@ -359,7 +363,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
-        result = document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         # Should only encode once
         mock_encode.assert_called_once()
@@ -412,7 +418,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
-        result = document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         # Should not raise exception
         assert "<style>" not in result
@@ -453,7 +461,9 @@ class TestSVGDocumentEmbedFonts:
         )
 
         document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
-        result = document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
+        result = document.tostring(
+            embed_images=True, embed_fonts=True, subset_fonts=False
+        )
 
         assert result.count("@font-face") == 2
         assert "font-family: 'Arial'" in result

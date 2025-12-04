@@ -8,15 +8,7 @@ Overview
 
 psd2svg can embed fonts directly in SVG files using ``@font-face`` CSS rules. For web delivery, font subsetting dramatically reduces file sizes by including only the glyphs actually used.
 
-**Installation:**
-
-Font subsetting requires the ``fonts`` optional dependency group:
-
-.. code-block:: bash
-
-   pip install psd2svg[fonts]
-
-This installs ``fontTools`` and other required packages for font manipulation.
+**Note:** Font subsetting is enabled by default when embedding fonts. The required ``fonttools`` package is automatically installed with psd2svg.
 
 Font Embedding Basics
 ----------------------

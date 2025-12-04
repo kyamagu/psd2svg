@@ -297,7 +297,9 @@ class TestSVGDocumentIntegration:
         output_path = tmp_path / "output.svg"
 
         # Should not raise - subset_fonts is simply ignored when embed_fonts=False
-        doc.save(str(output_path), embed_images=True, embed_fonts=False, subset_fonts=True)
+        doc.save(
+            str(output_path), embed_images=True, embed_fonts=False, subset_fonts=True
+        )
         assert output_path.exists()
 
         # Verify no fonts were embedded

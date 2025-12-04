@@ -130,11 +130,7 @@ Font Subsetting
 
 Font subsetting reduces embedded font file sizes by 90%+ by including only the glyphs actually used in the SVG.
 
-**Installation:**
-
-.. code-block:: bash
-
-   pip install psd2svg[fonts]
+**Note:** Font subsetting is enabled by default when embedding fonts. The required ``fonttools`` package is automatically installed with psd2svg.
 
 **Usage Example:**
 

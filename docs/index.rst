@@ -38,9 +38,6 @@ Install via pip:
 
 .. code-block:: bash
 
-   # Font subsetting for web (90%+ size reduction)
-   pip install psd2svg[fonts]
-
    # Browser-based rasterization (better SVG 2.0 support)
    pip install psd2svg[browser]
    playwright install chromium
