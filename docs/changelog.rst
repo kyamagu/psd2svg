@@ -3,6 +3,26 @@ Changelog
 
 This document tracks changes across versions of psd2svg.
 
+Version 0.5.0
+-------------
+
+**Added:**
+
+* Windows font resolution support via Windows registry
+* Cross-platform font mapping with 572 common fonts (no external dependencies required)
+* Hybrid font resolution system (static mapping + platform-specific fallback)
+* Automatic font fallback chain generation for embedded fonts
+
+**Changed:**
+
+* Refactored font module imports for cleaner code organization
+* Improved documentation for Windows font resolution and cross-platform support
+* Enhanced documentation for adjustment layer transparency limitations
+
+**Removed:**
+
+* Redundant ``SVGDocument.optimize()`` method (use ``optimize`` parameter in ``save()``/``tostring()`` instead)
+
 Version 0.4.0
 -------------
 
