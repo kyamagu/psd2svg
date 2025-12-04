@@ -32,15 +32,15 @@ class SVGDocument:
         document = SVGDocument.from_psd(psdimage)
 
         # Save to file or get as string.
-        document.save("output.svg", embed_images=True)
-        svg_string = document.tostring()  # Images embedded by default
+        document.save("output.svg")  # Images embedded by default
+        svg_string = document.tostring()
 
         # Rasterize to PIL Image.
         rasterized = document.rasterize()
 
         # Export and load back.
         exported = document.export()
-        document = SVGDocument.load(exported["svg"], exported["images"])
+        document = SVGDocument.load(exported["svg"], exported["images"], exported["fonts"])
     """
 
     svg: ET.Element
@@ -715,8 +715,7 @@ class SVGDocument:
             CSS @font-face rule string, or None if font processing failed.
 
         Note:
-            - Logs warnings for non-critical errors and returns None
-            - Re-raises ImportError for missing dependencies
+            - Logs warnings for errors and returns None to skip problematic fonts
             - FontInfo should already be resolved with file path populated
         """
         # Check if font has been resolved to a system font file
@@ -755,9 +754,6 @@ class SVGDocument:
         except (FileNotFoundError, IOError) as e:
             logger.warning(f"Failed to embed font '{font_path}': {e}")
             return None
-        except ImportError as e:
-            logger.error(f"Font subsetting failed (missing dependency): {e}")
-            raise
         except Exception as e:
             logger.warning(f"Failed to process font '{font_path}': {e}")
             return None
