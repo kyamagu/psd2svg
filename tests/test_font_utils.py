@@ -707,3 +707,102 @@ class TestFontInfoResolve:
         # Verify both checks were made
         mock_exists.assert_called_once_with("/invalid/path/arial.ttf")
         mock_fc.match.assert_called_once()
+
+
+class TestFontInfoIsResolved:
+    """Test FontInfo.is_resolved() method."""
+
+    @patch("os.path.exists")
+    def test_is_resolved_with_valid_file(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns True when font has valid file path."""
+        mock_exists.return_value = True
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/usr/share/fonts/truetype/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is True
+        mock_exists.assert_called_once_with("/usr/share/fonts/truetype/arial.ttf")
+
+    def test_is_resolved_with_no_file(self) -> None:
+        """Test is_resolved() returns False when font has no file path."""
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+
+    def test_is_resolved_with_empty_string_file(self) -> None:
+        """Test is_resolved() returns False when font file is empty string."""
+        # Note: FontInfo.file is typed as str, not str | None, so we test empty string
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+
+    @patch("os.path.exists")
+    def test_is_resolved_with_nonexistent_file(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns False when file path doesn't exist."""
+        mock_exists.return_value = False
+
+        font_info = FontInfo(
+            postscript_name="ArialMT",
+            file="/nonexistent/path/arial.ttf",
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+
+        assert font_info.is_resolved() is False
+        mock_exists.assert_called_once_with("/nonexistent/path/arial.ttf")
+
+    @patch("os.path.exists")
+    def test_is_resolved_from_static_mapping(self, mock_exists: MagicMock) -> None:
+        """Test is_resolved() returns False for font from static mapping (no file)."""
+        # Static mapping doesn't provide file paths
+        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+
+        assert font_info is not None
+        assert font_info.file == ""
+        assert font_info.is_resolved() is False
+
+        # Should not call os.path.exists for empty string
+        mock_exists.assert_not_called()
+
+    @patch("os.path.exists")
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.fontconfig")
+    def test_is_resolved_after_resolve(
+        self, mock_fc: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test is_resolved() returns True after successful resolve()."""
+        mock_exists.return_value = True
+        mock_fc.match.return_value = {
+            "file": "/usr/share/fonts/truetype/dejavu.ttf",
+            "family": "DejaVu Sans",
+            "style": "Book",
+            "weight": 80.0,
+        }
+
+        # Start with unresolved font
+        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+        assert font_info is not None
+        assert font_info.is_resolved() is False
+
+        # Resolve to system font
+        resolved = font_info.resolve()
+        assert resolved is not None
+        assert resolved.is_resolved() is True

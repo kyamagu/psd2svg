@@ -61,6 +61,28 @@ class FontInfo:
         """Whether the font is italic."""
         return "italic" in self.style.lower()
 
+    def is_resolved(self) -> bool:
+        """Check if font has been resolved to an actual system font file.
+
+        A font is considered resolved if it has a valid file path pointing
+        to an existing font file on the system.
+
+        Returns:
+            True if font has a valid file path, False otherwise.
+
+        Example:
+            >>> # Font from static mapping (not resolved)
+            >>> font_info = FontInfo.find('ArialMT')
+            >>> font_info.is_resolved()
+            False
+            >>> # After resolution
+            >>> resolved = font_info.resolve()
+            >>> if resolved:
+            ...     resolved.is_resolved()
+            True
+        """
+        return bool(self.file and os.path.exists(self.file))
+
     def get_css_weight(self, semantic: bool = False) -> int | str:
         """Get CSS font-weight value from fontconfig weight.
 

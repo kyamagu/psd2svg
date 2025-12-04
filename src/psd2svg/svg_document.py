@@ -685,22 +685,23 @@ class SVGDocument:
         seen_fonts = set()  # Track fonts by file path to avoid duplicates
 
         for font_info in self.fonts:
-            # Use font file path from resolved FontInfo
-            # Note: _resolve_fonts() has already resolved fonts and populated file paths
+            # Skip fonts that haven't been resolved to system font files
+            # Note: _resolve_fonts() has already resolved fonts
+            if not font_info.is_resolved():
+                continue
+
+            # Skip duplicates (fonts with same file path)
             font_path = font_info.file
+            if font_path in seen_fonts:
+                continue
+            seen_fonts.add(font_path)
 
-            if font_path:
-                # Skip duplicates
-                if font_path in seen_fonts:
-                    continue
-                seen_fonts.add(font_path)
-
-                # Generate CSS rule for this font
-                css_rule = self._generate_single_font_face_rule(
-                    font_info, font_usage, subset_fonts, font_format
-                )
-                if css_rule:
-                    font_face_rules.append(css_rule)
+            # Generate CSS rule for this font
+            css_rule = self._generate_single_font_face_rule(
+                font_info, font_usage, subset_fonts, font_format
+            )
+            if css_rule:
+                font_face_rules.append(css_rule)
 
         return font_face_rules
 
@@ -727,15 +728,16 @@ class SVGDocument:
             - Re-raises ImportError for missing dependencies
             - FontInfo should already be resolved with file path populated
         """
-        # Use font file path from resolved FontInfo
-        # Note: _resolve_fonts() has already resolved fonts and populated file paths
-        font_path = font_info.file
-        if not font_path:
+        # Check if font has been resolved to a system font file
+        # Note: _resolve_fonts() has already resolved fonts
+        if not font_info.is_resolved():
             logger.warning(
                 f"Cannot embed font '{font_info.postscript_name}': "
                 "no file path available"
             )
             return None
+
+        font_path = font_info.file
 
         try:
             # Get subset characters for this font (if subsetting enabled)
