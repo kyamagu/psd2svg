@@ -195,9 +195,9 @@ class FontInfo:
         """Find font information by PostScript name.
 
         This method tries multiple strategies to resolve the font:
-        1. If fontconfig is available, use it (most accurate, provides file path)
-        2. Fall back to static font mapping (works without fontconfig)
-        3. Check custom font mapping if provided
+        1. Try static font mapping first (fast, deterministic, cross-platform)
+        2. Fall back to fontconfig if available (provides file path for embedding)
+        3. Check custom font mapping if provided (takes priority over default mapping)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
@@ -209,18 +209,40 @@ class FontInfo:
             FontInfo object with font metadata, or None if font not found.
 
         Note:
-            When using static mapping (no fontconfig), the 'file' field will be
-            empty. This is acceptable for SVG rendering but prevents font embedding.
+            Static mapping provides family/style/weight but no file path. This is
+            sufficient for SVG text rendering. Font embedding requires fontconfig
+            to locate the actual font files on the system.
         """
-        # Try fontconfig first (if available) - most accurate and provides file path
+        # Try static font mapping first - fast, deterministic, cross-platform
+        from psd2svg.core import font_mapping as fm
+
+        mapping_data = fm.find_in_mapping(postscriptname, font_mapping)
+        if mapping_data:
+            logger.debug(
+                f"Resolved '{postscriptname}' via static font mapping: "
+                f"{mapping_data['family']}"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file="",  # No file path available from static mapping
+                family=str(mapping_data["family"]),
+                style=str(mapping_data["style"]),
+                weight=float(mapping_data["weight"]),
+            )
+
+        # Fall back to fontconfig (if available) for fonts not in static mapping
         if HAS_FONTCONFIG:
+            logger.debug(
+                f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
+            )
             match = fontconfig.match(
                 pattern=f":postscriptname={postscriptname}",
                 select=("file", "family", "style", "weight"),
             )
             if match:
-                logger.debug(
-                    f"Resolved '{postscriptname}' via fontconfig: {match['family']}"
+                logger.info(
+                    f"Resolved '{postscriptname}' via fontconfig fallback: "
+                    f"{match['family']}"
                 )
                 return FontInfo(
                     postscript_name=postscriptname,
@@ -229,34 +251,6 @@ class FontInfo:
                     style=match["style"],  # type: ignore
                     weight=match["weight"],  # type: ignore
                 )
-            # Fontconfig available but font not found
-            logger.debug(
-                f"Font '{postscriptname}' not found via fontconfig, "
-                "trying static font mapping..."
-            )
-
-        # Fall back to static font mapping
-        from psd2svg.core import font_mapping as fm
-
-        mapping_data = fm.find_in_mapping(postscriptname, font_mapping)
-        if mapping_data:
-            if not HAS_FONTCONFIG:
-                logger.info(
-                    f"Resolved '{postscriptname}' via static font mapping: "
-                    f"{mapping_data['family']} (fontconfig not available)"
-                )
-            else:
-                logger.info(
-                    f"Resolved '{postscriptname}' via static font mapping: "
-                    f"{mapping_data['family']}"
-                )
-            return FontInfo(
-                postscript_name=postscriptname,
-                file="",  # No file path available from static mapping
-                family=str(mapping_data["family"]),
-                style=str(mapping_data["style"]),
-                weight=float(mapping_data["weight"]),
-            )
 
         # Font not found in any mapping
         if not HAS_FONTCONFIG:
@@ -267,9 +261,9 @@ class FontInfo:
             )
         else:
             logger.warning(
-                f"Font '{postscriptname}' not found via fontconfig or static mapping. "
-                "Make sure the font is installed on your system, or provide a custom "
-                "font mapping via the font_mapping parameter."
+                f"Font '{postscriptname}' not found via static mapping or fontconfig. "
+                "Text layer will be rasterized. Make sure the font is installed on your "
+                "system, or provide a custom font mapping via the font_mapping parameter."
             )
         return None
 

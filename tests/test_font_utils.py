@@ -243,27 +243,44 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_success(self, mock_match: MagicMock) -> None:
-        """Test find method with successful font match."""
+        """Test find method with fontconfig fallback for font not in static mapping."""
         mock_match.return_value = {
-            "file": "/path/to/arial.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom.ttf",
+            "family": "CustomFont",
             "style": "Regular",
             "weight": 80.0,
         }
 
-        font = FontInfo.find("ArialMT")
+        # Use a font name that's definitely not in the static mapping
+        font = FontInfo.find("CustomFont-Regular")
 
         assert font is not None
-        assert font.postscript_name == "ArialMT"
-        assert font.file == "/path/to/arial.ttf"
-        assert font.family == "Arial"
+        assert font.postscript_name == "CustomFont-Regular"
+        assert font.file == "/path/to/custom.ttf"
+        assert font.family == "CustomFont"
         assert font.style == "Regular"
         assert font.weight == 80.0
 
         mock_match.assert_called_once_with(
-            pattern=":postscriptname=ArialMT",
+            pattern=":postscriptname=CustomFont-Regular",
             select=("file", "family", "style", "weight"),
         )
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_static_mapping_priority(self, mock_match: MagicMock) -> None:
+        """Test that static mapping is used first, fontconfig not called."""
+        # ArialMT is in the static mapping, so fontconfig should NOT be called
+        font = FontInfo.find("ArialMT")
+
+        assert font is not None
+        assert font.postscript_name == "ArialMT"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+        assert font.file == ""  # No file path from static mapping
+
+        # Fontconfig should not have been called
+        mock_match.assert_not_called()
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_not_found(
@@ -294,15 +311,15 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_font(self, mock_match: MagicMock) -> None:
-        """Test find method for bold font."""
+        """Test find method for bold font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-bold.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-bold.ttf",
+            "family": "CustomFont",
             "style": "Bold",
             "weight": 200.0,
         }
 
-        font = FontInfo.find("Arial-BoldMT")
+        font = FontInfo.find("CustomFont-Bold")
 
         assert font is not None
         assert font.bold is True
@@ -310,15 +327,15 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_italic_font(self, mock_match: MagicMock) -> None:
-        """Test find method for italic font."""
+        """Test find method for italic font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-italic.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-italic.ttf",
+            "family": "CustomFont",
             "style": "Italic",
             "weight": 80.0,
         }
 
-        font = FontInfo.find("Arial-ItalicMT")
+        font = FontInfo.find("CustomFont-Italic")
 
         assert font is not None
         assert font.bold is False
@@ -326,15 +343,15 @@ class TestFontInfoFind:
 
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_italic_font(self, mock_match: MagicMock) -> None:
-        """Test find method for bold italic font."""
+        """Test find method for bold italic font via fontconfig fallback."""
         mock_match.return_value = {
-            "file": "/path/to/arial-bolditalic.ttf",
-            "family": "Arial",
+            "file": "/path/to/custom-bolditalic.ttf",
+            "family": "CustomFont",
             "style": "Bold Italic",
             "weight": 200.0,
         }
 
-        font = FontInfo.find("Arial-BoldItalicMT")
+        font = FontInfo.find("CustomFont-BoldItalic")
 
         assert font is not None
         assert font.bold is True
