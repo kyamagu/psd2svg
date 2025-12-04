@@ -85,7 +85,11 @@ class TestLoadFontMappingFromJSON:
         """Test loading a valid JSON file."""
         json_file = tmp_path / "fonts.json"
         mapping_data = {
-            "TestFont-Regular": {"family": "Test Font", "style": "Regular", "weight": 80.0},
+            "TestFont-Regular": {
+                "family": "Test Font",
+                "style": "Regular",
+                "weight": 80.0,
+            },
             "TestFont-Bold": {"family": "Test Font", "style": "Bold", "weight": 200.0},
         }
 
@@ -155,7 +159,11 @@ class TestLoadFontMappingFromJSON:
         """Test loading JSON with invalid field types."""
         json_file = tmp_path / "invalid_types.json"
         mapping_data = {
-            "TestFont": {"family": 123, "style": "Regular", "weight": 80.0}  # family should be string
+            "TestFont": {
+                "family": 123,
+                "style": "Regular",
+                "weight": 80.0,
+            }  # family should be string
         }
 
         with open(json_file, "w") as f:
@@ -234,7 +242,9 @@ class TestValidateFontData:
         with pytest.raises(ValueError, match="missing required fields"):
             fm._validate_font_data(font_data, "TestFont", raise_on_error=True)
 
-    def test_validate_invalid_family_type(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_validate_invalid_family_type(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test validating data with non-string family."""
         font_data: dict[str, Any] = {"family": 123, "style": "Regular", "weight": 80.0}
 
@@ -245,7 +255,9 @@ class TestValidateFontData:
         assert "Font family" in caplog.text
         assert "must be a string" in caplog.text
 
-    def test_validate_invalid_style_type(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_validate_invalid_style_type(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test validating data with non-string style."""
         font_data: dict[str, Any] = {"family": "Arial", "style": 123, "weight": 80.0}
 
@@ -256,9 +268,15 @@ class TestValidateFontData:
         assert "Font style" in caplog.text
         assert "must be a string" in caplog.text
 
-    def test_validate_invalid_weight_type(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_validate_invalid_weight_type(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test validating data with non-numeric weight."""
-        font_data: dict[str, Any] = {"family": "Arial", "style": "Regular", "weight": "not a number"}
+        font_data: dict[str, Any] = {
+            "family": "Arial",
+            "style": "Regular",
+            "weight": "not a number",
+        }
 
         with caplog.at_level(logging.WARNING):
             result = fm._validate_font_data(font_data, "TestFont")
@@ -323,7 +341,9 @@ class TestDefaultFontMapping:
         }
 
         for family in expected_families:
-            assert family in families, f"Expected family '{family}' not found in mapping"
+            assert family in families, (
+                f"Expected family '{family}' not found in mapping"
+            )
 
     def test_default_mapping_cjk_coverage(self) -> None:
         """Test that default mapping has good CJK coverage."""
@@ -348,8 +368,12 @@ class TestFontMappingIntegration:
         """Test that FontInfo.find respects custom font mapping."""
         from psd2svg.core.font_utils import FontInfo
 
-        custom_mapping = {
-            "CustomFont-Test": {"family": "My Custom Font", "style": "Test", "weight": 150.0}
+        custom_mapping: dict[str, dict[str, str | float]] = {
+            "CustomFont-Test": {
+                "family": "My Custom Font",
+                "style": "Test",
+                "weight": 150.0,
+            }
         }
 
         # Font not in default mapping, but in custom mapping
@@ -365,7 +389,7 @@ class TestFontMappingIntegration:
         """Test that custom mapping overrides default for same PostScript name."""
         from psd2svg.core.font_utils import FontInfo
 
-        custom_mapping = {
+        custom_mapping: dict[str, dict[str, str | float]] = {
             "ArialMT": {"family": "My Custom Arial", "style": "Custom", "weight": 999.0}
         }
 

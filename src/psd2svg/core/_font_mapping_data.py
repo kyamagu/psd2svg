@@ -41,7 +41,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 200.0,
     },
     # Times New Roman family
-    "TimesNewRomanPSMT": {"family": "Times New Roman", "style": "Regular", "weight": 80.0},
+    "TimesNewRomanPSMT": {
+        "family": "Times New Roman",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "TimesNewRomanPS-BoldMT": {
         "family": "Times New Roman",
         "style": "Bold",
@@ -72,8 +76,16 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 200.0,
     },
     "HelveticaNeue": {"family": "Helvetica Neue", "style": "Regular", "weight": 80.0},
-    "HelveticaNeue-Bold": {"family": "Helvetica Neue", "style": "Bold", "weight": 200.0},
-    "HelveticaNeue-Italic": {"family": "Helvetica Neue", "style": "Italic", "weight": 80.0},
+    "HelveticaNeue-Bold": {
+        "family": "Helvetica Neue",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "HelveticaNeue-Italic": {
+        "family": "Helvetica Neue",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "HelveticaNeue-BoldItalic": {
         "family": "Helvetica Neue",
         "style": "Bold Italic",
@@ -90,7 +102,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     },
     "CourierNewPSMT": {"family": "Courier New", "style": "Regular", "weight": 80.0},
     "CourierNewPS-BoldMT": {"family": "Courier New", "style": "Bold", "weight": 200.0},
-    "CourierNewPS-ItalicMT": {"family": "Courier New", "style": "Italic", "weight": 80.0},
+    "CourierNewPS-ItalicMT": {
+        "family": "Courier New",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "CourierNewPS-BoldItalicMT": {
         "family": "Courier New",
         "style": "Bold Italic",
@@ -100,12 +116,20 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "Verdana": {"family": "Verdana", "style": "Regular", "weight": 80.0},
     "Verdana-Bold": {"family": "Verdana", "style": "Bold", "weight": 200.0},
     "Verdana-Italic": {"family": "Verdana", "style": "Italic", "weight": 80.0},
-    "Verdana-BoldItalic": {"family": "Verdana", "style": "Bold Italic", "weight": 200.0},
+    "Verdana-BoldItalic": {
+        "family": "Verdana",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     # Georgia family
     "Georgia": {"family": "Georgia", "style": "Regular", "weight": 80.0},
     "Georgia-Bold": {"family": "Georgia", "style": "Bold", "weight": 200.0},
     "Georgia-Italic": {"family": "Georgia", "style": "Italic", "weight": 80.0},
-    "Georgia-BoldItalic": {"family": "Georgia", "style": "Bold Italic", "weight": 200.0},
+    "Georgia-BoldItalic": {
+        "family": "Georgia",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     # Tahoma family
     "Tahoma": {"family": "Tahoma", "style": "Regular", "weight": 80.0},
     "Tahoma-Bold": {"family": "Tahoma", "style": "Bold", "weight": 200.0},
@@ -127,7 +151,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "NotoSans": {"family": "Noto Sans", "style": "Regular", "weight": 80.0},
     "NotoSans-Bold": {"family": "Noto Sans", "style": "Bold", "weight": 200.0},
     "NotoSans-Italic": {"family": "Noto Sans", "style": "Italic", "weight": 80.0},
-    "NotoSans-BoldItalic": {"family": "Noto Sans", "style": "Bold Italic", "weight": 200.0},
+    "NotoSans-BoldItalic": {
+        "family": "Noto Sans",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     # Noto Serif family
     "NotoSerif": {"family": "Noto Serif", "style": "Regular", "weight": 80.0},
     "NotoSerif-Bold": {"family": "Noto Serif", "style": "Bold", "weight": 200.0},
@@ -140,33 +168,53 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     # Noto Sans CJK JP family
     "NotoSansJP-Thin": {"family": "Noto Sans JP", "style": "Thin", "weight": 0.0},
     "NotoSansJP-Light": {"family": "Noto Sans JP", "style": "Light", "weight": 50.0},
-    "NotoSansJP-Regular": {"family": "Noto Sans JP", "style": "Regular", "weight": 80.0},
+    "NotoSansJP-Regular": {
+        "family": "Noto Sans JP",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "NotoSansJP-Medium": {"family": "Noto Sans JP", "style": "Medium", "weight": 100.0},
     "NotoSansJP-Bold": {"family": "Noto Sans JP", "style": "Bold", "weight": 200.0},
     "NotoSansJP-Black": {"family": "Noto Sans JP", "style": "Black", "weight": 210.0},
     # Noto Sans CJK KR family
     "NotoSansKR-Thin": {"family": "Noto Sans KR", "style": "Thin", "weight": 0.0},
     "NotoSansKR-Light": {"family": "Noto Sans KR", "style": "Light", "weight": 50.0},
-    "NotoSansKR-Regular": {"family": "Noto Sans KR", "style": "Regular", "weight": 80.0},
+    "NotoSansKR-Regular": {
+        "family": "Noto Sans KR",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "NotoSansKR-Medium": {"family": "Noto Sans KR", "style": "Medium", "weight": 100.0},
     "NotoSansKR-Bold": {"family": "Noto Sans KR", "style": "Bold", "weight": 200.0},
     "NotoSansKR-Black": {"family": "Noto Sans KR", "style": "Black", "weight": 210.0},
     # Noto Sans CJK SC (Simplified Chinese) family
     "NotoSansSC-Thin": {"family": "Noto Sans SC", "style": "Thin", "weight": 0.0},
     "NotoSansSC-Light": {"family": "Noto Sans SC", "style": "Light", "weight": 50.0},
-    "NotoSansSC-Regular": {"family": "Noto Sans SC", "style": "Regular", "weight": 80.0},
+    "NotoSansSC-Regular": {
+        "family": "Noto Sans SC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "NotoSansSC-Medium": {"family": "Noto Sans SC", "style": "Medium", "weight": 100.0},
     "NotoSansSC-Bold": {"family": "Noto Sans SC", "style": "Bold", "weight": 200.0},
     "NotoSansSC-Black": {"family": "Noto Sans SC", "style": "Black", "weight": 210.0},
     # Noto Sans CJK TC (Traditional Chinese) family
     "NotoSansTC-Thin": {"family": "Noto Sans TC", "style": "Thin", "weight": 0.0},
     "NotoSansTC-Light": {"family": "Noto Sans TC", "style": "Light", "weight": 50.0},
-    "NotoSansTC-Regular": {"family": "Noto Sans TC", "style": "Regular", "weight": 80.0},
+    "NotoSansTC-Regular": {
+        "family": "Noto Sans TC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "NotoSansTC-Medium": {"family": "Noto Sans TC", "style": "Medium", "weight": 100.0},
     "NotoSansTC-Bold": {"family": "Noto Sans TC", "style": "Bold", "weight": 200.0},
     "NotoSansTC-Black": {"family": "Noto Sans TC", "style": "Black", "weight": 210.0},
     # Noto Sans Arabic family
-    "NotoSansArabic-Thin": {"family": "Noto Sans Arabic", "style": "Thin", "weight": 0.0},
+    "NotoSansArabic-Thin": {
+        "family": "Noto Sans Arabic",
+        "style": "Thin",
+        "weight": 0.0,
+    },
     "NotoSansArabic-Light": {
         "family": "Noto Sans Arabic",
         "style": "Light",
@@ -182,7 +230,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "Medium",
         "weight": 100.0,
     },
-    "NotoSansArabic-Bold": {"family": "Noto Sans Arabic", "style": "Bold", "weight": 200.0},
+    "NotoSansArabic-Bold": {
+        "family": "Noto Sans Arabic",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     "NotoSansArabic-Black": {
         "family": "Noto Sans Arabic",
         "style": "Black",
@@ -190,17 +242,33 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     },
     # Noto Sans Thai family
     "NotoSansThai-Thin": {"family": "Noto Sans Thai", "style": "Thin", "weight": 0.0},
-    "NotoSansThai-Light": {"family": "Noto Sans Thai", "style": "Light", "weight": 50.0},
+    "NotoSansThai-Light": {
+        "family": "Noto Sans Thai",
+        "style": "Light",
+        "weight": 50.0,
+    },
     "NotoSansThai-Regular": {
         "family": "Noto Sans Thai",
         "style": "Regular",
         "weight": 80.0,
     },
-    "NotoSansThai-Medium": {"family": "Noto Sans Thai", "style": "Medium", "weight": 100.0},
+    "NotoSansThai-Medium": {
+        "family": "Noto Sans Thai",
+        "style": "Medium",
+        "weight": 100.0,
+    },
     "NotoSansThai-Bold": {"family": "Noto Sans Thai", "style": "Bold", "weight": 200.0},
-    "NotoSansThai-Black": {"family": "Noto Sans Thai", "style": "Black", "weight": 210.0},
+    "NotoSansThai-Black": {
+        "family": "Noto Sans Thai",
+        "style": "Black",
+        "weight": 210.0,
+    },
     # Noto Sans Hebrew family
-    "NotoSansHebrew-Thin": {"family": "Noto Sans Hebrew", "style": "Thin", "weight": 0.0},
+    "NotoSansHebrew-Thin": {
+        "family": "Noto Sans Hebrew",
+        "style": "Thin",
+        "weight": 0.0,
+    },
     "NotoSansHebrew-Light": {
         "family": "Noto Sans Hebrew",
         "style": "Light",
@@ -216,7 +284,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "Medium",
         "weight": 100.0,
     },
-    "NotoSansHebrew-Bold": {"family": "Noto Sans Hebrew", "style": "Bold", "weight": 200.0},
+    "NotoSansHebrew-Bold": {
+        "family": "Noto Sans Hebrew",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     "NotoSansHebrew-Black": {
         "family": "Noto Sans Hebrew",
         "style": "Black",
@@ -254,7 +326,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 210.0,
     },
     # Noto Sans CJK (generic) family
-    "NotoSansCJK-Regular": {"family": "Noto Sans CJK", "style": "Regular", "weight": 80.0},
+    "NotoSansCJK-Regular": {
+        "family": "Noto Sans CJK",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "NotoSansCJK-Bold": {"family": "Noto Sans CJK", "style": "Bold", "weight": 200.0},
     # Palatino family
     "Palatino-Roman": {"family": "Palatino", "style": "Roman", "weight": 80.0},
@@ -274,16 +350,32 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "MinionPro-Regular": {"family": "Minion Pro", "style": "Regular", "weight": 80.0},
     "MinionPro-Bold": {"family": "Minion Pro", "style": "Bold", "weight": 200.0},
     "MinionPro-It": {"family": "Minion Pro", "style": "Italic", "weight": 80.0},
-    "MinionPro-BoldIt": {"family": "Minion Pro", "style": "Bold Italic", "weight": 200.0},
+    "MinionPro-BoldIt": {
+        "family": "Minion Pro",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "MinionPro-Medium": {"family": "Minion Pro", "style": "Medium", "weight": 100.0},
-    "MinionPro-Semibold": {"family": "Minion Pro", "style": "Semibold", "weight": 180.0},
+    "MinionPro-Semibold": {
+        "family": "Minion Pro",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     # Myriad Pro family (Adobe's sans-serif font, common in UI/web design)
     "MyriadPro-Regular": {"family": "Myriad Pro", "style": "Regular", "weight": 80.0},
     "MyriadPro-Bold": {"family": "Myriad Pro", "style": "Bold", "weight": 200.0},
     "MyriadPro-It": {"family": "Myriad Pro", "style": "Italic", "weight": 80.0},
-    "MyriadPro-BoldIt": {"family": "Myriad Pro", "style": "Bold Italic", "weight": 200.0},
+    "MyriadPro-BoldIt": {
+        "family": "Myriad Pro",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "MyriadPro-Light": {"family": "Myriad Pro", "style": "Light", "weight": 50.0},
-    "MyriadPro-Semibold": {"family": "Myriad Pro", "style": "Semibold", "weight": 180.0},
+    "MyriadPro-Semibold": {
+        "family": "Myriad Pro",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     "MyriadPro-Black": {"family": "Myriad Pro", "style": "Black", "weight": 210.0},
     # Avenir family (popular geometric sans-serif)
     "Avenir-Book": {"family": "Avenir", "style": "Book", "weight": 80.0},
@@ -297,35 +389,111 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "AvenirNext-Regular": {"family": "Avenir Next", "style": "Regular", "weight": 80.0},
     "AvenirNext-Bold": {"family": "Avenir Next", "style": "Bold", "weight": 200.0},
     "AvenirNext-Medium": {"family": "Avenir Next", "style": "Medium", "weight": 100.0},
-    "AvenirNext-DemiBold": {"family": "Avenir Next", "style": "DemiBold", "weight": 180.0},
+    "AvenirNext-DemiBold": {
+        "family": "Avenir Next",
+        "style": "DemiBold",
+        "weight": 180.0,
+    },
     # Kozuka Gothic Pr6N family (Japanese font for CJK support)
-    "KozGoPr6N-Regular": {"family": "Kozuka Gothic Pr6N", "style": "Regular", "weight": 80.0},
-    "KozGoPr6N-Bold": {"family": "Kozuka Gothic Pr6N", "style": "Bold", "weight": 200.0},
-    "KozGoPr6N-Light": {"family": "Kozuka Gothic Pr6N", "style": "Light", "weight": 50.0},
-    "KozGoPr6N-Medium": {"family": "Kozuka Gothic Pr6N", "style": "Medium", "weight": 100.0},
-    "KozGoPr6N-Heavy": {"family": "Kozuka Gothic Pr6N", "style": "Heavy", "weight": 200.0},
-    "KozGoPro-Regular": {"family": "Kozuka Gothic Pro", "style": "Regular", "weight": 80.0},
+    "KozGoPr6N-Regular": {
+        "family": "Kozuka Gothic Pr6N",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "KozGoPr6N-Bold": {
+        "family": "Kozuka Gothic Pr6N",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "KozGoPr6N-Light": {
+        "family": "Kozuka Gothic Pr6N",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "KozGoPr6N-Medium": {
+        "family": "Kozuka Gothic Pr6N",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "KozGoPr6N-Heavy": {
+        "family": "Kozuka Gothic Pr6N",
+        "style": "Heavy",
+        "weight": 200.0,
+    },
+    "KozGoPro-Regular": {
+        "family": "Kozuka Gothic Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "KozGoPro-Bold": {"family": "Kozuka Gothic Pro", "style": "Bold", "weight": 200.0},
     "KozGoPro-Light": {"family": "Kozuka Gothic Pro", "style": "Light", "weight": 50.0},
-    "KozGoPro-Medium": {"family": "Kozuka Gothic Pro", "style": "Medium", "weight": 100.0},
+    "KozGoPro-Medium": {
+        "family": "Kozuka Gothic Pro",
+        "style": "Medium",
+        "weight": 100.0,
+    },
     # Kozuka Mincho Pr6N family (Japanese serif font)
-    "KozMinPr6N-Regular": {"family": "Kozuka Mincho Pr6N", "style": "Regular", "weight": 80.0},
-    "KozMinPr6N-Bold": {"family": "Kozuka Mincho Pr6N", "style": "Bold", "weight": 200.0},
-    "KozMinPr6N-Light": {"family": "Kozuka Mincho Pr6N", "style": "Light", "weight": 50.0},
-    "KozMinPro-Regular": {"family": "Kozuka Mincho Pro", "style": "Regular", "weight": 80.0},
+    "KozMinPr6N-Regular": {
+        "family": "Kozuka Mincho Pr6N",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "KozMinPr6N-Bold": {
+        "family": "Kozuka Mincho Pr6N",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "KozMinPr6N-Light": {
+        "family": "Kozuka Mincho Pr6N",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "KozMinPro-Regular": {
+        "family": "Kozuka Mincho Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     # Source Han Sans family (Adobe/Google CJK font, also known as Noto Sans CJK)
-    "SourceHanSans-Regular": {"family": "Source Han Sans", "style": "Regular", "weight": 80.0},
-    "SourceHanSans-Bold": {"family": "Source Han Sans", "style": "Bold", "weight": 200.0},
-    "SourceHanSans-Light": {"family": "Source Han Sans", "style": "Light", "weight": 50.0},
-    "SourceHanSans-Medium": {"family": "Source Han Sans", "style": "Medium", "weight": 100.0},
-    "SourceHanSans-Heavy": {"family": "Source Han Sans", "style": "Heavy", "weight": 200.0},
+    "SourceHanSans-Regular": {
+        "family": "Source Han Sans",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "SourceHanSans-Bold": {
+        "family": "Source Han Sans",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "SourceHanSans-Light": {
+        "family": "Source Han Sans",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "SourceHanSans-Medium": {
+        "family": "Source Han Sans",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "SourceHanSans-Heavy": {
+        "family": "Source Han Sans",
+        "style": "Heavy",
+        "weight": 200.0,
+    },
     "SourceHanSansJP-Regular": {
         "family": "Source Han Sans JP",
         "style": "Regular",
         "weight": 80.0,
     },
-    "SourceHanSansJP-Bold": {"family": "Source Han Sans JP", "style": "Bold", "weight": 200.0},
-    "SourceHanSansJP-Light": {"family": "Source Han Sans JP", "style": "Light", "weight": 50.0},
+    "SourceHanSansJP-Bold": {
+        "family": "Source Han Sans JP",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "SourceHanSansJP-Light": {
+        "family": "Source Han Sans JP",
+        "style": "Light",
+        "weight": 50.0,
+    },
     "SourceHanSansJP-Medium": {
         "family": "Source Han Sans JP",
         "style": "Medium",
@@ -336,56 +504,104 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "Regular",
         "weight": 80.0,
     },
-    "SourceHanSansKR-Bold": {"family": "Source Han Sans KR", "style": "Bold", "weight": 200.0},
+    "SourceHanSansKR-Bold": {
+        "family": "Source Han Sans KR",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     "SourceHanSansSC-Regular": {
         "family": "Source Han Sans SC",
         "style": "Regular",
         "weight": 80.0,
     },
-    "SourceHanSansSC-Bold": {"family": "Source Han Sans SC", "style": "Bold", "weight": 200.0},
+    "SourceHanSansSC-Bold": {
+        "family": "Source Han Sans SC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     "SourceHanSansTC-Regular": {
         "family": "Source Han Sans TC",
         "style": "Regular",
         "weight": 80.0,
     },
-    "SourceHanSansTC-Bold": {"family": "Source Han Sans TC", "style": "Bold", "weight": 200.0},
+    "SourceHanSansTC-Bold": {
+        "family": "Source Han Sans TC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     # Source Sans Pro family (Adobe's open-source sans-serif)
-    "SourceSansPro-Regular": {"family": "Source Sans Pro", "style": "Regular", "weight": 80.0},
-    "SourceSansPro-Bold": {"family": "Source Sans Pro", "style": "Bold", "weight": 200.0},
-    "SourceSansPro-It": {"family": "Source Sans Pro", "style": "Italic", "weight": 80.0},
+    "SourceSansPro-Regular": {
+        "family": "Source Sans Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "SourceSansPro-Bold": {
+        "family": "Source Sans Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "SourceSansPro-It": {
+        "family": "Source Sans Pro",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "SourceSansPro-BoldIt": {
         "family": "Source Sans Pro",
         "style": "Bold Italic",
         "weight": 200.0,
     },
-    "SourceSansPro-Light": {"family": "Source Sans Pro", "style": "Light", "weight": 50.0},
+    "SourceSansPro-Light": {
+        "family": "Source Sans Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
     "SourceSansPro-Semibold": {
         "family": "Source Sans Pro",
         "style": "Semibold",
         "weight": 180.0,
     },
-    "SourceSansPro-Black": {"family": "Source Sans Pro", "style": "Black", "weight": 210.0},
+    "SourceSansPro-Black": {
+        "family": "Source Sans Pro",
+        "style": "Black",
+        "weight": 210.0,
+    },
     # Source Serif Pro family (Adobe's open-source serif)
     "SourceSerifPro-Regular": {
         "family": "Source Serif Pro",
         "style": "Regular",
         "weight": 80.0,
     },
-    "SourceSerifPro-Bold": {"family": "Source Serif Pro", "style": "Bold", "weight": 200.0},
-    "SourceSerifPro-Light": {"family": "Source Serif Pro", "style": "Light", "weight": 50.0},
+    "SourceSerifPro-Bold": {
+        "family": "Source Serif Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "SourceSerifPro-Light": {
+        "family": "Source Serif Pro",
+        "style": "Light",
+        "weight": 50.0,
+    },
     "SourceSerifPro-Semibold": {
         "family": "Source Serif Pro",
         "style": "Semibold",
         "weight": 180.0,
     },
-    "SourceSerifPro-Black": {"family": "Source Serif Pro", "style": "Black", "weight": 210.0},
+    "SourceSerifPro-Black": {
+        "family": "Source Serif Pro",
+        "style": "Black",
+        "weight": 210.0,
+    },
     # Adobe Garamond Pro family (classic serif font)
     "AGaramondPro-Regular": {
         "family": "Adobe Garamond Pro",
         "style": "Regular",
         "weight": 80.0,
     },
-    "AGaramondPro-Bold": {"family": "Adobe Garamond Pro", "style": "Bold", "weight": 200.0},
+    "AGaramondPro-Bold": {
+        "family": "Adobe Garamond Pro",
+        "style": "Bold",
+        "weight": 200.0,
+    },
     "AGaramondPro-Italic": {
         "family": "Adobe Garamond Pro",
         "style": "Italic",
@@ -397,9 +613,17 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 180.0,
     },
     # Adobe Caslon Pro family
-    "ACaslonPro-Regular": {"family": "Adobe Caslon Pro", "style": "Regular", "weight": 80.0},
+    "ACaslonPro-Regular": {
+        "family": "Adobe Caslon Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "ACaslonPro-Bold": {"family": "Adobe Caslon Pro", "style": "Bold", "weight": 200.0},
-    "ACaslonPro-Italic": {"family": "Adobe Caslon Pro", "style": "Italic", "weight": 80.0},
+    "ACaslonPro-Italic": {
+        "family": "Adobe Caslon Pro",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "ACaslonPro-Semibold": {
         "family": "Adobe Caslon Pro",
         "style": "Semibold",
@@ -407,15 +631,27 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     },
     # Acumin Pro family (modern sans-serif, bundled with Photoshop)
     "AcuminPro-Thin": {"family": "Acumin Pro", "style": "Thin", "weight": 0.0},
-    "AcuminPro-ExtraLight": {"family": "Acumin Pro", "style": "ExtraLight", "weight": 40.0},
+    "AcuminPro-ExtraLight": {
+        "family": "Acumin Pro",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
     "AcuminPro-Light": {"family": "Acumin Pro", "style": "Light", "weight": 50.0},
     "AcuminPro-Regular": {"family": "Acumin Pro", "style": "Regular", "weight": 80.0},
     "AcuminPro-Medium": {"family": "Acumin Pro", "style": "Medium", "weight": 100.0},
-    "AcuminPro-Semibold": {"family": "Acumin Pro", "style": "Semibold", "weight": 180.0},
+    "AcuminPro-Semibold": {
+        "family": "Acumin Pro",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     "AcuminPro-Bold": {"family": "Acumin Pro", "style": "Bold", "weight": 200.0},
     "AcuminPro-Black": {"family": "Acumin Pro", "style": "Black", "weight": 210.0},
     "AcuminPro-Italic": {"family": "Acumin Pro", "style": "Italic", "weight": 80.0},
-    "AcuminPro-BoldItalic": {"family": "Acumin Pro", "style": "Bold Italic", "weight": 200.0},
+    "AcuminPro-BoldItalic": {
+        "family": "Acumin Pro",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     # Adobe Heiti Std family (Simplified Chinese, bundled with Photoshop)
     "AdobeHeitiStd-Regular": {
         "family": "Adobe Heiti Std",
@@ -423,8 +659,16 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 80.0,
     },
     # Adobe Gothic Std family (CJK font, bundled with Photoshop)
-    "AdobeGothicStd-Bold": {"family": "Adobe Gothic Std", "style": "Bold", "weight": 200.0},
-    "AdobeGothicStd-Light": {"family": "Adobe Gothic Std", "style": "Light", "weight": 50.0},
+    "AdobeGothicStd-Bold": {
+        "family": "Adobe Gothic Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "AdobeGothicStd-Light": {
+        "family": "Adobe Gothic Std",
+        "style": "Light",
+        "weight": 50.0,
+    },
     # Adobe Kaiti Std family (Simplified Chinese, bundled with Photoshop CS4+)
     "AdobeKaitiStd-Regular": {
         "family": "Adobe Kaiti Std",
@@ -438,9 +682,17 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 80.0,
     },
     # Adobe Song Std family (Simplified Chinese, bundled with Photoshop CS3+)
-    "AdobeSongStd-Light": {"family": "Adobe Song Std", "style": "Light", "weight": 50.0},
+    "AdobeSongStd-Light": {
+        "family": "Adobe Song Std",
+        "style": "Light",
+        "weight": 50.0,
+    },
     # Adobe Ming Std family (Traditional Chinese)
-    "AdobeMingStd-Light": {"family": "Adobe Ming Std", "style": "Light", "weight": 50.0},
+    "AdobeMingStd-Light": {
+        "family": "Adobe Ming Std",
+        "style": "Light",
+        "weight": 50.0,
+    },
     # Adobe Myungjo Std family (Korean)
     "AdobeMyungjoStd-Medium": {
         "family": "Adobe Myungjo Std",
@@ -448,9 +700,17 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 100.0,
     },
     # Chaparral Pro family (serif font, bundled with Creative Suite)
-    "ChaparralPro-Regular": {"family": "Chaparral Pro", "style": "Regular", "weight": 80.0},
+    "ChaparralPro-Regular": {
+        "family": "Chaparral Pro",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "ChaparralPro-Bold": {"family": "Chaparral Pro", "style": "Bold", "weight": 200.0},
-    "ChaparralPro-Italic": {"family": "Chaparral Pro", "style": "Italic", "weight": 80.0},
+    "ChaparralPro-Italic": {
+        "family": "Chaparral Pro",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "ChaparralPro-BoldIt": {
         "family": "Chaparral Pro",
         "style": "Bold Italic",
@@ -467,15 +727,27 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "TrajanPro-Bold": {"family": "Trajan Pro", "style": "Bold", "weight": 200.0},
     # News Gothic Std family (sans-serif, bundled with Creative Suite)
     "NewsGothicStd": {"family": "News Gothic Std", "style": "Regular", "weight": 80.0},
-    "NewsGothicStd-Bold": {"family": "News Gothic Std", "style": "Bold", "weight": 200.0},
-    "NewsGothicStd-Italic": {"family": "News Gothic Std", "style": "Italic", "weight": 80.0},
+    "NewsGothicStd-Bold": {
+        "family": "News Gothic Std",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NewsGothicStd-Italic": {
+        "family": "News Gothic Std",
+        "style": "Italic",
+        "weight": 80.0,
+    },
     "NewsGothicStd-BoldItalic": {
         "family": "News Gothic Std",
         "style": "Bold Italic",
         "weight": 200.0,
     },
     # Cooper Black Std family (decorative, bundled with Creative Suite)
-    "CooperBlackStd": {"family": "Cooper Black Std", "style": "Regular", "weight": 80.0},
+    "CooperBlackStd": {
+        "family": "Cooper Black Std",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "CooperBlackStd-Italic": {
         "family": "Cooper Black Std",
         "style": "Italic",
@@ -489,9 +761,17 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "WarnockPro-Regular": {"family": "Warnock Pro", "style": "Regular", "weight": 80.0},
     "WarnockPro-Bold": {"family": "Warnock Pro", "style": "Bold", "weight": 200.0},
     "WarnockPro-It": {"family": "Warnock Pro", "style": "Italic", "weight": 80.0},
-    "WarnockPro-BoldIt": {"family": "Warnock Pro", "style": "Bold Italic", "weight": 200.0},
+    "WarnockPro-BoldIt": {
+        "family": "Warnock Pro",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "WarnockPro-Light": {"family": "Warnock Pro", "style": "Light", "weight": 50.0},
-    "WarnockPro-Semibold": {"family": "Warnock Pro", "style": "Semibold", "weight": 180.0},
+    "WarnockPro-Semibold": {
+        "family": "Warnock Pro",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     # Google Fonts (popular fonts used in Photoshop)
     # Roboto family (most popular Google Font)
     "Roboto-Thin": {"family": "Roboto", "style": "Thin", "weight": 0.0},
@@ -503,25 +783,49 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "Roboto-ThinItalic": {"family": "Roboto", "style": "Thin Italic", "weight": 0.0},
     "Roboto-LightItalic": {"family": "Roboto", "style": "Light Italic", "weight": 50.0},
     "Roboto-Italic": {"family": "Roboto", "style": "Italic", "weight": 80.0},
-    "Roboto-MediumItalic": {"family": "Roboto", "style": "Medium Italic", "weight": 100.0},
+    "Roboto-MediumItalic": {
+        "family": "Roboto",
+        "style": "Medium Italic",
+        "weight": 100.0,
+    },
     "Roboto-BoldItalic": {"family": "Roboto", "style": "Bold Italic", "weight": 200.0},
-    "Roboto-BlackItalic": {"family": "Roboto", "style": "Black Italic", "weight": 210.0},
+    "Roboto-BlackItalic": {
+        "family": "Roboto",
+        "style": "Black Italic",
+        "weight": 210.0,
+    },
     # Open Sans family (highly readable Google Font)
     "OpenSans-Light": {"family": "Open Sans", "style": "Light", "weight": 50.0},
     "OpenSans-Regular": {"family": "Open Sans", "style": "Regular", "weight": 80.0},
     "OpenSans-Medium": {"family": "Open Sans", "style": "Medium", "weight": 100.0},
     "OpenSans-SemiBold": {"family": "Open Sans", "style": "SemiBold", "weight": 180.0},
     "OpenSans-Bold": {"family": "Open Sans", "style": "Bold", "weight": 200.0},
-    "OpenSans-ExtraBold": {"family": "Open Sans", "style": "ExtraBold", "weight": 205.0},
-    "OpenSans-LightItalic": {"family": "Open Sans", "style": "Light Italic", "weight": 50.0},
+    "OpenSans-ExtraBold": {
+        "family": "Open Sans",
+        "style": "ExtraBold",
+        "weight": 205.0,
+    },
+    "OpenSans-LightItalic": {
+        "family": "Open Sans",
+        "style": "Light Italic",
+        "weight": 50.0,
+    },
     "OpenSans-Italic": {"family": "Open Sans", "style": "Italic", "weight": 80.0},
-    "OpenSans-MediumItalic": {"family": "Open Sans", "style": "Medium Italic", "weight": 100.0},
+    "OpenSans-MediumItalic": {
+        "family": "Open Sans",
+        "style": "Medium Italic",
+        "weight": 100.0,
+    },
     "OpenSans-SemiBoldItalic": {
         "family": "Open Sans",
         "style": "SemiBold Italic",
         "weight": 180.0,
     },
-    "OpenSans-BoldItalic": {"family": "Open Sans", "style": "Bold Italic", "weight": 200.0},
+    "OpenSans-BoldItalic": {
+        "family": "Open Sans",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "OpenSans-ExtraBoldItalic": {
         "family": "Open Sans",
         "style": "ExtraBold Italic",
@@ -540,21 +844,41 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "Lato-BlackItalic": {"family": "Lato", "style": "Black Italic", "weight": 210.0},
     # Montserrat family (geometric Google Font)
     "Montserrat-Thin": {"family": "Montserrat", "style": "Thin", "weight": 0.0},
-    "Montserrat-ExtraLight": {"family": "Montserrat", "style": "ExtraLight", "weight": 40.0},
+    "Montserrat-ExtraLight": {
+        "family": "Montserrat",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
     "Montserrat-Light": {"family": "Montserrat", "style": "Light", "weight": 50.0},
     "Montserrat-Regular": {"family": "Montserrat", "style": "Regular", "weight": 80.0},
     "Montserrat-Medium": {"family": "Montserrat", "style": "Medium", "weight": 100.0},
-    "Montserrat-SemiBold": {"family": "Montserrat", "style": "SemiBold", "weight": 180.0},
+    "Montserrat-SemiBold": {
+        "family": "Montserrat",
+        "style": "SemiBold",
+        "weight": 180.0,
+    },
     "Montserrat-Bold": {"family": "Montserrat", "style": "Bold", "weight": 200.0},
-    "Montserrat-ExtraBold": {"family": "Montserrat", "style": "ExtraBold", "weight": 205.0},
+    "Montserrat-ExtraBold": {
+        "family": "Montserrat",
+        "style": "ExtraBold",
+        "weight": 205.0,
+    },
     "Montserrat-Black": {"family": "Montserrat", "style": "Black", "weight": 210.0},
-    "Montserrat-ThinItalic": {"family": "Montserrat", "style": "Thin Italic", "weight": 0.0},
+    "Montserrat-ThinItalic": {
+        "family": "Montserrat",
+        "style": "Thin Italic",
+        "weight": 0.0,
+    },
     "Montserrat-ExtraLightItalic": {
         "family": "Montserrat",
         "style": "ExtraLight Italic",
         "weight": 40.0,
     },
-    "Montserrat-LightItalic": {"family": "Montserrat", "style": "Light Italic", "weight": 50.0},
+    "Montserrat-LightItalic": {
+        "family": "Montserrat",
+        "style": "Light Italic",
+        "weight": 50.0,
+    },
     "Montserrat-Italic": {"family": "Montserrat", "style": "Italic", "weight": 80.0},
     "Montserrat-MediumItalic": {
         "family": "Montserrat",
@@ -566,13 +890,21 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "SemiBold Italic",
         "weight": 180.0,
     },
-    "Montserrat-BoldItalic": {"family": "Montserrat", "style": "Bold Italic", "weight": 200.0},
+    "Montserrat-BoldItalic": {
+        "family": "Montserrat",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "Montserrat-ExtraBoldItalic": {
         "family": "Montserrat",
         "style": "ExtraBold Italic",
         "weight": 205.0,
     },
-    "Montserrat-BlackItalic": {"family": "Montserrat", "style": "Black Italic", "weight": 210.0},
+    "Montserrat-BlackItalic": {
+        "family": "Montserrat",
+        "style": "Black Italic",
+        "weight": 210.0,
+    },
     # Poppins family (modern geometric Google Font)
     "Poppins-Thin": {"family": "Poppins", "style": "Thin", "weight": 0.0},
     "Poppins-ExtraLight": {"family": "Poppins", "style": "ExtraLight", "weight": 40.0},
@@ -598,34 +930,70 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "Calibri": {"family": "Calibri", "style": "Regular", "weight": 80.0},
     "Calibri-Bold": {"family": "Calibri", "style": "Bold", "weight": 200.0},
     "Calibri-Italic": {"family": "Calibri", "style": "Italic", "weight": 80.0},
-    "Calibri-BoldItalic": {"family": "Calibri", "style": "Bold Italic", "weight": 200.0},
+    "Calibri-BoldItalic": {
+        "family": "Calibri",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "Calibri-Light": {"family": "Calibri", "style": "Light", "weight": 50.0},
-    "Calibri-LightItalic": {"family": "Calibri", "style": "Light Italic", "weight": 50.0},
+    "Calibri-LightItalic": {
+        "family": "Calibri",
+        "style": "Light Italic",
+        "weight": 50.0,
+    },
     # Cambria family (serif font for on-screen reading)
     "Cambria": {"family": "Cambria", "style": "Regular", "weight": 80.0},
     "Cambria-Bold": {"family": "Cambria", "style": "Bold", "weight": 200.0},
     "Cambria-Italic": {"family": "Cambria", "style": "Italic", "weight": 80.0},
-    "Cambria-BoldItalic": {"family": "Cambria", "style": "Bold Italic", "weight": 200.0},
+    "Cambria-BoldItalic": {
+        "family": "Cambria",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     # Segoe UI family (Windows system font)
     "SegoeUI": {"family": "Segoe UI", "style": "Regular", "weight": 80.0},
     "SegoeUI-Bold": {"family": "Segoe UI", "style": "Bold", "weight": 200.0},
     "SegoeUI-Italic": {"family": "Segoe UI", "style": "Italic", "weight": 80.0},
-    "SegoeUI-BoldItalic": {"family": "Segoe UI", "style": "Bold Italic", "weight": 200.0},
+    "SegoeUI-BoldItalic": {
+        "family": "Segoe UI",
+        "style": "Bold Italic",
+        "weight": 200.0,
+    },
     "SegoeUI-Light": {"family": "Segoe UI", "style": "Light", "weight": 50.0},
     "SegoeUI-Semibold": {"family": "Segoe UI", "style": "Semibold", "weight": 180.0},
     "SegoeUI-Black": {"family": "Segoe UI", "style": "Black", "weight": 210.0},
     # macOS system fonts
     # San Francisco family (Apple's system font)
-    "SFProDisplay-Regular": {"family": "SF Pro Display", "style": "Regular", "weight": 80.0},
+    "SFProDisplay-Regular": {
+        "family": "SF Pro Display",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "SFProDisplay-Bold": {"family": "SF Pro Display", "style": "Bold", "weight": 200.0},
-    "SFProDisplay-Light": {"family": "SF Pro Display", "style": "Light", "weight": 50.0},
-    "SFProDisplay-Medium": {"family": "SF Pro Display", "style": "Medium", "weight": 100.0},
-    "SFProDisplay-Semibold": {"family": "SF Pro Display", "style": "Semibold", "weight": 180.0},
+    "SFProDisplay-Light": {
+        "family": "SF Pro Display",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "SFProDisplay-Medium": {
+        "family": "SF Pro Display",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "SFProDisplay-Semibold": {
+        "family": "SF Pro Display",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     "SFProText-Regular": {"family": "SF Pro Text", "style": "Regular", "weight": 80.0},
     "SFProText-Bold": {"family": "SF Pro Text", "style": "Bold", "weight": 200.0},
     "SFProText-Light": {"family": "SF Pro Text", "style": "Light", "weight": 50.0},
     "SFProText-Medium": {"family": "SF Pro Text", "style": "Medium", "weight": 100.0},
-    "SFProText-Semibold": {"family": "SF Pro Text", "style": "Semibold", "weight": 180.0},
+    "SFProText-Semibold": {
+        "family": "SF Pro Text",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     # Lucida Grande family (former macOS system font)
     "LucidaGrande": {"family": "Lucida Grande", "style": "Regular", "weight": 80.0},
     "LucidaGrande-Bold": {"family": "Lucida Grande", "style": "Bold", "weight": 200.0},
@@ -663,8 +1031,16 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "SimHei": {"family": "SimHei", "style": "Regular", "weight": 80.0},
     # Microsoft YaHei family (Windows Vista+ Simplified Chinese sans-serif)
     "MicrosoftYaHei": {"family": "Microsoft YaHei", "style": "Regular", "weight": 80.0},
-    "MicrosoftYaHei-Bold": {"family": "Microsoft YaHei", "style": "Bold", "weight": 200.0},
-    "MicrosoftYaHeiUI": {"family": "Microsoft YaHei UI", "style": "Regular", "weight": 80.0},
+    "MicrosoftYaHei-Bold": {
+        "family": "Microsoft YaHei",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "MicrosoftYaHeiUI": {
+        "family": "Microsoft YaHei UI",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "MicrosoftYaHeiUI-Bold": {
         "family": "Microsoft YaHei UI",
         "style": "Bold",
@@ -686,7 +1062,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "weight": 80.0,
     },
     # Microsoft JhengHei family (Windows Vista+ Traditional Chinese sans-serif)
-    "MicrosoftJhengHei": {"family": "Microsoft JhengHei", "style": "Regular", "weight": 80.0},
+    "MicrosoftJhengHei": {
+        "family": "Microsoft JhengHei",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "MicrosoftJhengHei-Bold": {
         "family": "Microsoft JhengHei",
         "style": "Bold",
@@ -744,10 +1124,18 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "STHeitiTC-Medium": {"family": "STHeiti TC", "style": "Medium", "weight": 100.0},
     # STSong family (macOS Chinese serif, legacy)
     "STSong": {"family": "STSong", "style": "Regular", "weight": 80.0},
-    "STSongti-SC-Regular": {"family": "STSongti SC", "style": "Regular", "weight": 80.0},
+    "STSongti-SC-Regular": {
+        "family": "STSongti SC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "STSongti-SC-Light": {"family": "STSongti SC", "style": "Light", "weight": 50.0},
     "STSongti-SC-Bold": {"family": "STSongti SC", "style": "Bold", "weight": 200.0},
-    "STSongti-TC-Regular": {"family": "STSongti TC", "style": "Regular", "weight": 80.0},
+    "STSongti-TC-Regular": {
+        "family": "STSongti TC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
     "STSongti-TC-Light": {"family": "STSongti TC", "style": "Light", "weight": 50.0},
     "STSongti-TC-Bold": {"family": "STSongti TC", "style": "Bold", "weight": 200.0},
     # STKaiti and STFangsong (macOS Chinese traditional styles, legacy)
@@ -767,7 +1155,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "PingFangSC-Light": {"family": "PingFang SC", "style": "Light", "weight": 50.0},
     "PingFangSC-Regular": {"family": "PingFang SC", "style": "Regular", "weight": 80.0},
     "PingFangSC-Medium": {"family": "PingFang SC", "style": "Medium", "weight": 100.0},
-    "PingFangSC-Semibold": {"family": "PingFang SC", "style": "Semibold", "weight": 180.0},
+    "PingFangSC-Semibold": {
+        "family": "PingFang SC",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     "PingFangTC-Ultralight": {
         "family": "PingFang TC",
         "style": "Ultralight",
@@ -777,7 +1169,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "PingFangTC-Light": {"family": "PingFang TC", "style": "Light", "weight": 50.0},
     "PingFangTC-Regular": {"family": "PingFang TC", "style": "Regular", "weight": 80.0},
     "PingFangTC-Medium": {"family": "PingFang TC", "style": "Medium", "weight": 100.0},
-    "PingFangTC-Semibold": {"family": "PingFang TC", "style": "Semibold", "weight": 180.0},
+    "PingFangTC-Semibold": {
+        "family": "PingFang TC",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     "PingFangHK-Ultralight": {
         "family": "PingFang HK",
         "style": "Ultralight",
@@ -787,7 +1183,11 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "PingFangHK-Light": {"family": "PingFang HK", "style": "Light", "weight": 50.0},
     "PingFangHK-Regular": {"family": "PingFang HK", "style": "Regular", "weight": 80.0},
     "PingFangHK-Medium": {"family": "PingFang HK", "style": "Medium", "weight": 100.0},
-    "PingFangHK-Semibold": {"family": "PingFang HK", "style": "Semibold", "weight": 180.0},
+    "PingFangHK-Semibold": {
+        "family": "PingFang HK",
+        "style": "Semibold",
+        "weight": 180.0,
+    },
     # Apple SD Gothic Neo (macOS Korean, OS X 10.8+)
     "AppleSDGothicNeo-Thin": {
         "family": "Apple SD Gothic Neo",

@@ -190,7 +190,8 @@ class FontInfo:
 
     @staticmethod
     def find(
-        postscriptname: str, font_mapping: dict[str, dict[str, float | str]] | None = None
+        postscriptname: str,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
     ) -> Self | None:
         """Find font information by PostScript name.
 
