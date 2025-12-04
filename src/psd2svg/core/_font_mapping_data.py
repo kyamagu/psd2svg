@@ -1271,4 +1271,293 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
         "style": "DeBold",
         "weight": 180.0,
     },
+    # ===== Google Fonts CJK =====
+    # Noto Sans CJK Japanese (lowercase PostScript names)
+    "NotoSansCJKjp-Thin": {
+        "family": "Noto Sans CJK JP",
+        "style": "Thin",
+        "weight": 0.0,
+    },
+    "NotoSansCJKjp-Light": {
+        "family": "Noto Sans CJK JP",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSansCJKjp-DemiLight": {
+        "family": "Noto Sans CJK JP",
+        "style": "DemiLight",
+        "weight": 50.0,
+    },
+    "NotoSansCJKjp-Regular": {
+        "family": "Noto Sans CJK JP",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSansCJKjp-Medium": {
+        "family": "Noto Sans CJK JP",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSansCJKjp-Bold": {
+        "family": "Noto Sans CJK JP",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSansCJKjp-Black": {
+        "family": "Noto Sans CJK JP",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Sans CJK Korean (lowercase PostScript names)
+    "NotoSansCJKkr-Thin": {
+        "family": "Noto Sans CJK KR",
+        "style": "Thin",
+        "weight": 0.0,
+    },
+    "NotoSansCJKkr-Light": {
+        "family": "Noto Sans CJK KR",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSansCJKkr-DemiLight": {
+        "family": "Noto Sans CJK KR",
+        "style": "DemiLight",
+        "weight": 50.0,
+    },
+    "NotoSansCJKkr-Regular": {
+        "family": "Noto Sans CJK KR",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSansCJKkr-Medium": {
+        "family": "Noto Sans CJK KR",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSansCJKkr-Bold": {
+        "family": "Noto Sans CJK KR",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSansCJKkr-Black": {
+        "family": "Noto Sans CJK KR",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Sans CJK Simplified Chinese (lowercase PostScript names)
+    "NotoSansCJKsc-Thin": {
+        "family": "Noto Sans CJK SC",
+        "style": "Thin",
+        "weight": 0.0,
+    },
+    "NotoSansCJKsc-Light": {
+        "family": "Noto Sans CJK SC",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSansCJKsc-DemiLight": {
+        "family": "Noto Sans CJK SC",
+        "style": "DemiLight",
+        "weight": 50.0,
+    },
+    "NotoSansCJKsc-Regular": {
+        "family": "Noto Sans CJK SC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSansCJKsc-Medium": {
+        "family": "Noto Sans CJK SC",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSansCJKsc-Bold": {
+        "family": "Noto Sans CJK SC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSansCJKsc-Black": {
+        "family": "Noto Sans CJK SC",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Sans CJK Traditional Chinese (lowercase PostScript names)
+    "NotoSansCJKtc-Thin": {
+        "family": "Noto Sans CJK TC",
+        "style": "Thin",
+        "weight": 0.0,
+    },
+    "NotoSansCJKtc-Light": {
+        "family": "Noto Sans CJK TC",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSansCJKtc-DemiLight": {
+        "family": "Noto Sans CJK TC",
+        "style": "DemiLight",
+        "weight": 50.0,
+    },
+    "NotoSansCJKtc-Regular": {
+        "family": "Noto Sans CJK TC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSansCJKtc-Medium": {
+        "family": "Noto Sans CJK TC",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSansCJKtc-Bold": {
+        "family": "Noto Sans CJK TC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSansCJKtc-Black": {
+        "family": "Noto Sans CJK TC",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Serif CJK Japanese (7 weights)
+    "NotoSerifCJKjp-ExtraLight": {
+        "family": "Noto Serif CJK JP",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
+    "NotoSerifCJKjp-Light": {
+        "family": "Noto Serif CJK JP",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSerifCJKjp-Regular": {
+        "family": "Noto Serif CJK JP",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSerifCJKjp-Medium": {
+        "family": "Noto Serif CJK JP",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSerifCJKjp-SemiBold": {
+        "family": "Noto Serif CJK JP",
+        "style": "SemiBold",
+        "weight": 180.0,
+    },
+    "NotoSerifCJKjp-Bold": {
+        "family": "Noto Serif CJK JP",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSerifCJKjp-Black": {
+        "family": "Noto Serif CJK JP",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Serif CJK Korean (7 weights)
+    "NotoSerifCJKkr-ExtraLight": {
+        "family": "Noto Serif CJK KR",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
+    "NotoSerifCJKkr-Light": {
+        "family": "Noto Serif CJK KR",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSerifCJKkr-Regular": {
+        "family": "Noto Serif CJK KR",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSerifCJKkr-Medium": {
+        "family": "Noto Serif CJK KR",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSerifCJKkr-SemiBold": {
+        "family": "Noto Serif CJK KR",
+        "style": "SemiBold",
+        "weight": 180.0,
+    },
+    "NotoSerifCJKkr-Bold": {
+        "family": "Noto Serif CJK KR",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSerifCJKkr-Black": {
+        "family": "Noto Serif CJK KR",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Serif CJK Simplified Chinese (7 weights)
+    "NotoSerifCJKsc-ExtraLight": {
+        "family": "Noto Serif CJK SC",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
+    "NotoSerifCJKsc-Light": {
+        "family": "Noto Serif CJK SC",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSerifCJKsc-Regular": {
+        "family": "Noto Serif CJK SC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSerifCJKsc-Medium": {
+        "family": "Noto Serif CJK SC",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSerifCJKsc-SemiBold": {
+        "family": "Noto Serif CJK SC",
+        "style": "SemiBold",
+        "weight": 180.0,
+    },
+    "NotoSerifCJKsc-Bold": {
+        "family": "Noto Serif CJK SC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSerifCJKsc-Black": {
+        "family": "Noto Serif CJK SC",
+        "style": "Black",
+        "weight": 210.0,
+    },
+    # Noto Serif CJK Traditional Chinese (7 weights)
+    "NotoSerifCJKtc-ExtraLight": {
+        "family": "Noto Serif CJK TC",
+        "style": "ExtraLight",
+        "weight": 40.0,
+    },
+    "NotoSerifCJKtc-Light": {
+        "family": "Noto Serif CJK TC",
+        "style": "Light",
+        "weight": 50.0,
+    },
+    "NotoSerifCJKtc-Regular": {
+        "family": "Noto Serif CJK TC",
+        "style": "Regular",
+        "weight": 80.0,
+    },
+    "NotoSerifCJKtc-Medium": {
+        "family": "Noto Serif CJK TC",
+        "style": "Medium",
+        "weight": 100.0,
+    },
+    "NotoSerifCJKtc-SemiBold": {
+        "family": "Noto Serif CJK TC",
+        "style": "SemiBold",
+        "weight": 180.0,
+    },
+    "NotoSerifCJKtc-Bold": {
+        "family": "Noto Serif CJK TC",
+        "style": "Bold",
+        "weight": 200.0,
+    },
+    "NotoSerifCJKtc-Black": {
+        "family": "Noto Serif CJK TC",
+        "style": "Black",
+        "weight": 210.0,
+    },
 }
