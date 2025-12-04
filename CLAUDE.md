@@ -35,13 +35,13 @@ uv run pytest
 
 ## Platform Support
 
-- **Linux/macOS**: Full support including text layer conversion (fontconfig available)
-- **Windows**: Text layer conversion supported via static font mapping
+- **Linux/macOS**: Full support including text layer conversion and font embedding (fontconfig)
+- **Windows**: Full support including text layer conversion and font embedding (Windows registry)
 - **Text conversion**: Can be disabled with `enable_text=False` on any platform
 
 ### Font Resolution Strategy
 
-**Hybrid font resolution** (implemented in #121):
+**Hybrid font resolution** (implemented in #121, Windows support added in feature/windows-font-resolution):
 
 psd2svg uses a multi-tiered approach to resolve fonts:
 
@@ -51,14 +51,15 @@ psd2svg uses a multi-tiered approach to resolve fonts:
    - Works on Windows, Linux, macOS
    - Enables text conversion everywhere
 
-2. **fontconfig (fallback)**: Query system fonts when needed
-   - Font file path discovery for embedding
-   - Available on Linux/macOS only
+2. **Platform-specific resolution (fallback)**: Query system fonts when needed
+   - **Linux/macOS**: fontconfig for font file path discovery
+   - **Windows**: Windows registry + fontTools parsing for font file path discovery
+   - Font file path discovery enables font embedding
    - Automatically invoked by `FontInfo.resolve()` when resolving fonts
 
 **Font resolution priority**:
 
-- Custom mapping (via `font_mapping` parameter) → Static mapping → fontconfig
+- Custom mapping (via `font_mapping` parameter) → Static mapping → Platform-specific (fontconfig or Windows registry)
 
 **Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter for fonts not in default mapping. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
 

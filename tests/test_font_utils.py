@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from psd2svg.core.font_utils import FontInfo
+from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG
 
 
 class TestFontInfo:
@@ -241,6 +241,8 @@ class TestFontInfoCSSWeight:
 class TestFontInfoFind:
     """Tests for FontInfo.find static method."""
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_success(self, mock_match: MagicMock) -> None:
         """Test find method with fontconfig fallback for font not in static mapping."""
@@ -266,6 +268,8 @@ class TestFontInfoFind:
             select=("file", "family", "style", "weight"),
         )
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_static_mapping_priority(self, mock_match: MagicMock) -> None:
         """Test that static mapping is used first, fontconfig not called."""
@@ -282,6 +286,7 @@ class TestFontInfoFind:
         # Fontconfig should not have been called
         mock_match.assert_not_called()
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_not_found(
         self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
@@ -296,6 +301,7 @@ class TestFontInfoFind:
         assert "Font 'NonExistentFont' not found" in caplog.text
         assert "Make sure the font is installed on your system" in caplog.text
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_empty_result(
         self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
@@ -309,6 +315,7 @@ class TestFontInfoFind:
         assert font is None
         assert "Font 'EmptyFont' not found" in caplog.text
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_font(self, mock_match: MagicMock) -> None:
         """Test find method for bold font via fontconfig fallback."""
@@ -325,6 +332,7 @@ class TestFontInfoFind:
         assert font.bold is True
         assert font.italic is False
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_italic_font(self, mock_match: MagicMock) -> None:
         """Test find method for italic font via fontconfig fallback."""
@@ -341,6 +349,7 @@ class TestFontInfoFind:
         assert font.bold is False
         assert font.italic is True
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_bold_italic_font(self, mock_match: MagicMock) -> None:
         """Test find method for bold italic font via fontconfig fallback."""
@@ -357,6 +366,7 @@ class TestFontInfoFind:
         assert font.bold is True
         assert font.italic is True
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_with_special_characters(self, mock_match: MagicMock) -> None:
         """Test find method with postscript name containing special characters."""
@@ -459,6 +469,7 @@ class TestFontInfoResolve:
     """Tests for FontInfo.resolve() method."""
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_exact_match_no_substitution(self, mock_fc: MagicMock) -> None:
         """Test resolve() when font is found with exact match (no substitution)."""
@@ -496,6 +507,7 @@ class TestFontInfoResolve:
         )
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_with_substitution(
         self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
@@ -536,6 +548,7 @@ class TestFontInfoResolve:
         assert font.file == ""
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_font_not_found(self, mock_fc: MagicMock) -> None:
         """Test resolve() when font is not found."""
@@ -556,6 +569,7 @@ class TestFontInfoResolve:
         assert font.family == "Unknown"
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_font_no_file_in_result(self, mock_fc: MagicMock) -> None:
         """Test resolve() when fontconfig returns result without file."""
@@ -596,6 +610,7 @@ class TestFontInfoResolve:
         assert font.family == "Arial"
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_handles_exception(
         self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
@@ -619,6 +634,7 @@ class TestFontInfoResolve:
         assert "ArialMT" in caplog.text
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_immutability(self, mock_fc: MagicMock) -> None:
         """Test that resolve() doesn't modify the original FontInfo."""
@@ -675,6 +691,7 @@ class TestFontInfoResolve:
 
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
     @patch("psd2svg.core.font_utils.os.path.exists")
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_resolve_with_invalid_file_path(
         self, mock_fc: MagicMock, mock_exists: MagicMock
@@ -784,6 +801,7 @@ class TestFontInfoIsResolved:
 
     @patch("os.path.exists")
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_is_resolved_after_resolve(
         self, mock_fc: MagicMock, mock_exists: MagicMock
