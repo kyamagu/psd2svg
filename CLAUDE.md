@@ -37,8 +37,31 @@ uv run pytest
 ## Platform Support
 
 - **Linux/macOS**: Full support including text layer conversion (fontconfig available)
-- **Windows**: Supported, but text layers rasterized (fontconfig not available)
+- **Windows**: Text layer conversion supported via static font mapping
 - **Text conversion**: Can be disabled with `enable_text=False` on any platform
+
+### Font Resolution Strategy
+
+**Hybrid font resolution** (implemented in #121):
+
+psd2svg uses a multi-tiered approach to resolve fonts:
+
+1. **Static mapping (primary)**: 572 common fonts mapped by PostScript name
+   - Cross-platform compatibility
+   - No external dependencies
+   - Works on Windows, Linux, macOS
+   - Enables text conversion everywhere
+
+2. **fontconfig (fallback)**: Query system fonts when needed
+   - Font file path discovery for embedding
+   - Available on Linux/macOS only
+   - Automatically invoked by `FontInfo.get_font_file()` when file path needed
+
+**Font resolution priority**:
+
+- Custom mapping (via `font_mapping` parameter) → Static mapping → fontconfig
+
+**Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter for fonts not in default mapping. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
 
 ## Architecture Overview
 

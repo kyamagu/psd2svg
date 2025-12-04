@@ -119,6 +119,108 @@ Apply a global offset (in pixels) to all letter-spacing values. This compensates
 
 Experiment with different values to achieve the best match for your fonts and target renderers.
 
+Generating Font Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Extract font information from PSD files to create custom font mappings:
+
+.. code-block:: bash
+
+   python -m psd2svg.tools.generate_font_mapping [OPTIONS] PSD_FILES...
+
+**Purpose:**
+
+Analyzes PSD files to extract PostScript font names used in text layers and generates custom font mapping files. Useful for:
+
+* Identifying fonts needed for conversion
+* Creating custom mappings for fonts not in default mapping
+* Documenting font usage across PSD files
+
+**Options:**
+
+``PSD_FILES``
+  One or more PSD file paths to analyze
+
+``-o, --output PATH``
+  Output file path (default: stdout)
+
+``--only-missing``
+  Only output fonts NOT in default mapping (useful for identifying missing fonts)
+
+``--query-fontconfig``
+  Query fontconfig to auto-fill font details (Linux/macOS only)
+
+``--format {json,python}``
+  Output format (default: json)
+
+  * ``json``: JSON file for use with Python API
+  * ``python``: Python dict literal for embedding in code
+
+``-v, --verbose``
+  Show progress messages and font details during processing
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Analyze single PSD file (output to stdout)
+   python -m psd2svg.tools.generate_font_mapping input.psd
+
+   # Save to JSON file
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.json
+
+   # Analyze multiple files
+   python -m psd2svg.tools.generate_font_mapping file1.psd file2.psd -o all_fonts.json
+
+   # Show only fonts not in default mapping
+   python -m psd2svg.tools.generate_font_mapping input.psd --only-missing
+
+   # Query system fonts (Linux/macOS)
+   python -m psd2svg.tools.generate_font_mapping input.psd --query-fontconfig -o fonts.json
+
+   # Generate Python format
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.py --format python
+
+   # Verbose output shows progress
+   python -m psd2svg.tools.generate_font_mapping input.psd -v
+
+**Output:**
+
+The tool generates a font mapping in the specified format:
+
+.. code-block:: json
+
+   {
+       "ArialMT": {
+           "family": "Arial",
+           "style": "Regular",
+           "weight": 80.0,
+           "_comment": "Found in default mapping"
+       },
+       "CustomFont-Bold": {
+           "family": "",
+           "style": "",
+           "weight": 0.0,
+           "_comment": "Not in default mapping - please fill in values"
+       }
+   }
+
+Fonts in the default mapping show their values. Fonts not in the mapping need to be filled in manually or queried with ``--query-fontconfig``.
+
+**Usage in Conversion:**
+
+.. code-block:: python
+
+   import json
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   with open("fonts.json") as f:
+       custom_fonts = json.load(f)
+
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage, font_mapping=custom_fonts)
+
 Common Workflows
 ----------------
 

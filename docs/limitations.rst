@@ -9,20 +9,61 @@ Platform Support
 Operating System Limitations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**All Platforms**: psd2svg works on Linux, macOS, and Windows. However, text layer conversion has platform-specific requirements.
+**All Platforms**: psd2svg works on Linux, macOS, and Windows with cross-platform text layer conversion support.
 
 **Text Layer Conversion:**
 
-* **Linux/macOS**: Text layers are converted to native SVG ``<text>`` elements (fontconfig installed automatically)
-* **Windows**: Text layers are automatically rasterized as images, as fontconfig is not available on Windows
+* **Linux/macOS**: Full support with fontconfig for font resolution and file path discovery
+* **Windows**: Text layer conversion supported using static font mapping (572 common fonts)
 
-**Workarounds for Windows Text Conversion:**
+**Font Resolution Strategy:**
 
-If you need native SVG text conversion on Windows, you can:
+psd2svg uses a hybrid font resolution approach:
 
-1. Use Windows Subsystem for Linux (WSL) with a Linux distribution
-2. Use a Docker container with Linux
-3. Convert PSD files to SVG on Linux/macOS (with text conversion) and use the resulting SVG files on Windows
+1. **Static mapping**: 572 common fonts (Arial, Times, Noto, Roboto, etc.) mapped by PostScript name
+
+   * Provides font family, style, and weight information
+   * Works on all platforms without external dependencies
+   * Enables text conversion to SVG ``<text>`` elements
+
+2. **fontconfig fallback** (Linux/macOS):
+
+   * Queries system fonts when file paths needed
+   * Used automatically by ``FontInfo.get_font_file()`` method
+   * Enables font embedding with ``embed_fonts=True``
+
+**Font Embedding on Windows:**
+
+Font embedding has platform-specific limitations:
+
+* **Static mapping**: Provides font metadata but not file paths
+* **Font embedding**: Requires font files, not available from static mapping alone
+* **On Windows**: Font embedding works only if:
+
+  * fontconfig is available (via WSL or custom installation), or
+  * Font files are manually specified (future enhancement)
+
+* **Text conversion**: Works without font files (uses SVG ``<text>`` with font-family names)
+
+**Custom Font Mapping:**
+
+For fonts not in the default mapping (572 fonts), provide custom mappings:
+
+.. code-block:: python
+
+   import json
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   # Load custom font mapping
+   with open("fonts.json") as f:
+       custom_fonts = json.load(f)
+
+   # Use in conversion
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage, font_mapping=custom_fonts)
+
+See the Font Handling guide for generating custom mappings.
 
 SVG 1.1 Limitations
 -------------------

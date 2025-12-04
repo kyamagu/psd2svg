@@ -49,6 +49,175 @@ Embed fonts as base64-encoded data URIs in the SVG:
 * Base64 encoding adds ~33% overhead
 * May include glyphs not used in the document
 
+Custom Font Mapping
+-------------------
+
+For fonts not in the default mapping (572 common fonts), you can provide custom font mappings to enable text conversion.
+
+Understanding Font Mapping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+psd2svg uses PostScript font names (e.g., "ArialMT", "TimesNewRomanPSMT") to resolve fonts. The mapping provides:
+
+* **Font family** name (e.g., "Arial")
+* **Font style** (e.g., "Regular", "Bold")
+* **Font weight** (numeric value, 0-250, where 80 = Regular, 200 = Bold)
+
+This information is used to generate SVG ``<text>`` elements with correct font properties.
+
+**Font Resolution Priority:**
+
+1. Custom mapping (if provided via ``font_mapping`` parameter)
+2. Default static mapping (572 common fonts)
+3. fontconfig query (Linux/macOS, for file path discovery)
+
+Custom mappings take priority, allowing you to override built-in font resolution.
+
+Generating Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the CLI tool to extract fonts from your PSD files:
+
+.. code-block:: bash
+
+   # Extract all fonts from a PSD file
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.json
+
+   # Show only fonts NOT in default mapping
+   python -m psd2svg.tools.generate_font_mapping input.psd --only-missing
+
+   # Query fontconfig to auto-fill font details (Linux/macOS)
+   python -m psd2svg.tools.generate_font_mapping input.psd --query-fontconfig -o fonts.json
+
+   # Multiple PSD files
+   python -m psd2svg.tools.generate_font_mapping *.psd -o fonts.json
+
+   # Python format output (for embedding in code)
+   python -m psd2svg.tools.generate_font_mapping input.psd -o fonts.py --format python
+
+   # Verbose mode shows progress and font details
+   python -m psd2svg.tools.generate_font_mapping input.psd -v
+
+**Output Formats:**
+
+* ``json`` (default): JSON file for use with Python API
+* ``python``: Python dict literal for embedding in source code
+
+**What the tool does:**
+
+1. Opens PSD file(s) and scans all visible text layers
+2. Extracts PostScript font names actually used
+3. Checks against default mapping
+4. Optionally queries fontconfig for font details
+5. Generates mapping file in requested format
+
+Using Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~
+
+Load and use custom font mappings in your conversion:
+
+.. code-block:: python
+
+   import json
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   # Load custom font mapping from JSON
+   with open("fonts.json") as f:
+       custom_fonts = json.load(f)
+
+   # Use custom mapping in conversion
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(psdimage, font_mapping=custom_fonts)
+   document.save("output.svg")
+
+**Font Mapping Structure:**
+
+.. code-block:: json
+
+   {
+       "MyCustomFont-Regular": {
+           "family": "My Custom Font",
+           "style": "Regular",
+           "weight": 80.0,
+           "_comment": "Optional comment for documentation"
+       },
+       "MyCustomFont-Bold": {
+           "family": "My Custom Font",
+           "style": "Bold",
+           "weight": 200.0
+       },
+       "AnotherFont-Italic": {
+           "family": "Another Font",
+           "style": "Italic",
+           "weight": 80.0
+       }
+   }
+
+**Required fields:**
+
+* ``family`` (string): Font family name
+* ``style`` (string): Font style (e.g., "Regular", "Bold", "Italic")
+* ``weight`` (float): Font weight (0-250, typical: 80 = Regular, 200 = Bold)
+
+**Optional fields:**
+
+* ``_comment`` (string): Human-readable comment (ignored during processing)
+
+When to Use Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Custom font mappings are useful when:
+
+* **Using custom or proprietary fonts** not in the default mapping
+* **Working with uncommon fonts** in PSD files
+* **Overriding default font resolution** for specific fonts
+* **Working on Windows** to enable text conversion for specific fonts
+* **Ensuring consistent font naming** across different systems
+
+**Example Use Cases:**
+
+1. **Corporate branding fonts**: Map proprietary brand fonts used in PSD files
+2. **Web font services**: Map PostScript names to web font equivalents
+3. **Font substitution**: Override mappings to use different fonts in output
+4. **Multi-language projects**: Add fonts for specific writing systems
+
+Font Embedding with Custom Mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Custom mappings enable text conversion but don't provide font file paths. For font embedding:
+
+**On Linux/macOS:**
+
+The ``FontInfo.get_font_file()`` method automatically queries fontconfig as a fallback when:
+
+* Font is resolved via custom or static mapping
+* Font file path is needed for embedding (``embed_fonts=True``)
+
+.. code-block:: python
+
+   # Font embedding works automatically on Linux/macOS
+   psdimage = PSDImage.open("input.psd")
+   document = SVGDocument.from_psd(
+       psdimage,
+       font_mapping=custom_fonts,  # Provides font metadata
+       embed_fonts=True             # fontconfig finds font files
+   )
+
+**On Windows:**
+
+Font embedding requires font files. Without fontconfig:
+
+* Text conversion works (generates SVG ``<text>`` elements)
+* Font embedding (``embed_fonts=True``) fails with warning
+
+**Workarounds for Windows:**
+
+1. Use WSL (Windows Subsystem for Linux) with fontconfig
+2. Run conversion in Docker container with fontconfig
+3. Convert on Linux/macOS, use resulting SVG on Windows
+4. Use system fonts or web fonts (no embedding needed)
+
 Font Subsetting (Recommended)
 ------------------------------
 
