@@ -562,17 +562,14 @@ class SVGDocument:
                 )
 
         # Step 4: Extract subset characters (if enabled and elements found)
-        subset_chars: set[str] | None = None
+        subset_chars: set[str] = set()
         if subset_enabled and matching_elements:
-            characters: set[str] = set()
             for element in matching_elements:
                 text_content = svg_utils.extract_text_characters(element)
                 if text_content:
-                    characters.update(text_content)
+                    subset_chars.update(text_content)
 
-            if characters:
-                subset_chars = characters
-            else:
+            if not subset_chars:
                 logger.warning(
                     f"No characters found for font '{font_info.family}', "
                     "using full font"
@@ -585,7 +582,7 @@ class SVGDocument:
             data_uri = font_utils.encode_font_with_options(
                 font_path=font_path,
                 cache=self._font_data_cache,
-                subset_chars=subset_chars,
+                subset_chars=subset_chars if subset_chars else None,
                 font_format=font_format,
             )
 
