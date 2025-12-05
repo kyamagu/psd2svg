@@ -346,6 +346,63 @@ def wrap_element(
     return wrapper
 
 
+def _unwrap_wrapper_element(
+    parent: ET.Element,
+    wrapper: ET.Element,
+    insert_position: int | None = None,
+) -> None:
+    """Unwrap a wrapper element by moving its children to parent level.
+
+    This helper function is shared by merge_singleton_children and
+    merge_attribute_less_children to eliminate code duplication.
+
+    Args:
+        parent: Parent element containing the wrapper.
+        wrapper: Wrapper element to unwrap (will be removed from parent).
+        insert_position: If None, append grandchildren to end of parent;
+                        else insert at this position.
+
+    The function:
+    - Removes the wrapper from parent
+    - Moves wrapper's children (grandchildren) to parent level
+    - Transfers wrapper's tail to the last grandchild (or parent's text)
+    - Preserves document order
+    """
+    grandchildren = list(wrapper)
+
+    # Remove wrapper from parent
+    parent.remove(wrapper)
+
+    # Insert grandchildren at appropriate position
+    if insert_position is None:
+        # Append to end (used by merge_singleton_children)
+        for grandchild in grandchildren:
+            parent.append(grandchild)
+    else:
+        # Insert at specific position (used by merge_attribute_less_children)
+        for j, grandchild in enumerate(grandchildren):
+            parent.insert(insert_position + j, grandchild)
+
+    # Transfer wrapper's tail to last grandchild
+    if wrapper.tail:
+        if len(grandchildren) > 0:
+            # Add to last grandchild's tail
+            if insert_position is None:
+                last_grandchild = parent[-1]
+            else:
+                last_grandchild = parent[insert_position + len(grandchildren) - 1]
+            last_grandchild.tail = (last_grandchild.tail or "") + wrapper.tail
+        else:
+            # No grandchildren - handle tail appropriately
+            if insert_position is not None and insert_position > 0:
+                # Append to previous sibling's tail
+                prev = parent[insert_position - 1]
+                prev.tail = (prev.tail or "") + wrapper.tail
+            else:
+                # No previous sibling, append to parent's text
+                parent.text = (parent.text or "") + wrapper.tail
+
+
 def merge_attribute_less_children(element: ET.Element) -> None:
     """Recursively merge children without attributes into their parent nodes.
 
@@ -375,6 +432,19 @@ def merge_attribute_less_children(element: ET.Element) -> None:
     children = list(element)
     for i, child in enumerate(children):
         if not child.attrib:
+            # If the child has its own children, unwrap it: move grandchildren up
+            if len(child) > 0:
+                # Only unwrap if there's no text content to preserve
+                has_text = child.text is not None and child.text.strip() != ""
+
+                if not has_text:
+                    # Find where to insert grandchildren (at the child's position)
+                    child_index = list(element).index(child)
+                    # Unwrap the wrapper, inserting grandchildren at child's position
+                    _unwrap_wrapper_element(element, child, insert_position=child_index)
+
+                continue
+
             # Move child's text content
             if child.text:
                 # Find previous sibling that still exists in the tree
@@ -497,14 +567,37 @@ def merge_singleton_children(element: ET.Element) -> None:
         Not merged (conflicting attributes):
         Before: <text x="10"><tspan x="20">Text</tspan></text>
         After:  <text x="10"><tspan x="20">Text</tspan></text>  (unchanged)
+
+        Not merged (child has children):
+        Before: <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
+        After:  <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>  (unchanged)
     """
     # First, recursively process all children
     for child in list(element):
         merge_singleton_children(child)
 
-    # Merge singleton child if present
+    # Merge singleton child if present (checking AFTER recursion)
     if len(element) == 1:
         child = element[0]
+
+        # If the child has its own children, we can still optimize by "unwrapping" it:
+        # move the grandchildren up to be direct children of element, removing the wrapper
+        if len(child) > 0:
+            # Only unwrap if there are no attribute conflicts and no text content to preserve
+            has_conflict = (
+                len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0
+            )
+            has_text = child.text is not None and child.text.strip() != ""
+
+            if not has_conflict and not has_text:
+                # Move child's attributes to parent
+                for key, value in child.attrib.items():
+                    element.attrib[key] = value
+
+                # Unwrap the wrapper, appending grandchildren to end
+                _unwrap_wrapper_element(element, child, insert_position=None)
+
+            return
 
         # Check for attribute conflicts
         if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:
