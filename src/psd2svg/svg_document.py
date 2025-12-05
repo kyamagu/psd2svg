@@ -352,90 +352,6 @@ class SVGDocument:
         )
         return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
 
-    def _find_elements_using_font(
-        self, svg: ET.Element, font_family: str
-    ) -> list[ET.Element]:
-        """Find all text/tspan elements that use the given font family.
-
-        Args:
-            svg: SVG element tree to search.
-            font_family: Font family name to search for (case-insensitive).
-
-        Returns:
-            List of text/tspan elements that use the specified font (including inheritance).
-
-        Note:
-            - Searches both font-family attributes and style attributes
-            - Includes elements that inherit font-family from parents
-            - Only returns text and tspan elements
-        """
-        matching_elements: list[ET.Element] = []
-        font_family_lower = font_family.lower()
-
-        # Build parent map for inheritance lookup
-        parent_map = {c: p for p in svg.iter() for c in p}
-
-        for element in svg.iter():
-            # Get local tag name (strip namespace if present)
-            tag = element.tag
-            if "}" in tag:
-                tag = tag.split("}", 1)[1]
-
-            # Only process text/tspan elements
-            if tag not in ("text", "tspan"):
-                continue
-
-            # Check font-family with inheritance
-            found_font = self._get_font_family_with_inheritance(
-                element, parent_map, font_family_lower
-            )
-            if found_font:
-                matching_elements.append(element)
-
-        return matching_elements
-
-    def _get_font_family_with_inheritance(
-        self, element: ET.Element, parent_map: dict, target_font: str
-    ) -> bool:
-        """Check if element uses the target font (directly or through inheritance).
-
-        Args:
-            element: Element to check.
-            parent_map: Dictionary mapping children to parents.
-            target_font: Target font family name (lowercase).
-
-        Returns:
-            True if element uses the target font, False otherwise.
-        """
-        import re
-
-        current = element
-        while True:
-            # Check direct font-family attribute
-            elem_font_family = current.get("font-family")
-            if elem_font_family:
-                clean_family = elem_font_family.strip("'\"").split(",")[0].strip("'\"")
-                return clean_family.lower() == target_font
-
-            # Check style attribute for font-family
-            style = current.get("style")
-            if style and "font-family:" in style:
-                match = re.search(r"font-family:\s*([^;]+)", style)
-                if match:
-                    font_family_value = match.group(1).strip()
-                    families = [
-                        f.strip().strip("'\"") for f in font_family_value.split(",")
-                    ]
-                    if families:
-                        return families[0].lower() == target_font
-
-            # Walk up to parent
-            if current not in parent_map:
-                break
-            current = parent_map[current]
-
-        return False
-
     def _extract_characters_from_elements(self, elements: list[ET.Element]) -> set[str]:
         """Extract unique characters used in the given text elements.
 
@@ -647,7 +563,9 @@ class SVGDocument:
             - Logs warnings for errors but continues gracefully
         """
         # Step 1: Find elements using this font
-        matching_elements = self._find_elements_using_font(svg, font_info.family)
+        matching_elements = svg_utils.find_elements_with_font_family(
+            svg, font_info.family
+        )
 
         # Step 2: Resolve font to system font file
         resolved_font = font_info.resolve()
