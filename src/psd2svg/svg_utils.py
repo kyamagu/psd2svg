@@ -346,6 +346,63 @@ def wrap_element(
     return wrapper
 
 
+def _unwrap_wrapper_element(
+    parent: ET.Element,
+    wrapper: ET.Element,
+    insert_position: int | None = None,
+) -> None:
+    """Unwrap a wrapper element by moving its children to parent level.
+
+    This helper function is shared by merge_singleton_children and
+    merge_attribute_less_children to eliminate code duplication.
+
+    Args:
+        parent: Parent element containing the wrapper.
+        wrapper: Wrapper element to unwrap (will be removed from parent).
+        insert_position: If None, append grandchildren to end of parent;
+                        else insert at this position.
+
+    The function:
+    - Removes the wrapper from parent
+    - Moves wrapper's children (grandchildren) to parent level
+    - Transfers wrapper's tail to the last grandchild (or parent's text)
+    - Preserves document order
+    """
+    grandchildren = list(wrapper)
+
+    # Remove wrapper from parent
+    parent.remove(wrapper)
+
+    # Insert grandchildren at appropriate position
+    if insert_position is None:
+        # Append to end (used by merge_singleton_children)
+        for grandchild in grandchildren:
+            parent.append(grandchild)
+    else:
+        # Insert at specific position (used by merge_attribute_less_children)
+        for j, grandchild in enumerate(grandchildren):
+            parent.insert(insert_position + j, grandchild)
+
+    # Transfer wrapper's tail to last grandchild
+    if wrapper.tail:
+        if len(grandchildren) > 0:
+            # Add to last grandchild's tail
+            if insert_position is None:
+                last_grandchild = parent[-1]
+            else:
+                last_grandchild = parent[insert_position + len(grandchildren) - 1]
+            last_grandchild.tail = (last_grandchild.tail or "") + wrapper.tail
+        else:
+            # No grandchildren - handle tail appropriately
+            if insert_position is not None and insert_position > 0:
+                # Append to previous sibling's tail
+                prev = parent[insert_position - 1]
+                prev.tail = (prev.tail or "") + wrapper.tail
+            else:
+                # No previous sibling, append to parent's text
+                parent.text = (parent.text or "") + wrapper.tail
+
+
 def merge_attribute_less_children(element: ET.Element) -> None:
     """Recursively merge children without attributes into their parent nodes.
 
@@ -381,35 +438,10 @@ def merge_attribute_less_children(element: ET.Element) -> None:
                 has_text = child.text is not None and child.text.strip() != ""
 
                 if not has_text:
-                    # Get the grandchildren
-                    grandchildren = list(child)
-
-                    # Find where to insert them (at the child's position)
+                    # Find where to insert grandchildren (at the child's position)
                     child_index = list(element).index(child)
-
-                    # Remove the wrapper child
-                    element.remove(child)
-
-                    # Insert all grandchildren at the same position
-                    for j, grandchild in enumerate(grandchildren):
-                        element.insert(child_index + j, grandchild)
-
-                    # Handle child.tail - it should become the last grandchild's tail
-                    if child.tail:
-                        if len(grandchildren) > 0:
-                            # Add tail to the last inserted grandchild
-                            last_inserted = element[
-                                child_index + len(grandchildren) - 1
-                            ]
-                            last_inserted.tail = (last_inserted.tail or "") + child.tail
-                        else:
-                            # No grandchildren, handle tail appropriately
-                            # Find previous sibling or append to parent's text
-                            if child_index > 0:
-                                prev = element[child_index - 1]
-                                prev.tail = (prev.tail or "") + child.tail
-                            else:
-                                element.text = (element.text or "") + child.tail
+                    # Unwrap the wrapper, inserting grandchildren at child's position
+                    _unwrap_wrapper_element(element, child, insert_position=child_index)
 
                 continue
 
@@ -562,32 +594,8 @@ def merge_singleton_children(element: ET.Element) -> None:
                 for key, value in child.attrib.items():
                     element.attrib[key] = value
 
-                # Move all grandchildren to be direct children of element
-                # Preserve order and handle text/tail properly
-                grandchildren = list(child)
-
-                # If element has text, it stays as is
-                # The first grandchild's text comes after element.text
-                if element.text:
-                    # If first grandchild has text, we need to handle element.text + child.text
-                    # But we already checked child.text is None or whitespace, so we're safe
-                    pass
-
-                # Remove the wrapper child
-                element.remove(child)
-
-                # Add all grandchildren to element
-                for grandchild in grandchildren:
-                    element.append(grandchild)
-
-                # Handle child.tail - it should become the last grandchild's tail
-                if child.tail:
-                    if len(grandchildren) > 0:
-                        last_grandchild = element[-1]
-                        last_grandchild.tail = (last_grandchild.tail or "") + child.tail
-                    else:
-                        # No grandchildren, tail becomes element's text
-                        element.text = (element.text or "") + child.tail
+                # Unwrap the wrapper, appending grandchildren to end
+                _unwrap_wrapper_element(element, child, insert_position=None)
 
             return
 
