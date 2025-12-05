@@ -791,7 +791,6 @@ class SVGDocument:
             return None
 
 
-
 def convert(
     input_path: str,
     output_path: str,
