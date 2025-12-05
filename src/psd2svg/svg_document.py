@@ -446,38 +446,21 @@ class SVGDocument:
             Set of unique Unicode characters found in the elements.
 
         Note:
-            - Extracts direct text content only (not nested elements)
-            - Decodes XML entities (e.g., &lt;, &#x4E00;)
-        """
-        characters: set[str] = set()
-
-        for element in elements:
-            # Extract direct text content (not from children)
-            text_content = self._extract_direct_text_content(element)
-            if text_content:
-                characters.update(text_content)
-
-        return characters
-
-    def _extract_direct_text_content(self, element: ET.Element) -> str:
-        """Extract direct text content from element (not including children).
-
-        Args:
-            element: XML element to extract text from.
-
-        Returns:
-            Text content with HTML entities decoded.
-
-        Note:
-            - Only includes element.text (content before first child)
+            - Extracts direct text content only (element.text, not children)
             - Does NOT include tail (content after element's closing tag)
-            - Decodes HTML/XML entities
+            - Decodes XML entities (e.g., &lt;, &#x4E00;)
         """
         import html
 
-        if element.text:
-            return html.unescape(element.text)
-        return ""
+        characters: set[str] = set()
+
+        for element in elements:
+            # Extract direct text content (element.text only, not children or tail)
+            if element.text:
+                text_content = html.unescape(element.text)
+                characters.update(text_content)
+
+        return characters
 
     def _handle_images(
         self,
