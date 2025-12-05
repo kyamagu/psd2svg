@@ -405,6 +405,30 @@ class TextConverter(ConverterProtocol):
         if style.strikethrough:
             svg_utils.append_attribute(tspan, "text-decoration", "line-through")
 
+        # Apply ligature settings using font-variant-ligatures
+        # Photoshop defaults to ligatures=True (common ligatures enabled)
+        # CSS default behavior is 'normal' which enables common ligatures
+        # Only set font-variant-ligatures when it differs from the default
+        if not style.ligatures and not style.discretionary_ligatures:
+            # Both disabled -> none
+            svg_utils.add_style(tspan, "font-variant-ligatures", "none")
+        elif style.ligatures and not style.discretionary_ligatures:
+            # Only common ligatures enabled (Photoshop default, CSS default)
+            # Skip setting attribute - this is the default CSS behavior
+            pass
+        elif not style.ligatures and style.discretionary_ligatures:
+            # Only discretionary ligatures enabled (uncommon case)
+            svg_utils.add_style(
+                tspan, "font-variant-ligatures", "discretionary-ligatures"
+            )
+        else:
+            # Both enabled
+            svg_utils.add_style(
+                tspan,
+                "font-variant-ligatures",
+                "common-ligatures discretionary-ligatures",
+            )
+
         # NOTE: Photoshop uses different values for subscript position/size.
         # Using baseline-shift with sub or super will result in inaccurate rendering.
         if style.font_baseline == FontBaseline.SUPERSCRIPT:
@@ -1062,7 +1086,7 @@ class StyleSheet:
     @property
     def ligatures(self) -> bool:
         """Whether ligatures are enabled."""
-        return bool(self.style_sheet_data.get("Ligatures", False))
+        return bool(self.style_sheet_data.get("Ligatures", True))
 
     @property
     def discretionary_ligatures(self) -> bool:

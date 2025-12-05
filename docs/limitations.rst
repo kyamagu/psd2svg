@@ -208,6 +208,7 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 * Letter spacing (tracking)
 * Manual kerning adjustments
 * Tsume (East Asian character tightening)
+* Ligatures (common ligatures and discretionary ligatures)
 * Line height (leading)
 * Horizontal and vertical text scaling
 * Position, rotation, and scaling transformations
@@ -215,8 +216,7 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 **Unsupported Features:**
 
 * Gradient fills and pattern strokes (solid colors only)
-* Ligatures
-* OpenType features (e.g., stylistic sets, contextual alternates)
+* Advanced OpenType features (e.g., stylistic sets, contextual alternates, positional forms)
 * Variable fonts and font variations
 
 **Text Wrapping Support:**
