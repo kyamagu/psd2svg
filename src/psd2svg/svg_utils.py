@@ -375,8 +375,42 @@ def merge_attribute_less_children(element: ET.Element) -> None:
     children = list(element)
     for i, child in enumerate(children):
         if not child.attrib:
-            # Don't merge if the child has its own children - this would lose those children
+            # If the child has its own children, unwrap it: move grandchildren up
             if len(child) > 0:
+                # Only unwrap if there's no text content to preserve
+                has_text = child.text is not None and child.text.strip() != ""
+
+                if not has_text:
+                    # Get the grandchildren
+                    grandchildren = list(child)
+
+                    # Find where to insert them (at the child's position)
+                    child_index = list(element).index(child)
+
+                    # Remove the wrapper child
+                    element.remove(child)
+
+                    # Insert all grandchildren at the same position
+                    for j, grandchild in enumerate(grandchildren):
+                        element.insert(child_index + j, grandchild)
+
+                    # Handle child.tail - it should become the last grandchild's tail
+                    if child.tail:
+                        if len(grandchildren) > 0:
+                            # Add tail to the last inserted grandchild
+                            last_inserted = element[
+                                child_index + len(grandchildren) - 1
+                            ]
+                            last_inserted.tail = (last_inserted.tail or "") + child.tail
+                        else:
+                            # No grandchildren, handle tail appropriately
+                            # Find previous sibling or append to parent's text
+                            if child_index > 0:
+                                prev = element[child_index - 1]
+                                prev.tail = (prev.tail or "") + child.tail
+                            else:
+                                element.text = (element.text or "") + child.tail
+
                 continue
 
             # Move child's text content
@@ -514,8 +548,47 @@ def merge_singleton_children(element: ET.Element) -> None:
     if len(element) == 1:
         child = element[0]
 
-        # Don't merge if the child has its own children - this would lose those children
+        # If the child has its own children, we can still optimize by "unwrapping" it:
+        # move the grandchildren up to be direct children of element, removing the wrapper
         if len(child) > 0:
+            # Only unwrap if there are no attribute conflicts and no text content to preserve
+            has_conflict = (
+                len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0
+            )
+            has_text = child.text is not None and child.text.strip() != ""
+
+            if not has_conflict and not has_text:
+                # Move child's attributes to parent
+                for key, value in child.attrib.items():
+                    element.attrib[key] = value
+
+                # Move all grandchildren to be direct children of element
+                # Preserve order and handle text/tail properly
+                grandchildren = list(child)
+
+                # If element has text, it stays as is
+                # The first grandchild's text comes after element.text
+                if element.text:
+                    # If first grandchild has text, we need to handle element.text + child.text
+                    # But we already checked child.text is None or whitespace, so we're safe
+                    pass
+
+                # Remove the wrapper child
+                element.remove(child)
+
+                # Add all grandchildren to element
+                for grandchild in grandchildren:
+                    element.append(grandchild)
+
+                # Handle child.tail - it should become the last grandchild's tail
+                if child.tail:
+                    if len(grandchildren) > 0:
+                        last_grandchild = element[-1]
+                        last_grandchild.tail = (last_grandchild.tail or "") + child.tail
+                    else:
+                        # No grandchildren, tail becomes element's text
+                        element.text = (element.text or "") + child.tail
+
             return
 
         # Check for attribute conflicts

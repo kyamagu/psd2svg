@@ -401,11 +401,13 @@ class TestMergeAttributeLessChildren:
         assert text[0].tail == " then normal end"
 
     def test_attribute_less_child_with_nested_children(self) -> None:
-        """Test that attribute-less children with nested elements are not merged.
+        """Test that attribute-less children with nested elements are unwrapped.
 
         This is a regression test for a bug where attribute-less children
         would be merged even if they contained nested elements, causing
         those nested elements to be lost.
+
+        Now it unwraps them: moves the nested children up to the parent level.
         """
         # Create: <text><tspan><tspan font-size="18">A</tspan><tspan font-size="20">B</tspan></tspan></text>
         text = ET.Element("text")
@@ -419,12 +421,12 @@ class TestMergeAttributeLessChildren:
 
         svg_utils.merge_attribute_less_children(text)
 
-        # outer_tspan should NOT be merged because it has children
-        assert len(text) == 1
-        assert text[0] is outer_tspan
-        assert len(outer_tspan) == 2
-        assert outer_tspan[0].text == "A"
-        assert outer_tspan[1].text == "B"
+        # outer_tspan should be unwrapped - its children moved up to text
+        assert len(text) == 2
+        assert text[0].attrib.get("font-size") == "18"
+        assert text[0].text == "A"
+        assert text[1].attrib.get("font-size") == "20"
+        assert text[1].text == "B"
 
     def test_mixed_attribute_less_with_nested(self) -> None:
         """Test mixed scenario with attribute-less children, some with nested elements."""
@@ -440,12 +442,11 @@ class TestMergeAttributeLessChildren:
 
         svg_utils.merge_attribute_less_children(text)
 
-        # tspan2 should NOT be merged because it has children
+        # tspan2 should be unwrapped - inner moved up to text level
         assert len(text) == 2
         assert text[0].text == "Bold"
-        assert text[1] is tspan2
-        assert len(text[1]) == 1
-        assert text[1][0].text == "Nested"
+        assert text[1].attrib.get("font-size") == "18"
+        assert text[1].text == "Nested"
 
 
 class TestMergeCommonChildAttributes:
@@ -794,16 +795,50 @@ class TestMergeSingletonChildren:
 
         svg_utils.merge_singleton_children(text)
 
-        # The text element should still have the outer tspan as a child
-        # because the outer tspan originally had multiple children
-        assert len(text) == 1
-        assert text[0] is outer_tspan
+        # The outer tspan wrapper should be unwrapped, moving its children directly under text
+        assert len(text) == 6  # Now has 6 direct children (the inner tspans)
 
-        # The inner tspans should still exist with their text content
-        assert len(outer_tspan) == 6
-        assert outer_tspan[0].text == "さ"
-        assert outer_tspan[1].text == "す"
-        assert outer_tspan[2].text == "だ"
-        assert outer_tspan[3].text == "け"
-        assert outer_tspan[4].text == "！"
-        assert outer_tspan[5].text is None  # Empty tspan
+        # The inner tspans should be direct children of text now
+        assert text[0].text == "さ"
+        assert text[1].text == "す"
+        assert text[2].text == "だ"
+        assert text[3].text == "け"
+        assert text[4].text == "！"
+        assert text[5].text is None  # Empty tspan
+
+    def test_unwrap_singleton_with_nested_children(self) -> None:
+        """Test that singleton wrappers without attributes are unwrapped."""
+        # <text><tspan><tspan baseline-shift="-0.36">A</tspan><tspan letter-spacing="0.72">B</tspan></tspan></text>
+        text = ET.Element("text")
+        outer_tspan = ET.SubElement(text, "tspan")  # No attributes, no text
+        inner1 = ET.SubElement(outer_tspan, "tspan", attrib={"baseline-shift": "-0.36"})
+        inner1.text = "A"
+        inner2 = ET.SubElement(outer_tspan, "tspan", attrib={"letter-spacing": "0.72"})
+        inner2.text = "B"
+
+        svg_utils.merge_singleton_children(text)
+
+        # outer_tspan should be unwrapped - its children moved up to text
+        assert len(text) == 2
+        assert text[0].attrib.get("baseline-shift") == "-0.36"
+        assert text[0].text == "A"
+        assert text[1].attrib.get("letter-spacing") == "0.72"
+        assert text[1].text == "B"
+
+    def test_unwrap_singleton_with_attributes(self) -> None:
+        """Test that singleton wrappers with attributes are unwrapped and attributes moved to parent."""
+        # <text><tspan fill="red"><tspan>A</tspan><tspan>B</tspan></tspan></text>
+        text = ET.Element("text")
+        outer_tspan = ET.SubElement(text, "tspan", attrib={"fill": "red"})
+        inner1 = ET.SubElement(outer_tspan, "tspan")
+        inner1.text = "A"
+        inner2 = ET.SubElement(outer_tspan, "tspan")
+        inner2.text = "B"
+
+        svg_utils.merge_singleton_children(text)
+
+        # outer_tspan should be unwrapped, fill moved to text
+        assert len(text) == 2
+        assert text.attrib.get("fill") == "red"
+        assert text[0].text == "A"
+        assert text[1].text == "B"
