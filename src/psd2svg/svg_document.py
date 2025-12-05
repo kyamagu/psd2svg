@@ -158,7 +158,7 @@ class SVGDocument:
             This method is idempotent - if the same CSS is appended multiple times,
             it will only appear once in the output (duplicate detection).
         """
-        self._insert_or_update_style_element(self.svg, css)
+        svg_utils.insert_or_update_style_element(self.svg, css)
 
     def tostring(
         self,
@@ -674,7 +674,7 @@ class SVGDocument:
 
         # Create CSS content and insert into SVG
         css_content = "\n".join(font_face_rules)
-        self._insert_or_update_style_element(svg, css_content)
+        svg_utils.insert_or_update_style_element(svg, css_content)
 
         logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
 
@@ -790,44 +790,6 @@ class SVGDocument:
             logger.warning(f"Failed to process font '{font_path}': {e}")
             return None
 
-    def _insert_or_update_style_element(
-        self, svg: ET.Element, css_content: str
-    ) -> None:
-        """Insert or update a <style> element in the SVG root.
-
-        Args:
-            svg: SVG root element to modify.
-            css_content: CSS content to insert or append.
-
-        Note:
-            - If a <style> element exists as first child, appends to it
-            - Otherwise creates a new <style> element as first child
-            - Idempotent: skips if CSS content already present
-        """
-        # Find existing <style> element (check first child only)
-        style_element = None
-        if len(svg) > 0:
-            first_child = svg[0]
-            # Check if it's a style element (handle namespaced tags)
-            tag = first_child.tag
-            local_name = tag.split("}")[-1] if "}" in tag else tag
-            if local_name == "style":
-                style_element = first_child
-
-        if style_element is not None:
-            # Update existing style element
-            existing_text = style_element.text or ""
-            # Check if our fonts are already embedded (idempotent check)
-            if css_content in existing_text:
-                logger.debug("CSS content already present, skipping")
-                return
-            # Append to existing styles
-            style_element.text = existing_text + "\n" + css_content
-        else:
-            # Create new style element as first child
-            style_element = ET.Element("style")
-            style_element.text = css_content
-            svg.insert(0, style_element)
 
 
 def convert(
