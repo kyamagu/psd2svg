@@ -352,32 +352,6 @@ class SVGDocument:
         )
         return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
 
-    def _extract_characters_from_elements(self, elements: list[ET.Element]) -> set[str]:
-        """Extract unique characters used in the given text elements.
-
-        Args:
-            elements: List of text/tspan elements to extract characters from.
-
-        Returns:
-            Set of unique Unicode characters found in the elements.
-
-        Note:
-            - Extracts direct text content only (element.text, not children)
-            - Does NOT include tail (content after element's closing tag)
-            - Decodes XML entities (e.g., &lt;, &#x4E00;)
-        """
-        import html
-
-        characters: set[str] = set()
-
-        for element in elements:
-            # Extract direct text content (element.text only, not children or tail)
-            if element.text:
-                text_content = html.unescape(element.text)
-                characters.update(text_content)
-
-        return characters
-
     def _handle_images(
         self,
         embed_images: bool,
@@ -590,13 +564,19 @@ class SVGDocument:
         # Step 4: Extract subset characters (if enabled and elements found)
         subset_chars: set[str] | None = None
         if subset_enabled and matching_elements:
-            subset_chars = self._extract_characters_from_elements(matching_elements)
-            if not subset_chars:
+            characters: set[str] = set()
+            for element in matching_elements:
+                text_content = svg_utils.extract_text_characters(element)
+                if text_content:
+                    characters.update(text_content)
+
+            if characters:
+                subset_chars = characters
+            else:
                 logger.warning(
                     f"No characters found for font '{font_info.family}', "
                     "using full font"
                 )
-                subset_chars = None
 
         # Step 5: Generate CSS rule with font encoding
         font_path = resolved_font.file

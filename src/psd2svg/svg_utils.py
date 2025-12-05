@@ -968,6 +968,41 @@ def _element_uses_font_family(
     return False
 
 
+def extract_text_characters(element: ET.Element) -> str:
+    """Extract text characters from an element for font subsetting.
+
+    This function extracts the direct text content from an element (element.text)
+    with HTML entity decoding. It's used for collecting characters needed when
+    subsetting fonts.
+
+    Args:
+        element: XML element to extract text from (typically text or tspan).
+
+    Returns:
+        Text content with HTML entities decoded, or empty string if no text.
+
+    Note:
+        - Only extracts element.text (content before first child element)
+        - Does NOT include tail (content after element's closing tag)
+        - Does NOT include text from child elements
+        - Decodes HTML/XML entities (e.g., &lt; → <, &#x4E00; → 一)
+
+    Example:
+        >>> elem = ET.fromstring('<text>Hello &amp; world</text>')
+        >>> extract_text_characters(elem)
+        'Hello & world'
+
+        >>> elem = ET.fromstring('<text>A<tspan>B</tspan>C</text>')
+        >>> extract_text_characters(elem)
+        'A'
+    """
+    import html
+
+    if element.text:
+        return html.unescape(element.text)
+    return ""
+
+
 def add_font_family(
     element: ET.Element, original_family: str, fallback_family: str
 ) -> None:
