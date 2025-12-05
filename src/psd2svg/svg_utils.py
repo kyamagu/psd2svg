@@ -873,6 +873,195 @@ def consolidate_defs(svg: ET.Element) -> None:
         svg.remove(global_defs)
 
 
+def find_elements_with_font_family(
+    svg: ET.Element, font_family: str
+) -> list[ET.Element]:
+    """Find all text/tspan elements that use the given font family.
+
+    This function searches for text and tspan elements that have the specified
+    font-family applied, either directly via attributes or through CSS inheritance
+    from parent elements.
+
+    Args:
+        svg: SVG element tree to search.
+        font_family: Font family name to search for (case-insensitive).
+
+    Returns:
+        List of text/tspan elements that use the specified font family.
+
+    Note:
+        - Searches both font-family attributes and style attributes
+        - Supports CSS inheritance (walks up parent chain)
+        - Case-insensitive font family matching
+        - Only returns text and tspan elements (not their parents)
+
+    Example:
+        >>> svg = svg_utils.fromstring('<svg><text font-family="Arial">Hi</text></svg>')
+        >>> elements = find_elements_with_font_family(svg, "Arial")
+        >>> len(elements)
+        1
+    """
+    matching_elements: list[ET.Element] = []
+    font_family_lower = font_family.lower()
+
+    # Build parent map for inheritance lookup
+    parent_map = {c: p for p in svg.iter() for c in p}
+
+    for element in svg.iter():
+        # Get local tag name (strip namespace if present)
+        tag = element.tag
+        if "}" in tag:
+            tag = tag.split("}", 1)[1]
+
+        # Only process text/tspan elements
+        if tag not in ("text", "tspan"):
+            continue
+
+        # Check if element uses target font (with inheritance)
+        if _element_uses_font_family(element, parent_map, font_family_lower):
+            matching_elements.append(element)
+
+    return matching_elements
+
+
+def _element_uses_font_family(
+    element: ET.Element, parent_map: dict[ET.Element, ET.Element], target_font: str
+) -> bool:
+    """Check if element uses the target font (directly or through inheritance).
+
+    Helper function for find_elements_with_font_family that walks up the parent
+    chain to check for font-family declarations.
+
+    Args:
+        element: Element to check.
+        parent_map: Dictionary mapping children to parents.
+        target_font: Target font family name (lowercase).
+
+    Returns:
+        True if element uses the target font, False otherwise.
+    """
+    current = element
+    while True:
+        # Check direct font-family attribute
+        elem_font_family = current.get("font-family")
+        if elem_font_family:
+            clean_family = elem_font_family.strip("'\"").split(",")[0].strip("'\"")
+            return clean_family.lower() == target_font
+
+        # Check style attribute for font-family
+        style = current.get("style")
+        if style and "font-family:" in style:
+            match = re.search(r"font-family:\s*([^;]+)", style)
+            if match:
+                font_family_value = match.group(1).strip()
+                families = [
+                    f.strip().strip("'\"") for f in font_family_value.split(",")
+                ]
+                if families:
+                    return families[0].lower() == target_font
+
+        # Walk up to parent
+        if current not in parent_map:
+            break
+        current = parent_map[current]
+
+    return False
+
+
+def extract_text_characters(element: ET.Element) -> str:
+    """Extract text characters from an element for font subsetting.
+
+    This function extracts both element.text and element.tail with HTML entity
+    decoding. The tail is included because it's rendered using the element's
+    font-family (not the parent's), which is important for accurate font subsetting.
+
+    Args:
+        element: XML element to extract text from (typically text or tspan).
+
+    Returns:
+        Text content (text + tail) with HTML entities decoded.
+
+    Note:
+        - Extracts element.text (content before first child element)
+        - ALSO extracts tail (content after element's closing tag)
+        - Does NOT include text from child elements
+        - Decodes HTML/XML entities (e.g., &lt; → <, &#x4E00; → 一)
+        - Tail is included because SVG inherits font-family: the tail is rendered
+          using the element's font, not the parent's font
+
+    Example:
+        >>> elem = ET.fromstring('<text>Hello &amp; world</text>')
+        >>> extract_text_characters(elem)
+        'Hello & world'
+
+        >>> root = ET.fromstring('<text><tspan>A</tspan>B</text>')
+        >>> tspan = root[0]
+        >>> extract_text_characters(tspan)  # Returns 'AB' (text + tail)
+        'AB'
+    """
+    import html
+
+    result = ""
+    if element.text:
+        result += html.unescape(element.text)
+    if element.tail:
+        result += html.unescape(element.tail)
+    return result
+
+
+def add_font_family(
+    element: ET.Element, original_family: str, fallback_family: str
+) -> None:
+    """Add fallback font to font-family in the given element.
+
+    This function modifies an SVG text/tspan element by appending a fallback font family
+    to its existing font-family specification. It handles both font-family attributes
+    and font-family declarations within style attributes.
+
+    Args:
+        element: Element to update (typically text or tspan element).
+        original_family: Original font family name to match.
+        fallback_family: Fallback font family name to append.
+
+    Example:
+        Before: <text font-family="Arial">Hello</text>
+        After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
+
+        Before: <tspan style="font-family: Arial">Hello</tspan>
+        After:  <tspan style="font-family: 'Arial', 'Helvetica'">Hello</tspan>
+
+    Note:
+        - Only updates element if font-family exactly matches original_family
+        - Updates both font-family attributes and style attributes
+        - Quotes font family names in the output for CSS compliance
+    """
+    # Check font-family attribute
+    font_family = element.get("font-family")
+    if font_family:
+        # Add fallback chain
+        clean_family = font_family.strip("'\"")
+        if clean_family == original_family:
+            element.set("font-family", f"'{original_family}', '{fallback_family}'")
+
+    # Check style attribute for font-family
+    style = element.get("style")
+    if style and "font-family:" in style:
+
+        def replace_font_family(match: re.Match[str]) -> str:
+            font_family_value = match.group(1).strip()
+            # Parse the first font (requested font)
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            if families and families[0] == original_family:
+                # Build fallback chain
+                return f"font-family: '{original_family}', '{fallback_family}'"
+            return match.group(0)
+
+        # Replace font-family in style attribute
+        updated_style = re.sub(r"font-family:\s*([^;]+)", replace_font_family, style)
+        if updated_style != style:
+            element.set("style", updated_style)
+
+
 def insert_or_update_style_element(svg: ET.Element, css_content: str) -> None:
     """Insert or update a <style> element in the SVG root.
 

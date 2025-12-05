@@ -7,7 +7,7 @@ from copy import deepcopy
 from PIL import Image
 from psd_tools import PSDImage
 
-from psd2svg import font_subsetting, image_utils, svg_utils
+from psd2svg import image_utils, svg_utils
 from psd2svg.core import font_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
@@ -49,10 +49,6 @@ class SVGDocument:
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
-    _font_fallbacks: dict[str, str] = dataclasses.field(
-        default_factory=dict, init=False, repr=False
-    )
-    _fonts_resolved: bool = dataclasses.field(default=False, init=False, repr=False)
 
     @staticmethod
     def from_psd(
@@ -307,9 +303,12 @@ class SVGDocument:
 
         # Font files are only supported by ResvgRasterizer
         if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
-            # Resolve fonts to get file paths (idempotent, safe to call multiple times)
-            self._resolve_fonts()
-            font_files = [info.file for info in self.fonts if info.file]
+            # Resolve fonts to get file paths
+            font_files = []
+            for font_info in self.fonts:
+                resolved = font_info.resolve()
+                if resolved and resolved.file:
+                    font_files.append(resolved.file)
             return rasterizer.from_string(svg, font_files=font_files)
 
         return rasterizer.from_string(svg)
@@ -352,115 +351,6 @@ class SVGDocument:
             [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
         )
         return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
-
-    def _resolve_fonts(self) -> None:
-        """Resolve fonts and populate fallback mappings.
-
-        This method:
-        1. Resolves each font in self.fonts to actual system fonts
-        2. Replaces fonts in self.fonts with resolved versions (for embedding)
-        3. Populates self._font_fallbacks with substitution mappings
-
-        Note: Does NOT modify the SVG tree. Call _update_svg_font_fallbacks()
-        separately to update a specific SVG tree with fallback chains.
-
-        Called before font embedding (only when embed_fonts=True).
-        Idempotent - can be called multiple times safely.
-        """
-        # Skip if already resolved
-        if self._fonts_resolved:
-            return
-
-        # Resolve fonts and update the font list
-        resolved_fonts = []
-        for font_info in self.fonts:
-            resolved = font_info.resolve()
-            if resolved:
-                # Track substitution for fallback chain generation
-                if resolved.family != font_info.family:
-                    self._font_fallbacks[font_info.family] = resolved.family
-                    logger.info(
-                        f"Font fallback: '{font_info.family}' → '{resolved.family}'"
-                    )
-                # Use resolved font (has file path)
-                resolved_fonts.append(resolved)
-            else:
-                # Keep original if resolution fails
-                resolved_fonts.append(font_info)
-
-        # Replace font list with resolved versions
-        self.fonts = resolved_fonts
-
-        # Mark as resolved
-        self._fonts_resolved = True
-
-    def _update_svg_font_fallbacks(self, svg: ET.Element) -> None:
-        """Update SVG text elements with font fallback chains.
-
-        Traverses the SVG tree and updates font-family attributes to include
-        fallback fonts for any substituted fonts.
-
-        Args:
-            svg: SVG element tree to update (typically a copy, not the original).
-        """
-        for element in svg.iter():
-            # Check font-family attribute
-            font_family = element.get("font-family")
-            if font_family:
-                updated = self._add_fallback_to_font_family(font_family)
-                if updated != font_family:
-                    element.set("font-family", updated)
-
-            # Check style attribute for font-family
-            style = element.get("style")
-            if style and "font-family:" in style:
-                updated_style = self._add_fallback_to_style(style)
-                if updated_style != style:
-                    element.set("style", updated_style)
-
-    def _add_fallback_to_font_family(self, font_family: str) -> str:
-        """Add fallback to a font-family value.
-
-        Args:
-            font_family: Original font family (e.g., "'Arial'")
-
-        Returns:
-            Updated font family with fallback (e.g., "'Arial', 'DejaVu Sans'")
-        """
-        # Strip quotes to get clean family name
-        clean_family = font_family.strip("'\"")
-
-        # Check if substitution exists
-        if clean_family in self._font_fallbacks:
-            fallback = self._font_fallbacks[clean_family]
-            return f"'{clean_family}', '{fallback}'"
-
-        return font_family
-
-    def _add_fallback_to_style(self, style: str) -> str:
-        """Add fallback to font-family in a style attribute.
-
-        Args:
-            style: Style attribute value (e.g., "font-family: 'Arial'; color: red")
-
-        Returns:
-            Updated style with fallback in font-family
-        """
-        import re
-
-        def replace_font_family(match: re.Match[str]) -> str:
-            font_family_value = match.group(1).strip()
-            # Parse the first font (requested font)
-            # Font family values can be like: 'Arial' or Arial or "Arial"
-            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
-            if families and families[0] in self._font_fallbacks:
-                fallback = self._font_fallbacks[families[0]]
-                # Build fallback chain
-                return f"font-family: '{families[0]}', '{fallback}'"
-            return match.group(0)
-
-        # Replace font-family in style attribute
-        return re.sub(r"font-family:\s*([^;]+)", replace_font_family, style)
 
     def _handle_images(
         self,
@@ -616,6 +506,96 @@ class SVGDocument:
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
 
+    def _process_single_font(
+        self,
+        font_info: FontInfo,
+        svg: ET.Element,
+        subset_enabled: bool,
+        font_format: str,
+    ) -> str | None:
+        """Process a single font: resolve, update fallbacks, subset, and generate CSS.
+
+        This method performs all font processing steps for a single font:
+        1. Find text/tspan elements using this font
+        2. Resolve font to system font file (fontconfig/Windows registry)
+        3. Update matched elements with fallback chains if substitution occurred
+        4. Extract subset characters from matched elements (if subsetting enabled)
+        5. Generate @font-face CSS rule with encoded font data
+
+        Args:
+            font_info: Font to process.
+            svg: SVG element tree to search and update.
+            subset_enabled: Whether font subsetting is enabled.
+            font_format: Font format for embedding ("ttf", "otf", "woff2").
+
+        Returns:
+            CSS @font-face rule string, or None if font processing failed.
+
+        Note:
+            - Modifies SVG tree in-place (adds fallback chains)
+            - Uses self._font_data_cache for caching
+            - Logs warnings for errors but continues gracefully
+        """
+        # Step 1: Find elements using this font
+        matching_elements = svg_utils.find_elements_with_font_family(
+            svg, font_info.family
+        )
+
+        # Step 2: Resolve font to system font file
+        resolved_font = font_info.resolve()
+        if not resolved_font or not resolved_font.is_resolved():
+            logger.info(
+                f"Cannot embed font '{font_info.postscript_name}': "
+                "no file path available"
+            )
+            return None
+
+        # Step 3: Update fallbacks if substitution occurred (only if elements found)
+        if matching_elements and resolved_font.family != font_info.family:
+            logger.info(
+                f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
+            )
+            # Add fallback chain to matched elements
+            for element in matching_elements:
+                svg_utils.add_font_family(
+                    element, font_info.family, resolved_font.family
+                )
+
+        # Step 4: Extract subset characters (if enabled and elements found)
+        subset_chars: set[str] = set()
+        if subset_enabled and matching_elements:
+            for element in matching_elements:
+                text_content = svg_utils.extract_text_characters(element)
+                if text_content:
+                    subset_chars.update(text_content)
+
+            if not subset_chars:
+                logger.warning(
+                    f"No characters found for font '{font_info.family}', "
+                    "using full font"
+                )
+
+        # Step 5: Generate CSS rule with font encoding
+        font_path = resolved_font.file
+        try:
+            # Encode font with caching
+            data_uri = font_utils.encode_font_with_options(
+                font_path=font_path,
+                cache=self._font_data_cache,
+                subset_chars=subset_chars if subset_chars else None,
+                font_format=font_format,
+            )
+
+            # Generate CSS rule
+            return resolved_font.to_font_face_css(data_uri)
+
+        except (FileNotFoundError, IOError) as e:
+            logger.warning(f"Failed to embed font '{font_path}': {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to process font '{font_path}': {e}")
+            return None
+
     def _embed_fonts(
         self, svg: ET.Element, subset_fonts: bool = False, font_format: str = "ttf"
     ) -> None:
@@ -643,152 +623,38 @@ class SVGDocument:
         if not self.fonts:
             return
 
-        # Resolve fonts before embedding (queries fontconfig if needed)
-        # This modifies self.fonts and self._font_fallbacks but NOT the SVG tree
-        self._resolve_fonts()
-
-        # Update this SVG copy with font fallback chains (if any substitutions occurred)
-        if self._font_fallbacks:
-            self._update_svg_font_fallbacks(svg)
-
-        # Extract Unicode usage if subsetting is enabled
-        font_usage: dict[str, set[str]] = {}
-        if subset_fonts:
-            try:
-                font_usage = font_subsetting.get_font_usage_from_svg(svg)
-            except Exception as e:
-                logger.warning(
-                    f"Font subsetting failed: {e}. "
-                    "Fonts will be embedded without subsetting."
-                )
-                subset_fonts = False  # Disable subsetting for this call
-
-        # Generate @font-face CSS rules
-        font_face_rules = self._generate_font_face_rules(
-            font_usage, subset_fonts, font_format
-        )
-
-        if not font_face_rules:
-            logger.warning("No fonts were successfully embedded")
-            return
-
-        # Create CSS content and insert into SVG
-        css_content = "\n".join(font_face_rules)
-        svg_utils.insert_or_update_style_element(svg, css_content)
-
-        logger.debug(f"Embedded {len(font_face_rules)} font(s) in <style> element")
-
-    def _generate_font_face_rules(
-        self,
-        font_usage: dict[str, set[str]],
-        subset_fonts: bool,
-        font_format: str,
-    ) -> list[str]:
-        """Generate @font-face CSS rules for all fonts.
-
-        Args:
-            font_usage: Dictionary mapping font families to character sets.
-                Empty dict if subsetting is disabled.
-            subset_fonts: Whether to subset fonts.
-            font_format: Font format for embedding ("ttf", "otf", "woff2").
-
-        Returns:
-            List of @font-face CSS rule strings.
-
-        Note:
-            - Uses self._font_data_cache for caching encoded fonts
-            - Skips duplicate fonts (same file path)
-            - Logs warnings for missing/unreadable fonts but continues
-        """
-        font_face_rules = []
-        seen_fonts = set()  # Track fonts by file path to avoid duplicates
+        # Collect CSS rules by processing each font independently
+        css_rules: list[str] = []
+        seen_fonts: set[str] = set()  # Track fonts by file path to avoid duplicates
 
         for font_info in self.fonts:
-            # Skip fonts that haven't been resolved to system font files
-            # Note: _resolve_fonts() has already resolved fonts
-            if not font_info.is_resolved():
-                logger.info(
-                    f"Cannot embed font '{font_info.postscript_name}': "
-                    "no file path available"
-                )
-                continue
-
-            # Skip duplicates (fonts with same file path)
-            font_path = font_info.file
-            if font_path in seen_fonts:
-                continue
-            seen_fonts.add(font_path)
-
-            # Generate CSS rule for this font
-            css_rule = self._generate_single_font_face_rule(
-                font_info, font_usage, subset_fonts, font_format
-            )
-            if css_rule:
-                font_face_rules.append(css_rule)
-
-        return font_face_rules
-
-    def _generate_single_font_face_rule(
-        self,
-        font_info: FontInfo,
-        font_usage: dict[str, set[str]],
-        subset_fonts: bool,
-        font_format: str,
-    ) -> str | None:
-        """Generate a single @font-face CSS rule for a font.
-
-        Args:
-            font_info: Font information.
-            font_usage: Dictionary mapping font families to character sets.
-            subset_fonts: Whether to subset fonts.
-            font_format: Font format for embedding ("ttf", "otf", "woff2").
-
-        Returns:
-            CSS @font-face rule string, or None if font processing failed.
-
-        Note:
-            - Logs warnings for errors and returns None to skip problematic fonts
-            - FontInfo should already be resolved with file path populated
-        """
-        # Check if font has been resolved to a system font file
-        # Note: _resolve_fonts() has already resolved fonts
-        if not font_info.is_resolved():
-            raise ValueError(
-                f"Cannot embed font '{font_info.postscript_name}': "
-                "no file path available"
-            )
-
-        font_path = font_info.file
-
-        try:
-            # Get subset characters for this font (if subsetting enabled)
-            subset_chars = font_usage.get(font_info.family) if subset_fonts else None
-
-            # Handle missing characters in subsetting mode
-            if subset_fonts and not subset_chars:
-                logger.warning(
-                    f"No characters found for font '{font_info.family}', "
-                    "using full font"
-                )
-                subset_chars = None
-
-            # Encode font with caching
-            data_uri = font_utils.encode_font_with_options(
-                font_path=font_path,
-                cache=self._font_data_cache,
-                subset_chars=subset_chars,
+            # Process this font: resolve, update fallbacks, subset, generate CSS
+            css_rule = self._process_single_font(
+                font_info=font_info,
+                svg=svg,
+                subset_enabled=subset_fonts,
                 font_format=font_format,
             )
 
-            # Generate CSS rule
-            return font_info.to_font_face_css(data_uri)
+            if css_rule:
+                # Skip duplicates (fonts with same file path)
+                # Note: resolved font might have different path than original
+                resolved = font_info.resolve()
+                if resolved and resolved.file:
+                    font_path = resolved.file
+                    if font_path not in seen_fonts:
+                        seen_fonts.add(font_path)
+                        css_rules.append(css_rule)
 
-        except (FileNotFoundError, IOError) as e:
-            logger.warning(f"Failed to embed font '{font_path}': {e}")
-            return None
-        except Exception as e:
-            logger.warning(f"Failed to process font '{font_path}': {e}")
-            return None
+        if not css_rules:
+            logger.warning("No fonts were successfully embedded")
+            return
+
+        # Insert all CSS rules into <style> element
+        css_content = "\n".join(css_rules)
+        svg_utils.insert_or_update_style_element(svg, css_content)
+
+        logger.debug(f"Embedded {len(css_rules)} font(s) in <style> element")
 
 
 def convert(
