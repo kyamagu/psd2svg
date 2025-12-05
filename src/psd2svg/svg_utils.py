@@ -497,14 +497,22 @@ def merge_singleton_children(element: ET.Element) -> None:
         Not merged (conflicting attributes):
         Before: <text x="10"><tspan x="20">Text</tspan></text>
         After:  <text x="10"><tspan x="20">Text</tspan></text>  (unchanged)
+
+        Not merged (child has children):
+        Before: <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
+        After:  <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>  (unchanged)
     """
     # First, recursively process all children
     for child in list(element):
         merge_singleton_children(child)
 
-    # Merge singleton child if present
+    # Merge singleton child if present (checking AFTER recursion)
     if len(element) == 1:
         child = element[0]
+
+        # Don't merge if the child has its own children - this would lose those children
+        if len(child) > 0:
+            return
 
         # Check for attribute conflicts
         if len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0:

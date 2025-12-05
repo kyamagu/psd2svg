@@ -674,3 +674,89 @@ class TestMergeSingletonChildren:
         assert len(text) == 0
         assert text.text is None
         assert text.attrib.get("font-weight") == "700"
+
+    def test_multi_child_parent_with_nested_singletons(self) -> None:
+        """Test that parent with multiple children is not merged even when nested children are singletons.
+
+        This is a regression test for a bug where recursive processing would merge
+        nested singletons first, reducing the parent's child count and causing it
+        to be incorrectly merged.
+        """
+        # Create structure: <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
+        # The outer tspan has 2 children initially, so it shouldn't be merged
+        # But if we process recursively first, both inner tspans might disappear
+        text = ET.Element(
+            "text",
+            attrib={
+                "transform": "matrix(3.36,0,-0.68,3.35,253.68,244.16)",
+                "font-family": "Kozuka Gothic Pr6N",
+                "font-weight": "700",
+                "fill": "#0000ff",
+            },
+        )
+        outer_tspan = ET.SubElement(text, "tspan")
+
+        # Add multiple inner tspans
+        tspan1 = ET.SubElement(
+            outer_tspan,
+            "tspan",
+            attrib={
+                "font-size": "18",
+                "baseline-shift": "-0.36",
+                "letter-spacing": "0.72",
+            },
+        )
+        tspan1.text = "さ"
+
+        tspan2 = ET.SubElement(
+            outer_tspan, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan2.text = "す"
+
+        tspan3 = ET.SubElement(
+            outer_tspan, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan3.text = "だ"
+
+        tspan4 = ET.SubElement(
+            outer_tspan, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan4.text = "け"
+
+        tspan5 = ET.SubElement(
+            outer_tspan,
+            "tspan",
+            attrib={
+                "font-size": "20.85",
+                "baseline-shift": "-0.36",
+                "letter-spacing": "0.83",
+            },
+        )
+        tspan5.text = "！"
+
+        ET.SubElement(
+            outer_tspan,
+            "tspan",
+            attrib={
+                "font-size": "20.85",
+                "baseline-shift": "-0.36",
+                "letter-spacing": "0.83",
+            },
+        )
+        # Last tspan has no text (empty)
+
+        svg_utils.merge_singleton_children(text)
+
+        # The text element should still have the outer tspan as a child
+        # because the outer tspan originally had multiple children
+        assert len(text) == 1
+        assert text[0] is outer_tspan
+
+        # The inner tspans should still exist with their text content
+        assert len(outer_tspan) == 6
+        assert outer_tspan[0].text == "さ"
+        assert outer_tspan[1].text == "す"
+        assert outer_tspan[2].text == "だ"
+        assert outer_tspan[3].text == "け"
+        assert outer_tspan[4].text == "！"
+        assert outer_tspan[5].text is None  # Empty tspan
