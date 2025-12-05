@@ -135,6 +135,7 @@ class TextConverter(ConverterProtocol):
         svg_utils.merge_common_child_attributes(
             text_node, excludes={"x", "y", "dx", "dy", "transform"}
         )
+        svg_utils.merge_consecutive_siblings(text_node)
         svg_utils.merge_singleton_children(text_node)
         svg_utils.merge_attribute_less_children(text_node)
         return text_node

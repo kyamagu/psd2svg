@@ -547,6 +547,112 @@ def merge_common_child_attributes(
             del child.attrib[key]
 
 
+def merge_consecutive_siblings(element: ET.Element) -> None:
+    """Recursively merge consecutive sibling elements with identical attributes.
+
+    This utility consolidates sequences of consecutive child elements that have
+    the same tag and identical attributes by merging their text content. This is
+    particularly useful for optimizing SVG <tspan> elements.
+
+    Args:
+        element: The XML element to process recursively.
+
+    Example:
+        Before: <text>
+                    <tspan font-size="18" letter-spacing="0.72">す</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">だ</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">け</tspan>
+                </text>
+
+        After:  <text>
+                    <tspan font-size="18" letter-spacing="0.72">すだけ</tspan>
+                </text>
+
+        Before: <text>
+                    <tspan font-size="18" baseline-shift="-0.36" letter-spacing="0.72">さ</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">す</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">だ</tspan>
+                </text>
+
+        After:  <text>
+                    <tspan font-size="18" baseline-shift="-0.36" letter-spacing="0.72">さ</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">すだ</tspan>
+                </text>
+
+    Note:
+        - Only merges elements with the same tag name
+        - Only merges elements with identical attribute sets
+        - Preserves document order
+        - Does not merge elements with child elements
+        - Empty elements (no text or tail) are removed
+    """
+    # First, recursively process all children
+    for child in list(element):
+        merge_consecutive_siblings(child)
+
+    # Then merge consecutive siblings with identical attributes
+    children = list(element)
+    if len(children) < 2:
+        return
+
+    i = 0
+    while i < len(children):
+        current = children[i]
+
+        # Skip if current element has children (don't merge complex structures)
+        if len(current) > 0:
+            i += 1
+            continue
+
+        # Find consecutive siblings with same tag and attributes
+        merge_group = [current]
+        j = i + 1
+
+        while j < len(children):
+            next_elem = children[j]
+
+            # Stop if next element has children
+            if len(next_elem) > 0:
+                break
+
+            # Check if tags and attributes match
+            if next_elem.tag == current.tag and next_elem.attrib == current.attrib:
+                merge_group.append(next_elem)
+                j += 1
+            else:
+                break
+
+        # If we found consecutive siblings to merge (2 or more)
+        if len(merge_group) >= 2:
+            # Merge all text content into the first element
+            merged_text = ""
+            for elem in merge_group:
+                if elem.text:
+                    merged_text += elem.text
+
+            # Set merged text to first element (or None if empty)
+            merge_group[0].text = merged_text if merged_text else None
+
+            # Preserve the tail of the last element in the group
+            last_tail = merge_group[-1].tail
+
+            # Remove all but the first element
+            for elem in merge_group[1:]:
+                element.remove(elem)
+
+            # Set the tail to the first element
+            merge_group[0].tail = last_tail
+
+            # If the merged element is empty (no text, no tail), remove it
+            if not merge_group[0].text and not merge_group[0].tail:
+                element.remove(merge_group[0])
+
+            # Update children list after removals
+            children = list(element)
+        else:
+            i += 1
+
+
 def merge_singleton_children(element: ET.Element) -> None:
     """Recursively merge singleton child nodes into their parent nodes.
 
