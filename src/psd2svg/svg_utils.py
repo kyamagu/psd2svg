@@ -871,3 +871,41 @@ def consolidate_defs(svg: ET.Element) -> None:
     # Remove global defs if it's empty (no definitions were found)
     if len(global_defs) == 0:
         svg.remove(global_defs)
+
+
+def insert_or_update_style_element(svg: ET.Element, css_content: str) -> None:
+    """Insert or update a <style> element in the SVG root.
+
+    Args:
+        svg: SVG root element to modify.
+        css_content: CSS content to insert or append.
+
+    Note:
+        - If a <style> element exists as first child, appends to it
+        - Otherwise creates a new <style> element as first child
+        - Idempotent: skips if CSS content already present
+    """
+    # Find existing <style> element (check first child only)
+    style_element = None
+    if len(svg) > 0:
+        first_child = svg[0]
+        # Check if it's a style element (handle namespaced tags)
+        tag = first_child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+        if local_name == "style":
+            style_element = first_child
+
+    if style_element is not None:
+        # Update existing style element
+        existing_text = style_element.text or ""
+        # Check if our fonts are already embedded (idempotent check)
+        if css_content in existing_text:
+            logger.debug("CSS content already present, skipping")
+            return
+        # Append to existing styles
+        style_element.text = existing_text + "\n" + css_content
+    else:
+        # Create new style element as first child
+        style_element = ET.Element("style")
+        style_element.text = css_content
+        svg.insert(0, style_element)

@@ -627,6 +627,39 @@ def test_text_japanese_notosans_cjk_jp() -> None:
     assert font_family is not None, "font-family should be set"
 
 
+def test_text_japanese_with_custom_css() -> None:
+    """Test Japanese text with custom CSS using append_css().
+
+    This test verifies that:
+    1. append_css() correctly injects CSS into the SVG
+    2. The CSS rule is present in the final output
+    3. Japanese text is properly rendered alongside custom CSS
+    """
+    psdimage = PSDImage.open(get_fixture("texts/fonts-notosans-cjk-jp.psd"))
+    doc = SVGDocument.from_psd(psdimage)
+
+    # Add CJK proportional width CSS
+    doc.append_css("text { font-variant-east-asian: proportional-width; }")
+
+    # Convert to string to check CSS injection
+    svg_string = doc.tostring()
+
+    # Verify CSS is present
+    assert "<style>" in svg_string
+    assert "font-variant-east-asian: proportional-width" in svg_string
+
+    # Verify Japanese text is still present
+    assert "美しい日本語" in svg_string
+
+    # Verify text elements exist (not rasterized)
+    # Parse the SVG and check for text elements
+    svg_elem = ET.fromstring(svg_string.encode("utf-8"))
+    # Use namespace-aware search for SVG elements
+    ns = {"svg": "http://www.w3.org/2000/svg"}
+    text_nodes = svg_elem.findall(".//svg:text", ns)
+    assert len(text_nodes) > 0, "Should have at least one text element"
+
+
 def test_text_wrapping_foreign_object_basic() -> None:
     """Test basic foreignObject text wrapping for bounding box text."""
     from psd2svg.core.text import TextWrappingMode
