@@ -873,6 +873,65 @@ def consolidate_defs(svg: ET.Element) -> None:
         svg.remove(global_defs)
 
 
+def add_font_family(
+    element: ET.Element, original_family: str, fallback_family: str
+) -> None:
+    """Add fallback font to font-family in the given element.
+
+    This function modifies an SVG text/tspan element by appending a fallback font family
+    to its existing font-family specification. It handles both font-family attributes
+    and font-family declarations within style attributes.
+
+    Args:
+        element: Element to update (typically text or tspan element).
+        original_family: Original font family name to match.
+        fallback_family: Fallback font family name to append.
+
+    Example:
+        Before: <text font-family="Arial">Hello</text>
+        After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
+
+        Before: <tspan style="font-family: Arial">Hello</tspan>
+        After:  <tspan style="font-family: 'Arial', 'Helvetica'">Hello</tspan>
+
+    Note:
+        - Only updates element if font-family exactly matches original_family
+        - Updates both font-family attributes and style attributes
+        - Quotes font family names in the output for CSS compliance
+    """
+    # Check font-family attribute
+    font_family = element.get("font-family")
+    if font_family:
+        # Add fallback chain
+        clean_family = font_family.strip("'\"")
+        if clean_family == original_family:
+            element.set(
+                "font-family", f"'{original_family}', '{fallback_family}'"
+            )
+
+    # Check style attribute for font-family
+    style = element.get("style")
+    if style and "font-family:" in style:
+
+        def replace_font_family(match: re.Match[str]) -> str:
+            font_family_value = match.group(1).strip()
+            # Parse the first font (requested font)
+            families = [
+                f.strip().strip("'\"") for f in font_family_value.split(",")
+            ]
+            if families and families[0] == original_family:
+                # Build fallback chain
+                return f"font-family: '{original_family}', '{fallback_family}'"
+            return match.group(0)
+
+        # Replace font-family in style attribute
+        updated_style = re.sub(
+            r"font-family:\s*([^;]+)", replace_font_family, style
+        )
+        if updated_style != style:
+            element.set("style", updated_style)
+
+
 def insert_or_update_style_element(svg: ET.Element, css_content: str) -> None:
     """Insert or update a <style> element in the SVG root.
 

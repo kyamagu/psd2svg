@@ -99,6 +99,23 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 - `ResvgRasterizer` - Default, fast production rasterizer (resvg-py)
 - `PlaywrightRasterizer` - Optional browser-based renderer (better SVG 2.0 support)
 
+**Font Resolution Architecture** - Per-font iterative processing:
+
+Font embedding in `SVGDocument._embed_fonts()` processes each font independently:
+1. `_process_single_font()` - Main entry point per font:
+   - Finds text/tspan elements using the font (with inheritance)
+   - Resolves font to system font file (fontconfig/Windows registry)
+   - Updates elements with fallback chains if substitution occurred
+   - Extracts subset characters from matched elements (if subsetting enabled)
+   - Generates @font-face CSS rule with encoded font data
+2. Helper methods:
+   - `_find_elements_using_font()` - Finds elements using font (supports inheritance)
+   - `_get_font_family_with_inheritance()` - Checks font usage with parent chain walking
+   - `_extract_characters_from_elements()` - Extracts unique characters for subsetting
+   - `_add_fallback_to_elements()` - Updates elements with fallback chains
+
+This per-font approach reduces SVG tree traversals and enables better caching compared to the previous step-wise (resolve all → update all fallbacks → subset all → embed all) approach.
+
 ### Dependencies
 
 - `psd-tools>=1.12.0` - PSD parsing
