@@ -101,20 +101,13 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 
 **Font Resolution Architecture** - Per-font iterative processing:
 
-Font embedding in `SVGDocument._embed_fonts()` processes each font independently:
-1. `_process_single_font()` - Main entry point per font:
-   - Finds text/tspan elements using the font (with inheritance)
-   - Resolves font to system font file (fontconfig/Windows registry)
-   - Updates elements with fallback chains if substitution occurred
-   - Extracts subset characters from matched elements (if subsetting enabled)
-   - Generates @font-face CSS rule with encoded font data
-2. Helper methods:
-   - `_find_elements_using_font()` - Finds elements using font (supports inheritance)
-   - `_get_font_family_with_inheritance()` - Checks font usage with parent chain walking
-   - `_extract_characters_from_elements()` - Extracts unique characters for subsetting
-   - `_add_fallback_to_elements()` - Updates elements with fallback chains
+Font embedding in `SVGDocument._embed_fonts()` processes each font independently through all phases (resolve → update fallbacks → subset → embed). For each font, `_process_single_font()`:
 
-This per-font approach reduces SVG tree traversals and enables better caching compared to the previous step-wise (resolve all → update all fallbacks → subset all → embed all) approach.
+1. Finds text/tspan elements using the font ([svg_utils.find_elements_with_font_family](src/psd2svg/svg_utils.py:876-924))
+2. Resolves font to system font file via fontconfig/Windows registry (`FontInfo.resolve()`)
+3. Updates elements with fallback chains if substitution occurred ([svg_utils.add_font_family](src/psd2svg/svg_utils.py:1012-1068))
+4. Extracts subset characters from matched elements ([svg_utils.extract_text_characters](src/psd2svg/svg_utils.py:971-1009))
+5. Generates @font-face CSS rule with encoded font data
 
 ### Dependencies
 
