@@ -426,14 +426,16 @@ class TextConverter(ConverterProtocol):
                 tspan, "font-size", style.font_size * text_setting.subscript_size
             )
 
-        # Apply letter spacing from tracking and optional global offset
+        # Apply letter spacing from tracking, tsume, and optional global offset
+        # NOTE: Tracking is in 1/1000 em units.
+        # NOTE: Tsume is a percentage (0-1) that reduces spacing by that amount of font size.
         letter_spacing = style.tracking / 1000 * style.font_size
+        letter_spacing -= style.tsume * style.font_size  # Tsume tightens spacing
         if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
 
         # Only set letter-spacing if non-zero (or if offset makes it non-zero)
         if letter_spacing != 0:
-            # NOTE: Photoshop tracking is in 1/1000 em units.
             svg_utils.set_attribute(
                 tspan,
                 "letter-spacing",
@@ -1076,6 +1078,14 @@ class StyleSheet:
     def no_break(self) -> bool:
         """Whether no-break is enabled."""
         return bool(self.style_sheet_data.get("NoBreak", False))
+
+    @property
+    def tsume(self) -> float:
+        """Get tsume (character tightening) value with values between 0 (no tightening) and 1 (maximum tightening).
+
+        This is an East-Asian typography feature.
+        """
+        return float(self.style_sheet_data.get("Tsume", 0.0))
 
     @property
     def fill_color(self) -> tuple[float, float, float, float]:

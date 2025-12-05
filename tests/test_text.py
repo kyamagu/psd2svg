@@ -372,6 +372,32 @@ def test_text_style_kerning() -> None:
         assert dx_value < 0, f"Expected negative dx for tighter kerning, got {dx_value}"
 
 
+def test_text_style_tsume() -> None:
+    """Test tsume (character tightening) effect on letter-spacing."""
+    svg = convert_psd_to_svg("texts/style-tsume.psd")
+
+    # Find all tspan elements with letter-spacing
+    tspans_with_spacing = svg.findall(".//tspan[@letter-spacing]")
+    assert len(tspans_with_spacing) > 0
+
+    # Collect letter-spacing values
+    spacing_values = []
+    for tspan in tspans_with_spacing:
+        spacing = float(tspan.attrib["letter-spacing"])
+        spacing_values.append(spacing)
+
+    # Should have multiple different spacing values
+    # First paragraph: tracking=50, tsume=0 -> spacing = 50/1000 * 32 = 1.6
+    # Second paragraph: tracking=50, tsume=0.5 -> spacing = 50/1000 * 32 - 0.5 * 32 = 1.6 - 16 = -14.4
+    unique_values = set(spacing_values)
+    assert len(unique_values) > 1, "Expected varying letter-spacing due to tsume"
+
+    # Verify that tsume reduces spacing (some values should be negative)
+    assert any(s < 0 for s in spacing_values), (
+        "Expected negative spacing from tsume=0.5"
+    )
+
+
 def test_text_letter_spacing_offset() -> None:
     """Test text_letter_spacing_offset parameter."""
     # Test with no offset (default behavior)
