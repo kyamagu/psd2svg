@@ -400,6 +400,53 @@ class TestMergeAttributeLessChildren:
         assert text[0].text == "bold"
         assert text[0].tail == " then normal end"
 
+    def test_attribute_less_child_with_nested_children(self) -> None:
+        """Test that attribute-less children with nested elements are not merged.
+
+        This is a regression test for a bug where attribute-less children
+        would be merged even if they contained nested elements, causing
+        those nested elements to be lost.
+        """
+        # Create: <text><tspan><tspan font-size="18">A</tspan><tspan font-size="20">B</tspan></tspan></text>
+        text = ET.Element("text")
+        outer_tspan = ET.SubElement(text, "tspan")  # No attributes
+
+        inner1 = ET.SubElement(outer_tspan, "tspan", attrib={"font-size": "18"})
+        inner1.text = "A"
+
+        inner2 = ET.SubElement(outer_tspan, "tspan", attrib={"font-size": "20"})
+        inner2.text = "B"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # outer_tspan should NOT be merged because it has children
+        assert len(text) == 1
+        assert text[0] is outer_tspan
+        assert len(outer_tspan) == 2
+        assert outer_tspan[0].text == "A"
+        assert outer_tspan[1].text == "B"
+
+    def test_mixed_attribute_less_with_nested(self) -> None:
+        """Test mixed scenario with attribute-less children, some with nested elements."""
+        # <text><tspan font-weight="700">Bold</tspan><tspan><tspan font-size="18">Nested</tspan></tspan></text>
+        text = ET.Element("text")
+
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
+        tspan1.text = "Bold"
+
+        tspan2 = ET.SubElement(text, "tspan")  # No attributes
+        inner = ET.SubElement(tspan2, "tspan", attrib={"font-size": "18"})
+        inner.text = "Nested"
+
+        svg_utils.merge_attribute_less_children(text)
+
+        # tspan2 should NOT be merged because it has children
+        assert len(text) == 2
+        assert text[0].text == "Bold"
+        assert text[1] is tspan2
+        assert len(text[1]) == 1
+        assert text[1][0].text == "Nested"
+
 
 class TestMergeCommonChildAttributes:
     """Tests for merge_common_child_attributes utility function."""

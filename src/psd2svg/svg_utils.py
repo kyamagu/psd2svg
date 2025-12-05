@@ -375,6 +375,10 @@ def merge_attribute_less_children(element: ET.Element) -> None:
     children = list(element)
     for i, child in enumerate(children):
         if not child.attrib:
+            # Don't merge if the child has its own children - this would lose those children
+            if len(child) > 0:
+                continue
+
             # Move child's text content
             if child.text:
                 # Find previous sibling that still exists in the tree
