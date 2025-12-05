@@ -99,16 +99,6 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 - `ResvgRasterizer` - Default, fast production rasterizer (resvg-py)
 - `PlaywrightRasterizer` - Optional browser-based renderer (better SVG 2.0 support)
 
-**Font Resolution Architecture** - Per-font iterative processing:
-
-Font embedding in `SVGDocument._embed_fonts()` processes each font independently through all phases (resolve → update fallbacks → subset → embed). For each font, `_process_single_font()`:
-
-1. Finds text/tspan elements using the font ([svg_utils.find_elements_with_font_family](src/psd2svg/svg_utils.py:876-924))
-2. Resolves font to system font file via fontconfig/Windows registry (`FontInfo.resolve()`)
-3. Updates elements with fallback chains if substitution occurred ([svg_utils.add_font_family](src/psd2svg/svg_utils.py:1012-1068))
-4. Extracts subset characters from matched elements ([svg_utils.extract_text_characters](src/psd2svg/svg_utils.py:971-1009))
-5. Generates @font-face CSS rule with encoded font data
-
 ### Dependencies
 
 - `psd-tools>=1.12.0` - PSD parsing
@@ -288,3 +278,22 @@ Prefer specialized tools over bash:
 - **docs/** - Full Sphinx documentation (comprehensive details)
 
 For detailed feature documentation, configuration options, and usage examples, refer to the [full documentation](https://psd2svg.readthedocs.io/).
+
+### Debugging PSD files
+
+Use `psd-tools` API to inspect PSD content. For text layers, use the following approach:
+
+```python
+from psd_tools import PSDImage
+from psd_tools.api.layers import TypeLayer
+from psd2svg.core.text import TypeSetting
+
+psdimage = PSDImage.open("tests/fixtures/texts/style-tsume.psd")
+for layer in psd.descendants():
+   if isinstance(layer, TypeLayer) and layer.is_visible():
+      text_setting = TypeSetting(layer._data)
+      for paragraph in text_setting:
+         for style in paragraph:
+            # Do whatever you want to debug with the style span.
+            pass
+```

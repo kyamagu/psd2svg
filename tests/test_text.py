@@ -201,7 +201,8 @@ def test_text_writing_direction() -> None:
     text_node = svg.find(".//text")
     assert text_node is not None
     assert text_node.attrib.get("writing-mode") == "vertical-rl"
-    assert text_node.attrib.get("style") == "text-orientation: upright"
+    style = text_node.attrib.get("style", "")
+    assert "text-orientation: upright" in style
 
     # Vertical Right to Left, baseline direction
     svg = convert_psd_to_svg(
@@ -210,7 +211,9 @@ def test_text_writing_direction() -> None:
     text_node = svg.find(".//text")
     assert text_node is not None
     assert text_node.attrib.get("writing-mode") == "vertical-rl"
-    assert text_node.attrib.get("style") is None
+    # Style may contain font-variant-ligatures (default), so we just check it doesn't have text-orientation
+    style = text_node.attrib.get("style", "")
+    assert "text-orientation" not in style
 
 
 def test_text_style_bold() -> None:
@@ -350,6 +353,109 @@ def test_text_style_tracking() -> None:
     # Should have non-zero letter spacing
     letter_spacing = float(tspan.attrib.get("letter-spacing", "0"))
     assert letter_spacing != 0
+
+
+def test_text_style_kerning() -> None:
+    """Test kerning using dx attributes."""
+    svg = convert_psd_to_svg("texts/style-kerning-manual.psd")
+
+    # Find all tspan elements with dx attributes (kerning applied)
+    tspans_with_dx = svg.findall(".//tspan[@dx]")
+
+    # Second paragraph has 8 characters with non-zero kerning
+    # Expected characters with kerning: 'o', 'r', 'e', 'm', 'p', 's', 'u', 'm'
+    assert len(tspans_with_dx) >= 8, (
+        f"Expected at least 8 tspans with dx, got {len(tspans_with_dx)}"
+    )
+
+    # Verify dx values are negative (tighter spacing)
+    # All kerning values in the fixture are negative
+    for tspan in tspans_with_dx:
+        dx_value = float(tspan.attrib.get("dx", "0"))
+        assert dx_value < 0, f"Expected negative dx for tighter kerning, got {dx_value}"
+
+
+def test_text_style_tsume() -> None:
+    """Test tsume (character tightening) effect on letter-spacing."""
+    svg = convert_psd_to_svg("texts/style-tsume.psd")
+
+    # Find all tspan elements with letter-spacing
+    tspans_with_spacing = svg.findall(".//tspan[@letter-spacing]")
+    assert len(tspans_with_spacing) > 0
+
+    # Collect letter-spacing values
+    spacing_values = []
+    for tspan in tspans_with_spacing:
+        spacing = float(tspan.attrib["letter-spacing"])
+        spacing_values.append(spacing)
+
+    # Should have multiple different spacing values
+    # First paragraph: tracking=50, tsume=0 -> spacing = 50/1000 * 32 = 1.6
+    # Second paragraph: tracking=50, tsume=0.5 -> spacing = 50/1000 * 32 - 0.5 * 32 = 1.6 - 16 = -14.4
+    unique_values = set(spacing_values)
+    assert len(unique_values) > 1, "Expected varying letter-spacing due to tsume"
+
+    # Verify that tsume reduces spacing (some values should be negative)
+    assert any(s < 0 for s in spacing_values), (
+        "Expected negative spacing from tsume=0.5"
+    )
+
+
+def test_text_style_ligatures() -> None:
+    """Test common ligatures using font-variant-ligatures."""
+    svg = convert_psd_to_svg("texts/style-ligatures.psd")
+
+    # Find all text nodes (after optimization, styles may be on text or tspan)
+    text_nodes = svg.findall(".//text")
+    tspan_nodes = svg.findall(".//tspan")
+    all_nodes = text_nodes + tspan_nodes
+
+    # Check ligature styles
+    ligature_styles = []
+    nodes_without_ligature_style = []
+    for node in all_nodes:
+        style = node.attrib.get("style", "")
+        if "font-variant-ligatures" in style:
+            ligature_styles.append(style)
+        else:
+            nodes_without_ligature_style.append(node)
+
+    # First paragraph should have "none" (ligatures=False, discretionary=False)
+    has_none = any("font-variant-ligatures: none" in s for s in ligature_styles)
+    assert has_none, "Expected font-variant-ligatures: none in first paragraph"
+
+    # Second paragraph should have no font-variant-ligatures attribute (default CSS behavior)
+    # This represents ligatures=True, discretionary=False (the default)
+    assert len(nodes_without_ligature_style) > 0, (
+        "Expected at least one tspan without font-variant-ligatures (default behavior)"
+    )
+
+
+def test_text_style_discretionary_ligatures() -> None:
+    """Test discretionary ligatures using font-variant-ligatures."""
+    svg = convert_psd_to_svg("texts/style-dligatures.psd")
+
+    # Find all text nodes (after optimization, styles may be on text or tspan)
+    text_nodes = svg.findall(".//text")
+    tspan_nodes = svg.findall(".//tspan")
+    all_nodes = text_nodes + tspan_nodes
+
+    # Check that we have font-variant-ligatures styles
+    ligature_styles = []
+    for node in all_nodes:
+        style = node.attrib.get("style", "")
+        if "font-variant-ligatures" in style:
+            ligature_styles.append(style)
+
+    assert len(ligature_styles) > 0, "Expected font-variant-ligatures styles"
+
+    # First paragraph should have "none" (ligatures=False, discretionary=False)
+    # Second paragraph should have "discretionary-ligatures" (ligatures=False, discretionary=True)
+    has_none = any("font-variant-ligatures: none" in s for s in ligature_styles)
+    has_discretionary = any("discretionary-ligatures" in s for s in ligature_styles)
+
+    assert has_none, "Expected font-variant-ligatures: none in first paragraph"
+    assert has_discretionary, "Expected discretionary-ligatures in second paragraph"
 
 
 def test_text_letter_spacing_offset() -> None:

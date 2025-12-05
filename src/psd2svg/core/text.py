@@ -405,6 +405,30 @@ class TextConverter(ConverterProtocol):
         if style.strikethrough:
             svg_utils.append_attribute(tspan, "text-decoration", "line-through")
 
+        # Apply ligature settings using font-variant-ligatures
+        # Photoshop defaults to ligatures=True (common ligatures enabled)
+        # CSS default behavior is 'normal' which enables common ligatures
+        # Only set font-variant-ligatures when it differs from the default
+        if not style.ligatures and not style.discretionary_ligatures:
+            # Both disabled -> none
+            svg_utils.add_style(tspan, "font-variant-ligatures", "none")
+        elif style.ligatures and not style.discretionary_ligatures:
+            # Only common ligatures enabled (Photoshop default, CSS default)
+            # Skip setting attribute - this is the default CSS behavior
+            pass
+        elif not style.ligatures and style.discretionary_ligatures:
+            # Only discretionary ligatures enabled (uncommon case)
+            svg_utils.add_style(
+                tspan, "font-variant-ligatures", "discretionary-ligatures"
+            )
+        else:
+            # Both enabled
+            svg_utils.add_style(
+                tspan,
+                "font-variant-ligatures",
+                "common-ligatures discretionary-ligatures",
+            )
+
         # NOTE: Photoshop uses different values for subscript position/size.
         # Using baseline-shift with sub or super will result in inaccurate rendering.
         if style.font_baseline == FontBaseline.SUPERSCRIPT:
@@ -426,19 +450,33 @@ class TextConverter(ConverterProtocol):
                 tspan, "font-size", style.font_size * text_setting.subscript_size
             )
 
-        # Apply letter spacing from tracking and optional global offset
+        # Apply letter spacing from tracking, tsume, and optional global offset
+        # NOTE: Tracking is in 1/1000 em units.
+        # NOTE: Tsume is a percentage (0-1) that reduces spacing by that amount of font size.
         letter_spacing = style.tracking / 1000 * style.font_size
+        letter_spacing -= style.tsume * style.font_size  # Tsume tightens spacing
         if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
 
         # Only set letter-spacing if non-zero (or if offset makes it non-zero)
         if letter_spacing != 0:
-            # NOTE: Photoshop tracking is in 1/1000 em units.
             svg_utils.set_attribute(
                 tspan,
                 "letter-spacing",
                 svg_utils.num2str(letter_spacing),
             )
+
+        # Apply kerning adjustment (manual kerning in 1/1000 em units)
+        # Kerning adjusts the spacing BEFORE the current character (between previous and current).
+        # We use dx/dy to shift the character position, which effectively adjusts the space before it.
+        # NOTE: letter-spacing adds space AFTER characters, so we can't use it for kerning.
+        if style.kerning != 0:
+            kerning_offset = style.kerning / 1000 * style.font_size
+            # Use dx for horizontal text, dy for vertical text
+            if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
+                svg_utils.set_attribute(tspan, "dx", svg_utils.num2str(kerning_offset))
+            elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
+                svg_utils.set_attribute(tspan, "dy", svg_utils.num2str(kerning_offset))
 
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
             # NOTE: Transform cannot be applied to tspan in SVG 1.1 but only in SVG 2.
@@ -1048,7 +1086,7 @@ class StyleSheet:
     @property
     def ligatures(self) -> bool:
         """Whether ligatures are enabled."""
-        return bool(self.style_sheet_data.get("Ligatures", False))
+        return bool(self.style_sheet_data.get("Ligatures", True))
 
     @property
     def discretionary_ligatures(self) -> bool:
@@ -1064,6 +1102,14 @@ class StyleSheet:
     def no_break(self) -> bool:
         """Whether no-break is enabled."""
         return bool(self.style_sheet_data.get("NoBreak", False))
+
+    @property
+    def tsume(self) -> float:
+        """Get tsume (character tightening) value with values between 0 (no tightening) and 1 (maximum tightening).
+
+        This is an East-Asian typography feature.
+        """
+        return float(self.style_sheet_data.get("Tsume", 0.0))
 
     @property
     def fill_color(self) -> tuple[float, float, float, float]:
