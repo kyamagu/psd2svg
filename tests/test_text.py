@@ -352,6 +352,26 @@ def test_text_style_tracking() -> None:
     assert letter_spacing != 0
 
 
+def test_text_style_kerning() -> None:
+    """Test kerning using dx attributes."""
+    svg = convert_psd_to_svg("texts/style-kerning-manual.psd")
+
+    # Find all tspan elements with dx attributes (kerning applied)
+    tspans_with_dx = svg.findall(".//tspan[@dx]")
+
+    # Second paragraph has 8 characters with non-zero kerning
+    # Expected characters with kerning: 'o', 'r', 'e', 'm', 'p', 's', 'u', 'm'
+    assert len(tspans_with_dx) >= 8, (
+        f"Expected at least 8 tspans with dx, got {len(tspans_with_dx)}"
+    )
+
+    # Verify dx values are negative (tighter spacing)
+    # All kerning values in the fixture are negative
+    for tspan in tspans_with_dx:
+        dx_value = float(tspan.attrib.get("dx", "0"))
+        assert dx_value < 0, f"Expected negative dx for tighter kerning, got {dx_value}"
+
+
 def test_text_letter_spacing_offset() -> None:
     """Test text_letter_spacing_offset parameter."""
     # Test with no offset (default behavior)

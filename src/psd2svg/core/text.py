@@ -440,6 +440,18 @@ class TextConverter(ConverterProtocol):
                 svg_utils.num2str(letter_spacing),
             )
 
+        # Apply kerning adjustment (manual kerning in 1/1000 em units)
+        # Kerning adjusts the spacing BEFORE the current character (between previous and current).
+        # We use dx/dy to shift the character position, which effectively adjusts the space before it.
+        # NOTE: letter-spacing adds space AFTER characters, so we can't use it for kerning.
+        if style.kerning != 0:
+            kerning_offset = style.kerning / 1000 * style.font_size
+            # Use dx for horizontal text, dy for vertical text
+            if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
+                svg_utils.set_attribute(tspan, "dx", svg_utils.num2str(kerning_offset))
+            elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
+                svg_utils.set_attribute(tspan, "dy", svg_utils.num2str(kerning_offset))
+
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
             # NOTE: Transform cannot be applied to tspan in SVG 1.1 but only in SVG 2.
             # Workaround would be to split tspan's into text nodes, but it's complex.
