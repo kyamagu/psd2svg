@@ -971,36 +971,42 @@ def _element_uses_font_family(
 def extract_text_characters(element: ET.Element) -> str:
     """Extract text characters from an element for font subsetting.
 
-    This function extracts the direct text content from an element (element.text)
-    with HTML entity decoding. It's used for collecting characters needed when
-    subsetting fonts.
+    This function extracts both element.text and element.tail with HTML entity
+    decoding. The tail is included because it's rendered using the element's
+    font-family (not the parent's), which is important for accurate font subsetting.
 
     Args:
         element: XML element to extract text from (typically text or tspan).
 
     Returns:
-        Text content with HTML entities decoded, or empty string if no text.
+        Text content (text + tail) with HTML entities decoded.
 
     Note:
-        - Only extracts element.text (content before first child element)
-        - Does NOT include tail (content after element's closing tag)
+        - Extracts element.text (content before first child element)
+        - ALSO extracts tail (content after element's closing tag)
         - Does NOT include text from child elements
         - Decodes HTML/XML entities (e.g., &lt; → <, &#x4E00; → 一)
+        - Tail is included because SVG inherits font-family: the tail is rendered
+          using the element's font, not the parent's font
 
     Example:
         >>> elem = ET.fromstring('<text>Hello &amp; world</text>')
         >>> extract_text_characters(elem)
         'Hello & world'
 
-        >>> elem = ET.fromstring('<text>A<tspan>B</tspan>C</text>')
-        >>> extract_text_characters(elem)
-        'A'
+        >>> root = ET.fromstring('<text><tspan>A</tspan>B</text>')
+        >>> tspan = root[0]
+        >>> extract_text_characters(tspan)  # Returns 'AB' (text + tail)
+        'AB'
     """
     import html
 
+    result = ""
     if element.text:
-        return html.unescape(element.text)
-    return ""
+        result += html.unescape(element.text)
+    if element.tail:
+        result += html.unescape(element.tail)
+    return result
 
 
 def add_font_family(
