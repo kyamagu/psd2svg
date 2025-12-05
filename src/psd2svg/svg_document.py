@@ -128,6 +128,38 @@ class SVGDocument:
 
         return document
 
+    def append_css(self, css: str) -> None:
+        """Append custom CSS rules to the SVG <style> element.
+
+        This method allows you to inject custom CSS rules into the SVG document.
+        The CSS is appended to an existing <style> element if present, or a new
+        <style> element is created as the first child of the root SVG element.
+
+        Args:
+            css: CSS rules to append. Can be any valid CSS including selectors,
+                media queries, keyframes, etc.
+
+        Example:
+            >>> from psd_tools import PSDImage
+            >>> from psd2svg import SVGDocument
+            >>>
+            >>> psdimage = PSDImage.open("input.psd")
+            >>> svg_doc = SVGDocument.from_psd(psdimage)
+            >>>
+            >>> # Add custom CSS for Japanese text
+            >>> svg_doc.append_css("text { font-variant-east-asian: proportional-width; }")
+            >>>
+            >>> # Add more custom CSS
+            >>> svg_doc.append_css("@media print { .no-print { display: none; } }")
+            >>>
+            >>> svg_doc.save("output.svg")
+
+        Note:
+            This method is idempotent - if the same CSS is appended multiple times,
+            it will only appear once in the output (duplicate detection).
+        """
+        self._insert_or_update_style_element(self.svg, css)
+
     def tostring(
         self,
         embed_images: bool = True,

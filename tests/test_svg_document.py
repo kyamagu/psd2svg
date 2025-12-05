@@ -550,3 +550,128 @@ class TestSVGDocumentRasterizeWithFonts:
             assert "@font-face" in svg_arg
             assert "font-family: 'Arial'" in svg_arg
             assert "data:font/ttf;base64,MOCKDATA" in svg_arg
+
+
+class TestAppendCss:
+    """Tests for SVGDocument.append_css method."""
+
+    def test_append_css_basic(self) -> None:
+        """Test basic CSS injection into SVG."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        css = "text { font-variant-east-asian: proportional-width; }"
+        document.append_css(css)
+
+        svg_string = document.tostring()
+        assert "<style>" in svg_string
+        assert "font-variant-east-asian: proportional-width" in svg_string
+
+    def test_append_css_creates_style_element(self) -> None:
+        """Test that append_css creates <style> element if not present."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        # Initially no style element
+        style_elem = svg_elem.find("style")
+        assert style_elem is None
+
+        document.append_css("text { color: red; }")
+
+        # Now style element should exist
+        style_elem = svg_elem.find("style")
+        assert style_elem is not None
+        assert style_elem.text is not None
+        assert "text { color: red; }" in style_elem.text
+
+    def test_append_css_multiple_calls(self) -> None:
+        """Test that multiple append_css calls accumulate CSS."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        document.append_css("text { color: red; }")
+        document.append_css("rect { fill: blue; }")
+
+        svg_string = document.tostring()
+        assert "text { color: red; }" in svg_string
+        assert "rect { fill: blue; }" in svg_string
+
+    def test_append_css_idempotent(self) -> None:
+        """Test that appending the same CSS multiple times is idempotent."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        css = "text { font-variant-east-asian: proportional-width; }"
+        document.append_css(css)
+        document.append_css(css)
+        document.append_css(css)
+
+        svg_string = document.tostring()
+        # Should only appear once (duplicate detection)
+        count = svg_string.count("font-variant-east-asian: proportional-width")
+        assert count == 1
+
+    def test_append_css_with_media_query(self) -> None:
+        """Test appending CSS with media query."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        css = "@media print { .no-print { display: none; } }"
+        document.append_css(css)
+
+        svg_string = document.tostring()
+        assert "@media print" in svg_string
+        assert "no-print" in svg_string
+
+    def test_append_css_with_font_embedding(self, tmp_path: Path) -> None:
+        """Test that append_css works alongside font embedding."""
+        font_file = tmp_path / "arial.ttf"
+        font_file.write_bytes(b"FAKE_FONT")
+
+        svg_elem = ET.Element("svg", width="100", height="100")
+        font = FontInfo(
+            postscript_name="ArialMT",
+            file=str(font_file),
+            family="Arial",
+            style="Regular",
+            weight=80.0,
+        )
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+
+        # Add custom CSS
+        document.append_css("text { font-variant-east-asian: proportional-width; }")
+
+        # Get string with font embedding
+        with patch("psd2svg.core.font_utils.encode_font_data_uri") as mock_encode:
+            mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
+            svg_string = document.tostring(embed_fonts=True)
+
+        # Should contain both custom CSS and font-face
+        assert "font-variant-east-asian: proportional-width" in svg_string
+        assert "@font-face" in svg_string
+        assert "font-family: 'Arial'" in svg_string
+
+    def test_append_css_empty_string(self) -> None:
+        """Test that appending empty CSS string doesn't cause issues."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        document.append_css("")
+
+        svg_string = document.tostring()
+        # Should work without errors (may or may not create style element)
+        assert "<svg" in svg_string
+
+    def test_append_css_with_save(self, tmp_path: Path) -> None:
+        """Test that append_css works with save method."""
+        svg_elem = ET.Element("svg", width="100", height="100")
+        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+
+        document.append_css("text { color: green; }")
+
+        output_file = tmp_path / "output.svg"
+        document.save(str(output_file))
+
+        # Read file and verify CSS is present
+        svg_content = output_file.read_text()
+        assert "text { color: green; }" in svg_content
