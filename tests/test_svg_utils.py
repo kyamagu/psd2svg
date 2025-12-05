@@ -587,6 +587,193 @@ class TestMergeCommonChildAttributes:
         assert "fill" not in tspan.attrib
 
 
+class TestMergeConsecutiveSiblings:
+    """Tests for merge_consecutive_siblings utility function."""
+
+    def test_merge_identical_consecutive_tspans(self) -> None:
+        """Test merging consecutive tspans with identical attributes."""
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan1.text = "す"
+        tspan2 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan2.text = "だ"
+        tspan3 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan3.text = "け"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # Should merge into single tspan
+        assert len(text) == 1
+        assert text[0].text == "すだけ"
+        assert text[0].attrib["font-size"] == "18"
+        assert text[0].attrib["letter-spacing"] == "0.72"
+
+    def test_merge_stops_at_different_attributes(self) -> None:
+        """Test that merging stops when attributes differ."""
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(
+            text,
+            "tspan",
+            attrib={
+                "font-size": "18",
+                "baseline-shift": "-0.36",
+                "letter-spacing": "0.72",
+            },
+        )
+        tspan1.text = "さ"
+        tspan2 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan2.text = "す"
+        tspan3 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan3.text = "だ"
+        tspan4 = ET.SubElement(
+            text,
+            "tspan",
+            attrib={
+                "font-size": "20.85",
+                "baseline-shift": "-0.36",
+                "letter-spacing": "0.83",
+            },
+        )
+        tspan4.text = "！"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # Should have 3 tspans: "さ", "すだ", "！"
+        assert len(text) == 3
+        assert text[0].text == "さ"
+        assert text[0].attrib["baseline-shift"] == "-0.36"
+        assert text[1].text == "すだ"
+        assert "baseline-shift" not in text[1].attrib
+        assert text[2].text == "！"
+        assert text[2].attrib["font-size"] == "20.85"
+
+    def test_merge_removes_empty_tspans(self) -> None:
+        """Test that empty tspans (no text or tail) are removed."""
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan1.text = "text"
+        tspan2 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan2.text = None  # Empty
+        tspan3 = ET.SubElement(
+            text, "tspan", attrib={"font-size": "18", "letter-spacing": "0.72"}
+        )
+        tspan3.text = None  # Empty
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # All should merge, and since only first has text, result is just "text"
+        assert len(text) == 1
+        assert text[0].text == "text"
+
+    def test_merge_preserves_tail(self) -> None:
+        """Test that the tail of the last element is preserved."""
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-size": "18"})
+        tspan1.text = "A"
+        tspan2 = ET.SubElement(text, "tspan", attrib={"font-size": "18"})
+        tspan2.text = "B"
+        tspan2.tail = " after"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # Should merge and preserve tail
+        assert len(text) == 1
+        assert text[0].text == "AB"
+        assert text[0].tail == " after"
+
+    def test_no_merge_with_children(self) -> None:
+        """Test that elements with children are not merged."""
+
+        text = ET.Element("text")
+        tspan1 = ET.SubElement(text, "tspan", attrib={"font-size": "18"})
+        tspan1.text = "A"
+        tspan2 = ET.SubElement(text, "tspan", attrib={"font-size": "18"})
+        # tspan2 has a child
+        child = ET.SubElement(tspan2, "tspan")
+        child.text = "B"
+        tspan3 = ET.SubElement(text, "tspan", attrib={"font-size": "18"})
+        tspan3.text = "C"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # tspan1 should not merge with tspan2 (has children)
+        # tspan2 should not merge with tspan3 (has children)
+        assert len(text) == 3
+
+    def test_merge_different_tags(self) -> None:
+        """Test that elements with different tags are not merged."""
+
+        g = ET.Element("g")
+        ET.SubElement(g, "rect", attrib={"fill": "red"})
+        ET.SubElement(g, "circle", attrib={"fill": "red"})
+        ET.SubElement(g, "rect", attrib={"fill": "red"})
+
+        svg_utils.merge_consecutive_siblings(g)
+
+        # Different tags should not merge
+        assert len(g) == 3
+
+    def test_recursive_processing(self) -> None:
+        """Test that function processes nested children recursively."""
+
+        text = ET.Element("text")
+        g = ET.SubElement(text, "g")
+        tspan1 = ET.SubElement(g, "tspan", attrib={"fill": "red"})
+        tspan1.text = "A"
+        tspan2 = ET.SubElement(g, "tspan", attrib={"fill": "red"})
+        tspan2.text = "B"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # Should merge nested tspans
+        assert len(text) == 1  # g
+        assert len(g) == 1  # merged tspan
+        assert g[0].text == "AB"
+
+    def test_empty_element(self) -> None:
+        """Test with element that has no children."""
+
+        text = ET.Element("text")
+        text.text = "No children"
+
+        # Should not raise an error
+        svg_utils.merge_consecutive_siblings(text)
+
+        assert text.text == "No children"
+        assert len(text) == 0
+
+    def test_single_child(self) -> None:
+        """Test with element that has only one child."""
+
+        text = ET.Element("text")
+        tspan = ET.SubElement(text, "tspan", attrib={"fill": "red"})
+        tspan.text = "Only child"
+
+        svg_utils.merge_consecutive_siblings(text)
+
+        # Single child should not be modified
+        assert len(text) == 1
+        assert text[0].text == "Only child"
+
+
 class TestMergeSingletonChildren:
     """Tests for merge_singleton_children utility function."""
 
