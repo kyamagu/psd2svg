@@ -3,6 +3,29 @@ Changelog
 
 This document tracks changes across versions of psd2svg.
 
+Version 0.6.0
+-------------
+
+**Added:**
+
+* Support for kerning in text layers using dx/dy attributes
+* Support for tsume (East Asian character tightening) in text layers
+* Support for ligatures (common and discretionary) via font-variant-ligatures CSS property
+* New ``SVGDocument.append_css()`` API for custom CSS injection
+* SVG optimization: merge consecutive sibling tspan elements with identical attributes (41% size reduction)
+
+**Fixed:**
+
+* Fixed ``merge_singleton_children()`` losing nested elements during optimization
+* Fixed ``merge_attribute_less_children()`` losing nested elements during optimization
+* Fixed character extraction to include element tail text for accurate font subsetting
+
+**Changed:**
+
+* Refactored font-related SVG utilities to ``svg_utils`` module for better code organization
+* Enhanced merge functions to unwrap redundant wrapper elements for cleaner SVG output
+* Improved SVG structure optimization with better handling of nested elements
+
 Version 0.5.0
 -------------
 
