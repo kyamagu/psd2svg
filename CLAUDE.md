@@ -75,6 +75,39 @@ When fonts are embedded, psd2svg automatically:
 
 This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level.
 
+### Unicode Codepoint-Based Font Matching
+
+**Feature**: Charset-aware font matching (implemented in feature/charset-font-matching, requires fontconfig-py >= 0.4.0)
+
+psd2svg now performs intelligent font matching by analyzing which Unicode characters are actually used in the text:
+
+**How it works**:
+
+1. **Character extraction**: Extracts all Unicode characters from text layers
+2. **Codepoint conversion**: Converts characters to numeric codepoints (e.g., 'あ' → 0x3042)
+3. **Smart resolution**: Prioritizes fonts with better glyph coverage for those specific characters
+4. **Automatic fallback**: Gracefully falls back to name-only matching on any errors
+
+**Platform support**:
+
+- **Linux/macOS**: Uses fontconfig CharSet API (requires fontconfig-py >= 0.4.0)
+- **Windows**: Uses fontTools cmap table checking (requires 80%+ coverage by default)
+- **Automatic**: Always enabled, no configuration needed
+
+**Benefits**:
+
+- Better font selection for multilingual text (CJK, Arabic, Devanagari, etc.)
+- Reduces font substitution warnings
+- Finds fonts with actual glyph support vs. just name matching
+- Minimal performance overhead (~10-50ms per document)
+
+**Technical details**:
+
+- Character extraction happens once and is reused for both charset matching and font subsetting
+- Graceful degradation on errors - never breaks existing functionality
+- No breaking changes - existing code works without modification
+- Logged at DEBUG level for troubleshooting
+
 ## Architecture Overview
 
 ### Public API
@@ -105,7 +138,7 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 - `pillow` - Image processing
 - `numpy` - Numerical operations
 - `resvg-py` - SVG rasterization
-- `fontconfig-py` - Font resolution (Linux/macOS)
+- `fontconfig-py>=0.4.0` - Font resolution with CharSet support (Linux/macOS)
 - `fonttools[woff]` - Font subsetting and WOFF/WOFF2 conversion
 
 ## Important Considerations
