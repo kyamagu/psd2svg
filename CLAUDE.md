@@ -41,29 +41,56 @@ uv run pytest
 
 ### Font Resolution Strategy
 
-**Hybrid font resolution** (implemented in #121, Windows support added in feature/windows-font-resolution):
+psd2svg uses a sophisticated multi-tiered approach to resolve fonts with intelligent charset-based matching:
 
-psd2svg uses a multi-tiered approach to resolve fonts:
+#### 1. Resolution Tiers
 
-1. **Static mapping (primary)**: 572 common fonts mapped by PostScript name
-   - Cross-platform compatibility
-   - No external dependencies
-   - Works on Windows, Linux, macOS
-   - Enables text conversion everywhere
+**Tier 1 - Static mapping (primary)**: 572 common fonts mapped by PostScript name
 
-2. **Platform-specific resolution (fallback)**: Query system fonts when needed
-   - **Linux/macOS**: fontconfig for font file path discovery
-   - **Windows**: Windows registry + fontTools parsing for font file path discovery
-   - Font file path discovery enables font embedding
-   - Automatically invoked by `FontInfo.resolve()` when resolving fonts
+- Cross-platform compatibility
+- No external dependencies
+- Works on Windows, Linux, macOS
+- Enables text conversion everywhere
 
-**Font resolution priority**:
+**Tier 2 - Platform-specific resolution (fallback)**: Query system fonts when needed
 
-- Custom mapping (via `font_mapping` parameter) → Static mapping → Platform-specific (fontconfig or Windows registry)
+- **Linux/macOS**: fontconfig with CharSet API (requires fontconfig-py >= 0.4.0)
+- **Windows**: Windows registry + fontTools parsing with cmap table checking
+- Font file path discovery enables font embedding
+- Automatically invoked by `FontInfo.resolve()` when resolving fonts
+
+**Resolution priority**: Custom mapping (via `font_mapping` parameter) → Static mapping → Platform-specific
 
 **Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter for fonts not in default mapping. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
 
-**Automatic Font Fallback Chains**:
+#### 2. Unicode Codepoint-Based Matching
+
+**Feature**: Charset-aware font matching (implemented in feature/charset-font-matching)
+
+psd2svg performs intelligent font matching by analyzing which Unicode characters are actually used in the text:
+
+**How it works**:
+
+1. **Character extraction**: Extracts all Unicode characters from text layers
+2. **Codepoint conversion**: Converts characters to numeric codepoints (e.g., 'あ' → 0x3042)
+3. **Smart resolution**: Prioritizes fonts with better glyph coverage for those specific characters
+4. **Automatic fallback**: Gracefully falls back to name-only matching on any errors
+
+**Platform implementation**:
+
+- **Linux/macOS**: Uses fontconfig CharSet API for native charset querying
+- **Windows**: Uses fontTools cmap table checking (requires 80%+ coverage by default)
+- **Automatic**: Always enabled, no configuration needed, graceful degradation
+
+**Benefits**:
+
+- Better font selection for multilingual text (CJK, Arabic, Devanagari, etc.)
+- Reduces font substitution warnings
+- Finds fonts with actual glyph support vs. just name matching
+- Minimal performance overhead (~10-50ms per document)
+- Character extraction reused for both charset matching and font subsetting
+
+#### 3. Automatic Font Fallback Chains
 
 When fonts are embedded, psd2svg automatically:
 
@@ -73,40 +100,7 @@ When fonts are embedded, psd2svg automatically:
 4. Embeds the actual substitute font in @font-face rules
 5. Updates SVG text elements with fallback chains
 
-This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level.
-
-### Unicode Codepoint-Based Font Matching
-
-**Feature**: Charset-aware font matching (implemented in feature/charset-font-matching, requires fontconfig-py >= 0.4.0)
-
-psd2svg now performs intelligent font matching by analyzing which Unicode characters are actually used in the text:
-
-**How it works**:
-
-1. **Character extraction**: Extracts all Unicode characters from text layers
-2. **Codepoint conversion**: Converts characters to numeric codepoints (e.g., 'あ' → 0x3042)
-3. **Smart resolution**: Prioritizes fonts with better glyph coverage for those specific characters
-4. **Automatic fallback**: Gracefully falls back to name-only matching on any errors
-
-**Platform support**:
-
-- **Linux/macOS**: Uses fontconfig CharSet API (requires fontconfig-py >= 0.4.0)
-- **Windows**: Uses fontTools cmap table checking (requires 80%+ coverage by default)
-- **Automatic**: Always enabled, no configuration needed
-
-**Benefits**:
-
-- Better font selection for multilingual text (CJK, Arabic, Devanagari, etc.)
-- Reduces font substitution warnings
-- Finds fonts with actual glyph support vs. just name matching
-- Minimal performance overhead (~10-50ms per document)
-
-**Technical details**:
-
-- Character extraction happens once and is reused for both charset matching and font subsetting
-- Graceful degradation on errors - never breaks existing functionality
-- No breaking changes - existing code works without modification
-- Logged at DEBUG level for troubleshooting
+This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level, charset matching at DEBUG level.
 
 ## Architecture Overview
 
