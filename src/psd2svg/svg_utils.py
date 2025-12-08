@@ -975,17 +975,23 @@ def extract_text_characters(element: ET.Element) -> str:
     decoding. The tail is included because it's rendered using the element's
     font-family (not the parent's), which is important for accurate font subsetting.
 
+    Control characters (newlines, tabs, etc.) are filtered out as they are not
+    actually rendered in SVG text elements and should not be included in charset
+    matching for font resolution.
+
     Args:
         element: XML element to extract text from (typically text or tspan).
 
     Returns:
-        Text content (text + tail) with HTML entities decoded.
+        Text content (text + tail) with HTML entities decoded and control
+        characters removed.
 
     Note:
         - Extracts element.text (content before first child element)
         - ALSO extracts tail (content after element's closing tag)
         - Does NOT include text from child elements
         - Decodes HTML/XML entities (e.g., &lt; → <, &#x4E00; → 一)
+        - Filters out control characters (codepoints 0-31 except space)
         - Tail is included because SVG inherits font-family: the tail is rendered
           using the element's font, not the parent's font
 
@@ -998,6 +1004,10 @@ def extract_text_characters(element: ET.Element) -> str:
         >>> tspan = root[0]
         >>> extract_text_characters(tspan)  # Returns 'AB' (text + tail)
         'AB'
+
+        >>> elem = ET.fromstring('<text>Hello\\nWorld</text>')
+        >>> extract_text_characters(elem)  # Newline filtered
+        'HelloWorld'
     """
     import html
 
@@ -1006,6 +1016,12 @@ def extract_text_characters(element: ET.Element) -> str:
         result += html.unescape(element.text)
     if element.tail:
         result += html.unescape(element.tail)
+
+    # Filter out control characters (codepoints 0-31, below space which is 32)
+    # These are not rendered in SVG text and cause incorrect font matching
+    # (e.g., newline causes Arial to be substituted with LastResort on macOS)
+    result = "".join(char for char in result if ord(char) >= 32)
+
     return result
 
 
