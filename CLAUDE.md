@@ -102,6 +102,31 @@ When fonts are embedded, psd2svg automatically:
 
 This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level, charset matching at DEBUG level.
 
+#### 4. Font CSS Insertion Architecture
+
+**Unified implementation** with boolean flag for encoding mode:
+
+```text
+_insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
+  │
+  ├─ _resolve_fonts_with_fallbacks(svg)
+  │   ├─ _extract_font_characters() - Extract characters from text elements
+  │   ├─ _resolve_font_with_charset() - Charset-aware font resolution
+  │   └─ _update_font_fallback_chains() - Update font-family attributes
+  │   └─ Returns: list[(FontInfo, set[str])] (deduplicated by font path)
+  │
+  ├─ _generate_css_rules_for_fonts()
+  │   └─ if use_data_uri: encode_font_with_options() (with subsetting)
+  │   └─ else: create_file_url() (no subsetting)
+  │
+  └─ insert_or_update_style_element() - Insert CSS into SVG
+```
+
+**Usage modes:**
+
+- `tostring()`/`save()`: use_data_uri=True (portable SVG files)
+- `rasterize()` with PlaywrightRasterizer: use_data_uri=False (60-80% faster, file:// URLs)
+
 ## Architecture Overview
 
 ### Public API
