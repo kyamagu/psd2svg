@@ -194,8 +194,11 @@ class SVGDocument:
         )
 
         if embed_fonts and self.fonts:
-            self._insert_css_fontface_data_uris(
-                svg, subset_fonts=subset_fonts, font_format=font_format
+            self._insert_css_fontface(
+                svg,
+                subset_fonts=subset_fonts,
+                font_format=font_format,
+                use_data_uri=True,
             )
 
         if optimize:
@@ -243,8 +246,11 @@ class SVGDocument:
         )
 
         if embed_fonts and self.fonts:
-            self._insert_css_fontface_data_uris(
-                svg, subset_fonts=subset_fonts, font_format=font_format
+            self._insert_css_fontface(
+                svg,
+                subset_fonts=subset_fonts,
+                font_format=font_format,
+                use_data_uri=True,
             )
 
         if optimize:
@@ -311,7 +317,12 @@ class SVGDocument:
                 self._embed_images_as_data_uris(nodes, DEFAULT_IMAGE_FORMAT)
 
             # Embed fonts with file:// URLs (NEW)
-            self._insert_css_fontface_file_urls(svg)
+            self._insert_css_fontface(
+                svg,
+                subset_fonts=False,  # No subsetting for file URLs (faster)
+                font_format="ttf",  # Not used for file URLs
+                use_data_uri=False,
+            )
 
             # Convert to string and rasterize
             svg_str = svg_utils.tostring(svg, indent="  ")
@@ -764,66 +775,6 @@ class SVGDocument:
 
         logger.debug(
             f"Inserted {len(css_rules)} CSS @font-face rule(s) with {source_desc}"
-        )
-
-    def _insert_css_fontface_data_uris(
-        self, svg: ET.Element, subset_fonts: bool = False, font_format: str = "ttf"
-    ) -> None:
-        """Insert CSS @font-face rules with data URI encoding in a <style> element.
-
-        This modifies the provided SVG element in-place by inserting or updating
-        a <style> element with @font-face CSS rules using base64-encoded data URIs
-        for all fonts in self.fonts.
-
-        Args:
-            svg: SVG element to modify.
-            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
-            font_format: Font format for embedding: "ttf" (default), "otf", or "woff2".
-
-        Warning:
-            Font embedding may be subject to licensing restrictions. Ensure you
-            have appropriate rights before distributing SVG files with embedded fonts.
-
-        Note:
-            - Caches encoded font data URIs to avoid re-encoding
-            - Logs warnings for missing/unreadable fonts but continues
-            - Creates <style> element as first child of <svg> root
-            - Idempotent: calling multiple times won't duplicate fonts
-            - Font subsetting requires fonttools package (uv sync --group fonts)
-        """
-        self._insert_css_fontface(
-            svg=svg,
-            subset_fonts=subset_fonts,
-            font_format=font_format,
-            use_data_uri=True,
-        )
-
-    def _insert_css_fontface_file_urls(self, svg: ET.Element) -> None:
-        """Insert CSS @font-face rules with local file:// URLs in a <style> element.
-
-        This method is optimized for browser-based rasterization with PlaywrightRasterizer
-        and uses local file:// URLs instead of data URIs, providing significant performance
-        improvements:
-        - 60-80% faster rasterization (no font encoding/subsetting)
-        - 99%+ smaller SVG size (no base64 encoding)
-        - Avoids font subsetting errors
-        - Leverages already-resolved local fonts
-
-        Args:
-            svg: SVG element to modify in-place.
-
-        Note:
-            - Only for PlaywrightRasterizer (Chromium allows file:// in setContent)
-            - Falls back gracefully if font resolution fails
-            - Modifies SVG tree in-place (adds fallback chains)
-            - Does NOT perform font subsetting (uses full font files for speed)
-            - Reuses existing character extraction and font resolution logic
-        """
-        self._insert_css_fontface(
-            svg=svg,
-            subset_fonts=False,  # No subsetting for file URLs (faster)
-            font_format="ttf",  # Not used for file URLs
-            use_data_uri=False,
         )
 
 
