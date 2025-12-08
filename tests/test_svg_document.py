@@ -426,7 +426,7 @@ class TestSVGDocumentEmbedFonts:
         assert "<style>" not in result
 
         # Should log warning about no fonts embedded (font is skipped early because file doesn't exist)
-        assert "No fonts were successfully embedded" in caplog.text
+        assert "No css font rules inserted" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
     def test_embed_fonts_with_multiple_fonts(
