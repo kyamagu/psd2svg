@@ -3,6 +3,8 @@ import dataclasses
 import logging
 import os
 import sys
+import urllib.parse
+from pathlib import Path
 
 try:
     from typing import Self  # type: ignore
@@ -749,10 +751,6 @@ def create_file_url(font_path: str) -> str:
         >>> create_file_url('/fonts/日本語/font.ttf')
         'file:///fonts/%E6%97%A5%E6%9C%AC%E8%AA%9E/font.ttf'
     """
-    import sys
-    import urllib.parse
-    from pathlib import Path
-
     # Validate file existence
     if not os.path.exists(font_path):
         raise FileNotFoundError(f"Font file not found: {font_path}")

@@ -524,6 +524,95 @@ class SVGDocument:
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
 
+    def _extract_font_characters(
+        self, svg: ET.Element, font_info: FontInfo
+    ) -> set[str]:
+        """Extract all characters used by a font in the SVG document.
+
+        Args:
+            svg: SVG element to search.
+            font_info: Font information to match elements against.
+
+        Returns:
+            Set of characters used by this font, or empty set if none found.
+        """
+        # Step 1: Find elements using this font
+        matching_elements = svg_utils.find_elements_with_font_family(
+            svg, font_info.family
+        )
+
+        # Step 2: Extract characters from all matching elements
+        chars_for_font: set[str] = set()
+        if matching_elements:
+            for element in matching_elements:
+                text_content = svg_utils.extract_text_characters(element)
+                if text_content:
+                    chars_for_font.update(text_content)
+
+            if chars_for_font:
+                logger.debug(
+                    f"Extracted {len(chars_for_font)} characters "
+                    f"for font '{font_info.postscript_name}'"
+                )
+
+        return chars_for_font
+
+    def _resolve_font_with_charset(
+        self, font_info: FontInfo, chars: set[str]
+    ) -> FontInfo | None:
+        """Resolve font to system font file with optional charset matching.
+
+        Args:
+            font_info: Font information to resolve.
+            chars: Characters used by this font (for charset-based matching).
+
+        Returns:
+            Resolved FontInfo with file path, or None if resolution failed.
+        """
+        # Create charset codepoints for font resolution
+        charset_codepoints = None
+        if chars:
+            charset_codepoints = font_utils.create_charset_codepoints(chars)
+            if charset_codepoints:
+                logger.debug(
+                    f"Using {len(charset_codepoints)} codepoints for "
+                    f"charset-based resolution of '{font_info.postscript_name}'"
+                )
+
+        # Resolve font to system font file (with charset if available)
+        resolved_font = font_info.resolve(charset_codepoints=charset_codepoints)
+        if not resolved_font or not resolved_font.is_resolved():
+            return None
+
+        return resolved_font
+
+    def _update_font_fallback_chains(
+        self, svg: ET.Element, font_info: FontInfo, resolved_font: FontInfo
+    ) -> None:
+        """Update font-family attributes with fallback chains after substitution.
+
+        Args:
+            svg: SVG element to search and modify.
+            font_info: Original font information.
+            resolved_font: Resolved font information (may be different if substituted).
+        """
+        # Only update if substitution occurred
+        if resolved_font.family == font_info.family:
+            return
+
+        # Find elements and add fallback chains
+        matching_elements = svg_utils.find_elements_with_font_family(
+            svg, font_info.family
+        )
+        if matching_elements:
+            logger.info(
+                f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
+            )
+            for element in matching_elements:
+                svg_utils.add_font_family(
+                    element, font_info.family, resolved_font.family
+                )
+
     def _process_single_font(
         self,
         font_info: FontInfo,
@@ -556,59 +645,25 @@ class SVGDocument:
             - Character extraction is done once and reused for both charset matching
               and font subsetting
         """
-        # Step 1: Find elements using this font
-        matching_elements = svg_utils.find_elements_with_font_family(
-            svg, font_info.family
-        )
+        # Step 1-2: Extract characters used by this font
+        chars_for_font = self._extract_font_characters(svg, font_info)
 
-        # Step 2: Extract characters (for charset matching and/or subsetting)
-        chars_for_font: set[str] = set()
-        if matching_elements:
-            for element in matching_elements:
-                text_content = svg_utils.extract_text_characters(element)
-                if text_content:
-                    chars_for_font.update(text_content)
-
-            if chars_for_font:
-                logger.debug(
-                    f"Extracted {len(chars_for_font)} characters "
-                    f"for font '{font_info.postscript_name}'"
-                )
-
-        # Step 3: Create charset codepoints for font resolution
-        charset_codepoints = None
-        if chars_for_font:
-            charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
-            if charset_codepoints:
-                logger.debug(
-                    f"Using {len(charset_codepoints)} codepoints for "
-                    f"charset-based resolution of '{font_info.postscript_name}'"
-                )
-
-        # Step 4: Resolve font to system font file (with charset if available)
-        resolved_font = font_info.resolve(charset_codepoints=charset_codepoints)
-        if not resolved_font or not resolved_font.is_resolved():
+        # Step 3-4: Resolve font to system font file (with charset if available)
+        resolved_font = self._resolve_font_with_charset(font_info, chars_for_font)
+        if not resolved_font:
             logger.info(
                 f"Cannot embed font '{font_info.postscript_name}': "
                 "no file path available"
             )
             return None
 
-        # Step 5: Update fallbacks if substitution occurred (only if elements found)
-        if matching_elements and resolved_font.family != font_info.family:
-            logger.info(
-                f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
-            )
-            # Add fallback chain to matched elements
-            for element in matching_elements:
-                svg_utils.add_font_family(
-                    element, font_info.family, resolved_font.family
-                )
+        # Step 5: Update fallbacks if substitution occurred
+        self._update_font_fallback_chains(svg, font_info, resolved_font)
 
         # Step 6: Prepare subset characters (reuse already-extracted chars)
         subset_chars: set[str] = set()
-        if subset_enabled and matching_elements:
-            subset_chars = chars_for_font  # Reuse extraction from Step 2
+        if subset_enabled and chars_for_font:
+            subset_chars = chars_for_font
 
             if not subset_chars:
                 logger.warning(
@@ -726,49 +781,20 @@ class SVGDocument:
         seen_fonts: set[str] = set()  # Track by file path to avoid duplicates
 
         for font_info in self.fonts:
-            # Step 1: Find elements using this font (reuse existing)
-            matching_elements = svg_utils.find_elements_with_font_family(
-                svg, font_info.family
-            )
+            # Step 1-2: Extract characters used by this font
+            chars_for_font = self._extract_font_characters(svg, font_info)
 
-            # Step 2: Extract characters for charset-based resolution (reuse existing)
-            chars_for_font: set[str] = set()
-            if matching_elements:
-                for element in matching_elements:
-                    text_content = svg_utils.extract_text_characters(element)
-                    if text_content:
-                        chars_for_font.update(text_content)
-
-            # Step 3: Create charset codepoints (reuse existing)
-            charset_codepoints = None
-            if chars_for_font:
-                charset_codepoints = font_utils.create_charset_codepoints(
-                    chars_for_font
-                )
-                if charset_codepoints:
-                    logger.debug(
-                        f"Using {len(charset_codepoints)} codepoints for "
-                        f"charset-based resolution of '{font_info.postscript_name}'"
-                    )
-
-            # Step 4: Resolve font to system font file (reuse existing)
-            resolved_font = font_info.resolve(charset_codepoints=charset_codepoints)
-            if not resolved_font or not resolved_font.is_resolved():
+            # Step 3-4: Resolve font to system font file (with charset if available)
+            resolved_font = self._resolve_font_with_charset(font_info, chars_for_font)
+            if not resolved_font:
                 logger.info(
                     f"Cannot insert CSS @font-face for font '{font_info.postscript_name}' "
                     "for PlaywrightRasterizer: no file path available"
                 )
                 continue
 
-            # Step 5: Update fallback chains if substitution occurred (reuse existing)
-            if matching_elements and resolved_font.family != font_info.family:
-                logger.info(
-                    f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
-                )
-                for element in matching_elements:
-                    svg_utils.add_font_family(
-                        element, font_info.family, resolved_font.family
-                    )
+            # Step 5: Update fallback chains if substitution occurred
+            self._update_font_fallback_chains(svg, font_info, resolved_font)
 
             # Step 6: Generate CSS rule with file:// URL (NEW)
             font_path = resolved_font.file
