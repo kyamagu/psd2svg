@@ -1,5 +1,6 @@
 """Tests for enable_class flag functionality."""
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -113,8 +114,6 @@ def test_enable_class_convert_function(tmp_path: Path) -> None:
     convert(str(test_psd), str(output_with), enable_class=True)
 
     # Parse and verify
-    import xml.etree.ElementTree as ET
-
     tree_without = ET.parse(output_without)
     tree_with = ET.parse(output_with)
 

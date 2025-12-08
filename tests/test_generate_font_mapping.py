@@ -1,6 +1,7 @@
 """Tests for generate_font_mapping CLI tool."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -112,8 +113,6 @@ class TestMainCLI:
 
     def test_main_with_output_file(self, tmp_path: Path) -> None:
         """Test CLI with output file."""
-        import sys
-
         output_file = tmp_path / "fonts.json"
         psd_file = "tests/fixtures/layer-types/type-layer.psd"
 
@@ -140,8 +139,6 @@ class TestMainCLI:
 
     def test_main_with_nonexistent_file(self) -> None:
         """Test CLI with nonexistent PSD file."""
-        import sys
-
         original_argv = sys.argv
         try:
             sys.argv = ["generate_font_mapping", "nonexistent.psd"]
@@ -154,8 +151,6 @@ class TestMainCLI:
 
     def test_main_with_python_format(self, tmp_path: Path) -> None:
         """Test CLI with Python format output."""
-        import sys
-
         output_file = tmp_path / "fonts.py"
         psd_file = "tests/fixtures/layer-types/type-layer.psd"
 
@@ -183,8 +178,6 @@ class TestMainCLI:
 
     def test_main_with_only_missing_flag(self, tmp_path: Path) -> None:
         """Test CLI with --only-missing flag."""
-        import sys
-
         output_file = tmp_path / "fonts.json"
         psd_file = "tests/fixtures/layer-types/type-layer.psd"
 

@@ -4,6 +4,7 @@ from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
+from psd2svg.core.text import TextWrappingMode
 
 from .conftest import get_fixture
 
@@ -768,8 +769,6 @@ def test_text_japanese_with_custom_css() -> None:
 
 def test_text_wrapping_foreign_object_basic() -> None:
     """Test basic foreignObject text wrapping for bounding box text."""
-    from psd2svg.core.text import TextWrappingMode
-
     psdimage = PSDImage.open(
         get_fixture("texts/paragraph-shapetype1-justification0.psd")
     )
@@ -795,8 +794,6 @@ def test_text_wrapping_foreign_object_basic() -> None:
 
 def test_text_wrapping_foreign_object_multiple_paragraphs() -> None:
     """Test foreignObject with multiple paragraphs."""
-    from psd2svg.core.text import TextWrappingMode
-
     psdimage = PSDImage.open(get_fixture("texts/paragraph-shapetype1-multiple.psd"))
     doc = SVGDocument.from_psd(
         psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
@@ -814,8 +811,6 @@ def test_text_wrapping_foreign_object_multiple_paragraphs() -> None:
 
 def test_text_wrapping_foreign_object_text_content() -> None:
     """Test that text content is preserved in foreignObject."""
-    from psd2svg.core.text import TextWrappingMode
-
     psdimage = PSDImage.open(
         get_fixture("texts/paragraph-shapetype1-justification0.psd")
     )
@@ -836,8 +831,6 @@ def test_text_wrapping_foreign_object_text_content() -> None:
 
 def test_text_wrapping_point_text_unchanged() -> None:
     """Test that point text (ShapeType=0) uses native SVG even with foreignObject mode."""
-    from psd2svg.core.text import TextWrappingMode
-
     psdimage = PSDImage.open(
         get_fixture("texts/paragraph-shapetype0-justification0.psd")
     )
@@ -856,8 +849,6 @@ def test_text_wrapping_point_text_unchanged() -> None:
 
 def test_text_wrapping_foreign_object_vertical() -> None:
     """Test foreignObject with vertical writing mode."""
-    from psd2svg.core.text import TextWrappingMode
-
     psdimage = PSDImage.open(
         get_fixture(
             "texts/shapetype1-writingdirection2-baselinedirection2-justification0.psd"
