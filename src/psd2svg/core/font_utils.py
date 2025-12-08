@@ -281,9 +281,7 @@ class FontInfo:
                 )
 
                 # Create CharSet from codepoints
-                charset = fontconfig.CharSet.from_codepoints(
-                    sorted(charset_codepoints)
-                )
+                charset = fontconfig.CharSet.from_codepoints(sorted(charset_codepoints))
 
                 # Try using match() with properties first
                 try:
