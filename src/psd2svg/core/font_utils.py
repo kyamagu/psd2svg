@@ -285,24 +285,15 @@ class FontInfo:
                 # Create CharSet from codepoints
                 charset = fontconfig.CharSet.from_codepoints(sorted(charset_codepoints))
 
-                # Try using match() with properties first
-                try:
-                    match = fontconfig.match(
-                        pattern=f":postscriptname={self.postscript_name}",
-                        select=("file", "family", "style", "weight"),
-                        properties={"charset": charset},
-                    )
-                except TypeError:
-                    # Fall back to list() if match() doesn't support properties
-                    logger.debug(
-                        "fontconfig.match() doesn't support properties, "
-                        "falling back to list()"
-                    )
-                    results = fontconfig.list(
-                        pattern=f":postscriptname={self.postscript_name}",
-                        properties={"charset": charset},
-                    )
-                    match = results[0] if results else None
+                # Use properties dict for charset-based matching
+                # Cannot specify both 'pattern' and 'properties' in fontconfig API
+                match = fontconfig.match(
+                    properties={
+                        "postscriptname": self.postscript_name,
+                        "charset": charset,
+                    },
+                    select=("file", "family", "style", "weight"),
+                )
             else:
                 # Standard PostScript name matching (existing behavior)
                 match = fontconfig.match(
