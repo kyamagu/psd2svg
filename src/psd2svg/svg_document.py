@@ -189,8 +189,11 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
+        # Create a copy to avoid modifying the original SVG
+        svg = deepcopy(self.svg)
+
         svg = self._handle_images(
-            embed_images, image_prefix, image_format, svg_filepath=None
+            svg, embed_images, image_prefix, image_format, svg_filepath=None
         )
 
         if embed_fonts and self.fonts:
@@ -241,8 +244,11 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
+        # Create a copy to avoid modifying the original SVG
+        svg = deepcopy(self.svg)
+
         svg = self._handle_images(
-            embed_images, image_prefix, image_format, svg_filepath=filepath
+            svg, embed_images, image_prefix, image_format, svg_filepath=filepath
         )
 
         if embed_fonts and self.fonts:
@@ -383,6 +389,7 @@ class SVGDocument:
 
     def _handle_images(
         self,
+        svg: ET.Element,
         embed_images: bool,
         image_prefix: str | None,
         image_format: str,
@@ -390,15 +397,21 @@ class SVGDocument:
     ) -> ET.Element:
         """Handle image embedding or saving.
 
+        Modifies the provided SVG element in-place by updating <image> element
+        href attributes to either data URIs or file paths.
+
         Args:
+            svg: SVG element to modify in-place.
             embed_images: If True, embed images as base64 data URIs.
             image_prefix: Path prefix for saving images. If svg_filepath is provided,
                 this is interpreted relative to the SVG file's directory.
             image_format: Image format to use when embedding or saving images.
             svg_filepath: Optional path to the SVG file. When provided, image_prefix
                 is interpreted relative to this file's directory.
+
+        Returns:
+            The modified SVG element (same object as input).
         """
-        svg = deepcopy(self.svg)  # Avoid modifying the original SVG.
         nodes = svg.findall(".//image")
 
         # Validate that all image nodes have IDs and corresponding images exist
