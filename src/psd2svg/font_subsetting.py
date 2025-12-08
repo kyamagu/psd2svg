@@ -295,10 +295,14 @@ def _extract_text_content(element: ET.Element) -> str:
     # Decode HTML/XML entities
     decoded_text = html.unescape(raw_text)
 
-    # Filter out control characters (codepoints 0-31, below space which is 32)
+    # Filter out control characters (C0: 0-31, DEL: 127, C1: 128-159)
     # These are not rendered in SVG text and cause incorrect font matching
     # (e.g., newline causes Arial to be substituted with LastResort on macOS)
-    decoded_text = "".join(char for char in decoded_text if ord(char) >= 32)
+    decoded_text = "".join(
+        char
+        for char in decoded_text
+        if ord(char) >= 32 and not (127 <= ord(char) <= 159)
+    )
 
     return decoded_text
 

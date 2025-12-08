@@ -441,6 +441,14 @@ class TestHelperFunctions:
         assert "\n" not in _extract_text_content(elem)
         assert "\t" not in _extract_text_content(elem)
 
+        # Text with DEL and C1 controls (should be filtered)
+        elem = ET.fromstring("<text>A\x7fB\x80C</text>")  # DEL (127), C1 (128)
+        assert _extract_text_content(elem) == "ABC"
+
+        # Text with only control characters (should return empty)
+        elem = ET.fromstring("<text>\n\t\r</text>")
+        assert _extract_text_content(elem) == ""
+
         # Text with only spaces (should be preserved)
         elem = ET.fromstring("<text>Hello World</text>")
         assert _extract_text_content(elem) == "Hello World"

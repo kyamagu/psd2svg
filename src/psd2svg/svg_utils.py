@@ -1017,10 +1017,12 @@ def extract_text_characters(element: ET.Element) -> str:
     if element.tail:
         result += html.unescape(element.tail)
 
-    # Filter out control characters (codepoints 0-31, below space which is 32)
+    # Filter out control characters (C0: 0-31, DEL: 127, C1: 128-159)
     # These are not rendered in SVG text and cause incorrect font matching
     # (e.g., newline causes Arial to be substituted with LastResort on macOS)
-    result = "".join(char for char in result if ord(char) >= 32)
+    result = "".join(
+        char for char in result if ord(char) >= 32 and not (127 <= ord(char) <= 159)
+    )
 
     return result
 
