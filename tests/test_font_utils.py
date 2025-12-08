@@ -1,12 +1,14 @@
 """Tests for psd2svg.core.font_utils module."""
 
 import logging
+import sys
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG
+from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG, create_file_url
 
 
 class TestFontInfo:
@@ -825,3 +827,65 @@ class TestFontInfoIsResolved:
         resolved = font_info.resolve()
         assert resolved is not None
         assert resolved.is_resolved() is True
+
+
+class TestCreateFileUrl:
+    """Tests for create_file_url() function."""
+
+    def test_create_file_url_unix(self, tmp_path: Path) -> None:
+        """Test file URL creation on Linux/macOS."""
+        font_file = tmp_path / "test.ttf"
+        font_file.write_bytes(b"FAKE")
+
+        url = create_file_url(str(font_file))
+
+        # Should be file:// + absolute path
+        assert url.startswith("file:///")
+        assert Path(font_file).as_posix() in url
+
+    def test_create_file_url_with_spaces(self, tmp_path: Path) -> None:
+        """Test file URL with spaces in path."""
+        font_dir = tmp_path / "My Fonts"
+        font_dir.mkdir()
+        font_file = font_dir / "Test Font.ttf"
+        font_file.write_bytes(b"FAKE")
+
+        url = create_file_url(str(font_file))
+
+        # Spaces should be encoded as %20
+        assert "My%20Fonts" in url
+        assert "Test%20Font" in url
+        assert " " not in url  # No literal spaces
+
+    def test_create_file_url_with_unicode(self, tmp_path: Path) -> None:
+        """Test file URL with non-ASCII characters."""
+        font_dir = tmp_path / "日本語"
+        font_dir.mkdir()
+        font_file = font_dir / "font.ttf"
+        font_file.write_bytes(b"FAKE")
+
+        url = create_file_url(str(font_file))
+
+        # Unicode should be percent-encoded
+        assert url.startswith("file:///")
+        assert "%" in url  # Has encoded characters
+
+    def test_create_file_url_nonexistent(self, tmp_path: Path) -> None:
+        """Test error handling for nonexistent file."""
+        nonexistent = tmp_path / "missing.ttf"
+
+        with pytest.raises(FileNotFoundError, match="Font file not found"):
+            create_file_url(str(nonexistent))
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
+    def test_create_file_url_windows(self, tmp_path: Path) -> None:
+        """Test file URL creation on Windows."""
+        font_file = tmp_path / "test.ttf"
+        font_file.write_bytes(b"FAKE")
+
+        url = create_file_url(str(font_file))
+
+        # Should be file:///C:/... format
+        assert url.startswith("file:///")
+        assert ":" in url  # Drive letter
+        assert "\\" not in url  # No backslashes
