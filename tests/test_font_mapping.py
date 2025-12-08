@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from psd2svg.core import font_mapping as fm
+from psd2svg.core.font_utils import FontInfo
 
 
 class TestFindInMapping:
@@ -366,8 +367,6 @@ class TestFontMappingIntegration:
 
     def test_custom_mapping_in_find(self) -> None:
         """Test that FontInfo.find respects custom font mapping."""
-        from psd2svg.core.font_utils import FontInfo
-
         custom_mapping: dict[str, dict[str, str | float]] = {
             "CustomFont-Test": {
                 "family": "My Custom Font",
@@ -387,8 +386,6 @@ class TestFontMappingIntegration:
 
     def test_custom_mapping_overrides_default(self) -> None:
         """Test that custom mapping overrides default for same PostScript name."""
-        from psd2svg.core.font_utils import FontInfo
-
         custom_mapping: dict[str, dict[str, str | float]] = {
             "ArialMT": {"family": "My Custom Arial", "style": "Custom", "weight": 999.0}
         }

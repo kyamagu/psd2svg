@@ -1,5 +1,6 @@
 """Tests for ResvgRasterizer."""
 
+import os
 import tempfile
 
 import pytest
@@ -102,8 +103,6 @@ def test_rasterizer_from_file(simple_svg: str) -> None:
         assert image.mode == "RGBA"
         assert image.size == (100, 100)
     finally:
-        import os
-
         os.unlink(svg_path)
 
 

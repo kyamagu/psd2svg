@@ -7,6 +7,8 @@ This module tests various SVGDocument methods including:
 - Rasterization with different backends
 """
 
+import os
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,6 +18,7 @@ from PIL import Image
 
 from psd2svg import SVGDocument
 from psd2svg.core.font_utils import FontInfo, encode_font_data_uri
+from psd2svg.rasterizer import ResvgRasterizer
 
 
 class TestEncodeFontDataUri:
@@ -79,9 +82,6 @@ class TestEncodeFontDataUri:
         font_file.write_bytes(b"FAKE_TTF_DATA")
 
         # Make file unreadable (only works on Unix-like systems)
-        import os
-        import sys
-
         if sys.platform != "win32":
             os.chmod(font_file, 0o000)
             try:
@@ -480,8 +480,6 @@ class TestSVGDocumentRasterizeWithFonts:
         self, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test that ResvgRasterizer receives font files directly."""
-        from psd2svg.rasterizer import ResvgRasterizer
-
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 

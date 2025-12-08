@@ -1,6 +1,7 @@
 """Tests for PlaywrightRasterizer."""
 
 import asyncio
+import os
 import tempfile
 
 import pytest
@@ -88,8 +89,6 @@ def test_rasterizer_from_file(simple_svg: str) -> None:
         finally:
             rasterizer.close()
     finally:
-        import os
-
         os.unlink(svg_path)
 
 
