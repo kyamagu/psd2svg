@@ -386,6 +386,126 @@ class WindowsFontResolver:
         except Exception:
             return 80.0  # Default on error
 
+    def find_with_charset(
+        self,
+        postscript_name: str,
+        charset_codepoints: set[int],
+        min_coverage: float = 0.8,
+    ) -> dict[str, float | str] | None:
+        """Find font with charset coverage checking for Windows.
+
+        This method finds a font by PostScript name and verifies it has
+        adequate coverage for the requested character set.
+
+        Args:
+            postscript_name: PostScript name of font (e.g., "ArialMT").
+            charset_codepoints: Set of Unicode codepoints to check coverage for.
+            min_coverage: Minimum coverage ratio (0.0-1.0) required. Default: 0.8 (80%).
+
+        Returns:
+            Font info dictionary if font found with adequate coverage, else None.
+
+        Example:
+            >>> resolver = WindowsFontResolver()
+            >>> charset = {0x41, 0x42, 0x43}  # A, B, C
+            >>> font = resolver.find_with_charset("ArialMT", charset)
+            >>> if font:
+            ...     print(f"Found: {font['family']}")
+        """
+        # Build cache if needed
+        if not self._initialized:
+            self._build_cache()
+
+        # Find font by PostScript name
+        font_info = self._cache.get(postscript_name)
+        if not font_info:
+            logger.debug(f"Font '{postscript_name}' not found in registry")
+            return None
+
+        # Check charset coverage
+        try:
+            coverage = self._check_charset_coverage(
+                str(font_info["file"]), charset_codepoints
+            )
+
+            if coverage < min_coverage:
+                logger.info(
+                    f"Font '{postscript_name}' has insufficient charset coverage "
+                    f"({coverage:.1%}), rejecting (minimum: {min_coverage:.0%})"
+                )
+                return None
+
+            logger.debug(
+                f"Font '{postscript_name}' has {coverage:.1%} charset coverage "
+                f"(accepted with minimum: {min_coverage:.0%})"
+            )
+            return font_info
+
+        except Exception as e:
+            logger.warning(
+                f"Charset coverage check failed for '{postscript_name}': {e}. "
+                "Falling back to regular find"
+            )
+            # Fall back to regular find without charset check
+            return font_info
+
+    def _check_charset_coverage(
+        self, font_path: str, charset_codepoints: set[int]
+    ) -> float:
+        """Check what percentage of charset is covered by font.
+
+        This method loads the font file and checks its cmap table to determine
+        which codepoints are supported.
+
+        Args:
+            font_path: Absolute path to font file (TTF/OTF).
+            charset_codepoints: Set of Unicode codepoints to check.
+
+        Returns:
+            Coverage ratio (0.0 to 1.0) indicating percentage of codepoints found.
+
+        Raises:
+            ValueError: If font file cannot be loaded or has no valid cmap.
+            FileNotFoundError: If font file doesn't exist.
+
+        Example:
+            >>> coverage = resolver._check_charset_coverage(
+            ...     "C:\\Windows\\Fonts\\arial.ttf",
+            ...     {0x41, 0x42, 0x43}  # A, B, C
+            ... )
+            >>> coverage
+            1.0  # 100% coverage
+        """
+        from fontTools.ttLib import TTFont
+
+        if not os.path.exists(font_path):
+            raise FileNotFoundError(f"Font file not found: {font_path}")
+
+        try:
+            font = TTFont(font_path)
+
+            if "cmap" not in font:
+                raise ValueError("Font missing cmap table")
+
+            # Get best cmap table (prefer Unicode tables)
+            # getBestCmap() returns dict mapping codepoint -> glyph name
+            cmap = font.getBestCmap()
+            if not cmap:
+                raise ValueError("No valid cmap table found in font")
+
+            # Check how many requested codepoints are in font
+            covered = sum(1 for cp in charset_codepoints if cp in cmap)
+            total = len(charset_codepoints)
+
+            if total == 0:
+                return 0.0
+
+            return covered / total
+
+        except Exception as e:
+            logger.debug(f"Failed to check charset coverage for '{font_path}': {e}")
+            raise
+
 
 # Global singleton instance (lazy initialization)
 _resolver: WindowsFontResolver | None = None

@@ -10,8 +10,10 @@ PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools
 - Convert PSD files to clean, editable SVG
 - Preserve layers, groups, and artboards
 - Convert text layers to native SVG text elements (experimental)
+- **Smart font matching**: Unicode codepoint-based font selection for optimal glyph coverage (multilingual support)
+- Hybrid font resolution: Static mapping (572 fonts) + dynamic system resolution
 - Support for blending modes, effects, and vector shapes
-- Optional font subsetting for web optimization
+- Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
 - Command-line tool and Python API
 
 ## Installation

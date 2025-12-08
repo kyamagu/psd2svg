@@ -214,12 +214,19 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
-    def resolve(self) -> Self | None:
+    def resolve(self, charset_codepoints: set[int] | None = None) -> Self | None:
         """Resolve font to actual available system font via fontconfig.
 
         This method queries fontconfig to find the actual font file and complete
-        metadata for the font. If the resolved font differs from the requested font,
-        this enables generating proper CSS fallback chains.
+        metadata for the font. When charset_codepoints is provided, resolution
+        prioritizes fonts with better glyph coverage for those characters.
+
+        Args:
+            charset_codepoints: Optional set of Unicode codepoints (integers)
+                to filter fonts by glyph coverage. When provided:
+                - Linux/macOS: Passed to fontconfig via CharSet
+                - Windows: Used to check cmap table coverage
+                When None, uses standard PostScript name matching.
 
         Returns:
             New FontInfo instance with resolved metadata, or None if font not found.
@@ -231,21 +238,14 @@ class FontInfo:
             non-trivial and would require font classification heuristics or
             external databases.
 
-        TODO:
-            Consider unicode-range detection for optimal font subsetting when
-            multiple fonts are used to cover different character ranges.
-
         Example:
-            >>> # Font from static mapping (no file path)
-            >>> font_info = FontInfo.find('ArialMT')
-            >>> font_info.file
-            ''
-            >>> # Resolve to actual system font
-            >>> resolved = font_info.resolve()
-            >>> if resolved:
-            ...     print(f"Resolved: {resolved.family} at {resolved.file}")
-            ...     if resolved.family != font_info.family:
-            ...         print(f"Substitution: {font_info.family} → {resolved.family}")
+            >>> # Standard resolution
+            >>> font = FontInfo.find('ArialMT')
+            >>> resolved = font.resolve()
+            >>>
+            >>> # Charset-based resolution
+            >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
+            >>> resolved = font.resolve(charset_codepoints=codepoints)
         """
         # If font already has a valid file path, no need to resolve
         if self.file and os.path.exists(self.file):
@@ -254,22 +254,59 @@ class FontInfo:
             )
             return self
 
-        # Check if fontconfig is available
-        if not HAS_FONTCONFIG:
+        # Try platform-specific resolution
+        if HAS_FONTCONFIG:
+            # Linux/macOS: Use fontconfig with CharSet support
+            return self._resolve_fontconfig(charset_codepoints)
+        elif HAS_WINDOWS_FONTS:
+            # Windows: Use registry + cmap checking
+            return self._resolve_windows(charset_codepoints)
+        else:
             logger.debug(
                 f"Cannot resolve font '{self.postscript_name}': "
-                "fontconfig not available"
+                "no font resolution system available"
             )
             return None
 
-        # Query fontconfig for full font metadata
+    def _resolve_fontconfig(self, charset_codepoints: set[int] | None) -> Self | None:
+        """Resolve font using fontconfig (Linux/macOS)."""
         logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
 
         try:
-            match = fontconfig.match(
-                pattern=f":postscriptname={self.postscript_name}",
-                select=("file", "family", "style", "weight"),
-            )
+            if charset_codepoints is not None:
+                # Charset-based resolution
+                logger.debug(
+                    f"Using charset with {len(charset_codepoints)} codepoints "
+                    f"for '{self.postscript_name}'"
+                )
+
+                # Create CharSet from codepoints
+                charset = fontconfig.CharSet.from_codepoints(sorted(charset_codepoints))
+
+                # Try using match() with properties first
+                try:
+                    match = fontconfig.match(
+                        pattern=f":postscriptname={self.postscript_name}",
+                        select=("file", "family", "style", "weight"),
+                        properties={"charset": charset},
+                    )
+                except TypeError:
+                    # Fall back to list() if match() doesn't support properties
+                    logger.debug(
+                        "fontconfig.match() doesn't support properties, "
+                        "falling back to list()"
+                    )
+                    results = fontconfig.list(
+                        pattern=f":postscriptname={self.postscript_name}",
+                        properties={"charset": charset},
+                    )
+                    match = results[0] if results else None
+            else:
+                # Standard PostScript name matching (existing behavior)
+                match = fontconfig.match(
+                    pattern=f":postscriptname={self.postscript_name}",
+                    select=("file", "family", "style", "weight"),
+                )
 
             if not match or not match.get("file"):
                 logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
@@ -299,6 +336,73 @@ class FontInfo:
             return resolved
 
         except Exception as e:
+            # Graceful degradation: fall back to name matching
+            if charset_codepoints is not None:
+                logger.warning(
+                    f"Charset-based resolution failed for '{self.postscript_name}': {e}. "
+                    "Falling back to name-only matching"
+                )
+                return self.resolve(charset_codepoints=None)
+
+            logger.warning(f"Font resolution failed for '{self.postscript_name}': {e}")
+            return None
+
+    def _resolve_windows(self, charset_codepoints: set[int] | None) -> Self | None:
+        """Resolve font using Windows registry (Windows only)."""
+        logger.debug(f"Resolving font '{self.postscript_name}' via Windows registry")
+
+        try:
+            resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
+
+            if charset_codepoints is not None:
+                logger.debug(
+                    f"Resolving '{self.postscript_name}' on Windows "
+                    f"with {len(charset_codepoints)} codepoints"
+                )
+                match = resolver.find_with_charset(
+                    self.postscript_name, charset_codepoints
+                )
+            else:
+                match = resolver.find(self.postscript_name)
+
+            if not match:
+                logger.debug(
+                    f"Font '{self.postscript_name}' not found via Windows registry"
+                )
+                return None
+
+            # Create resolved FontInfo
+            resolved = FontInfo(
+                postscript_name=self.postscript_name,
+                file=str(match["file"]),
+                family=str(match["family"]),
+                style=str(match["style"]),
+                weight=float(match["weight"]),
+            )
+
+            # Log substitution
+            if resolved.family != self.family:
+                logger.info(
+                    f"Font substitution: '{self.family}' → '{resolved.family}' "
+                    f"(file: {resolved.file})"
+                )
+            else:
+                logger.debug(
+                    f"Font '{self.postscript_name}' resolved to same family "
+                    f"'{resolved.family}' (file: {resolved.file})"
+                )
+
+            return resolved
+
+        except Exception as e:
+            # Graceful degradation: fall back to name matching
+            if charset_codepoints is not None:
+                logger.warning(
+                    f"Charset-based resolution failed for '{self.postscript_name}': {e}. "
+                    "Falling back to name-only matching"
+                )
+                return self.resolve(charset_codepoints=None)
+
             logger.warning(f"Font resolution failed for '{self.postscript_name}': {e}")
             return None
 
@@ -567,3 +671,39 @@ def encode_font_with_options(
         logger.debug(f"Encoding font: {font_path}")
         cache[font_path] = encode_font_data_uri(font_path)
     return cache[font_path]
+
+
+def create_charset_codepoints(chars: set[str]) -> set[int] | None:
+    """Create set of Unicode codepoints from characters.
+
+    This function converts a set of Unicode characters to a set of
+    integer codepoints suitable for charset-based font matching.
+
+    Args:
+        chars: Set of Unicode characters (e.g., {"A", "あ", "中"}).
+
+    Returns:
+        Set of Unicode codepoints (integers), or None if chars is empty.
+        Multi-codepoint characters (emoji with modifiers) are split into
+        individual codepoints.
+
+    Example:
+        >>> chars = {"H", "e", "l", "o"}
+        >>> codepoints = create_charset_codepoints(chars)
+        >>> codepoints
+        {72, 101, 108, 111}
+    """
+    if not chars:
+        return None
+
+    from psd2svg.font_subsetting import _chars_to_unicode_list
+
+    # Reuse existing conversion logic
+    codepoint_list = _chars_to_unicode_list(chars)
+    codepoint_set = set(codepoint_list)
+
+    logger.debug(
+        f"Created {len(codepoint_set)} codepoints from {len(chars)} characters"
+    )
+
+    return codepoint_set

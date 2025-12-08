@@ -30,7 +30,7 @@ dependencies = [
     "numpy",
     "psd-tools>=1.12.0",
     "resvg-py>=0.2.3",
-    "fontconfig-py>=0.3.0; sys_platform != 'win32'",
+    "fontconfig-py>=0.4.0; sys_platform != 'win32'",
     "fonttools[woff]>=4.50.0",
 ]
 

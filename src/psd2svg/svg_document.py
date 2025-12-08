@@ -517,9 +517,9 @@ class SVGDocument:
 
         This method performs all font processing steps for a single font:
         1. Find text/tspan elements using this font
-        2. Resolve font to system font file (fontconfig/Windows registry)
-        3. Update matched elements with fallback chains if substitution occurred
-        4. Extract subset characters from matched elements (if subsetting enabled)
+        2. Extract characters from matched elements (for charset matching and subsetting)
+        3. Resolve font to system font file with charset-based matching
+        4. Update matched elements with fallback chains if substitution occurred
         5. Generate @font-face CSS rule with encoded font data
 
         Args:
@@ -535,14 +535,40 @@ class SVGDocument:
             - Modifies SVG tree in-place (adds fallback chains)
             - Uses self._font_data_cache for caching
             - Logs warnings for errors but continues gracefully
+            - Character extraction is done once and reused for both charset matching
+              and font subsetting
         """
         # Step 1: Find elements using this font
         matching_elements = svg_utils.find_elements_with_font_family(
             svg, font_info.family
         )
 
-        # Step 2: Resolve font to system font file
-        resolved_font = font_info.resolve()
+        # Step 2: Extract characters (for charset matching and/or subsetting)
+        chars_for_font: set[str] = set()
+        if matching_elements:
+            for element in matching_elements:
+                text_content = svg_utils.extract_text_characters(element)
+                if text_content:
+                    chars_for_font.update(text_content)
+
+            if chars_for_font:
+                logger.debug(
+                    f"Extracted {len(chars_for_font)} characters "
+                    f"for font '{font_info.postscript_name}'"
+                )
+
+        # Step 3: Create charset codepoints for font resolution
+        charset_codepoints = None
+        if chars_for_font:
+            charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
+            if charset_codepoints:
+                logger.debug(
+                    f"Using {len(charset_codepoints)} codepoints for "
+                    f"charset-based resolution of '{font_info.postscript_name}'"
+                )
+
+        # Step 4: Resolve font to system font file (with charset if available)
+        resolved_font = font_info.resolve(charset_codepoints=charset_codepoints)
         if not resolved_font or not resolved_font.is_resolved():
             logger.info(
                 f"Cannot embed font '{font_info.postscript_name}': "
@@ -550,7 +576,7 @@ class SVGDocument:
             )
             return None
 
-        # Step 3: Update fallbacks if substitution occurred (only if elements found)
+        # Step 5: Update fallbacks if substitution occurred (only if elements found)
         if matching_elements and resolved_font.family != font_info.family:
             logger.info(
                 f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
@@ -561,13 +587,10 @@ class SVGDocument:
                     element, font_info.family, resolved_font.family
                 )
 
-        # Step 4: Extract subset characters (if enabled and elements found)
+        # Step 6: Prepare subset characters (reuse already-extracted chars)
         subset_chars: set[str] = set()
         if subset_enabled and matching_elements:
-            for element in matching_elements:
-                text_content = svg_utils.extract_text_characters(element)
-                if text_content:
-                    subset_chars.update(text_content)
+            subset_chars = chars_for_font  # Reuse extraction from Step 2
 
             if not subset_chars:
                 logger.warning(
@@ -575,7 +598,7 @@ class SVGDocument:
                     "using full font"
                 )
 
-        # Step 5: Generate CSS rule with font encoding
+        # Step 7: Generate CSS rule with font encoding
         font_path = resolved_font.file
         try:
             # Encode font with caching
