@@ -277,6 +277,7 @@ gh pr create --title "My Change" --body "Description"
 - **Linting**: Ruff for fast linting/formatting
 - **Python 3.10+**: Modern Python, no legacy code
 - **Abstract base classes**: Proper ABC usage for interfaces
+- **Import statements**: Prefer top-/module-level import over function-level import
 
 ## Development Notes
 
