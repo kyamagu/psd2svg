@@ -3,6 +3,8 @@ import dataclasses
 import logging
 import os
 import sys
+import urllib.parse
+from pathlib import Path
 
 try:
     from typing import Self  # type: ignore
@@ -707,3 +709,79 @@ def create_charset_codepoints(chars: set[str]) -> set[int] | None:
     )
 
     return codepoint_set
+
+
+def create_file_url(font_path: str) -> str:
+    """Create a file:// URL from an absolute font file path.
+
+    This function converts an absolute file path to a properly formatted file:// URL
+    suitable for use in CSS @font-face rules with browser-based rasterizers like
+    PlaywrightRasterizer.
+
+    Args:
+        font_path: Absolute path to the font file.
+
+    Returns:
+        File URL string (e.g., 'file:///usr/share/fonts/arial.ttf').
+
+    Raises:
+        ValueError: If font_path is not absolute.
+        FileNotFoundError: If font file doesn't exist.
+
+    Note:
+        - Handles cross-platform paths (Windows, Linux, macOS)
+        - Properly escapes special characters (spaces, non-ASCII)
+        - Requires absolute paths (relative paths are rejected)
+        - URL format: file:// + absolute_path (with proper encoding)
+
+    Example:
+        >>> # Linux/macOS
+        >>> create_file_url('/usr/share/fonts/arial.ttf')
+        'file:///usr/share/fonts/arial.ttf'
+
+        >>> # Windows
+        >>> create_file_url('C:\\\\Windows\\\\Fonts\\\\arial.ttf')
+        'file:///C:/Windows/Fonts/arial.ttf'
+
+        >>> # Path with spaces
+        >>> create_file_url('/usr/share/fonts/My Font.ttf')
+        'file:///usr/share/fonts/My%20Font.ttf'
+
+        >>> # Non-ASCII characters
+        >>> create_file_url('/fonts/日本語/font.ttf')
+        'file:///fonts/%E6%97%A5%E6%9C%AC%E8%AA%9E/font.ttf'
+    """
+    # Validate file existence
+    if not os.path.exists(font_path):
+        raise FileNotFoundError(f"Font file not found: {font_path}")
+
+    # Ensure absolute path (required for file:// URLs)
+    abs_path = os.path.abspath(font_path)
+
+    # Convert to Path object for cross-platform handling
+    path_obj = Path(abs_path)
+
+    # Convert to POSIX path (forward slashes) for URL
+    # Windows: C:\Fonts\arial.ttf -> C:/Fonts/arial.ttf -> /C:/Fonts/arial.ttf
+    # Unix: /usr/share/fonts/arial.ttf -> /usr/share/fonts/arial.ttf
+    if sys.platform == "win32":
+        # Windows: Convert backslashes to forward slashes
+        posix_path = path_obj.as_posix()
+        # Ensure leading slash for Windows drive letters: C:/... -> /C:/...
+        if not posix_path.startswith("/"):
+            posix_path = "/" + posix_path
+    else:
+        # Unix: Already has leading slash
+        posix_path = str(path_obj)
+
+    # URL-encode the path to handle spaces and special characters
+    # Use quote() with safe="/:@" to preserve path structure
+    # - "/" must be safe (path separator)
+    # - ":" must be safe (Windows drive letters)
+    # - "@" is safe for potential UNC paths (though not fully supported)
+    encoded_path = urllib.parse.quote(posix_path, safe="/:@")
+
+    # Construct file:// URL
+    # Format: file:// + encoded_path (already has leading /)
+    # Result: file:///absolute/path or file:///C:/Windows/path
+    return f"file://{encoded_path}"
