@@ -624,92 +624,29 @@ class SVGDocument:
                     element, font_info.family, resolved_font.family
                 )
 
-    def _generate_css_source_data_uri(
-        self,
-        resolved_font: FontInfo,
-        subset_chars: set[str],
-        font_format: str,
-    ) -> str:
-        """Generate CSS source as data URI for a font.
+    def _resolve_fonts_with_fallbacks(
+        self, svg: ET.Element
+    ) -> list[tuple[FontInfo, set[str]]]:
+        """Resolve fonts to system font files and update fallback chains.
+
+        This method processes all fonts in the document, resolving them to actual
+        system font files using charset-based matching when possible. It also
+        updates SVG text elements with fallback chains when font substitution occurs.
 
         Args:
-            resolved_font: Resolved font information with file path.
-            subset_chars: Characters to subset (empty set = full font).
-            font_format: Font format for encoding ("ttf", "otf", "woff2").
+            svg: SVG element to search for font usage and update with fallbacks.
 
         Returns:
-            Data URI string for use in CSS @font-face.
-
-        Raises:
-            FileNotFoundError, IOError: If font file cannot be read.
-            Exception: For other encoding errors.
+            List of (FontInfo, character set) tuples.
+            Deduplicates fonts by file path.
         """
-        data_uri = font_utils.encode_font_with_options(
-            font_path=resolved_font.file,
-            cache=self._font_data_cache,
-            subset_chars=subset_chars if subset_chars else None,
-            font_format=font_format,
-        )
-        return data_uri
-
-    def _generate_css_source_file_url(
-        self,
-        resolved_font: FontInfo,
-        subset_chars: set[str],
-        font_format: str,
-    ) -> str:
-        """Generate CSS source as file:// URL for a font.
-
-        Args:
-            resolved_font: Resolved font information with file path.
-            subset_chars: Unused (file URL method doesn't subset).
-            font_format: Unused (file URL uses original font format).
-
-        Returns:
-            File URL string for use in CSS @font-face.
-
-        Raises:
-            FileNotFoundError: If font file doesn't exist.
-        """
-        return font_utils.create_file_url(resolved_font.file)
-
-    def _insert_css_fontface(
-        self,
-        svg: ET.Element,
-        subset_fonts: bool,
-        font_format: str,
-        use_data_uri: bool,
-    ) -> None:
-        """Insert CSS @font-face rules in a <style> element (common implementation).
-
-        This is the unified implementation for both data URI and file URL approaches.
-        The only difference is how the CSS source is generated (data URI vs file URL).
-
-        Args:
-            svg: SVG element to modify in-place.
-            subset_fonts: If True, subset fonts (only applicable for data URIs).
-            font_format: Font format for encoding (only applicable for data URIs).
-            use_data_uri: If True, use data URIs; if False, use file:// URLs.
-        """
-        if not self.fonts:
-            return
-
-        # Select source generator based on type
-        if use_data_uri:
-            generate_source = self._generate_css_source_data_uri
-            source_desc = "data URI"
-        else:  # file_url
-            generate_source = self._generate_css_source_file_url
-            source_desc = "file:// URL"
-
-        css_rules: list[str] = []
-        seen_fonts: set[str] = set()  # Track by file path to avoid duplicates
+        resolved_fonts: dict[str, tuple[FontInfo, set[str]]] = {}
 
         for font_info in self.fonts:
-            # Step 1-2: Extract characters used by this font
+            # Step 1: Extract characters used by this font
             chars_for_font = self._extract_font_characters(svg, font_info)
 
-            # Step 3-4: Resolve font to system font file (with charset if available)
+            # Step 2: Resolve font to system font file (with charset if available)
             resolved_font = self._resolve_font_with_charset(font_info, chars_for_font)
             if not resolved_font:
                 logger.info(
@@ -718,24 +655,57 @@ class SVGDocument:
                 )
                 continue
 
-            # Step 5: Update fallback chains if substitution occurred
+            # Step 3: Update fallback chains if substitution occurred
             self._update_font_fallback_chains(svg, font_info, resolved_font)
 
             # Skip duplicates (same font file)
             font_path = resolved_font.file
-            if font_path in seen_fonts:
+            if font_path in resolved_fonts:
                 continue
-            seen_fonts.add(font_path)
 
-            # Step 6: Generate CSS source (data URI or file URL)
+            resolved_fonts[font_path] = (resolved_font, chars_for_font)
+
+        return list(resolved_fonts.values())
+
+    def _generate_css_rules_for_fonts(
+        self,
+        resolved_fonts: list[tuple[FontInfo, set[str]]],
+        subset_fonts: bool,
+        font_format: str,
+        use_data_uri: bool,
+    ) -> list[str]:
+        """Generate CSS @font-face rules from resolved fonts.
+
+        Args:
+            resolved_fonts: List of (FontInfo, character set) tuples.
+            subset_fonts: If True, subset fonts (only applicable for data URIs).
+            font_format: Font format for encoding (only applicable for data URIs).
+            use_data_uri: If True, use data URIs; if False, use file:// URLs.
+
+        Returns:
+            List of CSS @font-face rule strings.
+        """
+        # Generate CSS rules from resolved fonts
+        css_rules: list[str] = []
+        source_desc = "data URI" if use_data_uri else "file:// URL"
+
+        for resolved_font, chars_for_font in resolved_fonts:
+            # Step 4: Generate CSS source (data URI or file URL)
             try:
-                # Prepare subset characters (only for data URI)
-                subset_chars: set[str] = set()
-                if use_data_uri and subset_fonts and chars_for_font:
-                    subset_chars = chars_for_font
-
-                # Generate CSS source using the selected method
-                css_source = generate_source(resolved_font, subset_chars, font_format)
+                # Generate CSS source based on mode
+                if use_data_uri:
+                    # Prepare subset characters
+                    subset_chars: set[str] = set()
+                    if subset_fonts and chars_for_font:
+                        subset_chars = chars_for_font
+                    css_source = font_utils.encode_font_with_options(
+                        font_path=resolved_font.file,
+                        cache=self._font_data_cache,
+                        subset_chars=subset_chars if subset_chars else None,
+                        font_format=font_format,
+                    )
+                else:
+                    css_source = font_utils.create_file_url(resolved_font.file)
 
                 # Generate @font-face CSS rule
                 css_rule = resolved_font.to_font_face_css(css_source)
@@ -748,34 +718,53 @@ class SVGDocument:
 
             except (FileNotFoundError, IOError) as e:
                 logger.warning(
-                    f"Failed to create {source_desc} for font '{font_path}': {e}. "
+                    f"Failed to create {source_desc} for font '{resolved_font.file}': {e}. "
                     "Font will not be embedded."
                 )
                 continue
             except Exception as e:
                 logger.warning(
-                    f"Failed to process font '{font_path}': {e}. "
+                    f"Failed to process font '{resolved_font.file}': {e}. "
                     "Font will not be embedded."
                 )
                 continue
 
+        return css_rules
+
+    def _insert_css_fontface(
+        self,
+        svg: ET.Element,
+        subset_fonts: bool,
+        font_format: str,
+        use_data_uri: bool,
+    ) -> None:
+        """Insert CSS @font-face rules in a <style> element.
+
+        This is the unified implementation for both data URI and file URL approaches.
+
+        Args:
+            svg: SVG element to modify in-place.
+            subset_fonts: If True, subset fonts (only applicable for data URIs).
+            font_format: Font format for encoding (only applicable for data URIs).
+            use_data_uri: If True, use data URIs; if False, use file:// URLs.
+        """
+        if not self.fonts:
+            return
+
+        # Resolve fonts and update fallback chains
+        resolved_fonts = self._resolve_fonts_with_fallbacks(svg)
+
+        # Generate CSS rules
+        css_rules = self._generate_css_rules_for_fonts(
+            resolved_fonts, subset_fonts, font_format, use_data_uri
+        )
         if not css_rules:
-            if not use_data_uri:
-                logger.warning(
-                    "No CSS @font-face rules inserted for PlaywrightRasterizer. "
-                    "Text will render with browser default fonts."
-                )
-            else:
-                logger.warning("No fonts were successfully embedded")
+            logger.warning("No css font rules inserted; skipping <style> update")
             return
 
         # Insert all CSS rules into <style> element
         css_content = "\n".join(css_rules)
         svg_utils.insert_or_update_style_element(svg, css_content)
-
-        logger.debug(
-            f"Inserted {len(css_rules)} CSS @font-face rule(s) with {source_desc}"
-        )
 
 
 def convert(
