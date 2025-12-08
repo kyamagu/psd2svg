@@ -1,5 +1,6 @@
 """Tests for PlaywrightRasterizer."""
 
+import asyncio
 import tempfile
 
 import pytest
@@ -237,7 +238,6 @@ def test_rasterizer_in_async_context(simple_svg: str) -> None:
     This simulates usage in Jupyter notebooks or other async environments
     where an event loop is already running.
     """
-    import asyncio
 
     async def test_async() -> None:
         """Test rasterization inside an async context."""
