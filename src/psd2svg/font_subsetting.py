@@ -267,12 +267,13 @@ def _extract_text_content(element: ET.Element) -> str:
         element: XML element.
 
     Returns:
-        Decoded text content with XML entities resolved.
+        Decoded text content with XML entities resolved and control characters filtered.
 
     Note:
         - Handles numeric character references (&#x4E00;, &#20013;)
         - Handles named entities (&lt;, &gt;, &amp;, etc.)
         - Recursively includes text from child elements
+        - Filters out control characters (codepoints 0-31) which are not rendered in SVG
     """
     # Collect all text (element.text and tail from all descendants)
     text_parts = []
@@ -293,6 +294,15 @@ def _extract_text_content(element: ET.Element) -> str:
 
     # Decode HTML/XML entities
     decoded_text = html.unescape(raw_text)
+
+    # Filter out control characters (C0: 0-31, DEL: 127, C1: 128-159)
+    # These are not rendered in SVG text and cause incorrect font matching
+    # (e.g., newline causes Arial to be substituted with LastResort on macOS)
+    decoded_text = "".join(
+        char
+        for char in decoded_text
+        if ord(char) >= 32 and not (127 <= ord(char) <= 159)
+    )
 
     return decoded_text
 
