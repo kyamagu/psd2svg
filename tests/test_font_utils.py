@@ -592,9 +592,10 @@ class TestFontInfoResolve:
 
         assert resolved is None
 
+    @patch("psd2svg.core.font_utils.HAS_WINDOWS_FONTS", False)
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False)
     def test_resolve_no_fontconfig_available(self) -> None:
-        """Test resolve() when fontconfig is not available."""
+        """Test resolve() when neither fontconfig nor Windows fonts are available."""
         font = FontInfo(
             postscript_name="ArialMT",
             file="",
