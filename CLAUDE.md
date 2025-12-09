@@ -109,10 +109,7 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 ```text
 _insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
   │
-  ├─ _resolve_fonts_with_fallbacks(svg)
-  │   ├─ _extract_font_characters() - Extract characters from text elements
-  │   ├─ _resolve_font_with_charset() - Charset-aware font resolution
-  │   └─ _update_font_fallback_chains() - Update font-family attributes
+  ├─ _collect_resolved_fonts(svg)
   │   └─ Returns: list[(FontInfo, set[str])] (deduplicated by font path)
   │
   ├─ _generate_css_rules_for_fonts()
