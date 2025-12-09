@@ -448,7 +448,7 @@ class TestSVGDocumentEmbedFonts:
         assert "<style>" not in result
 
         # Should log warning about no fonts embedded (font resolution returned None)
-        assert "No resolved fonts provided; skipping font embedding" in caplog.text
+        assert "No resolved fonts found; skipping font embedding" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
     @patch("psd2svg.core.font_utils.FontInfo.find_with_files")

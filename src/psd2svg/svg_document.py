@@ -855,7 +855,7 @@ class SVGDocument:
         subset_fonts: bool,
         font_format: str,
         use_data_uri: bool,
-        resolved_fonts_map: dict[str, FontInfo] | None = None,
+        resolved_fonts_map: dict[str, FontInfo],
     ) -> None:
         """Insert CSS @font-face rules in a <style> element.
 
@@ -870,10 +870,9 @@ class SVGDocument:
             font_format: Font format for encoding (only applicable for data URIs).
             use_data_uri: If True, use data URIs; if False, use file:// URLs.
             resolved_fonts_map: Pre-resolved fonts from _resolve_and_collect_fonts().
-                Must not be None when this method is called.
         """
         if not resolved_fonts_map:
-            logger.warning("No resolved fonts provided; skipping font embedding")
+            logger.warning("No resolved fonts found; skipping font embedding")
             return
 
         # Use pre-resolved fonts directly - NO re-resolution needed
