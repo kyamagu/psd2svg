@@ -262,24 +262,6 @@ class FontInfo:
             )
             return self
 
-        # Try platform-specific resolution
-        if HAS_FONTCONFIG:
-            # Linux/macOS: Use fontconfig with CharSet support
-            return self._resolve_fontconfig(charset_codepoints)
-        elif HAS_WINDOWS_FONTS:
-            # Windows: Use registry + cmap checking
-            return self._resolve_windows(charset_codepoints)
-        else:
-            logger.debug(
-                f"Cannot resolve font '{self.postscript_name}': "
-                "no font resolution system available"
-            )
-            return None
-
-    def _resolve_fontconfig(self, charset_codepoints: set[int] | None) -> Self | None:
-        """Resolve font using fontconfig (Linux/macOS)."""
-        logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
-
         # Merge existing charset with requested charset_codepoints for resolution
         merged_codepoints: set[int] | None = None
         if self.charset or charset_codepoints:
@@ -290,26 +272,49 @@ class FontInfo:
             if charset_codepoints:
                 merged_codepoints.update(charset_codepoints)
 
+        # Try platform-specific resolution
+        if HAS_FONTCONFIG:
+            # Linux/macOS: Use fontconfig with CharSet support
+            return self._resolve_fontconfig(merged_codepoints)
+        elif HAS_WINDOWS_FONTS:
+            # Windows: Use registry + cmap checking
+            return self._resolve_windows(merged_codepoints)
+        else:
+            logger.debug(
+                f"Cannot resolve font '{self.postscript_name}': "
+                "no font resolution system available"
+            )
+            return None
+
+    def _resolve_fontconfig(self, charset_codepoints: set[int] | None) -> Self | None:
+        """Resolve font using fontconfig (Linux/macOS).
+
+        Args:
+            charset_codepoints: Merged charset codepoints (already combined with self.charset
+                by resolve() method). Used for charset-based font matching.
+        """
+        logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
+
         try:
-            match = FontInfo._match_fontconfig(self.postscript_name, merged_codepoints)
+            match = FontInfo._match_fontconfig(self.postscript_name, charset_codepoints)
 
             if not match or not match.get("file"):
                 logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
                 return None
 
-            # Convert merged codepoints back to character set
-            merged_charset: set[str] | None = None
-            if merged_codepoints:
-                merged_charset = {chr(cp) for cp in merged_codepoints}
+            # Convert codepoints back to character set for storage
+            charset: set[str] | None = None
+            if charset_codepoints:
+                charset = {chr(cp) for cp in charset_codepoints}
 
-            # Create new FontInfo with resolved metadata and merged charset
+            # Create new FontInfo with resolved metadata and charset
             resolved = FontInfo(
                 postscript_name=self.postscript_name,
                 file=str(match["file"]),  # type: ignore
                 family=str(match["family"]),  # type: ignore
                 style=str(match["style"]),  # type: ignore
                 weight=float(match["weight"]),  # type: ignore
-                charset=merged_charset,
+                charset=charset,
             )
 
             # Log if font substitution occurred
@@ -339,21 +344,16 @@ class FontInfo:
             return None
 
     def _resolve_windows(self, charset_codepoints: set[int] | None) -> Self | None:
-        """Resolve font using Windows registry (Windows only)."""
+        """Resolve font using Windows registry (Windows only).
+
+        Args:
+            charset_codepoints: Merged charset codepoints (already combined with self.charset
+                by resolve() method). Used for charset-based font matching.
+        """
         logger.debug(f"Resolving font '{self.postscript_name}' via Windows registry")
 
-        # Merge existing charset with requested charset_codepoints for resolution
-        merged_codepoints: set[int] | None = None
-        if self.charset or charset_codepoints:
-            merged_codepoints = set()
-            if self.charset:
-                # Convert existing charset to codepoints
-                merged_codepoints.update(ord(c) for c in self.charset)
-            if charset_codepoints:
-                merged_codepoints.update(charset_codepoints)
-
         try:
-            match = FontInfo._match_windows(self.postscript_name, merged_codepoints)
+            match = FontInfo._match_windows(self.postscript_name, charset_codepoints)
 
             if not match:
                 logger.debug(
@@ -361,19 +361,19 @@ class FontInfo:
                 )
                 return None
 
-            # Convert merged codepoints back to character set
-            merged_charset: set[str] | None = None
-            if merged_codepoints:
-                merged_charset = {chr(cp) for cp in merged_codepoints}
+            # Convert codepoints back to character set for storage
+            charset: set[str] | None = None
+            if charset_codepoints:
+                charset = {chr(cp) for cp in charset_codepoints}
 
-            # Create resolved FontInfo with merged charset
+            # Create resolved FontInfo with charset
             resolved = FontInfo(
                 postscript_name=self.postscript_name,
                 file=str(match["file"]),
                 family=str(match["family"]),
                 style=str(match["style"]),
                 weight=float(match["weight"]),
-                charset=merged_charset,
+                charset=charset,
             )
 
             # Log substitution
