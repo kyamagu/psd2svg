@@ -518,7 +518,8 @@ class FontInfo:
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
 
         Returns:
-            FontInfo object if found, None otherwise.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided,
+            the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
@@ -531,12 +532,18 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via fontconfig fallback: "
                 f"{match['family']}"
             )
+            # Convert codepoints to charset for storage (if provided)
+            charset: set[str] | None = None
+            if charset_codepoints:
+                charset = {chr(cp) for cp in charset_codepoints}
+
             return FontInfo(
                 postscript_name=postscriptname,
                 file=match["file"],  # type: ignore
                 family=match["family"],  # type: ignore
                 style=match["style"],  # type: ignore
                 weight=match["weight"],  # type: ignore
+                charset=charset,
             )
 
         return None
@@ -552,7 +559,8 @@ class FontInfo:
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
 
         Returns:
-            FontInfo object if found, None otherwise.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided,
+            the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying Windows registry..."
@@ -565,12 +573,18 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via Windows registry fallback: "
                 f"{match['family']}"
             )
+            # Convert codepoints to charset for storage (if provided)
+            charset: set[str] | None = None
+            if charset_codepoints:
+                charset = {chr(cp) for cp in charset_codepoints}
+
             return FontInfo(
                 postscript_name=postscriptname,
                 file=str(match["file"]),
                 family=str(match["family"]),
                 style=str(match["style"]),
                 weight=float(match["weight"]),
+                charset=charset,
             )
 
         return None
