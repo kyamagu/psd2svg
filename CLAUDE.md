@@ -127,6 +127,42 @@ _insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
 - `tostring()`/`save()`: use_data_uri=True (portable SVG files)
 - `rasterize()` with PlaywrightRasterizer: use_data_uri=False (60-80% faster, file:// URLs)
 
+#### 5. Font Resolution Patterns
+
+psd2svg provides two approaches for font resolution depending on your needs:
+
+**Two-step pattern** (current default):
+
+```python
+# Step 1: Find font metadata (fast, uses static mapping for 572 common fonts)
+font = FontInfo.find('ArialMT')
+# Returns immediately if in static mapping, with family/style/weight but no file path
+
+# Step 2: Resolve to system font file with charset matching (when needed for embedding)
+codepoints = {0x3042, 0x3044}  # Japanese hiragana
+resolved = font.resolve(charset_codepoints=codepoints)
+# Queries system with charset-based matching to find font file
+```
+
+**Single-step with charset** (improved fallback):
+
+```python
+# When characters are known upfront, can provide them to find()
+codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
+font = FontInfo.find('NotoSansCJK-Regular', charset_codepoints=codepoints)
+# Uses charset for platform-specific fallback if static mapping fails
+```
+
+**When to use each pattern**:
+
+- **Two-step**: Default pattern, works for all fonts. Use when characters aren't available during initial font lookup (e.g., during text layer conversion).
+- **Single-step**: Use when you have character information early and want improved fallback for fonts not in static mapping. The charset parameter is ignored for fonts in static mapping (preserving fast performance), but improves resolution success rate for uncommon fonts.
+
+**Key differences**:
+
+- `find()`: Metadata lookup with optional charset-based fallback (Tier 3 only)
+- `resolve()`: System font file resolution with optional charset matching (always queries system)
+
 ## Architecture Overview
 
 ### Public API

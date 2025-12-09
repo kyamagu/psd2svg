@@ -889,3 +889,134 @@ class TestCreateFileUrl:
         assert url.startswith("file:///")
         assert ":" in url  # Drive letter
         assert "\\" not in url  # No backslashes
+
+
+class TestFontInfoFindWithCharset:
+    """Tests for FontInfo.find() with charset_codepoints parameter."""
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    @patch("psd2svg.core.font_utils.fontconfig.CharSet")
+    def test_find_with_charset_not_in_static_mapping(
+        self, mock_charset_class: MagicMock, mock_match: MagicMock
+    ) -> None:
+        """Test find with charset for font not in static mapping."""
+        # Mock CharSet creation
+        mock_charset_instance = MagicMock()
+        mock_charset_class.from_codepoints.return_value = mock_charset_instance
+
+        # Mock fontconfig match result
+        mock_match.return_value = {
+            "file": "/path/to/noto-sans-cjk.ttf",
+            "family": "Noto Sans CJK JP",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        # Test with charset codepoints (Japanese hiragana)
+        # Use a font name NOT in static mapping
+        codepoints = {0x3042, 0x3044, 0x3046}
+        font = FontInfo.find("MyCustomCJKFont-Regular", charset_codepoints=codepoints)
+
+        assert font is not None
+        assert font.postscript_name == "MyCustomCJKFont-Regular"
+        assert font.file == "/path/to/noto-sans-cjk.ttf"
+        assert font.family == "Noto Sans CJK JP"
+
+        # Verify CharSet was created with sorted codepoints
+        mock_charset_class.from_codepoints.assert_called_once_with(sorted(codepoints))
+
+        # Verify fontconfig.match was called with properties dict including charset
+        mock_match.assert_called_once()
+        call_kwargs = mock_match.call_args.kwargs
+        assert "properties" in call_kwargs
+        assert call_kwargs["properties"]["postscriptname"] == "MyCustomCJKFont-Regular"
+        assert call_kwargs["properties"]["charset"] == mock_charset_instance
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_with_charset_in_static_mapping(
+        self, mock_match: MagicMock
+    ) -> None:
+        """Test find with charset for font in static mapping (charset ignored)."""
+        codepoints = {0x3042, 0x3044, 0x3046}
+
+        # ArialMT is in static mapping, should return immediately without charset matching
+        font = FontInfo.find("ArialMT", charset_codepoints=codepoints)
+
+        assert font is not None
+        assert font.postscript_name == "ArialMT"
+        assert font.family == "Arial"
+        assert font.file == ""  # No file path from static mapping
+
+        # fontconfig.match should NOT be called (static mapping takes priority)
+        mock_match.assert_not_called()
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    @patch("psd2svg.core.font_utils.fontconfig.CharSet")
+    def test_find_charset_matching_falls_back_on_error(
+        self,
+        mock_charset_class: MagicMock,
+        mock_match: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test graceful fallback when charset matching fails."""
+        # Mock CharSet to raise exception
+        mock_charset_class.from_codepoints.side_effect = Exception(
+            "CharSet creation failed"
+        )
+
+        # Fallback call succeeds
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "SomeFont",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        codepoints = {0x3042, 0x3044}
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.find("CustomFont", charset_codepoints=codepoints)
+
+        # Should still succeed via fallback
+        assert font is not None
+        assert font.family == "SomeFont"
+
+        # Check warning was logged
+        assert any(
+            "Charset-based matching failed" in record.message
+            and "Falling back to name-only matching" in record.message
+            for record in caplog.records
+        )
+
+        # Verify fallback to name-only matching was attempted
+        assert mock_match.call_count == 1
+        call_kwargs = mock_match.call_args.kwargs
+        assert "pattern" in call_kwargs
+        assert call_kwargs["pattern"] == ":postscriptname=CustomFont"
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_find_without_charset_uses_name_only(
+        self, mock_match: MagicMock
+    ) -> None:
+        """Test find without charset parameter uses name-only matching."""
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "CustomFont",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        # No charset_codepoints parameter
+        font = FontInfo.find("CustomFont-Regular")
+
+        assert font is not None
+
+        # Verify name-only matching was used
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=CustomFont-Regular",
+            select=("file", "family", "style", "weight"),
+        )
