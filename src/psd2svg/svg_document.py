@@ -623,31 +623,32 @@ class SVGDocument:
             resolved_font = FontInfo.find(ps_name, charset_codepoints=charset_codepoints)
             family_name = resolved_font.family if resolved_font else ps_name
 
-            # Step 4: Update font-family attributes: PostScript → family
-            if family_name != ps_name:
+            # Step 4: Update font-family attributes and set weight/style
+            if resolved_font:
                 # Font was resolved - update SVG elements
-                logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+                if family_name != ps_name:
+                    logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+
                 for element in matching_elements:
-                    # Replace PostScript name with CSS family name
-                    svg_utils.replace_font_family(element, ps_name, family_name)
+                    # Replace PostScript name with CSS family name (if different)
+                    if family_name != ps_name:
+                        svg_utils.replace_font_family(element, ps_name, family_name)
 
-                    # Set font-weight and font-style based on resolved font
-                    if resolved_font:
-                        # Set font-weight if not Regular (400)
-                        # Note: Only set if element doesn't already have font-weight
-                        # (preserve faux-bold from text.py if present)
-                        if not element.get("font-weight"):
-                            css_weight = resolved_font.css_weight
-                            if css_weight != 400:
-                                svg_utils.set_attribute(
-                                    element, "font-weight", css_weight
-                                )
+                    # Set font-weight if not Regular (400)
+                    # Note: Only set if element doesn't already have font-weight
+                    # (preserve faux-bold from text.py if present)
+                    if not element.get("font-weight"):
+                        css_weight = resolved_font.css_weight
+                        if css_weight != 400:
+                            svg_utils.set_attribute(
+                                element, "font-weight", css_weight
+                            )
 
-                        # Set font-style if italic
-                        # Note: Only set if element doesn't already have font-style
-                        # (preserve faux-italic from text.py if present)
-                        if not element.get("font-style") and resolved_font.italic:
-                            svg_utils.set_attribute(element, "font-style", "italic")
+                    # Set font-style if italic
+                    # Note: Only set if element doesn't already have font-style
+                    # (preserve faux-italic from text.py if present)
+                    if not element.get("font-style") and resolved_font.italic:
+                        svg_utils.set_attribute(element, "font-style", "italic")
             else:
                 # No resolution - keep PostScript name
                 logger.debug(f"Keeping PostScript name '{ps_name}' (no resolution)")
