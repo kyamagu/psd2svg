@@ -352,30 +352,12 @@ class TextConverter(ConverterProtocol):
     ) -> ET.Element:
         """Add a text span to the paragraph node."""
         style = span.style
-        font_mapping = getattr(self, "font_mapping", None)
-        enable_fontconfig = getattr(self, "enable_fontconfig", True)
-        font_info = text_setting.get_font_info(
-            style.font, font_mapping, enable_fontconfig
-        )
+        # Get PostScript name from font index - no font resolution needed
+        postscript_name = text_setting.get_postscript_name(style.font)
 
-        # Collect font info for later use in rasterization.
-        if font_info and font_info.postscript_name not in self.fonts:
-            self.fonts[font_info.postscript_name] = font_info
-
-        # Determine font weight
-        # Only set font-weight if it differs from regular (400)
-        # SVG default is 400, so we only need to specify non-regular weights
-        # Use numeric CSS weights for better compatibility
+        # Determine font weight - only set for faux bold (PostScript name encodes actual weight)
         font_weight: int | str | None = None
-        if font_info:
-            css_weight = font_info.css_weight
-            # Apply faux bold if needed
-            if style.faux_bold and css_weight < 700:
-                css_weight = 700
-            # Only set font-weight if not regular (400)
-            if css_weight != 400:
-                font_weight = css_weight
-        elif style.faux_bold:
+        if style.faux_bold:
             font_weight = "bold"
 
         with self.set_current(paragraph_node):
@@ -383,11 +365,9 @@ class TextConverter(ConverterProtocol):
                 "tspan",
                 text=span.text.strip("\r"),  # Remove carriage return characters
                 font_size=style.font_size,
-                font_family=font_info.family_name if font_info else None,
+                font_family=postscript_name,  # Store PostScript name directly
                 font_weight=font_weight,
-                font_style="italic"
-                if (font_info and font_info.italic) or style.faux_italic
-                else None,
+                font_style="italic" if style.faux_italic else None,  # Only for faux italic
                 fill=style.get_fill_color(),
                 stroke=style.get_stroke_color(),
                 baseline_shift=style.baseline_shift
@@ -657,38 +637,25 @@ class TextConverter(ConverterProtocol):
             Dictionary of CSS property names to values.
         """
         style = span.style
-        font_mapping = getattr(self, "font_mapping", None)
-        enable_fontconfig = getattr(self, "enable_fontconfig", True)
-        font_info = text_setting.get_font_info(
-            style.font, font_mapping, enable_fontconfig
-        )
-
-        # Collect font info for later use in rasterization
-        if font_info and font_info.postscript_name not in self.fonts:
-            self.fonts[font_info.postscript_name] = font_info
+        # Get PostScript name from font index - no font resolution needed
+        postscript_name = text_setting.get_postscript_name(style.font)
 
         styles = {}
 
-        # Font family
-        if font_info:
-            styles["font-family"] = f"'{font_info.family_name}'"
+        # Font family - use PostScript name directly
+        if postscript_name:
+            styles["font-family"] = f"'{postscript_name}'"
 
         # Font size
         if style.font_size:
             styles["font-size"] = f"{style.font_size}px"
 
-        # Font weight
-        if font_info:
-            css_weight = font_info.css_weight
-            if style.faux_bold and css_weight < 700:
-                css_weight = 700
-            if css_weight != 400:  # Skip default
-                styles["font-weight"] = str(css_weight)
-        elif style.faux_bold:
+        # Font weight - only set for faux bold (PostScript name encodes actual weight)
+        if style.faux_bold:
             styles["font-weight"] = "bold"
 
-        # Font style
-        if (font_info and font_info.italic) or style.faux_italic:
+        # Font style - only set for faux italic (PostScript name encodes actual style)
+        if style.faux_italic:
             styles["font-style"] = "italic"
 
         # Color
@@ -1454,6 +1421,22 @@ class TypeSetting:
             ]
             yield Paragraph(style=paragraph_sheet, spans=spans)
 
+    def get_postscript_name(self, font_index: int) -> str | None:
+        """Get the PostScript name for the given font index.
+
+        Args:
+            font_index: Index into the font set.
+
+        Returns:
+            PostScript name string, or None if not found.
+        """
+        font_info = self.font_set[font_index]
+        postscriptname = font_info.get("Name", None)
+        if postscriptname is None:
+            logger.warning(f"PostScript name not found for font index {font_index}.")
+            return None
+        return postscriptname.value
+
     def get_font_info(
         self,
         font_index: int,
@@ -1472,13 +1455,11 @@ class TypeSetting:
         Returns:
             FontInfo object with font metadata, or None if font not found.
         """
-        font_info = self.font_set[font_index]
-        postscriptname = font_info.get("Name", None)
+        postscriptname = self.get_postscript_name(font_index)
         if postscriptname is None:
-            logger.warning(f"PostScript name not found for font index {font_index}.")
             return None
         return font_utils.FontInfo.find(
-            postscriptname.value, font_mapping, enable_fontconfig
+            postscriptname, font_mapping, enable_fontconfig
         )
 
     def get_paragraph_sheet(self, sheet: ParagraphSheet) -> ParagraphSheet:

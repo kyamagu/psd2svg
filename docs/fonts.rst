@@ -510,7 +510,7 @@ When using ``rasterize()`` with PlaywrightRasterizer, psd2svg automatically opti
 **When optimization applies:**
 
 * ✅ Using ``rasterize()`` method with ``PlaywrightRasterizer``
-* ✅ Document has fonts (``document.fonts`` is not empty)
+* ✅ Document has text elements with font-family attributes
 * ✅ Fonts successfully resolved to system font files
 * ❌ Does NOT apply to ``save()`` or ``tostring()`` (those still use data URIs for portability)
 

@@ -168,7 +168,7 @@ class TestSVGDocumentImageHandling:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect", x="10", y="10", width="80", height="80")
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Should work with no parameters (embed_images=True by default)
         result = document.tostring()
@@ -185,7 +185,6 @@ class TestSVGDocumentImageHandling:
         document = SVGDocument(
             svg=svg_elem,
             images={"image": Image.new("RGB", (10, 10), color="red")},
-            fonts=[],
         )
 
         # Should embed images by default
@@ -202,7 +201,6 @@ class TestSVGDocumentImageHandling:
         document = SVGDocument(
             svg=svg_elem,
             images={"image": Image.new("RGB", (10, 10), color="red")},
-            fonts=[],
         )
 
         # Should raise ValueError when images exist but no output method specified
@@ -220,7 +218,6 @@ class TestSVGDocumentImageHandling:
         document = SVGDocument(
             svg=svg_elem,
             images={"image": Image.new("RGB", (10, 10), color="blue")},
-            fonts=[],
         )
 
         # Use image_prefix to save files
@@ -239,7 +236,7 @@ class TestSVGDocumentImageHandling:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Should work with any combination when no images
         result1 = document.tostring(embed_images=True)
@@ -259,7 +256,7 @@ class TestSVGDocumentEmbedFonts:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(embed_images=True, embed_fonts=False)
 
         assert "<style>" not in result
@@ -270,14 +267,15 @@ class TestSVGDocumentEmbedFonts:
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(embed_images=True, embed_fonts=True)
 
         assert "<style>" not in result
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_tostring_with_embed_fonts_true(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test tostring with embed_fonts=True adds style element."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -285,16 +283,25 @@ class TestSVGDocumentEmbedFonts:
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg")
-        font = FontInfo(
+        # Mock FontInfo to return a font pointing to our test file
+        mock_font = FontInfo(
             postscript_name="ArialMT",
-            file=str(font_file),
             family="Arial",
             style="Regular",
             weight=80.0,
+            file=str(font_file),
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = mock_font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        svg_elem = ET.Element("svg")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(
             embed_images=True, embed_fonts=True, subset_fonts=False
         )
@@ -306,8 +313,9 @@ class TestSVGDocumentEmbedFonts:
         mock_encode.assert_called_once_with(str(font_file))
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_save_with_embed_fonts_true(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test save with embed_fonts=True writes style element to file."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -316,16 +324,25 @@ class TestSVGDocumentEmbedFonts:
         font_file.write_bytes(b"FAKE_FONT")
         output_file = tmp_path / "output.svg"
 
-        svg_elem = ET.Element("svg")
-        font = FontInfo(
+        # Mock FontInfo to return a font pointing to our test file
+        mock_font = FontInfo(
             postscript_name="ArialMT",
-            file=str(font_file),
             family="Arial",
             style="Regular",
             weight=80.0,
+            file=str(font_file),
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = mock_font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        svg_elem = ET.Element("svg")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
         document.save(
             str(output_file), embed_images=True, embed_fonts=True, subset_fonts=False
         )
@@ -336,8 +353,9 @@ class TestSVGDocumentEmbedFonts:
         assert "font-family: 'Arial'" in content
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_embed_fonts_deduplicates_same_font(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test that duplicate fonts are not embedded multiple times."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -345,24 +363,28 @@ class TestSVGDocumentEmbedFonts:
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg")
-        # Create two FontInfo objects pointing to the same file
-        font1 = FontInfo(
+        # Mock FontInfo to return a font pointing to our test file
+        mock_font = FontInfo(
             postscript_name="ArialMT",
-            file=str(font_file),
             family="Arial",
             style="Regular",
             weight=80.0,
-        )
-        font2 = FontInfo(
-            postscript_name="ArialMT",
             file=str(font_file),
-            family="Arial",
-            style="Regular",
-            weight=80.0,
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = mock_font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
+        svg_elem = ET.Element("svg")
+        # Add two text elements with the same PostScript font name
+        text_elem1 = ET.SubElement(svg_elem, "text")
+        text_elem1.set("font-family", "ArialMT")
+        text_elem1.text = "Test1"
+        text_elem2 = ET.SubElement(svg_elem, "text")
+        text_elem2.set("font-family", "ArialMT")
+        text_elem2.text = "Test2"
+
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(
             embed_images=True, embed_fonts=True, subset_fonts=False
         )
@@ -374,8 +396,9 @@ class TestSVGDocumentEmbedFonts:
         assert result.count("@font-face") == 1
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_embed_fonts_caches_encoded_data(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test that encoded font data is cached across multiple calls."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -383,16 +406,25 @@ class TestSVGDocumentEmbedFonts:
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg")
-        font = FontInfo(
+        # Mock FontInfo to return a font pointing to our test file
+        mock_font = FontInfo(
             postscript_name="ArialMT",
-            file=str(font_file),
             family="Arial",
             style="Regular",
             weight=80.0,
+            file=str(font_file),
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = mock_font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        svg_elem = ET.Element("svg")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Call tostring twice
         document.tostring(embed_images=True, embed_fonts=True, subset_fonts=False)
@@ -409,15 +441,12 @@ class TestSVGDocumentEmbedFonts:
         mock_encode.side_effect = FileNotFoundError("Font not found")
 
         svg_elem = ET.Element("svg")
-        font = FontInfo(
-            postscript_name="MissingFont",
-            file="/nonexistent/font.ttf",
-            family="Missing",
-            style="Regular",
-            weight=80.0,
-        )
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "MissingFont")
+        text_elem.text = "Test"
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(
             embed_images=True, embed_fonts=True, subset_fonts=False
         )
@@ -429,8 +458,9 @@ class TestSVGDocumentEmbedFonts:
         assert "No css font rules inserted" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_embed_fonts_with_multiple_fonts(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test embedding multiple different fonts."""
 
@@ -444,23 +474,41 @@ class TestSVGDocumentEmbedFonts:
         font2_file = tmp_path / "times.ttf"
         font2_file.write_bytes(b"FAKE_FONT2")
 
-        svg_elem = ET.Element("svg")
-        font1 = FontInfo(
-            postscript_name="ArialMT",
-            file=str(font1_file),
-            family="Arial",
-            style="Regular",
-            weight=80.0,
-        )
-        font2 = FontInfo(
-            postscript_name="TimesNewRomanMT",
-            file=str(font2_file),
-            family="Times New Roman",
-            style="Regular",
-            weight=80.0,
-        )
+        # Mock FontInfo.find to return different fonts based on the PostScript name
+        def mock_find_func(ps_name: str, **kwargs: object) -> MagicMock:
+            _ = kwargs  # Unused but needed for signature
+            if ps_name == "ArialMT":
+                mock_font = FontInfo(
+                    postscript_name="ArialMT",
+                    family="Arial",
+                    style="Regular",
+                    weight=80.0,
+                    file=str(font1_file),
+                )
+            else:  # TimesNewRomanMT
+                mock_font = FontInfo(
+                    postscript_name="TimesNewRomanMT",
+                    family="Times New Roman",
+                    style="Regular",
+                    weight=80.0,
+                    file=str(font2_file),
+                )
+            mock_font_instance = MagicMock()
+            mock_font_instance.resolve.return_value = mock_font
+            return mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font1, font2])
+        mock_find.side_effect = mock_find_func
+
+        svg_elem = ET.Element("svg")
+        # Add text elements with different PostScript font names
+        text_elem1 = ET.SubElement(svg_elem, "text")
+        text_elem1.set("font-family", "ArialMT")
+        text_elem1.text = "Arial text"
+        text_elem2 = ET.SubElement(svg_elem, "text")
+        text_elem2.set("font-family", "TimesNewRomanMT")
+        text_elem2.text = "Times text"
+
+        document = SVGDocument(svg=svg_elem, images={})
         result = document.tostring(
             embed_images=True, embed_fonts=True, subset_fonts=False
         )
@@ -475,15 +523,15 @@ class TestSVGDocumentEmbedFonts:
 class TestSVGDocumentRasterizeWithFonts:
     """Tests for font embedding in rasterize() method."""
 
-    @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_rasterize_with_resvg_uses_font_files(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, tmp_path: Path
     ) -> None:
         """Test that ResvgRasterizer receives font files directly."""
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg", width="100", height="100")
+        # Mock FontInfo to return a font pointing to our test file
         font = FontInfo(
             postscript_name="ArialMT",
             file=str(font_file),
@@ -491,8 +539,17 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        svg_elem = ET.Element("svg", width="100", height="100")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
 
         with patch.object(ResvgRasterizer, "from_string") as mock_from_string:
             mock_from_string.return_value = Image.new("RGBA", (100, 100))
@@ -510,9 +567,9 @@ class TestSVGDocumentRasterizeWithFonts:
             svg_arg = mock_from_string.call_args[0][0]
             assert "@font-face" not in svg_arg
 
-    @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find")
     def test_rasterize_with_playwright_embeds_fonts(
-        self, mock_encode: MagicMock, tmp_path: Path
+        self, mock_find: MagicMock, tmp_path: Path
     ) -> None:
         """Test that PlaywrightRasterizer gets fonts embedded with file:// URLs.
 
@@ -527,7 +584,7 @@ class TestSVGDocumentRasterizeWithFonts:
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg", width="100", height="100")
+        # Mock FontInfo to return a font pointing to our test file
         font = FontInfo(
             postscript_name="ArialMT",
             file=str(font_file),
@@ -535,8 +592,17 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        svg_elem = ET.Element("svg", width="100", height="100")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
 
         with patch.object(PlaywrightRasterizer, "from_string") as mock_from_string:
             mock_from_string.return_value = Image.new("RGBA", (100, 100))
@@ -553,7 +619,10 @@ class TestSVGDocumentRasterizeWithFonts:
             assert "file://" in svg_arg
             assert str(font_file) in svg_arg or font_file.as_posix() in svg_arg
 
-    def test_rasterize_with_playwright_uses_file_urls(self, tmp_path: Path) -> None:
+    @patch("psd2svg.core.font_utils.FontInfo.find")
+    def test_rasterize_with_playwright_uses_file_urls(
+        self, mock_find: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that PlaywrightRasterizer gets fonts embedded with file:// URLs."""
         try:
             from psd2svg.rasterizer import PlaywrightRasterizer
@@ -564,13 +633,7 @@ class TestSVGDocumentRasterizeWithFonts:
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT_DATA")
 
-        # Create SVG with text
-        svg_elem = ET.Element("svg", width="100", height="100")
-        text_elem = ET.SubElement(svg_elem, "text", x="10", y="50")
-        text_elem.set("font-family", "Arial")
-        text_elem.text = "Hello World"
-
-        # Create font info
+        # Mock FontInfo to return a font pointing to our test file
         font = FontInfo(
             postscript_name="ArialMT",
             file=str(font_file),
@@ -578,8 +641,17 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = font
+        mock_find.return_value = mock_font_instance
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        # Create SVG with text
+        svg_elem = ET.Element("svg", width="100", height="100")
+        text_elem = ET.SubElement(svg_elem, "text", x="10", y="50")
+        text_elem.set("font-family", "ArialMT")  # Use PostScript name
+        text_elem.text = "Hello World"
+
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Mock the rasterizer to capture the SVG string
         with patch.object(PlaywrightRasterizer, "from_string") as mock_from_string:
@@ -618,16 +690,11 @@ class TestSVGDocumentRasterizeWithFonts:
         text_elem.set("font-family", "Arial")
         text_elem.text = "Hello"
 
-        # Font with non-existent file
-        font = FontInfo(
-            postscript_name="ArialMT",
-            file="/nonexistent/arial.ttf",  # Doesn't exist
-            family="Arial",
-            style="Regular",
-            weight=80.0,
-        )
+        # Note: With the new architecture, fonts are resolved from SVG tree
+        # This test verifies graceful fallback when font resolution fails
+        # (no font file found for the font-family in the SVG)
 
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        document = SVGDocument(svg=svg_elem, images={})
 
         with patch.object(PlaywrightRasterizer, "from_string") as mock_from_string:
             mock_from_string.return_value = Image.new("RGBA", (100, 100))
@@ -653,7 +720,7 @@ class TestAppendCss:
     def test_append_css_basic(self) -> None:
         """Test basic CSS injection into SVG."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         css = "text { font-variant-east-asian: proportional-width; }"
         document.append_css(css)
@@ -665,7 +732,7 @@ class TestAppendCss:
     def test_append_css_creates_style_element(self) -> None:
         """Test that append_css creates <style> element if not present."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Initially no style element
         style_elem = svg_elem.find("style")
@@ -682,7 +749,7 @@ class TestAppendCss:
     def test_append_css_multiple_calls(self) -> None:
         """Test that multiple append_css calls accumulate CSS."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         document.append_css("text { color: red; }")
         document.append_css("rect { fill: blue; }")
@@ -694,7 +761,7 @@ class TestAppendCss:
     def test_append_css_idempotent(self) -> None:
         """Test that appending the same CSS multiple times is idempotent."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         css = "text { font-variant-east-asian: proportional-width; }"
         document.append_css(css)
@@ -709,7 +776,7 @@ class TestAppendCss:
     def test_append_css_with_media_query(self) -> None:
         """Test appending CSS with media query."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         css = "@media print { .no-print { display: none; } }"
         document.append_css(css)
@@ -718,12 +785,15 @@ class TestAppendCss:
         assert "@media print" in svg_string
         assert "no-print" in svg_string
 
-    def test_append_css_with_font_embedding(self, tmp_path: Path) -> None:
+    @patch("psd2svg.core.font_utils.FontInfo.find")
+    def test_append_css_with_font_embedding(
+        self, mock_find: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that append_css works alongside font embedding."""
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
-        svg_elem = ET.Element("svg", width="100", height="100")
+        # Mock FontInfo to return a font pointing to our test file
         font = FontInfo(
             postscript_name="ArialMT",
             file=str(font_file),
@@ -731,7 +801,17 @@ class TestAppendCss:
             style="Regular",
             weight=80.0,
         )
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[font])
+        mock_font_instance = MagicMock()
+        mock_font_instance.resolve.return_value = font
+        mock_find.return_value = mock_font_instance
+
+        svg_elem = ET.Element("svg", width="100", height="100")
+        # Add text element with PostScript font name
+        text_elem = ET.SubElement(svg_elem, "text")
+        text_elem.set("font-family", "ArialMT")
+        text_elem.text = "Test"
+
+        document = SVGDocument(svg=svg_elem, images={})
 
         # Add custom CSS
         document.append_css("text { font-variant-east-asian: proportional-width; }")
@@ -749,7 +829,7 @@ class TestAppendCss:
     def test_append_css_empty_string(self) -> None:
         """Test that appending empty CSS string doesn't cause issues."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         document.append_css("")
 
@@ -760,7 +840,7 @@ class TestAppendCss:
     def test_append_css_with_save(self, tmp_path: Path) -> None:
         """Test that append_css works with save method."""
         svg_elem = ET.Element("svg", width="100", height="100")
-        document = SVGDocument(svg=svg_elem, images={}, fonts=[])
+        document = SVGDocument(svg=svg_elem, images={})
 
         document.append_css("text { color: green; }")
 

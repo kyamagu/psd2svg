@@ -218,35 +218,46 @@ def test_text_writing_direction() -> None:
 
 
 def test_text_style_bold() -> None:
-    """Test bold font weight handling.
+    """Test bold font handling via PostScript names.
 
-    Bold fonts should have font-weight="700" (CSS numeric value).
-    This works better with variable fonts than the keyword "bold".
+    Bold fonts are now encoded in the PostScript name (e.g., "Arial-Bold").
+    Font-weight attributes are only set for faux bold.
     """
     svg = convert_psd_to_svg("texts/style-bold.psd")
-    # Find all tspans with font-weight
-    tspans = svg.findall(".//tspan[@font-weight]")
-    assert len(tspans) > 0, "Should have at least one tspan with font-weight"
+    # Find all tspans with font-family
+    tspans = svg.findall(".//tspan[@font-family]")
+    assert len(tspans) > 0, "Should have at least one tspan with font-family"
 
-    # Check that we have a bold tspan (weight 700)
-    font_weights = [t.attrib.get("font-weight") for t in tspans]
-    assert "700" in font_weights, (
-        f"Expected to find font-weight='700' (bold), got: {font_weights}"
+    # Check that at least one has a bold PostScript name
+    font_families = [t.attrib.get("font-family") for t in tspans]
+    has_bold = any("Bold" in f or "bold" in f for f in font_families if f)
+    assert has_bold, (
+        f"Expected to find a PostScript name with 'Bold', got: {font_families}"
     )
 
 
 def test_text_style_italic() -> None:
-    """Test italic font style handling."""
+    """Test italic font handling via PostScript names.
+
+    Italic fonts are now encoded in the PostScript name (e.g., "Arial-Italic").
+    Font-style attributes are only set for faux italic.
+    """
     svg = convert_psd_to_svg("texts/style-italic.psd")
-    tspan = svg.find(".//tspan[@font-style]")
-    assert tspan is not None
-    assert tspan.attrib.get("font-style") == "italic"
+    tspans = svg.findall(".//tspan[@font-family]")
+    assert len(tspans) > 0, "Should have at least one tspan with font-family"
+
+    # Check that at least one has an italic PostScript name
+    font_families = [t.attrib.get("font-family") for t in tspans]
+    has_italic = any("Italic" in f or "italic" in f or "Oblique" in f for f in font_families if f)
+    assert has_italic, (
+        f"Expected to find a PostScript name with 'Italic' or 'Oblique', got: {font_families}"
+    )
 
 
 def test_text_style_faux_bold() -> None:
     """Test faux bold handling.
 
-    Faux bold (synthetic bold) should set font-weight="700".
+    Faux bold (synthetic bold) should set font-weight="bold".
     This ensures proper rendering even with variable fonts.
     """
     svg = convert_psd_to_svg("texts/style-faux-bold.psd")
@@ -254,10 +265,10 @@ def test_text_style_faux_bold() -> None:
     tspans = svg.findall(".//tspan[@font-weight]")
     assert len(tspans) > 0, "Should have at least one tspan with font-weight"
 
-    # Check that we have a bold tspan (weight 700 for faux bold)
+    # Check that we have a bold tspan (font-weight="bold" for faux bold)
     font_weights = [t.attrib.get("font-weight") for t in tspans]
-    assert "700" in font_weights, (
-        f"Expected to find font-weight='700' (faux bold), got: {font_weights}"
+    assert "bold" in font_weights, (
+        f"Expected to find font-weight='bold' (faux bold), got: {font_weights}"
     )
 
 
