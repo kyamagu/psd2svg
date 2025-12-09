@@ -587,8 +587,9 @@ class SVGDocument:
                 and weight/style attributes.
 
         Returns:
-            Dictionary mapping CSS family names to (FontInfo, character set) tuples.
+            Dictionary mapping font file paths to (FontInfo, character set) tuples.
             This can be used for font embedding without re-resolving fonts.
+            Multiple PostScript names may map to the same file (e.g., TTC collections).
 
         Note:
             - Preserves existing font-weight/font-style (from faux bold/italic)
@@ -664,13 +665,15 @@ class SVGDocument:
 
                 # Step 5: Store resolved font for embedding (if font has file path)
                 if resolved_font.file:
-                    # Use family name as key (deduplicate by family name)
-                    if family_name not in resolved_fonts_map:
-                        resolved_fonts_map[family_name] = (resolved_font, chars_for_font)
+                    # Use file path as key to deduplicate fonts by file
+                    # (multiple PostScript names can map to the same file)
+                    file_key = resolved_font.file
+                    if file_key not in resolved_fonts_map:
+                        resolved_fonts_map[file_key] = (resolved_font, chars_for_font)
                     else:
-                        # Merge characters if family already tracked
-                        existing_font, existing_chars = resolved_fonts_map[family_name]
-                        resolved_fonts_map[family_name] = (
+                        # Merge characters if same file already tracked
+                        existing_font, existing_chars = resolved_fonts_map[file_key]
+                        resolved_fonts_map[file_key] = (
                             existing_font,
                             existing_chars | chars_for_font,
                         )
@@ -692,7 +695,7 @@ class SVGDocument:
 
         Args:
             svg: SVG element to search for font usage.
-            resolved_fonts_map: Optional dict mapping family names to (FontInfo, charset) tuples
+            resolved_fonts_map: Optional dict mapping font file paths to (FontInfo, charset) tuples
                 from _resolve_postscript_names(). If provided, reuses these resolved fonts
                 instead of re-resolving. If None, performs font resolution from scratch.
 
@@ -702,15 +705,8 @@ class SVGDocument:
         """
         # If resolved fonts provided, use them directly (fast path)
         if resolved_fonts_map is not None:
-            # Deduplicate by file path
-            deduplicated: dict[str, tuple[FontInfo, set[str]]] = {}
-            for family_name, (font_info, chars) in resolved_fonts_map.items():
-                if font_info.file:
-                    file_key = font_info.file
-                    if file_key not in deduplicated:
-                        deduplicated[file_key] = (font_info, set())
-                    deduplicated[file_key][1].update(chars)
-            return list(deduplicated.values())
+            # Already deduplicated by file path in _resolve_postscript_names()
+            return list(resolved_fonts_map.values())
 
         # Fallback: Resolve fonts from scratch (slow path)
         resolved_fonts: dict[str, tuple[FontInfo, set[str]]] = {}
@@ -858,7 +854,7 @@ class SVGDocument:
             subset_fonts: If True, subset fonts (only applicable for data URIs).
             font_format: Font format for encoding (only applicable for data URIs).
             use_data_uri: If True, use data URIs; if False, use file:// URLs.
-            resolved_fonts_map: Optional dict mapping family names to (FontInfo, charset) tuples
+            resolved_fonts_map: Optional dict mapping font file paths to (FontInfo, charset) tuples
                 from _resolve_postscript_names(). If provided, reuses these resolved fonts
                 instead of re-resolving. If None, performs font resolution from scratch.
         """
