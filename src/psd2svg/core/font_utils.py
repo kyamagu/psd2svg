@@ -44,6 +44,9 @@ class FontInfo:
         family: Family name.
         style: Style name.
         weight: Weight value. 80.0 is regular and 200.0 is bold.
+        charset: Optional set of characters used with this font (resolution context).
+            This is populated during font resolution to track which characters are
+            actually used with this font for subsetting purposes.
     """
 
     postscript_name: str
@@ -51,6 +54,7 @@ class FontInfo:
     family: str
     style: str
     weight: float
+    charset: set[str] | None = None
 
     @property
     def family_name(self) -> str:
