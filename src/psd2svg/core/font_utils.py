@@ -44,9 +44,10 @@ class FontInfo:
         family: Family name.
         style: Style name.
         weight: Weight value. 80.0 is regular and 200.0 is bold.
-        charset: Optional set of characters used with this font (resolution context).
+        charset: Optional set of Unicode codepoints (integers) used with this font.
             This is populated during font resolution to track which characters are
-            actually used with this font for subsetting purposes.
+            actually used with this font for subsetting purposes. The codepoints
+            are converted to characters only when needed for font subsetting.
     """
 
     postscript_name: str
@@ -54,7 +55,7 @@ class FontInfo:
     family: str
     style: str
     weight: float
-    charset: set[str] | None = None
+    charset: set[int] | None = None
 
     @property
     def family_name(self) -> str:
@@ -264,16 +265,16 @@ class FontInfo:
             >>> # Charset-based resolution
             >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
             >>> resolved = font.resolve(charset_codepoints=codepoints)
-            >>> assert resolved.charset == {'あ', 'い', 'う'}
+            >>> assert resolved.charset == {0x3042, 0x3044, 0x3046}
             >>>
             >>> # Charset merging example
             >>> font_with_charset = FontInfo(
             ...     postscript_name='ArialMT', file='', family='Arial',
-            ...     style='Regular', weight=80.0, charset={'A', 'B'}
+            ...     style='Regular', weight=80.0, charset={0x41, 0x42}  # 'A', 'B'
             ... )
             >>> # Add more characters to existing charset
             >>> resolved = font_with_charset.resolve(charset_codepoints={0x43})  # 'C'
-            >>> assert resolved.charset == {'A', 'B', 'C'}  # Merged charset
+            >>> assert resolved.charset == {0x41, 0x42, 0x43}  # Merged charset
         """
         # If font already has a valid file path, no need to resolve
         if self.file and os.path.exists(self.file):
@@ -287,8 +288,8 @@ class FontInfo:
         if self.charset or charset_codepoints:
             merged_codepoints = set()
             if self.charset:
-                # Convert existing charset to codepoints
-                merged_codepoints.update(ord(c) for c in self.charset)
+                # charset is already codepoints
+                merged_codepoints.update(self.charset)
             if charset_codepoints:
                 merged_codepoints.update(charset_codepoints)
 
@@ -322,10 +323,8 @@ class FontInfo:
                 logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
                 return None
 
-            # Convert codepoints back to character set for storage
-            charset: set[str] | None = None
-            if charset_codepoints:
-                charset = {chr(cp) for cp in charset_codepoints}
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
 
             # Create new FontInfo with resolved metadata and charset
             resolved = FontInfo(
@@ -381,10 +380,8 @@ class FontInfo:
                 )
                 return None
 
-            # Convert codepoints back to character set for storage
-            charset: set[str] | None = None
-            if charset_codepoints:
-                charset = {chr(cp) for cp in charset_codepoints}
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
 
             # Create resolved FontInfo with charset
             resolved = FontInfo(
@@ -552,10 +549,8 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via fontconfig fallback: "
                 f"{match['family']}"
             )
-            # Convert codepoints to charset for storage (if provided)
-            charset: set[str] | None = None
-            if charset_codepoints:
-                charset = {chr(cp) for cp in charset_codepoints}
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
 
             return FontInfo(
                 postscript_name=postscriptname,
@@ -593,10 +588,8 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via Windows registry fallback: "
                 f"{match['family']}"
             )
-            # Convert codepoints to charset for storage (if provided)
-            charset: set[str] | None = None
-            if charset_codepoints:
-                charset = {chr(cp) for cp in charset_codepoints}
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
 
             return FontInfo(
                 postscript_name=postscriptname,
