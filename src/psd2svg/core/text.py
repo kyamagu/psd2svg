@@ -367,7 +367,9 @@ class TextConverter(ConverterProtocol):
                 font_size=style.font_size,
                 font_family=postscript_name,  # Store PostScript name directly
                 font_weight=font_weight,
-                font_style="italic" if style.faux_italic else None,  # Only for faux italic
+                font_style="italic"
+                if style.faux_italic
+                else None,  # Only for faux italic
                 fill=style.get_fill_color(),
                 stroke=style.get_stroke_color(),
                 baseline_shift=style.baseline_shift
@@ -1458,9 +1460,7 @@ class TypeSetting:
         postscriptname = self.get_postscript_name(font_index)
         if postscriptname is None:
             return None
-        return font_utils.FontInfo.find(
-            postscriptname, font_mapping, enable_fontconfig
-        )
+        return font_utils.FontInfo.find(postscriptname, font_mapping, enable_fontconfig)
 
     def get_paragraph_sheet(self, sheet: ParagraphSheet) -> ParagraphSheet:
         """Get the merged paragraph sheet."""

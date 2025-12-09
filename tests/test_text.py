@@ -248,7 +248,9 @@ def test_text_style_italic() -> None:
 
     # Check that at least one has an italic PostScript name
     font_families = [t.attrib.get("font-family") for t in tspans]
-    has_italic = any("Italic" in f or "italic" in f or "Oblique" in f for f in font_families if f)
+    has_italic = any(
+        "Italic" in f or "italic" in f or "Oblique" in f for f in font_families if f
+    )
     assert has_italic, (
         f"Expected to find a PostScript name with 'Italic' or 'Oblique', got: {font_families}"
     )

@@ -427,7 +427,9 @@ class SVGDocument:
         """
         # Try to find font metadata (static mapping first)
         try:
-            font_info = FontInfo.find(postscript_name, charset_codepoints=charset_codepoints)
+            font_info = FontInfo.find(
+                postscript_name, charset_codepoints=charset_codepoints
+            )
         except Exception as e:
             logger.debug(f"FontInfo.find() failed for {postscript_name}: {e}")
             # No mapping found - use PostScript name as-is
@@ -656,7 +658,9 @@ class SVGDocument:
             # Step 3: Resolve PostScript name → family name
             charset_codepoints = None
             if chars_for_font:
-                charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
+                charset_codepoints = font_utils.create_charset_codepoints(
+                    chars_for_font
+                )
                 if charset_codepoints:
                     logger.debug(
                         f"Using {len(charset_codepoints)} codepoints for "
@@ -683,7 +687,9 @@ class SVGDocument:
                         if not element.get("font-weight"):
                             css_weight = resolved_font.css_weight
                             if css_weight != 400:
-                                svg_utils.set_attribute(element, "font-weight", css_weight)
+                                svg_utils.set_attribute(
+                                    element, "font-weight", css_weight
+                                )
 
                         # Set font-style if italic
                         # Note: Only set if element doesn't already have font-style
@@ -732,10 +738,14 @@ class SVGDocument:
             # Step 3: Try to find and resolve font
             charset_codepoints = None
             if chars_for_font:
-                charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
+                charset_codepoints = font_utils.create_charset_codepoints(
+                    chars_for_font
+                )
 
             try:
-                font_info = FontInfo.find(family_name, charset_codepoints=charset_codepoints)
+                font_info = FontInfo.find(
+                    family_name, charset_codepoints=charset_codepoints
+                )
             except Exception as e:
                 logger.debug(f"FontInfo.find() failed for {family_name}: {e}")
                 continue
@@ -752,7 +762,9 @@ class SVGDocument:
                 continue
 
             if not resolved_font or not resolved_font.file:
-                logger.info(f"Cannot embed font '{family_name}': no file path available")
+                logger.info(
+                    f"Cannot embed font '{family_name}': no file path available"
+                )
                 continue
 
             # Step 5: Track for embedding (deduplicate by file path)

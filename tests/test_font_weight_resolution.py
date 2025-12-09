@@ -19,7 +19,7 @@ class TestFontWeightResolution:
         doc._resolve_postscript_names(svg)
 
         # Find text element (need namespace-aware search)
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
 
@@ -35,7 +35,7 @@ class TestFontWeightResolution:
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
         assert text.get("font-family") == "'Arial'"
@@ -49,7 +49,7 @@ class TestFontWeightResolution:
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
         assert text.get("font-family") == "'Arial'"
@@ -64,7 +64,7 @@ class TestFontWeightResolution:
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
         assert text.get("font-family") == "'Arial'"
@@ -79,7 +79,7 @@ class TestFontWeightResolution:
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
         assert text.get("font-family") == "'Arial'"
@@ -93,11 +93,13 @@ class TestFontWeightResolution:
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
         assert text is not None
         assert text.get("font-family") == "'Arial'"
-        assert text.get("font-style") == "italic"  # Preserved from original (faux italic)
+        assert (
+            text.get("font-style") == "italic"
+        )  # Preserved from original (faux italic)
 
     def test_various_font_weights(self) -> None:
         """Test that various font weights are correctly set."""
@@ -116,25 +118,27 @@ class TestFontWeightResolution:
 
             doc._resolve_postscript_names(svg)
 
-            ns = {'svg': 'http://www.w3.org/2000/svg'}
+            ns = {"svg": "http://www.w3.org/2000/svg"}
             text = svg.find(".//svg:text", ns)
             assert text is not None
             assert text.get("font-family") == expected_family, f"Failed for {ps_name}"
-            assert text.get("font-weight") == expected_weight, f"Failed weight for {ps_name}"
+            assert text.get("font-weight") == expected_weight, (
+                f"Failed weight for {ps_name}"
+            )
 
     def test_multiple_elements_same_font(self) -> None:
         """Test that all elements with same PostScript name get weight/style."""
-        svg_str = '''<svg xmlns="http://www.w3.org/2000/svg">
+        svg_str = """<svg xmlns="http://www.w3.org/2000/svg">
             <text font-family="Arial-BoldMT">Text 1</text>
             <text font-family="Arial-BoldMT">Text 2</text>
             <text font-family="Arial-BoldMT">Text 3</text>
-        </svg>'''
+        </svg>"""
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
         doc._resolve_postscript_names(svg)
 
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        ns = {"svg": "http://www.w3.org/2000/svg"}
         texts = svg.findall(".//svg:text", ns)
         assert len(texts) == 3
 
