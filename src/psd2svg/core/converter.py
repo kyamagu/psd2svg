@@ -10,7 +10,6 @@ from psd2svg import svg_utils
 from psd2svg.core.adjustment import AdjustmentConverter
 from psd2svg.core.counter import AutoCounter
 from psd2svg.core.effects import EffectConverter
-from psd2svg.core.font_utils import FontInfo
 from psd2svg.core.layer import LayerConverter
 from psd2svg.core.paint import PaintConverter
 from psd2svg.core.shape import ShapeConverter
@@ -67,10 +66,10 @@ class Converter(
             (default, native SVG <text>), or 1 for <foreignObject> with XHTML wrapping.
             Import TextWrappingMode from psd2svg.core.text for enum values. Only affects
             bounding box text (ShapeType=1); point text always uses native SVG <text> elements.
-        font_mapping: Optional custom font mapping dictionary for fonts not in default mapping.
-        enable_fontconfig: If True (default), fall back to fontconfig for fonts not in static
-            mapping. If False, only use static/custom mapping. Setting to False can prevent
-            unexpected font substitutions when fontconfig is available.
+        font_mapping: Optional custom font mapping dictionary. Takes priority over built-in
+            static mapping. Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+            When not provided, uses built-in mapping for 572 common fonts with automatic fallback
+            to system font resolution (fontconfig/Windows registry) if needed.
     """
 
     _id_counter: AutoCounter | None = None
@@ -85,7 +84,6 @@ class Converter(
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
-        enable_fontconfig: bool = True,
     ) -> None:
         """Initialize the converter internal state."""
 
@@ -100,7 +98,6 @@ class Converter(
         self.text_letter_spacing_offset = text_letter_spacing_offset
         self.text_wrapping_mode = text_wrapping_mode
         self.font_mapping = font_mapping
-        self.enable_fontconfig = enable_fontconfig
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(
@@ -111,9 +108,7 @@ class Converter(
             viewBox=svg_utils.seq2str([0, 0, psdimage.width, psdimage.height], sep=" "),
         )
         self.images: dict[str, Image.Image] = {}  # Store PIL images keyed by image ID.
-        self.fonts: dict[
-            str, FontInfo
-        ] = {}  # Store font info keyed by postscript name.
+        # Note: Font tracking removed - PostScript names are stored directly in SVG font-family attributes
 
         # Initialize the current node pointer.
         self.current = self.svg

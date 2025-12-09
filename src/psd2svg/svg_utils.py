@@ -873,6 +873,61 @@ def consolidate_defs(svg: ET.Element) -> None:
         svg.remove(global_defs)
 
 
+def extract_font_families(svg: ET.Element) -> set[str]:
+    """Extract all unique font families from font-family attributes in SVG tree.
+
+    Scans the SVG element tree for all font-family attributes (both as direct
+    attributes and within style attributes) and extracts all font families
+    from comma-separated lists.
+
+    Args:
+        svg: The SVG element tree to scan.
+
+    Returns:
+        Set of unique font family names found in the SVG.
+
+    Note:
+        - Extracts ALL fonts from comma-separated font-family lists
+        - Strips quotes from font family names
+        - Searches both font-family attributes and CSS style attributes
+
+    Example:
+        >>> svg = fromstring('<svg><text font-family="Arial, sans-serif">Hi</text></svg>')
+        >>> families = extract_font_families(svg)
+        >>> "Arial" in families
+        True
+        >>> "sans-serif" in families
+        True
+    """
+    font_families = set()
+
+    # Find all elements with font-family attribute or style
+    for elem in svg.iter():
+        # Check font-family attribute
+        font_family = elem.get("font-family")
+        if font_family:
+            # Parse comma-separated list, extract all fonts, strip quotes
+            for font in font_family.split(","):
+                font_name = font.strip().strip("'\"")
+                if font_name:
+                    font_families.add(font_name)
+
+        # Also check style attribute for font-family
+        style = elem.get("style")
+        if style and "font-family" in style:
+            # Parse style attribute (simple approach)
+            for part in style.split(";"):
+                if "font-family" in part and ":" in part:
+                    value = part.split(":", 1)[1].strip()
+                    # Parse comma-separated list, extract all fonts
+                    for font in value.split(","):
+                        font_name = font.strip().strip("'\"")
+                        if font_name:
+                            font_families.add(font_name)
+
+    return font_families
+
+
 def find_elements_with_font_family(
     svg: ET.Element, font_family: str
 ) -> list[ET.Element]:
@@ -1028,6 +1083,72 @@ def extract_text_characters(element: ET.Element) -> str:
     )
 
     return result
+
+
+def replace_font_family(
+    element: ET.Element, old_font_family: str, new_font_family: str
+) -> None:
+    """Replace a font family with another in the given element.
+
+    This function modifies an SVG text/tspan element by replacing occurrences
+    of old_font_family with new_font_family in font-family specifications.
+    It handles both font-family attributes and style attributes.
+
+    Args:
+        element: Element to update (typically text or tspan element).
+        old_font_family: Font family name to replace.
+        new_font_family: Font family name to use as replacement.
+
+    Example:
+        Before: <text font-family="ArialMT">Hello</text>
+        After:  <text font-family="'Arial'">Hello</text>
+
+        Before: <text font-family="'ArialMT', 'Helvetica'">Hello</text>
+        After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
+
+        Before: <text style="font-family: ArialMT">Hello</text>
+        After:  <text style="font-family: 'Arial'">Hello</text>
+
+    Note:
+        - Replaces first occurrence of old_font_family in comma-separated list
+        - If old_font_family not found, does nothing
+        - Quotes font family names in the output for CSS compliance
+        - Updates font-family attribute with higher priority than style
+    """
+    # Check font-family attribute first (higher priority)
+    existing_font_family = element.get("font-family")
+    if existing_font_family:
+        # Parse existing font families
+        families = [f.strip().strip("'\"") for f in existing_font_family.split(",")]
+        # Replace old font with new font
+        if old_font_family in families:
+            families = [
+                new_font_family if f == old_font_family else f for f in families
+            ]
+            # Quote all families and rejoin
+            element.set("font-family", ", ".join(f"'{f}'" for f in families))
+        return  # Attribute has priority, don't check style
+
+    # Check style attribute for font-family
+    style = element.get("style")
+    if style and "font-family:" in style:
+
+        def replace_in_style(match: re.Match[str]) -> str:
+            font_family_value = match.group(1).strip()
+            # Parse existing font families
+            families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
+            # Replace old font with new font
+            if old_font_family in families:
+                families = [
+                    new_font_family if f == old_font_family else f for f in families
+                ]
+            # Quote all families and rejoin
+            return "font-family: " + ", ".join(f"'{f}'" for f in families)
+
+        # Replace font-family in style attribute
+        updated_style = re.sub(r"font-family:\s*([^;]+)", replace_in_style, style)
+        if updated_style != style:
+            element.set("style", updated_style)
 
 
 def add_font_family(element: ET.Element, font_family: str) -> None:

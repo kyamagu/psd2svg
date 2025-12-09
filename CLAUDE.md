@@ -109,10 +109,7 @@ This ensures correct rendering when requested fonts are unavailable. Font substi
 ```text
 _insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
   │
-  ├─ _resolve_fonts_with_fallbacks(svg)
-  │   ├─ _extract_font_characters() - Extract characters from text elements
-  │   ├─ _resolve_font_with_charset() - Charset-aware font resolution
-  │   └─ _update_font_fallback_chains() - Update font-family attributes
+  ├─ _collect_resolved_fonts(svg)
   │   └─ Returns: list[(FontInfo, set[str])] (deduplicated by font path)
   │
   ├─ _generate_css_rules_for_fonts()
@@ -129,12 +126,40 @@ _insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
 
 #### 5. Font Resolution Patterns
 
-psd2svg provides two approaches for font resolution depending on your needs:
+**Deferred Resolution Architecture** (current implementation):
 
-**Two-step pattern** (current default):
+psd2svg uses a deferred font resolution approach that preserves original PostScript names from PSD files:
 
 ```python
-# Step 1: Find font metadata (fast, uses static mapping for 572 common fonts)
+# During PSD → SVG conversion:
+# - PostScript names stored directly in font-family attributes
+# - No font resolution performed (fast conversion)
+# - Original PSD intent preserved perfectly
+
+# During output (save/tostring/rasterize):
+# - Extract PostScript names from SVG tree
+# - Resolve PostScript → family names with charset-based matching
+# - Update font-family attributes with resolved names + fallbacks
+# - Embed fonts if requested
+```
+
+**Benefits**:
+
+- **Faster conversion**: No font resolution during PSD parsing
+- **Better accuracy**: Original PostScript names preserved until output
+- **Better matching**: Charset-based resolution with actual text content
+- **No information loss**: Failed resolution doesn't lose PostScript names
+
+**Font resolution flow**:
+
+1. **Conversion time**: `TypeSetting.get_postscript_name(font_index)` extracts PostScript names from PSD font set
+2. **Output time**: `_resolve_postscript_to_family(ps_name, charset_codepoints)` resolves to family names
+3. **Font embedding**: Only performed when `embed_fonts=True` or using PlaywrightRasterizer
+
+**Two-step resolution pattern** (used internally):
+
+```python
+# Step 1: Find font metadata (static mapping for 572 common fonts)
 font = FontInfo.find('ArialMT')
 # Returns immediately if in static mapping, with family/style/weight but no file path
 
@@ -144,24 +169,12 @@ resolved = font.resolve(charset_codepoints=codepoints)
 # Queries system with charset-based matching to find font file
 ```
 
-**Single-step with charset** (improved fallback):
+**Key architectural points**:
 
-```python
-# When characters are known upfront, can provide them to find()
-codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
-font = FontInfo.find('NotoSansCJK-Regular', charset_codepoints=codepoints)
-# Uses charset for platform-specific fallback if static mapping fails
-```
-
-**When to use each pattern**:
-
-- **Two-step**: Default pattern, works for all fonts. Use when characters aren't available during initial font lookup (e.g., during text layer conversion).
-- **Single-step**: Use when you have character information early and want improved fallback for fonts not in static mapping. The charset parameter is ignored for fonts in static mapping (preserving fast performance), but improves resolution success rate for uncommon fonts.
-
-**Key differences**:
-
-- `find()`: Metadata lookup with optional charset-based fallback (Tier 3 only)
-- `resolve()`: System font file resolution with optional charset matching (always queries system)
+- `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD (no resolution)
+- `FontInfo.find()`: Metadata lookup with optional charset-based fallback (Tier 3 only)
+- `FontInfo.resolve()`: System font file resolution with charset matching (always queries system)
+- SVG tree is single source of truth for fonts (no separate font list maintained)
 
 ## Architecture Overview
 

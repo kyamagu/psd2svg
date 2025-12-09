@@ -40,12 +40,12 @@ class SVGDocument:
 
         # Export and load back.
         exported = document.export()
-        document = SVGDocument.load(exported["svg"], exported["images"], exported["fonts"])
+        document = SVGDocument.load(exported["svg"], exported["images"])
     """
 
     svg: ET.Element
     images: dict[str, Image.Image] = dataclasses.field(default_factory=dict)
-    fonts: list[FontInfo] = dataclasses.field(default_factory=list)
+    # Note: fonts property removed - PostScript names stored directly in SVG font-family attributes
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
@@ -60,7 +60,6 @@ class SVGDocument:
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
-        enable_fontconfig: bool = True,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -91,14 +90,12 @@ class SVGDocument:
                 enum values. Only affects bounding box text (ShapeType=1); point text
                 always uses native SVG <text> elements.
             font_mapping: Optional custom font mapping dictionary for resolving PostScript
-                font names to font families without fontconfig. Useful on Windows or when
-                fonts are not installed. Format:
-                {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+                font names to font families. Takes priority over built-in static mapping.
+                Useful for providing custom fonts or overriding default mappings.
+                Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
                 Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
-                When not provided, uses built-in mapping for common fonts.
-            enable_fontconfig: If True (default), fall back to fontconfig for fonts not in
-                static mapping. If False, only use static/custom mapping. Setting to False
-                can prevent unexpected font substitutions when fontconfig is available.
+                When not provided, uses built-in mapping for 572 common fonts, with automatic
+                fallback to system font resolution (fontconfig/Windows registry) if needed.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
@@ -112,14 +109,12 @@ class SVGDocument:
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
             font_mapping=font_mapping,
-            enable_fontconfig=enable_fontconfig,
         )
         converter.build()
 
         document = SVGDocument(
             svg=converter.svg,
             images=converter.images,
-            fonts=list(converter.fonts.values()),
         )
 
         return document
@@ -196,12 +191,16 @@ class SVGDocument:
             svg, embed_images, image_prefix, image_format, svg_filepath=None
         )
 
-        if embed_fonts and self.fonts:
+        # Always resolve PostScript names to CSS font families
+        resolved_fonts_map = self._resolve_postscript_names(svg)
+
+        if embed_fonts:
             self._insert_css_fontface(
                 svg,
                 subset_fonts=subset_fonts,
                 font_format=font_format,
                 use_data_uri=True,
+                resolved_fonts_map=resolved_fonts_map,
             )
 
         if optimize:
@@ -251,12 +250,16 @@ class SVGDocument:
             svg, embed_images, image_prefix, image_format, svg_filepath=filepath
         )
 
-        if embed_fonts and self.fonts:
+        # Always resolve PostScript names to CSS font families
+        resolved_fonts_map = self._resolve_postscript_names(svg)
+
+        if embed_fonts:
             self._insert_css_fontface(
                 svg,
                 subset_fonts=subset_fonts,
                 font_format=font_format,
                 use_data_uri=True,
+                resolved_fonts_map=resolved_fonts_map,
             )
 
         if optimize:
@@ -313,7 +316,7 @@ class SVGDocument:
             is_playwright = False
 
         # NEW PATH: Auto-embed fonts for PlaywrightRasterizer with file:// URLs
-        if is_playwright and self.fonts:
+        if is_playwright:
             # Create a deep copy to avoid modifying the original SVG
             svg = deepcopy(self.svg)
 
@@ -322,12 +325,16 @@ class SVGDocument:
             if nodes:
                 self._embed_images_as_data_uris(nodes, DEFAULT_IMAGE_FORMAT)
 
+            # Always resolve PostScript names to CSS font families
+            resolved_fonts_map = self._resolve_postscript_names(svg)
+
             # Embed fonts with file:// URLs (NEW)
             self._insert_css_fontface(
                 svg,
                 subset_fonts=False,  # No subsetting for file URLs (faster)
                 font_format="ttf",  # Not used for file URLs
                 use_data_uri=False,
+                resolved_fonts_map=resolved_fonts_map,
             )
 
             # Convert to string and rasterize
@@ -335,14 +342,19 @@ class SVGDocument:
             return rasterizer.from_string(svg_str)
 
         # ResvgRasterizer path: Pass font files directly via API
-        if isinstance(rasterizer, ResvgRasterizer) and self.fonts:
+        if isinstance(rasterizer, ResvgRasterizer):
             svg_str = self.tostring(embed_images=True)
+            # Extract font families from SVG and resolve to font files
+            font_families = svg_utils.extract_font_families(self.svg)
             font_files = []
-            for font_info in self.fonts:
-                resolved = font_info.resolve()
-                if resolved and resolved.file:
-                    font_files.append(resolved.file)
-            return rasterizer.from_string(svg_str, font_files=font_files)
+            for ps_name in font_families:
+                resolved_font = FontInfo.find(ps_name)
+                if resolved_font and resolved_font.file:
+                    font_files.append(resolved_font.file)
+            if font_files:
+                return rasterizer.from_string(svg_str, font_files=font_files)
+            else:
+                return rasterizer.from_string(svg_str)
 
         # Default path: No fonts or other rasterizer
         svg_str = self.tostring(embed_images=True)
@@ -352,15 +364,18 @@ class SVGDocument:
         self,
         image_format: str = DEFAULT_IMAGE_FORMAT,
         indent: str = "  ",
-    ) -> dict[str, str | dict[str, bytes] | list[dict[str, str | float]]]:
-        """Export the SVG document in a serializable format."""
+    ) -> dict[str, str | dict[str, bytes]]:
+        """Export the SVG document in a serializable format.
+
+        Note: Font information is now embedded in SVG font-family attributes,
+        so no separate fonts list is exported.
+        """
         return {
             "svg": svg_utils.tostring(self.svg, indent=indent),
             "images": {
                 image_id: image_utils.encode_image(image, image_format)
                 for image_id, image in self.images.items()
             },
-            "fonts": [font_info.to_dict() for font_info in self.fonts],
         }
 
     @classmethod
@@ -368,24 +383,23 @@ class SVGDocument:
         cls,
         svg: str,
         images: dict[str, bytes],
-        fonts: list[dict[str, str | float]] | None = None,
     ) -> "SVGDocument":
         """Load an SVGDocument from SVG content and image bytes.
 
         Args:
             svg: SVG content as a string.
             images: Dictionary mapping image IDs to image bytes.
-            fonts: Optional list of font information dictionaries.
+
+        Note:
+            Font information is stored in SVG font-family attributes, not
+            as a separate parameter.
         """
         svg_node = ET.fromstring(svg)
         images_dict = {
             image_id: image_utils.decode_image(img_bytes)
             for image_id, img_bytes in images.items()
         }
-        font_infos = (
-            [FontInfo.from_dict(font_dict) for font_dict in fonts] if fonts else []
-        )
-        return SVGDocument(svg=svg_node, images=images_dict, fonts=font_infos)
+        return SVGDocument(svg=svg_node, images=images_dict)
 
     def _handle_images(
         self,
@@ -548,139 +562,247 @@ class SVGDocument:
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
 
-    def _extract_font_characters(
-        self, svg: ET.Element, font_info: FontInfo
-    ) -> set[str]:
-        """Extract all characters used by a font in the SVG document.
+    def _extract_font_elements_and_charset(
+        self, svg: ET.Element, font_name: str
+    ) -> tuple[list[ET.Element], set[int] | None]:
+        """Extract elements using a font and their charset codepoints.
 
         Args:
             svg: SVG element to search.
-            font_info: Font information to match elements against.
+            font_name: Font family or PostScript name to search for.
 
         Returns:
-            Set of characters used by this font, or empty set if none found.
+            Tuple of (matching_elements, charset_codepoints).
+            Returns ([], None) if no elements found.
+            Returns (elements, None) if elements found but no characters extracted.
         """
         # Step 1: Find elements using this font
-        matching_elements = svg_utils.find_elements_with_font_family(
-            svg, font_info.family
-        )
+        matching_elements = svg_utils.find_elements_with_font_family(svg, font_name)
+        if not matching_elements:
+            return [], None
 
-        # Step 2: Extract characters from all matching elements
+        # Step 2: Extract characters from these elements
         chars_for_font: set[str] = set()
-        if matching_elements:
-            for element in matching_elements:
-                text_content = svg_utils.extract_text_characters(element)
-                if text_content:
-                    chars_for_font.update(text_content)
+        for element in matching_elements:
+            text_content = svg_utils.extract_text_characters(element)
+            if text_content:
+                chars_for_font.update(text_content)
 
-            if chars_for_font:
-                logger.debug(
-                    f"Extracted {len(chars_for_font)} characters "
-                    f"for font '{font_info.postscript_name}'"
-                )
-
-        return chars_for_font
-
-    def _resolve_font_with_charset(
-        self, font_info: FontInfo, chars: set[str]
-    ) -> FontInfo | None:
-        """Resolve font to system font file with optional charset matching.
-
-        Args:
-            font_info: Font information to resolve.
-            chars: Characters used by this font (for charset-based matching).
-
-        Returns:
-            Resolved FontInfo with file path, or None if resolution failed.
-        """
-        # Create charset codepoints for font resolution
+        # Step 3: Convert to codepoints
         charset_codepoints = None
-        if chars:
-            charset_codepoints = font_utils.create_charset_codepoints(chars)
+        if chars_for_font:
+            charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
             if charset_codepoints:
                 logger.debug(
-                    f"Using {len(charset_codepoints)} codepoints for "
-                    f"charset-based resolution of '{font_info.postscript_name}'"
+                    f"Extracted {len(chars_for_font)} characters "
+                    f"({len(charset_codepoints)} codepoints) for font '{font_name}'"
                 )
 
-        # Resolve font to system font file (with charset if available)
-        resolved_font = font_info.resolve(charset_codepoints=charset_codepoints)
-        if not resolved_font or not resolved_font.is_resolved():
-            return None
+        return matching_elements, charset_codepoints
 
-        return resolved_font
+    def _resolve_postscript_names(self, svg: ET.Element) -> dict[str, FontInfo]:
+        """Resolve PostScript names in SVG to CSS font family names.
 
-    def _update_font_fallback_chains(
-        self, svg: ET.Element, font_info: FontInfo, resolved_font: FontInfo
-    ) -> None:
-        """Update font-family attributes with fallback chains after substitution.
+        Scans SVG for elements with PostScript names in font-family attributes,
+        resolves each to proper CSS family names, and updates font-family,
+        font-weight, and font-style attributes.
 
-        Args:
-            svg: SVG element to search and modify.
-            font_info: Original font information.
-            resolved_font: Resolved font information (may be different if substituted).
-        """
-        # Only update if substitution occurred
-        if resolved_font.family == font_info.family:
-            return
+        PostScript names encode weight and style (e.g., "Arial-BoldMT" = Arial Bold).
+        When resolved to family names, the weight and style are transferred to
+        CSS font-weight and font-style attributes.
 
-        # Find elements and add fallback chains
-        matching_elements = svg_utils.find_elements_with_font_family(
-            svg, font_info.family
-        )
-        if matching_elements:
-            logger.info(
-                f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
-            )
-            for element in matching_elements:
-                svg_utils.add_font_family(element, resolved_font.family)
-
-    def _resolve_fonts_with_fallbacks(
-        self, svg: ET.Element
-    ) -> list[tuple[FontInfo, set[str]]]:
-        """Resolve fonts to system font files and update fallback chains.
-
-        This method processes all fonts in the document, resolving them to actual
-        system font files using charset-based matching when possible. It also
-        updates SVG text elements with fallback chains when font substitution occurs.
+        This method MUST be called for all SVG output (even when embed_fonts=False)
+        to ensure PostScript names are converted to standard CSS that browsers understand.
 
         Args:
-            svg: SVG element to search for font usage and update with fallbacks.
+            svg: SVG element to search for font usage and update with family names
+                and weight/style attributes.
 
         Returns:
-            List of (FontInfo, character set) tuples.
+            Dictionary mapping font file paths to FontInfo instances with charset populated.
+            This can be used for font embedding without re-resolving fonts.
+            Multiple PostScript names may map to the same file (e.g., TTC collections).
+
+        Note:
+            - Preserves existing font-weight/font-style (from faux bold/italic)
+            - Only sets font-weight if not 400 (Regular, CSS default)
+            - Only sets font-style if italic
+        """
+        # Get all unique PostScript names used in SVG
+        postscript_names = svg_utils.extract_font_families(svg)
+
+        # Track resolved fonts for reuse in font embedding
+        resolved_fonts_map: dict[str, FontInfo] = {}
+
+        for ps_name in postscript_names:
+            # Step 1: Extract elements and charset for this PostScript name
+            matching_elements, charset_codepoints = (
+                self._extract_font_elements_and_charset(svg, ps_name)
+            )
+            if not matching_elements:
+                continue
+
+            # Step 2: Resolve PostScript name → family name
+            try:
+                resolved_font = FontInfo.find(
+                    ps_name, charset_codepoints=charset_codepoints
+                )
+            except Exception as e:
+                logger.warning(
+                    f"FontInfo.find() failed for PostScript name '{ps_name}': {e}. "
+                    "Keeping PostScript name in SVG."
+                )
+                resolved_font = None
+            family_name = resolved_font.family if resolved_font else ps_name
+
+            # Step 4: Update font-family attributes and set weight/style
+            if resolved_font:
+                # Font was resolved - update SVG elements
+                if family_name != ps_name:
+                    logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+
+                for element in matching_elements:
+                    # Replace PostScript name with CSS family name (if different)
+                    if family_name != ps_name:
+                        svg_utils.replace_font_family(element, ps_name, family_name)
+
+                    # Set font-weight if not Regular (400)
+                    # Note: Only set if element doesn't already have font-weight
+                    # (preserve faux-bold from text.py if present)
+                    if not element.get("font-weight"):
+                        css_weight = resolved_font.css_weight
+                        if css_weight != 400:
+                            svg_utils.set_attribute(element, "font-weight", css_weight)
+
+                    # Set font-style if italic
+                    # Note: Only set if element doesn't already have font-style
+                    # (preserve faux-italic from text.py if present)
+                    if not element.get("font-style") and resolved_font.italic:
+                        svg_utils.set_attribute(element, "font-style", "italic")
+
+                # Step 5: Store resolved font for embedding (if font has file path)
+                if resolved_font.file:
+                    # Use file path as key to deduplicate fonts by file
+                    # (multiple PostScript names can map to the same file)
+                    file_key = resolved_font.file
+                    if file_key not in resolved_fonts_map:
+                        # Store font with charset (may already be populated from find())
+                        if not resolved_font.charset and charset_codepoints:
+                            resolved_font = dataclasses.replace(
+                                resolved_font, charset=charset_codepoints
+                            )
+                        resolved_fonts_map[file_key] = resolved_font
+                    else:
+                        # Merge codepoints if same file already tracked
+                        existing_font = resolved_fonts_map[file_key]
+                        if existing_font.charset and charset_codepoints:
+                            existing_font.charset.update(charset_codepoints)
+            else:
+                # No resolution - keep PostScript name
+                logger.debug(f"Keeping PostScript name '{ps_name}' (no resolution)")
+
+        return resolved_fonts_map
+
+    def _collect_resolved_fonts(
+        self,
+        svg: ET.Element,
+        resolved_fonts_map: dict[str, FontInfo] | None = None,
+    ) -> list[FontInfo]:
+        """Collect resolved fonts from SVG for CSS @font-face embedding.
+
+        This method should be called AFTER _resolve_postscript_names() has updated
+        font-family attributes to proper CSS family names.
+
+        Args:
+            svg: SVG element to search for font usage.
+            resolved_fonts_map: Optional dict mapping font file paths to FontInfo instances
+                from _resolve_postscript_names(). Used as a cache to avoid re-resolving
+                fonts that already have file paths. Fonts from static mapping (no file path)
+                will still be resolved via system queries.
+
+        Returns:
+            List of FontInfo instances with charset populated for embedding.
             Deduplicates fonts by file path.
         """
-        resolved_fonts: dict[str, tuple[FontInfo, set[str]]] = {}
+        # Use resolved_fonts_map as cache, but still need to resolve fonts without file paths
+        # (e.g., fonts from static mapping that weren't added to the map)
+        resolved_fonts: dict[str, FontInfo] = (
+            resolved_fonts_map.copy() if resolved_fonts_map else {}
+        )
 
-        for font_info in self.fonts:
-            # Step 1: Extract characters used by this font
-            chars_for_font = self._extract_font_characters(svg, font_info)
+        # Get all font families from SVG (now resolved to CSS family names)
+        font_families = svg_utils.extract_font_families(svg)
 
-            # Step 2: Resolve font to system font file (with charset if available)
-            resolved_font = self._resolve_font_with_charset(font_info, chars_for_font)
-            if not resolved_font:
-                logger.info(
-                    f"Cannot insert CSS @font-face for font '{font_info.postscript_name}': "
-                    "no file path available"
+        for family_name in font_families:
+            # Step 1: Extract elements and charset for this font family
+            matching_elements, charset_codepoints = (
+                self._extract_font_elements_and_charset(svg, family_name)
+            )
+            if not matching_elements:
+                continue
+
+            # Step 2: Check if already in cache with valid file path
+            # The cache may contain fonts from platform-specific resolution (with file paths)
+            # but will NOT contain fonts from static mapping (no file paths)
+            cached_font = None
+            for cached in resolved_fonts.values():
+                if cached.family == family_name:
+                    cached_font = cached
+                    break
+
+            if cached_font and cached_font.file:
+                # Font already resolved with file path - merge charset if needed
+                if cached_font.charset and charset_codepoints:
+                    cached_font.charset.update(charset_codepoints)
+                logger.debug(
+                    f"Using cached font for '{family_name}': {cached_font.file}"
                 )
                 continue
 
-            # Step 3: Update fallback chains if substitution occurred
-            self._update_font_fallback_chains(svg, font_info, resolved_font)
-
-            # Skip duplicates (same font file)
-            font_path = resolved_font.file
-            if font_path in resolved_fonts:
+            # Step 3: Not in cache or no file path - need to find and resolve
+            try:
+                found_font: FontInfo | None = FontInfo.find(
+                    family_name, charset_codepoints=charset_codepoints
+                )
+            except Exception as e:
+                logger.debug(f"FontInfo.find() failed for {family_name}: {e}")
                 continue
 
-            resolved_fonts[font_path] = (resolved_font, chars_for_font)
+            if not found_font:
+                logger.debug(f"No font info found for '{family_name}'")
+                continue
+
+            # Step 4: Resolve to system font file (found_font is guaranteed non-None here)
+            try:
+                resolved_font = found_font.resolve(
+                    charset_codepoints=charset_codepoints
+                )
+            except Exception as e:
+                logger.debug(f"Font resolution failed for '{family_name}': {e}")
+                continue
+
+            if not resolved_font or not resolved_font.file:
+                logger.info(
+                    f"Cannot embed font '{family_name}': no file path available"
+                )
+                continue
+
+            # Step 5: Track for embedding (deduplicate by file path)
+            file_key = resolved_font.file
+            if file_key not in resolved_fonts:
+                # Store font with charset (already populated from resolve())
+                resolved_fonts[file_key] = resolved_font
+            else:
+                # Merge codepoints for the same font file
+                existing_font = resolved_fonts[file_key]
+                if existing_font.charset and charset_codepoints:
+                    existing_font.charset.update(charset_codepoints)
 
         return list(resolved_fonts.values())
 
     def _generate_css_rules_for_fonts(
         self,
-        resolved_fonts: list[tuple[FontInfo, set[str]]],
+        resolved_fonts: list[FontInfo],
         subset_fonts: bool,
         font_format: str,
         use_data_uri: bool,
@@ -688,7 +810,7 @@ class SVGDocument:
         """Generate CSS @font-face rules from resolved fonts.
 
         Args:
-            resolved_fonts: List of (FontInfo, character set) tuples.
+            resolved_fonts: List of FontInfo instances with charset populated.
             subset_fonts: If True, subset fonts (only applicable for data URIs).
             font_format: Font format for encoding (only applicable for data URIs).
             use_data_uri: If True, use data URIs; if False, use file:// URLs.
@@ -700,19 +822,19 @@ class SVGDocument:
         css_rules: list[str] = []
         source_desc = "data URI" if use_data_uri else "file:// URL"
 
-        for resolved_font, chars_for_font in resolved_fonts:
+        for resolved_font in resolved_fonts:
             # Step 4: Generate CSS source (data URI or file URL)
             try:
                 # Generate CSS source based on mode
                 if use_data_uri:
-                    # Prepare subset characters
-                    subset_chars: set[str] = set()
-                    if subset_fonts and chars_for_font:
-                        subset_chars = chars_for_font
+                    # Prepare subset characters from FontInfo.charset (convert codepoints to chars)
+                    subset_chars: set[str] | None = None
+                    if subset_fonts and resolved_font.charset:
+                        subset_chars = {chr(cp) for cp in resolved_font.charset}
                     css_source = font_utils.encode_font_with_options(
                         font_path=resolved_font.file,
                         cache=self._font_data_cache,
-                        subset_chars=subset_chars if subset_chars else None,
+                        subset_chars=subset_chars,
                         font_format=font_format,
                     )
                 else:
@@ -748,22 +870,27 @@ class SVGDocument:
         subset_fonts: bool,
         font_format: str,
         use_data_uri: bool,
+        resolved_fonts_map: dict[str, FontInfo] | None = None,
     ) -> None:
         """Insert CSS @font-face rules in a <style> element.
 
         This is the unified implementation for both data URI and file URL approaches.
 
+        NOTE: This method should be called AFTER _resolve_postscript_names() has
+        converted PostScript names to CSS font families in the SVG.
+
         Args:
-            svg: SVG element to modify in-place.
+            svg: SVG element to modify in-place (must have PostScript names resolved).
             subset_fonts: If True, subset fonts (only applicable for data URIs).
             font_format: Font format for encoding (only applicable for data URIs).
             use_data_uri: If True, use data URIs; if False, use file:// URLs.
+            resolved_fonts_map: Optional dict mapping font file paths to FontInfo instances
+                from _resolve_postscript_names(). If provided, reuses these resolved fonts
+                instead of re-resolving. If None, performs font resolution from scratch.
         """
-        if not self.fonts:
-            return
-
-        # Resolve fonts and update fallback chains
-        resolved_fonts = self._resolve_fonts_with_fallbacks(svg)
+        # Collect resolved fonts for CSS embedding
+        # (assumes PostScript names already resolved to CSS families)
+        resolved_fonts = self._collect_resolved_fonts(svg, resolved_fonts_map)
 
         # Generate CSS rules
         css_rules = self._generate_css_rules_for_fonts(

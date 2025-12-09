@@ -44,6 +44,10 @@ class FontInfo:
         family: Family name.
         style: Style name.
         weight: Weight value. 80.0 is regular and 200.0 is bold.
+        charset: Optional set of Unicode codepoints (integers) used with this font.
+            This is populated during font resolution to track which characters are
+            actually used with this font for subsetting purposes. The codepoints
+            are converted to characters only when needed for font subsetting.
     """
 
     postscript_name: str
@@ -51,6 +55,7 @@ class FontInfo:
     family: str
     style: str
     weight: float
+    charset: set[int] | None = None
 
     @property
     def family_name(self) -> str:
@@ -220,20 +225,30 @@ class FontInfo:
     def resolve(self, charset_codepoints: set[int] | None = None) -> Self | None:
         """Resolve font to actual available system font via fontconfig.
 
-        This method queries fontconfig to find the actual font file and complete
-        metadata for the font. When charset_codepoints is provided, resolution
-        prioritizes fonts with better glyph coverage for those characters.
+        This method queries the system font resolver (fontconfig/Windows registry)
+        to find the actual font file and complete metadata. When charset information
+        is available (either from self.charset or charset_codepoints parameter),
+        resolution prioritizes fonts with better glyph coverage for those characters.
+
+        **Charset Merging**: If this FontInfo instance already has a charset (self.charset)
+        and charset_codepoints is also provided, the method merges both character sets
+        (union operation) before font resolution. This ensures the resolved font supports
+        ALL characters from both the existing context and the new request.
 
         Args:
-            charset_codepoints: Optional set of Unicode codepoints (integers)
-                to filter fonts by glyph coverage. When provided:
-                - Linux/macOS: Passed to fontconfig via CharSet
-                - Windows: Used to check cmap table coverage
-                When None, uses standard PostScript name matching.
+            charset_codepoints: Optional set of Unicode codepoints (integers) for
+                additional charset-based font matching. When provided:
+                - Merged with self.charset (if present) before resolution
+                - Used for charset-based font matching:
+                  * Linux/macOS: Passed to fontconfig via CharSet API
+                  * Windows: Used to check cmap table coverage
+                - When None and self.charset is None: Uses standard PostScript name matching
 
         Returns:
-            New FontInfo instance with resolved metadata, or None if font not found.
-            The original FontInfo instance is not modified (immutable pattern).
+            New FontInfo instance with resolved metadata and merged charset, or None
+            if font not found. The original FontInfo instance is not modified
+            (immutable pattern). The returned FontInfo.charset contains the merged
+            character set used for resolution.
 
         Note:
             Generic family (sans-serif, serif, monospace) is not included in the
@@ -242,13 +257,23 @@ class FontInfo:
             external databases.
 
         Example:
-            >>> # Standard resolution
+            >>> # Standard resolution (no charset)
             >>> font = FontInfo.find('ArialMT')
             >>> resolved = font.resolve()
             >>>
             >>> # Charset-based resolution
             >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
             >>> resolved = font.resolve(charset_codepoints=codepoints)
+            >>> assert resolved.charset == {0x3042, 0x3044, 0x3046}
+            >>>
+            >>> # Charset merging example
+            >>> font_with_charset = FontInfo(
+            ...     postscript_name='ArialMT', file='', family='Arial',
+            ...     style='Regular', weight=80.0, charset={0x41, 0x42}  # 'A', 'B'
+            ... )
+            >>> # Add more characters to existing charset
+            >>> resolved = font_with_charset.resolve(charset_codepoints={0x43})  # 'C'
+            >>> assert resolved.charset == {0x41, 0x42, 0x43}  # Merged charset
         """
         # If font already has a valid file path, no need to resolve
         if self.file and os.path.exists(self.file):
@@ -257,13 +282,23 @@ class FontInfo:
             )
             return self
 
+        # Merge existing charset with requested charset_codepoints for resolution
+        merged_codepoints: set[int] | None = None
+        if self.charset or charset_codepoints:
+            merged_codepoints = set()
+            if self.charset:
+                # charset is already codepoints
+                merged_codepoints.update(self.charset)
+            if charset_codepoints:
+                merged_codepoints.update(charset_codepoints)
+
         # Try platform-specific resolution
         if HAS_FONTCONFIG:
             # Linux/macOS: Use fontconfig with CharSet support
-            return self._resolve_fontconfig(charset_codepoints)
+            return self._resolve_fontconfig(merged_codepoints)
         elif HAS_WINDOWS_FONTS:
             # Windows: Use registry + cmap checking
-            return self._resolve_windows(charset_codepoints)
+            return self._resolve_windows(merged_codepoints)
         else:
             logger.debug(
                 f"Cannot resolve font '{self.postscript_name}': "
@@ -272,7 +307,12 @@ class FontInfo:
             return None
 
     def _resolve_fontconfig(self, charset_codepoints: set[int] | None) -> Self | None:
-        """Resolve font using fontconfig (Linux/macOS)."""
+        """Resolve font using fontconfig (Linux/macOS).
+
+        Args:
+            charset_codepoints: Merged charset codepoints (already combined with self.charset
+                by resolve() method). Used for charset-based font matching.
+        """
         logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
 
         try:
@@ -282,13 +322,17 @@ class FontInfo:
                 logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
                 return None
 
-            # Create new FontInfo with resolved metadata
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
+
+            # Create new FontInfo with resolved metadata and charset
             resolved = FontInfo(
                 postscript_name=self.postscript_name,
                 file=str(match["file"]),  # type: ignore
                 family=str(match["family"]),  # type: ignore
                 style=str(match["style"]),  # type: ignore
                 weight=float(match["weight"]),  # type: ignore
+                charset=charset,
             )
 
             # Log if font substitution occurred
@@ -318,7 +362,12 @@ class FontInfo:
             return None
 
     def _resolve_windows(self, charset_codepoints: set[int] | None) -> Self | None:
-        """Resolve font using Windows registry (Windows only)."""
+        """Resolve font using Windows registry (Windows only).
+
+        Args:
+            charset_codepoints: Merged charset codepoints (already combined with self.charset
+                by resolve() method). Used for charset-based font matching.
+        """
         logger.debug(f"Resolving font '{self.postscript_name}' via Windows registry")
 
         try:
@@ -330,13 +379,17 @@ class FontInfo:
                 )
                 return None
 
-            # Create resolved FontInfo
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
+
+            # Create resolved FontInfo with charset
             resolved = FontInfo(
                 postscript_name=self.postscript_name,
                 file=str(match["file"]),
                 family=str(match["family"]),
                 style=str(match["style"]),
                 weight=float(match["weight"]),
+                charset=charset,
             )
 
             # Log substitution
@@ -481,7 +534,8 @@ class FontInfo:
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
 
         Returns:
-            FontInfo object if found, None otherwise.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided,
+            the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
@@ -494,12 +548,16 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via fontconfig fallback: "
                 f"{match['family']}"
             )
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
+
             return FontInfo(
                 postscript_name=postscriptname,
                 file=match["file"],  # type: ignore
                 family=match["family"],  # type: ignore
                 style=match["style"],  # type: ignore
                 weight=match["weight"],  # type: ignore
+                charset=charset,
             )
 
         return None
@@ -515,7 +573,8 @@ class FontInfo:
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
 
         Returns:
-            FontInfo object if found, None otherwise.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided,
+            the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying Windows registry..."
@@ -528,12 +587,16 @@ class FontInfo:
                 f"Resolved '{postscriptname}' via Windows registry fallback: "
                 f"{match['family']}"
             )
+            # Store codepoints directly
+            charset: set[int] | None = charset_codepoints
+
             return FontInfo(
                 postscript_name=postscriptname,
                 file=str(match["file"]),
                 family=str(match["family"]),
                 style=str(match["style"]),
                 weight=float(match["weight"]),
+                charset=charset,
             )
 
         return None
@@ -542,41 +605,49 @@ class FontInfo:
     def find(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
-        enable_fontconfig: bool = True,
         charset_codepoints: set[int] | None = None,
+        disable_static_mapping: bool = False,
     ) -> Self | None:
         """Find font information by PostScript name.
 
         This method tries multiple strategies to resolve the font:
-        1. Try custom font mapping if provided (takes priority)
+        1. Try custom font mapping if provided (takes priority, always checked)
         2. Try static font mapping (fast, deterministic, cross-platform)
+           - Can be disabled with disable_static_mapping=True
         3. Fall back to platform-specific resolution with optional charset matching:
-           - Linux/macOS: fontconfig (if enabled)
-           - Windows: Registry + fontTools parsing
+           - Linux/macOS: fontconfig (always enabled if available)
+           - Windows: Registry + fontTools parsing (always enabled if available)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
             font_mapping: Optional custom font mapping dictionary. Takes priority
                          over default mapping. Format:
                          {"PostScriptName": {"family": str, "style": str, "weight": float}}
-            enable_fontconfig: If True, fall back to platform-specific resolution
-                              for fonts not in static mapping. If False, only use
-                              static/custom mapping. Default: True.
             charset_codepoints: Optional set of Unicode codepoints for charset-based
                                font matching. Only used during platform-specific fallback
                                (tier 3) when font is not found in static mapping. When
                                provided, prioritizes fonts with better glyph coverage
                                for the specified characters. Gracefully falls back to
                                name-only matching on errors. Default: None.
+            disable_static_mapping: If True, skip static mapping and go directly to
+                                   platform-specific resolution. Useful when font file
+                                   paths are required (e.g., for font embedding).
+                                   Custom font_mapping is still checked if provided.
+                                   Default: False.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
 
         Note:
             Static mapping provides family/style/weight but no file path. This is
-            sufficient for SVG text rendering. Font embedding requires platform-
-            specific resolution (fontconfig or Windows registry) to locate the
-            actual font files on the system.
+            sufficient for SVG text rendering when embed_fonts=False. Font embedding
+            requires platform-specific resolution (fontconfig or Windows registry) to
+            locate the actual font files on the system.
+
+            When disable_static_mapping=True, the method skips static mapping and
+            directly queries the system for font files, ensuring file paths are
+            available for embedding. This is the recommended approach when
+            embed_fonts=True to avoid redundant resolution steps.
 
             Charset matching is only applied during platform-specific fallback when
             the font is not found in custom or static mapping. This preserves the
@@ -587,49 +658,61 @@ class FontInfo:
             >>> # Standard resolution (fast for fonts in static mapping)
             >>> font = FontInfo.find('ArialMT')
             >>>
+            >>> # Skip static mapping for font embedding scenarios
+            >>> font = FontInfo.find('ArialMT', disable_static_mapping=True)
+            >>> assert font.file  # Guaranteed to have file path if found
+            >>>
             >>> # With charset matching for better fallback
             >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
             >>> font = FontInfo.find('NotoSansCJK-Regular', charset_codepoints=codepoints)
         """
-        mapping_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
-        if mapping_data:
-            logger.debug(
-                f"Resolved '{postscriptname}' via static font mapping: "
-                f"{mapping_data['family']}"
-            )
-            return FontInfo(
-                postscript_name=postscriptname,
-                file="",  # No file path available from static mapping
-                family=str(mapping_data["family"]),
-                style=str(mapping_data["style"]),
-                weight=float(mapping_data["weight"]),
-            )
-
-        # Fall back to platform-specific resolution for fonts not in static mapping
-        if enable_fontconfig:
-            # Try fontconfig (Linux/macOS)
-            if HAS_FONTCONFIG:
-                result = FontInfo._find_via_fontconfig(
-                    postscriptname, charset_codepoints
+        # Check custom mapping first (always, even if disable_static_mapping=True)
+        if font_mapping:
+            custom_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
+            if custom_data:
+                logger.debug(
+                    f"Resolved '{postscriptname}' via custom font mapping: "
+                    f"{custom_data['family']}"
                 )
-                if result:
-                    return result
+                return FontInfo(
+                    postscript_name=postscriptname,
+                    file="",  # No file path available from custom mapping
+                    family=str(custom_data["family"]),
+                    style=str(custom_data["style"]),
+                    weight=float(custom_data["weight"]),
+                )
 
-            # Try Windows registry (Windows)
-            elif HAS_WINDOWS_FONTS:
-                result = FontInfo._find_via_windows(postscriptname, charset_codepoints)
-                if result:
-                    return result
+        # Check static mapping (unless disabled)
+        if not disable_static_mapping:
+            static_data = _font_mapping.find_in_mapping(postscriptname, None)
+            if static_data:
+                logger.debug(
+                    f"Resolved '{postscriptname}' via static font mapping: "
+                    f"{static_data['family']}"
+                )
+                return FontInfo(
+                    postscript_name=postscriptname,
+                    file="",  # No file path available from static mapping
+                    family=str(static_data["family"]),
+                    style=str(static_data["style"]),
+                    weight=float(static_data["weight"]),
+                )
 
-        # Font not found in any mapping
-        if not enable_fontconfig:
-            logger.warning(
-                f"Font '{postscriptname}' not found in static font mapping "
-                "(platform-specific lookup disabled). "
-                "Text will be converted without font-family attribute. "
-                "Consider providing a custom font mapping via the font_mapping parameter."
-            )
-        elif not HAS_FONTCONFIG and not HAS_WINDOWS_FONTS:
+        # Fall back to platform-specific resolution
+        # Try fontconfig (Linux/macOS)
+        if HAS_FONTCONFIG:
+            result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
+            if result:
+                return result
+
+        # Try Windows registry (Windows)
+        elif HAS_WINDOWS_FONTS:
+            result = FontInfo._find_via_windows(postscriptname, charset_codepoints)
+            if result:
+                return result
+
+        # Font not found in any tier
+        if not HAS_FONTCONFIG and not HAS_WINDOWS_FONTS:
             logger.warning(
                 f"Font '{postscriptname}' not found in static font mapping "
                 "(platform-specific resolution not available). "

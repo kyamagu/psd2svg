@@ -9,7 +9,7 @@ from psd_tools.constants import BlendMode
 from psd_tools.psd.descriptor import Descriptor
 
 if TYPE_CHECKING:
-    from psd2svg.core.font_utils import FontInfo
+    pass
 
 
 class ConverterProtocol(Protocol):
@@ -19,7 +19,7 @@ class ConverterProtocol(Protocol):
     svg: ET.Element
     current: ET.Element
     images: dict[str, Image.Image]
-    fonts: dict[str, "FontInfo"]
+    # Note: fonts dict removed - PostScript names stored directly in SVG
 
     # Flags to control the conversion.
     enable_live_shapes: bool

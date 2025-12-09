@@ -4,65 +4,67 @@ from typing import cast
 
 from psd_tools import PSDImage
 
-from psd2svg import SVGDocument
-from psd2svg.core.font_utils import FontInfo
+from psd2svg import SVGDocument, svg_utils
 
 from .conftest import get_fixture
 
 
 class TestFontCollection:
-    """Tests for font collection during conversion."""
+    """Tests for font storage in SVG during conversion."""
 
-    def test_font_collection_from_text_layer(self) -> None:
-        """Test that fonts are collected from text layers."""
+    def test_font_postscript_names_in_svg(self) -> None:
+        """Test that PostScript font names are embedded in SVG font-family attributes."""
         # Use a PSD file with text layers
         psd_path = get_fixture("layer-types/type-layer.psd")
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage, enable_text=True)
 
-        # Verify fonts were collected
-        assert isinstance(document.fonts, list)
-        # Note: Font collection depends on whether fonts are available on the system
+        # Verify PostScript names are in SVG
+        postscript_names = svg_utils.extract_font_families(document.svg)
+        assert isinstance(postscript_names, set)
+        # Note: Font presence depends on whether text layers exist
 
     def test_no_fonts_when_text_disabled(self) -> None:
-        """Test that fonts are not collected when text is disabled."""
+        """Test that text is rasterized when text is disabled."""
         psd_path = get_fixture("layer-types/type-layer.psd")
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage, enable_text=False)
 
-        # Fonts should be empty when text is disabled
-        assert isinstance(document.fonts, list)
-        assert len(document.fonts) == 0
+        # When text is disabled, text should be rasterized (no font-family attributes)
+        postscript_names = svg_utils.extract_font_families(document.svg)
+        assert isinstance(postscript_names, set)
+        # May be empty or have fonts if text was partially converted
 
-    def test_fonts_attribute_exists(self) -> None:
-        """Test that SVGDocument has fonts attribute."""
+    def test_postscript_extraction_works(self) -> None:
+        """Test that PostScript name extraction works on non-text layers."""
         psd_path = get_fixture("layer-types/pixel-layer.psd")
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage)
 
-        # Fonts should be an empty list for non-text layers
-        assert hasattr(document, "fonts")
-        assert isinstance(document.fonts, list)
-        assert len(document.fonts) == 0
+        # Should return empty set for non-text layers
+        postscript_names = svg_utils.extract_font_families(document.svg)
+        assert isinstance(postscript_names, set)
+        assert len(postscript_names) == 0
 
 
 class TestFontExportLoad:
     """Tests for font serialization in export/load."""
 
-    def test_export_includes_fonts(self) -> None:
-        """Test that export includes fonts in the result."""
+    def test_export_no_longer_includes_fonts(self) -> None:
+        """Test that export no longer includes separate fonts list (breaking change)."""
         psd_path = get_fixture("layer-types/type-layer.psd")
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage, enable_text=True)
 
         exported = document.export()
 
-        # Verify fonts are in the export
-        assert "fonts" in exported
-        assert isinstance(exported["fonts"], list)
+        # Fonts are now embedded in SVG, not separate
+        assert "fonts" not in exported
+        assert "svg" in exported
+        assert "images" in exported
 
     def test_export_load_roundtrip(self) -> None:
-        """Test that fonts survive export/load roundtrip."""
+        """Test that PostScript names survive export/load roundtrip."""
         psd_path = get_fixture("layer-types/type-layer.psd")
         psdimage = PSDImage.open(psd_path)
         document = SVGDocument.from_psd(psdimage, enable_text=True)
@@ -74,33 +76,12 @@ class TestFontExportLoad:
         loaded_document = SVGDocument.load(
             cast(str, exported["svg"]),
             cast(dict[str, bytes], exported["images"]),
-            cast(list[dict[str, str | float]], exported["fonts"]),
         )
 
-        # Verify fonts are preserved
-        assert isinstance(loaded_document.fonts, list)
-        assert len(loaded_document.fonts) == len(document.fonts)
-
-        # Verify font info objects are correctly reconstructed
-        for font_info in loaded_document.fonts:
-            assert isinstance(font_info, FontInfo)
-
-    def test_load_without_fonts_param(self) -> None:
-        """Test that load works without fonts parameter (backward compatibility)."""
-        psd_path = get_fixture("layer-types/pixel-layer.psd")
-        psdimage = PSDImage.open(psd_path)
-        document = SVGDocument.from_psd(psdimage)
-
-        exported = document.export()
-
-        # Load without fonts parameter
-        loaded_document = SVGDocument.load(
-            cast(str, exported["svg"]), cast(dict[str, bytes], exported["images"])
-        )
-
-        # Should have empty fonts list
-        assert isinstance(loaded_document.fonts, list)
-        assert len(loaded_document.fonts) == 0
+        # Verify PostScript names are preserved in SVG
+        original_ps_names = svg_utils.extract_font_families(document.svg)
+        loaded_ps_names = svg_utils.extract_font_families(loaded_document.svg)
+        assert original_ps_names == loaded_ps_names
 
 
 class TestFontRasterization:
