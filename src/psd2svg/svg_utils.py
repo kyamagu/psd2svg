@@ -939,6 +939,9 @@ def _element_uses_font_family(
 
     Returns:
         True if element uses the target font, False otherwise.
+
+    Note:
+        Ignores CSS 'font' shorthand property, only checks 'font-family'.
     """
     current = element
     while True:
@@ -1027,39 +1030,50 @@ def extract_text_characters(element: ET.Element) -> str:
     return result
 
 
-def add_font_family(
-    element: ET.Element, original_family: str, fallback_family: str
-) -> None:
-    """Add fallback font to font-family in the given element.
+def add_font_family(element: ET.Element, font_family: str) -> None:
+    """Add font family to font-family specification in the given element.
 
-    This function modifies an SVG text/tspan element by appending a fallback font family
-    to its existing font-family specification. It handles both font-family attributes
-    and font-family declarations within style attributes.
+    This function modifies an SVG text/tspan element by appending a font family
+    to its existing font-family specification if not already present. It handles both
+    font-family attributes and font-family declarations within style attributes.
+
+    Behavior:
+        - If element has font-family attribute: append font to it
+        - Else if element has font-family in style: append font to style
+        - Else: create new font-family attribute with the font
+        - If both attribute and style exist: append to attribute (higher priority)
 
     Args:
         element: Element to update (typically text or tspan element).
-        original_family: Original font family name to match.
-        fallback_family: Fallback font family name to append.
+        font_family: Font family name to add.
 
     Example:
         Before: <text font-family="Arial">Hello</text>
         After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
 
-        Before: <tspan style="font-family: Arial">Hello</tspan>
-        After:  <tspan style="font-family: 'Arial', 'Helvetica'">Hello</tspan>
+        Before: <text style="font-family: Arial">Hello</text>
+        After:  <text style="font-family: 'Arial', 'Helvetica'">Hello</text>
+
+        Before: <text>Hello</text>
+        After:  <text font-family="'Helvetica'">Hello</text>
 
     Note:
-        - Only updates element if font-family exactly matches original_family
-        - Updates both font-family attributes and style attributes
+        - Updates font-family attribute with higher priority than style
         - Quotes font family names in the output for CSS compliance
+        - Idempotent: does not add font if already present in the chain
+        - Ignores CSS 'font' shorthand property, only handles 'font-family'
     """
-    # Check font-family attribute
-    font_family = element.get("font-family")
-    if font_family:
-        # Add fallback chain
-        clean_family = font_family.strip("'\"")
-        if clean_family == original_family:
-            element.set("font-family", f"'{original_family}', '{fallback_family}'")
+    # Check font-family attribute first (higher priority)
+    existing_font_family = element.get("font-family")
+    if existing_font_family:
+        # Parse existing font families
+        families = [f.strip().strip("'\"") for f in existing_font_family.split(",")]
+        # Only add if not already present
+        if font_family not in families:
+            families.append(font_family)
+            # Quote all families and rejoin
+            element.set("font-family", ", ".join(f"'{f}'" for f in families))
+        return  # Attribute has priority, don't check style
 
     # Check style attribute for font-family
     style = element.get("style")
@@ -1067,17 +1081,22 @@ def add_font_family(
 
         def replace_font_family(match: re.Match[str]) -> str:
             font_family_value = match.group(1).strip()
-            # Parse the first font (requested font)
+            # Parse existing font families
             families = [f.strip().strip("'\"") for f in font_family_value.split(",")]
-            if families and families[0] == original_family:
-                # Build fallback chain
-                return f"font-family: '{original_family}', '{fallback_family}'"
-            return match.group(0)
+            # Only add if not already present
+            if font_family not in families:
+                families.append(font_family)
+            # Quote all families and rejoin
+            return "font-family: " + ", ".join(f"'{f}'" for f in families)
 
         # Replace font-family in style attribute
         updated_style = re.sub(r"font-family:\s*([^;]+)", replace_font_family, style)
         if updated_style != style:
             element.set("style", updated_style)
+        return
+
+    # No font-family found, create new attribute
+    element.set("font-family", f"'{font_family}'")
 
 
 def insert_or_update_style_element(svg: ET.Element, css_content: str) -> None:
