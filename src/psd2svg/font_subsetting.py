@@ -69,17 +69,17 @@ def extract_used_unicode(svg_tree: ET.Element) -> dict[str, set[str]]:
 def subset_font(
     input_path: str,
     output_format: str,
-    unicode_chars: set[str],
+    unicode_codepoints: set[int],
 ) -> bytes:
-    """Subset a font file to include only specified Unicode characters.
+    """Subset a font file to include only specified Unicode codepoints.
 
     This function uses fontTools (pyftsubset) to create a minimal font file
-    containing only the glyphs needed for the specified characters.
+    containing only the glyphs needed for the specified codepoints.
 
     Args:
         input_path: Path to input font file (TTF/OTF).
         output_format: Output format - "ttf", "otf", or "woff2".
-        unicode_chars: Set of Unicode characters to include in the subset.
+        unicode_codepoints: Set of Unicode codepoints (integers) to include in the subset.
 
     Returns:
         Subset font file as bytes.
@@ -89,8 +89,8 @@ def subset_font(
         Exception: If subsetting fails (invalid font, I/O error, etc.).
 
     Example:
-        >>> chars = {"A", "B", "C", "あ"}
-        >>> font_bytes = subset_font("/usr/share/fonts/arial.ttf", "woff2", chars)
+        >>> codepoints = {0x41, 0x42, 0x43, 0x3042}  # A, B, C, あ
+        >>> font_bytes = subset_font("/usr/share/fonts/arial.ttf", "woff2", codepoints)
         >>> len(font_bytes)  # Much smaller than original
         8432
     """
@@ -100,17 +100,17 @@ def subset_font(
             f"Supported formats: ttf, otf, woff2"
         )
 
-    if not unicode_chars:
+    if not unicode_codepoints:
         logger.warning(
-            "No Unicode characters provided for subsetting, using all glyphs"
+            "No Unicode codepoints provided for subsetting, using all glyphs"
         )
 
-    # Convert characters to Unicode code points
-    unicodes = _chars_to_unicode_list(unicode_chars)
+    # Convert to sorted list for fontTools
+    unicodes = sorted(unicode_codepoints)
 
     logger.debug(
         f"Subsetting font: {input_path} -> {output_format} "
-        f"({len(unicode_chars)} char(s), {len(unicodes)} codepoint(s))"
+        f"({len(unicode_codepoints)} codepoint(s))"
     )
 
     try:

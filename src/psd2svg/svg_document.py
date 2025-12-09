@@ -812,14 +812,14 @@ class SVGDocument:
             try:
                 # Generate CSS source based on mode
                 if use_data_uri:
-                    # Prepare subset characters from FontInfo.charset (convert codepoints to chars)
-                    subset_chars: set[str] | None = None
+                    # Prepare subset codepoints from FontInfo.charset
+                    subset_codepoints: set[int] | None = None
                     if subset_fonts and resolved_font.charset:
-                        subset_chars = {chr(cp) for cp in resolved_font.charset}
+                        subset_codepoints = resolved_font.charset
                     css_source = font_utils.encode_font_with_options(
                         font_path=resolved_font.file,
                         cache=self._font_data_cache,
-                        subset_chars=subset_chars,
+                        subset_codepoints=subset_codepoints,
                         font_format=font_format,
                     )
                 else:

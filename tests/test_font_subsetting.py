@@ -155,10 +155,10 @@ class TestFontSubsetting:
         if not font_info:
             pytest.skip("Arial font not available")
 
-        # Subset with just a few characters
-        chars = {"A", "B", "C"}
+        # Subset with just a few characters (as codepoints)
+        codepoints = {0x41, 0x42, 0x43}  # A, B, C
         try:
-            font_bytes = subset_font(font_info.file, "ttf", chars)
+            font_bytes = subset_font(font_info.file, "ttf", codepoints)
         except (KeyError, Exception) as e:
             pytest.skip(f"Font subsetting failed (corrupt font file?): {e}")
 
@@ -176,9 +176,9 @@ class TestFontSubsetting:
         if not font_info:
             pytest.skip("Arial font not available")
 
-        chars = {"H", "e", "l", "o", "W", "r", "d"}
+        codepoints = {0x48, 0x65, 0x6C, 0x6F, 0x57, 0x72, 0x64}  # H, e, l, o, W, r, d
         try:
-            font_bytes = subset_font(font_info.file, "woff2", chars)
+            font_bytes = subset_font(font_info.file, "woff2", codepoints)
         except (KeyError, Exception) as e:
             pytest.skip(f"Font subsetting failed (corrupt font file?): {e}")
 
@@ -197,7 +197,9 @@ class TestFontSubsetting:
 
         # Small subset (3 chars)
         try:
-            small_subset = subset_font(font_info.file, "ttf", {"A", "B", "C"})
+            small_subset = subset_font(
+                font_info.file, "ttf", {0x41, 0x42, 0x43}
+            )  # A, B, C
         except (KeyError, Exception) as e:
             pytest.skip(f"Font subsetting failed (corrupt font file?): {e}")
 
@@ -206,7 +208,7 @@ class TestFontSubsetting:
             large_subset = subset_font(
                 font_info.file,
                 "ttf",
-                set("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+                {ord(c) for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"},
             )
         except (KeyError, Exception) as e:
             pytest.skip(f"Font subsetting failed (corrupt font file?): {e}")
@@ -222,7 +224,7 @@ class TestFontSubsetting:
         """Test error with unsupported font format."""
 
         with pytest.raises(ValueError, match="Unsupported font format"):
-            subset_font("/fake/path.ttf", "invalid", {"A"})
+            subset_font("/fake/path.ttf", "invalid", {0x41})  # A
 
     @pytest.mark.requires_noto_sans_jp
     def test_subset_font_unicode_chars(self) -> None:
@@ -232,10 +234,10 @@ class TestFontSubsetting:
         if not font_info:
             pytest.skip("Noto Sans JP font not available")
 
-        # Subset with Japanese characters
-        chars = {"こ", "ん", "に", "ち", "は"}
+        # Subset with Japanese characters (as codepoints)
+        codepoints = {0x3053, 0x3093, 0x306B, 0x3061, 0x306F}  # こ, ん, に, ち, は
         try:
-            font_bytes = subset_font(font_info.file, "woff2", chars)
+            font_bytes = subset_font(font_info.file, "woff2", codepoints)
         except (KeyError, Exception) as e:
             pytest.skip(f"Font subsetting failed (corrupt font file?): {e}")
 
