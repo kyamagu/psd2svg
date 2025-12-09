@@ -726,7 +726,9 @@ class SVGDocument:
         """
         # Use resolved_fonts_map as cache, but still need to resolve fonts without file paths
         # (e.g., fonts from static mapping that weren't added to the map)
-        resolved_fonts: dict[str, FontInfo] = resolved_fonts_map.copy() if resolved_fonts_map else {}
+        resolved_fonts: dict[str, FontInfo] = (
+            resolved_fonts_map.copy() if resolved_fonts_map else {}
+        )
 
         # Get all font families from SVG (now resolved to CSS family names)
         font_families = svg_utils.extract_font_families(svg)
@@ -752,7 +754,9 @@ class SVGDocument:
                 # Font already resolved with file path - merge charset if needed
                 if cached_font.charset and charset_codepoints:
                     cached_font.charset.update(charset_codepoints)
-                logger.debug(f"Using cached font for '{family_name}': {cached_font.file}")
+                logger.debug(
+                    f"Using cached font for '{family_name}': {cached_font.file}"
+                )
                 continue
 
             # Step 3: Not in cache or no file path - need to find and resolve

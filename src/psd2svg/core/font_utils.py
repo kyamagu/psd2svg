@@ -222,7 +222,6 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
-
     def resolve(self, charset_codepoints: set[int] | None = None) -> Self | None:
         """Resolve font to actual available system font via fontconfig.
 
@@ -702,9 +701,7 @@ class FontInfo:
         # Fall back to platform-specific resolution
         # Try fontconfig (Linux/macOS)
         if HAS_FONTCONFIG:
-            result = FontInfo._find_via_fontconfig(
-                postscriptname, charset_codepoints
-            )
+            result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
             if result:
                 return result
 
