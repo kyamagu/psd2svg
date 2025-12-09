@@ -187,14 +187,9 @@ class SVGDocument:
             svg, embed_images, image_prefix, image_format, svg_filepath=svg_filepath
         )
 
-        # EARLY SPLIT: Different font resolution strategies based on embed_fonts
-        # This optimization eliminates unnecessary charset extraction and platform
-        # queries when only CSS family names are needed.
+        # Early split: different font resolution strategies for embed_fonts
         if embed_fonts:
-            # Path 1: Full resolution with font files and charset
-            # - Uses platform-specific resolution (fontconfig/Windows registry)
-            # - Extracts charset from text elements for optimal matching
-            # - Returns resolved_fonts_map for font embedding
+            # Full resolution: platform queries + charset extraction + file paths
             resolved_fonts_map = self._resolve_postscript_names_for_embedding(svg)
             self._insert_css_fontface(
                 svg,
@@ -204,11 +199,7 @@ class SVGDocument:
                 resolved_fonts_map=resolved_fonts_map,
             )
         else:
-            # Path 2: Lightweight static mapping only
-            # - Uses static mapping (572 fonts) with NO platform queries
-            # - Does NOT extract charset (performance optimization)
-            # - Preserves PostScript names when fonts not in static mapping
-            # - No resolved_fonts_map needed (no embedding)
+            # Static mapping only: no platform queries, no charset extraction
             self._resolve_postscript_names_static(svg)
 
         if optimize:
