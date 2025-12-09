@@ -4,7 +4,7 @@ from typing import cast
 
 from psd_tools import PSDImage
 
-from psd2svg import SVGDocument
+from psd2svg import SVGDocument, svg_utils
 
 from .conftest import get_fixture
 
@@ -20,7 +20,7 @@ class TestFontCollection:
         document = SVGDocument.from_psd(psdimage, enable_text=True)
 
         # Verify PostScript names are in SVG
-        postscript_names = document._extract_postscript_names_from_svg(document.svg)
+        postscript_names = svg_utils.extract_font_families(document.svg)
         assert isinstance(postscript_names, set)
         # Note: Font presence depends on whether text layers exist
 
@@ -31,7 +31,7 @@ class TestFontCollection:
         document = SVGDocument.from_psd(psdimage, enable_text=False)
 
         # When text is disabled, text should be rasterized (no font-family attributes)
-        postscript_names = document._extract_postscript_names_from_svg(document.svg)
+        postscript_names = svg_utils.extract_font_families(document.svg)
         assert isinstance(postscript_names, set)
         # May be empty or have fonts if text was partially converted
 
@@ -42,7 +42,7 @@ class TestFontCollection:
         document = SVGDocument.from_psd(psdimage)
 
         # Should return empty set for non-text layers
-        postscript_names = document._extract_postscript_names_from_svg(document.svg)
+        postscript_names = svg_utils.extract_font_families(document.svg)
         assert isinstance(postscript_names, set)
         assert len(postscript_names) == 0
 
@@ -79,8 +79,8 @@ class TestFontExportLoad:
         )
 
         # Verify PostScript names are preserved in SVG
-        original_ps_names = document._extract_postscript_names_from_svg(document.svg)
-        loaded_ps_names = loaded_document._extract_postscript_names_from_svg(loaded_document.svg)
+        original_ps_names = svg_utils.extract_font_families(document.svg)
+        loaded_ps_names = svg_utils.extract_font_families(loaded_document.svg)
         assert original_ps_names == loaded_ps_names
 
     def test_load_with_deprecated_fonts_param(self) -> None:

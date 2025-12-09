@@ -474,10 +474,11 @@ class TestSVGDocumentEmbedFonts:
         font2_file = tmp_path / "times.ttf"
         font2_file.write_bytes(b"FAKE_FONT2")
 
-        # Mock FontInfo.find to return different fonts based on the PostScript name
-        def mock_find_func(ps_name: str, **kwargs: object) -> MagicMock:
+        # Mock FontInfo.find to handle both PostScript names and family names
+        def mock_find_func(font_name: str, **kwargs: object) -> MagicMock:
             _ = kwargs  # Unused but needed for signature
-            if ps_name == "ArialMT":
+            # Handle PostScript names (ArialMT) and family names (Arial)
+            if font_name in ("ArialMT", "Arial"):
                 mock_font = FontInfo(
                     postscript_name="ArialMT",
                     family="Arial",
@@ -485,7 +486,7 @@ class TestSVGDocumentEmbedFonts:
                     weight=80.0,
                     file=str(font1_file),
                 )
-            else:  # TimesNewRomanMT
+            else:  # TimesNewRomanMT or "Times New Roman"
                 mock_font = FontInfo(
                     postscript_name="TimesNewRomanMT",
                     family="Times New Roman",
