@@ -256,7 +256,8 @@ class TestFontInfoFind:
         }
 
         # Use a font name that's definitely not in the static mapping
-        font = FontInfo.find("CustomFont-Regular")
+        # Must use disable_static_mapping=True to enable platform fallback
+        font = FontInfo.find("CustomFont-Regular", disable_static_mapping=True)
 
         assert font is not None
         assert font.postscript_name == "CustomFont-Regular"
@@ -297,7 +298,7 @@ class TestFontInfoFind:
         mock_match.return_value = None
 
         with caplog.at_level(logging.WARNING):
-            font = FontInfo.find("NonExistentFont")
+            font = FontInfo.find("NonExistentFont", disable_static_mapping=True)
 
         assert font is None
         assert "Font 'NonExistentFont' not found" in caplog.text
@@ -312,7 +313,7 @@ class TestFontInfoFind:
         mock_match.return_value = {}
 
         with caplog.at_level(logging.WARNING):
-            font = FontInfo.find("EmptyFont")
+            font = FontInfo.find("EmptyFont", disable_static_mapping=True)
 
         assert font is None
         assert "Font 'EmptyFont' not found" in caplog.text
@@ -328,7 +329,7 @@ class TestFontInfoFind:
             "weight": 200.0,
         }
 
-        font = FontInfo.find("CustomFont-Bold")
+        font = FontInfo.find("CustomFont-Bold", disable_static_mapping=True)
 
         assert font is not None
         assert font.bold is True
@@ -345,7 +346,7 @@ class TestFontInfoFind:
             "weight": 80.0,
         }
 
-        font = FontInfo.find("CustomFont-Italic")
+        font = FontInfo.find("CustomFont-Italic", disable_static_mapping=True)
 
         assert font is not None
         assert font.bold is False
@@ -362,7 +363,7 @@ class TestFontInfoFind:
             "weight": 200.0,
         }
 
-        font = FontInfo.find("CustomFont-BoldItalic")
+        font = FontInfo.find("CustomFont-BoldItalic", disable_static_mapping=True)
 
         assert font is not None
         assert font.bold is True
@@ -379,7 +380,7 @@ class TestFontInfoFind:
             "weight": 80.0,
         }
 
-        font = FontInfo.find("SpecialFont-Regular_1.0")
+        font = FontInfo.find("SpecialFont-Regular_1.0", disable_static_mapping=True)
 
         assert font is not None
         assert font.postscript_name == "SpecialFont-Regular_1.0"
@@ -921,7 +922,11 @@ class TestFontInfoFindWithCharset:
         # Test with charset codepoints (Japanese hiragana)
         # Use a font name NOT in static mapping
         codepoints = {0x3042, 0x3044, 0x3046}
-        font = FontInfo.find("MyCustomCJKFont-Regular", charset_codepoints=codepoints)
+        font = FontInfo.find(
+            "MyCustomCJKFont-Regular",
+            charset_codepoints=codepoints,
+            disable_static_mapping=True,
+        )
 
         assert font is not None
         assert font.postscript_name == "MyCustomCJKFont-Regular"
@@ -981,7 +986,9 @@ class TestFontInfoFindWithCharset:
         codepoints = {0x3042, 0x3044}
 
         with caplog.at_level(logging.WARNING):
-            font = FontInfo.find("CustomFont", charset_codepoints=codepoints)
+            font = FontInfo.find(
+                "CustomFont", charset_codepoints=codepoints, disable_static_mapping=True
+            )
 
         # Should still succeed via fallback
         assert font is not None
@@ -1012,7 +1019,7 @@ class TestFontInfoFindWithCharset:
         }
 
         # No charset_codepoints parameter
-        font = FontInfo.find("CustomFont-Regular")
+        font = FontInfo.find("CustomFont-Regular", disable_static_mapping=True)
 
         assert font is not None
 

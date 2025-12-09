@@ -16,7 +16,7 @@ class TestFontWeightResolution:
         doc = SVGDocument(svg=svg, images={})
 
         # Resolve PostScript names
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         # Find text element (need namespace-aware search)
         ns = {"svg": "http://www.w3.org/2000/svg"}
@@ -33,7 +33,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
@@ -47,7 +47,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
@@ -62,7 +62,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
@@ -77,7 +77,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
@@ -91,7 +91,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         text = svg.find(".//svg:text", ns)
@@ -116,7 +116,7 @@ class TestFontWeightResolution:
             svg = ET.fromstring(svg_str)
             doc = SVGDocument(svg=svg, images={})
 
-            doc._resolve_postscript_names(svg)
+            doc._resolve_postscript_names_static(svg)
 
             ns = {"svg": "http://www.w3.org/2000/svg"}
             text = svg.find(".//svg:text", ns)
@@ -136,7 +136,7 @@ class TestFontWeightResolution:
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
-        doc._resolve_postscript_names(svg)
+        doc._resolve_postscript_names_static(svg)
 
         ns = {"svg": "http://www.w3.org/2000/svg"}
         texts = svg.findall(".//svg:text", ns)

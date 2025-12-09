@@ -69,22 +69,33 @@ psd2svg uses a **two-phase approach** to optimize performance:
 
 #### Resolution Methods
 
-**Static Mapping** (cross-platform, no dependencies):
+psd2svg provides two distinct resolution methods optimized for different use cases:
 
-- 572 common fonts mapped by PostScript name
+**`FontInfo.find_static()`** - For CSS family names only:
+
+- Resolution chain: Custom mapping → Static mapping (572 fonts) → None
 - Returns family name, style, and weight (no file path)
-- Used when `embed_fonts=False` for fast resolution
+- NO platform-specific queries (no fontconfig/Windows registry)
+- Preserves original PostScript names in SVG when fonts not found
+- Used when `embed_fonts=False` (prevents unwanted font substitution)
+- Fast, cross-platform, no system dependencies
 
-**Platform-Specific Resolution** (requires system queries):
+**`FontInfo.find_with_files()`** - For font file access:
 
+- Resolution chain: Custom mapping → Platform-specific resolution
+- Returns complete font metadata including file path
 - **Linux/macOS**: fontconfig with CharSet API (fontconfig-py >= 0.4.0)
 - **Windows**: Windows registry + fontTools cmap parsing
-- Returns complete font metadata including file path
-- Used when `embed_fonts=True` to locate font files for embedding
+- Used when `embed_fonts=True` or for rasterization
+- May substitute fonts based on system availability
 
-**Resolution Priority**: Custom mapping → Static mapping → Platform-specific
+**`FontInfo.find()`** - Backward-compatible wrapper:
 
-**Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
+- Delegates to `find_static()` by default (safe behavior)
+- Use `disable_static_mapping=True` to delegate to `find_with_files()`
+- Maintained for backward compatibility; prefer explicit methods in new code
+
+**Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter (always checked first, regardless of method used). See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
 
 #### Charset-Based Font Matching
 
@@ -112,8 +123,9 @@ When resolving fonts, psd2svg analyzes actual text characters for better matchin
 #### Key API Methods
 
 - `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD
-- `FontInfo.find()`: Find font metadata (static mapping or platform-specific)
-  - With `disable_static_mapping=True`: Skip static mapping, go directly to platform resolution (optimization for `embed_fonts=True`)
+- `FontInfo.find_static()`: Resolve PostScript name to CSS family (no platform queries)
+- `FontInfo.find_with_files()`: Resolve PostScript name to font file with platform resolution
+- `FontInfo.find()`: Backward-compatible wrapper (delegates to `find_static()` or `find_with_files()`)
 - `FontInfo.resolve()`: Resolve to system font file with charset matching
 - SVG tree is single source of truth for fonts (no separate font list maintained)
 

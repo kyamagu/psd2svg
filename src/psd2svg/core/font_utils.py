@@ -608,65 +608,86 @@ class FontInfo:
         charset_codepoints: set[int] | None = None,
         disable_static_mapping: bool = False,
     ) -> Self | None:
-        """Find font information by PostScript name.
+        """Find font information by PostScript name (backward-compatible wrapper).
 
-        This method tries multiple strategies to resolve the font:
-        1. Try custom font mapping if provided (takes priority, always checked)
-        2. Try static font mapping (fast, deterministic, cross-platform)
-           - Can be disabled with disable_static_mapping=True
-        3. Fall back to platform-specific resolution with optional charset matching:
-           - Linux/macOS: fontconfig (always enabled if available)
-           - Windows: Registry + fontTools parsing (always enabled if available)
+        This method is kept for backward compatibility. New code should use the more
+        explicit methods:
+        - find_static() for CSS family names (embed_fonts=False scenarios)
+        - find_with_files() for font embedding (embed_fonts=True scenarios)
+
+        This wrapper delegates to the appropriate method based on disable_static_mapping:
+        - If disable_static_mapping=False: Uses find_static() (name resolution only)
+        - If disable_static_mapping=True: Uses find_with_files() (with file paths)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
-            font_mapping: Optional custom font mapping dictionary. Takes priority
-                         over default mapping. Format:
+            font_mapping: Optional custom font mapping dictionary. Format:
                          {"PostScriptName": {"family": str, "style": str, "weight": float}}
             charset_codepoints: Optional set of Unicode codepoints for charset-based
-                               font matching. Only used during platform-specific fallback
-                               (tier 3) when font is not found in static mapping. When
-                               provided, prioritizes fonts with better glyph coverage
-                               for the specified characters. Gracefully falls back to
-                               name-only matching on errors. Default: None.
-            disable_static_mapping: If True, skip static mapping and go directly to
-                                   platform-specific resolution. Useful when font file
-                                   paths are required (e.g., for font embedding).
-                                   Custom font_mapping is still checked if provided.
+                               font matching. Only used when disable_static_mapping=True
+                               (platform resolution). Default: None.
+            disable_static_mapping: If True, use find_with_files(); if False, use find_static().
                                    Default: False.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
 
-        Note:
-            Static mapping provides family/style/weight but no file path. This is
-            sufficient for SVG text rendering when embed_fonts=False. Font embedding
-            requires platform-specific resolution (fontconfig or Windows registry) to
-            locate the actual font files on the system.
+        Example:
+            >>> # Standard resolution (static mapping)
+            >>> font = FontInfo.find('ArialMT')
+            >>> # Is equivalent to:
+            >>> font = FontInfo.find_static('ArialMT')
+            >>>
+            >>> # Font embedding resolution (platform-specific)
+            >>> font = FontInfo.find('ArialMT', disable_static_mapping=True)
+            >>> # Is equivalent to:
+            >>> font = FontInfo.find_with_files('ArialMT')
+        """
+        if disable_static_mapping:
+            return FontInfo.find_with_files(
+                postscriptname, font_mapping, charset_codepoints
+            )
+        else:
+            return FontInfo.find_static(postscriptname, font_mapping)
 
-            When disable_static_mapping=True, the method skips static mapping and
-            directly queries the system for font files, ensuring file paths are
-            available for embedding. This is the recommended approach when
-            embed_fonts=True to avoid redundant resolution steps.
+    @staticmethod
+    def find_static(
+        postscriptname: str,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
+    ) -> Self | None:
+        """Find font using custom and static mappings only (no platform resolution).
 
-            Charset matching is only applied during platform-specific fallback when
-            the font is not found in custom or static mapping. This preserves the
-            performance benefit of static mapping for common fonts while improving
-            resolution success rate for fonts not in the static mapping.
+        This method resolves PostScript names to CSS font families without accessing
+        system fonts. It is suitable for SVG generation when embed_fonts=False, where
+        only CSS font family names are needed and platform-specific font substitution
+        would cause visual artifacts.
+
+        Resolution order:
+        1. Custom font mapping (if provided)
+        2. Static font mapping (572 common fonts)
+        3. Return None if not found (preserves PostScript name in SVG)
+
+        Args:
+            postscriptname: PostScript name of the font (e.g., "ArialMT").
+            font_mapping: Optional custom font mapping dictionary. Takes priority
+                         over static mapping. Format:
+                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+
+        Returns:
+            FontInfo object with family/style/weight (no file path), or None if not found.
+            When None is returned, the PostScript name will be preserved in the SVG output.
 
         Example:
-            >>> # Standard resolution (fast for fonts in static mapping)
-            >>> font = FontInfo.find('ArialMT')
+            >>> # Resolve common font (found in static mapping)
+            >>> font = FontInfo.find_static('ArialMT')
+            >>> assert font.family == 'Arial'
+            >>> assert font.file == ''  # No file path
             >>>
-            >>> # Skip static mapping for font embedding scenarios
-            >>> font = FontInfo.find('ArialMT', disable_static_mapping=True)
-            >>> assert font.file  # Guaranteed to have file path if found
-            >>>
-            >>> # With charset matching for better fallback
-            >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
-            >>> font = FontInfo.find('NotoSansCJK-Regular', charset_codepoints=codepoints)
+            >>> # Resolve uncommon font (not in static mapping)
+            >>> font = FontInfo.find_static('UnknownFont')
+            >>> assert font is None  # Preserves PostScript name in SVG
         """
-        # Check custom mapping first (always, even if disable_static_mapping=True)
+        # 1. Check custom mapping first
         if font_mapping:
             custom_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
             if custom_data:
@@ -676,29 +697,96 @@ class FontInfo:
                 )
                 return FontInfo(
                     postscript_name=postscriptname,
-                    file="",  # No file path available from custom mapping
+                    file="",
                     family=str(custom_data["family"]),
                     style=str(custom_data["style"]),
                     weight=float(custom_data["weight"]),
                 )
 
-        # Check static mapping (unless disabled)
-        if not disable_static_mapping:
-            static_data = _font_mapping.find_in_mapping(postscriptname, None)
-            if static_data:
+        # 2. Check static mapping
+        static_data = _font_mapping.find_in_mapping(postscriptname, None)
+        if static_data:
+            logger.debug(
+                f"Resolved '{postscriptname}' via static font mapping: "
+                f"{static_data['family']}"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file="",
+                family=str(static_data["family"]),
+                style=str(static_data["style"]),
+                weight=float(static_data["weight"]),
+            )
+
+        # 3. Not found - return None (no platform fallback)
+        logger.debug(
+            f"Font '{postscriptname}' not found in static mapping. "
+            "Keeping PostScript name in SVG."
+        )
+        return None
+
+    @staticmethod
+    def find_with_files(
+        postscriptname: str,
+        font_mapping: dict[str, dict[str, float | str]] | None = None,
+        charset_codepoints: set[int] | None = None,
+    ) -> Self | None:
+        """Find font using platform-specific resolution (with file paths).
+
+        This method locates font files on the system using fontconfig (Linux/macOS)
+        or Windows registry. It is suitable for font embedding scenarios (embed_fonts=True)
+        where actual font files must be located and embedded in the output.
+
+        Static mapping is skipped as an optimization since it doesn't provide file paths.
+        Platform-specific resolution may perform font substitution if the exact PostScript
+        name is not found, which is acceptable for embedding scenarios.
+
+        Resolution order:
+        1. Custom font mapping (if provided)
+        2. Platform resolution: fontconfig (Linux/macOS) or Windows registry
+        3. Return None if not found
+
+        Args:
+            postscriptname: PostScript name of the font (e.g., "ArialMT").
+            font_mapping: Optional custom font mapping dictionary. Takes priority
+                         over platform resolution. Format:
+                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+            charset_codepoints: Optional set of Unicode codepoints for charset-based
+                               font matching. When provided, prioritizes fonts with better
+                               glyph coverage for the specified characters. Gracefully falls
+                               back to name-only matching on errors. Default: None.
+
+        Returns:
+            FontInfo object with family/style/weight AND file path, or None if not found.
+            Note that custom mapping entries will have empty file path.
+
+        Example:
+            >>> # Resolve font with file path for embedding
+            >>> font = FontInfo.find_with_files('ArialMT')
+            >>> if font and font.file:
+            ...     print(f"Font file: {font.file}")
+            >>>
+            >>> # With charset matching for better multilingual support
+            >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
+            >>> font = FontInfo.find_with_files('NotoSansCJK-Regular', charset_codepoints=codepoints)
+        """
+        # 1. Check custom mapping first
+        if font_mapping:
+            custom_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
+            if custom_data:
                 logger.debug(
-                    f"Resolved '{postscriptname}' via static font mapping: "
-                    f"{static_data['family']}"
+                    f"Resolved '{postscriptname}' via custom font mapping: "
+                    f"{custom_data['family']}"
                 )
                 return FontInfo(
                     postscript_name=postscriptname,
-                    file="",  # No file path available from static mapping
-                    family=str(static_data["family"]),
-                    style=str(static_data["style"]),
-                    weight=float(static_data["weight"]),
+                    file="",  # Custom mapping doesn't provide file paths
+                    family=str(custom_data["family"]),
+                    style=str(custom_data["style"]),
+                    weight=float(custom_data["weight"]),
                 )
 
-        # Fall back to platform-specific resolution
+        # 2. Platform-specific resolution (skip static mapping - optimization)
         # Try fontconfig (Linux/macOS)
         if HAS_FONTCONFIG:
             result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
@@ -711,19 +799,17 @@ class FontInfo:
             if result:
                 return result
 
-        # Font not found in any tier
+        # 3. Not found
         if not HAS_FONTCONFIG and not HAS_WINDOWS_FONTS:
             logger.warning(
-                f"Font '{postscriptname}' not found in static font mapping "
-                "(platform-specific resolution not available). "
-                "Text will be converted without font-family attribute. "
+                f"Font '{postscriptname}' not found: "
+                "platform-specific font resolution not available. "
                 "Consider providing a custom font mapping via the font_mapping parameter."
             )
         else:
             platform_name = "fontconfig" if HAS_FONTCONFIG else "Windows registry"
             logger.warning(
-                f"Font '{postscriptname}' not found via static mapping or {platform_name}. "
-                "Text will be converted without font-family attribute. "
+                f"Font '{postscriptname}' not found via {platform_name}. "
                 "Make sure the font is installed on your system, or provide a custom "
                 "font mapping via the font_mapping parameter."
             )
