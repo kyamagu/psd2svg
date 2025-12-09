@@ -400,6 +400,131 @@ class FontInfo:
             return None
 
     @staticmethod
+    def _find_via_fontconfig(
+        postscriptname: str, charset_codepoints: set[int] | None
+    ) -> Self | None:
+        """Find font via fontconfig with optional charset matching.
+
+        Args:
+            postscriptname: PostScript name of the font.
+            charset_codepoints: Optional set of Unicode codepoints for charset matching.
+
+        Returns:
+            FontInfo object if found, None otherwise.
+        """
+        logger.debug(
+            f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
+        )
+
+        try:
+            if charset_codepoints is not None:
+                # Use charset-based matching
+                logger.debug(
+                    f"Using charset with {len(charset_codepoints)} codepoints "
+                    f"for '{postscriptname}'"
+                )
+                charset = fontconfig.CharSet.from_codepoints(sorted(charset_codepoints))
+                match = fontconfig.match(
+                    properties={
+                        "postscriptname": postscriptname,
+                        "charset": charset,
+                    },
+                    select=("file", "family", "style", "weight"),
+                )
+            else:
+                # Standard PostScript name matching
+                match = fontconfig.match(
+                    pattern=f":postscriptname={postscriptname}",
+                    select=("file", "family", "style", "weight"),
+                )
+        except Exception as e:
+            # Graceful degradation: fall back to name-only matching
+            if charset_codepoints is not None:
+                logger.warning(
+                    f"Charset-based matching failed for '{postscriptname}': {e}. "
+                    "Falling back to name-only matching"
+                )
+                match = fontconfig.match(
+                    pattern=f":postscriptname={postscriptname}",
+                    select=("file", "family", "style", "weight"),
+                )
+            else:
+                # If name-only matching also failed, re-raise
+                raise
+
+        if match:
+            logger.info(
+                f"Resolved '{postscriptname}' via fontconfig fallback: "
+                f"{match['family']}"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file=match["file"],  # type: ignore
+                family=match["family"],  # type: ignore
+                style=match["style"],  # type: ignore
+                weight=match["weight"],  # type: ignore
+            )
+
+        return None
+
+    @staticmethod
+    def _find_via_windows(
+        postscriptname: str, charset_codepoints: set[int] | None
+    ) -> Self | None:
+        """Find font via Windows registry with optional charset matching.
+
+        Args:
+            postscriptname: PostScript name of the font.
+            charset_codepoints: Optional set of Unicode codepoints for charset matching.
+
+        Returns:
+            FontInfo object if found, None otherwise.
+        """
+        logger.debug(
+            f"Font '{postscriptname}' not in static mapping, "
+            "trying Windows registry..."
+        )
+        resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
+
+        try:
+            if charset_codepoints is not None:
+                # Use charset-based matching
+                logger.debug(
+                    f"Using charset with {len(charset_codepoints)} codepoints "
+                    f"for '{postscriptname}'"
+                )
+                match = resolver.find_with_charset(postscriptname, charset_codepoints)
+            else:
+                # Standard PostScript name matching
+                match = resolver.find(postscriptname)
+        except Exception as e:
+            # Graceful degradation: fall back to name-only matching
+            if charset_codepoints is not None:
+                logger.warning(
+                    f"Charset-based matching failed for '{postscriptname}': {e}. "
+                    "Falling back to name-only matching"
+                )
+                match = resolver.find(postscriptname)
+            else:
+                # If name-only matching also failed, re-raise
+                raise
+
+        if match:
+            logger.info(
+                f"Resolved '{postscriptname}' via Windows registry fallback: "
+                f"{match['family']}"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file=str(match["file"]),
+                family=str(match["family"]),
+                style=str(match["style"]),
+                weight=float(match["weight"]),
+            )
+
+        return None
+
+    @staticmethod
     def find(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
@@ -470,106 +595,15 @@ class FontInfo:
         if enable_fontconfig:
             # Try fontconfig (Linux/macOS)
             if HAS_FONTCONFIG:
-                logger.debug(
-                    f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
-                )
-
-                try:
-                    if charset_codepoints is not None:
-                        # Use charset-based matching
-                        logger.debug(
-                            f"Using charset with {len(charset_codepoints)} codepoints "
-                            f"for '{postscriptname}'"
-                        )
-                        charset = fontconfig.CharSet.from_codepoints(
-                            sorted(charset_codepoints)
-                        )
-                        match = fontconfig.match(
-                            properties={
-                                "postscriptname": postscriptname,
-                                "charset": charset,
-                            },
-                            select=("file", "family", "style", "weight"),
-                        )
-                    else:
-                        # Standard PostScript name matching
-                        match = fontconfig.match(
-                            pattern=f":postscriptname={postscriptname}",
-                            select=("file", "family", "style", "weight"),
-                        )
-                except Exception as e:
-                    # Graceful degradation: fall back to name-only matching
-                    if charset_codepoints is not None:
-                        logger.warning(
-                            f"Charset-based matching failed for '{postscriptname}': {e}. "
-                            "Falling back to name-only matching"
-                        )
-                        match = fontconfig.match(
-                            pattern=f":postscriptname={postscriptname}",
-                            select=("file", "family", "style", "weight"),
-                        )
-                    else:
-                        # If name-only matching also failed, re-raise
-                        raise
-
-                if match:
-                    logger.info(
-                        f"Resolved '{postscriptname}' via fontconfig fallback: "
-                        f"{match['family']}"
-                    )
-                    return FontInfo(
-                        postscript_name=postscriptname,
-                        file=match["file"],  # type: ignore
-                        family=match["family"],  # type: ignore
-                        style=match["style"],  # type: ignore
-                        weight=match["weight"],  # type: ignore
-                    )
+                result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
+                if result:
+                    return result
 
             # Try Windows registry (Windows)
             elif HAS_WINDOWS_FONTS:
-                logger.debug(
-                    f"Font '{postscriptname}' not in static mapping, "
-                    "trying Windows registry..."
-                )
-                resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
-
-                try:
-                    if charset_codepoints is not None:
-                        # Use charset-based matching
-                        logger.debug(
-                            f"Using charset with {len(charset_codepoints)} codepoints "
-                            f"for '{postscriptname}'"
-                        )
-                        match = resolver.find_with_charset(
-                            postscriptname, charset_codepoints
-                        )
-                    else:
-                        # Standard PostScript name matching
-                        match = resolver.find(postscriptname)
-                except Exception as e:
-                    # Graceful degradation: fall back to name-only matching
-                    if charset_codepoints is not None:
-                        logger.warning(
-                            f"Charset-based matching failed for '{postscriptname}': {e}. "
-                            "Falling back to name-only matching"
-                        )
-                        match = resolver.find(postscriptname)
-                    else:
-                        # If name-only matching also failed, re-raise
-                        raise
-
-                if match:
-                    logger.info(
-                        f"Resolved '{postscriptname}' via Windows registry fallback: "
-                        f"{match['family']}"
-                    )
-                    return FontInfo(
-                        postscript_name=postscriptname,
-                        file=str(match["file"]),
-                        family=str(match["family"]),
-                        style=str(match["style"]),
-                        weight=float(match["weight"]),
-                    )
+                result = FontInfo._find_via_windows(postscriptname, charset_codepoints)
+                if result:
+                    return result
 
         # Font not found in any mapping
         if not enable_fontconfig:
