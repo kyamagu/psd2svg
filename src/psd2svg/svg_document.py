@@ -669,12 +669,7 @@ class SVGDocument:
             family_name = resolved_font.family
 
             # Find all elements with this PostScript name
-            # Note: We need to find elements to update them, but we don't extract charset
-            elements_with_font = []
-            for element in svg.iter():
-                font_family = element.get("font-family")
-                if font_family == ps_name:
-                    elements_with_font.append(element)
+            elements_with_font = svg_utils.find_elements_with_font_family(svg, ps_name)
 
             if not elements_with_font:
                 continue
