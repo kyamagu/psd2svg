@@ -5,6 +5,7 @@ offering fast and accurate rendering with no external dependencies.
 """
 
 import logging
+import re
 from io import BytesIO
 from typing import Union
 
@@ -22,6 +23,13 @@ class ResvgRasterizer(BaseRasterizer):
     This rasterizer uses the resvg library (via resvg-py) to convert SVG
     documents to raster images. Resvg is a fast, accurate SVG renderer
     written in Rust that provides excellent quality with minimal dependencies.
+
+    Note:
+        Resvg does not support CSS @font-face rules with embedded fonts (data URIs).
+        This implementation automatically extracts font file paths from @font-face
+        src: url("file://...") declarations and passes them to resvg's native font
+        loading API. The @font-face CSS rules themselves are ignored by resvg.
+        Data URIs (data:font/...) are not supported and will be silently ignored.
 
     Example:
         >>> rasterizer = ResvgRasterizer(dpi=96)
@@ -42,6 +50,28 @@ class ResvgRasterizer(BaseRasterizer):
                 resolution images (e.g., 300 DPI for print quality).
         """
         self.dpi = dpi
+
+    @staticmethod
+    def _extract_font_file_paths(svg_content: str) -> list[str]:
+        """Extract font file paths from @font-face CSS rules in SVG.
+
+        Args:
+            svg_content: SVG content as string.
+
+        Returns:
+            List of font file paths found in src: url("file://...") declarations.
+        """
+        font_files = []
+        # Pattern to match: src: url("file:///path/to/font.ttf")
+        pattern = re.compile(r'src:\s*url\(["\']?(file://[^"\')]+)["\']?\)')
+
+        matches = pattern.findall(svg_content)
+        for match in matches:
+            # Remove file:// prefix to get the actual path
+            font_path = match.replace("file://", "")
+            font_files.append(font_path)
+
+        return font_files
 
     def from_file(
         self, filepath: str, font_files: list[str] | None = None
@@ -73,9 +103,14 @@ class ResvgRasterizer(BaseRasterizer):
         This method provides an optimized implementation that directly
         rasterizes the SVG content without creating a temporary file.
 
+        If font_files is not provided, this method automatically extracts
+        font file paths from @font-face CSS rules in the SVG content
+        (file:// URLs).
+
         Args:
             svg_content: SVG content as string or bytes.
             font_files: Optional list of font file paths to use for rendering.
+                If None, font paths are extracted from the SVG content.
 
         Returns:
             PIL Image object in RGBA mode containing the rasterized SVG.
@@ -89,6 +124,13 @@ class ResvgRasterizer(BaseRasterizer):
             if isinstance(svg_content, bytes)
             else svg_content
         )
+
+        # Auto-extract font files from @font-face CSS if not provided
+        if font_files is None:
+            font_files = self._extract_font_file_paths(svg_string)
+            if font_files:
+                logger.debug(f"Extracted {len(font_files)} font file(s) from SVG")
+
         png_bytes = resvg_py.svg_to_bytes(
             svg_string=svg_string, dpi=int(self.dpi), font_files=font_files
         )

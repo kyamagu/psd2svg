@@ -337,49 +337,22 @@ class SVGDocument:
         if rasterizer is None:
             rasterizer = ResvgRasterizer(dpi=dpi)
 
-        # Check if we need to auto-embed fonts for PlaywrightRasterizer
-        # Import here to avoid circular dependency issues
-        try:
-            from psd2svg.rasterizer.playwright_rasterizer import PlaywrightRasterizer
-
-            is_playwright = isinstance(rasterizer, PlaywrightRasterizer)
-        except ImportError:
-            is_playwright = False
-
-        # NEW PATH: Auto-embed fonts for PlaywrightRasterizer with file:// URLs
-        if is_playwright:
-            svg = self._prepare_svg_for_output(
-                embed_images=True,
-                embed_fonts=True,
-                subset_fonts=False,  # No subsetting for file URLs (faster)
-                font_format="ttf",  # Not used for file URLs
-                image_prefix=None,
-                image_format=DEFAULT_IMAGE_FORMAT,
-                optimize=False,  # No optimization needed for rasterization
-                svg_filepath=None,
-                use_data_uri_for_fonts=False,  # Use file:// URLs for better performance
-            )
-            svg_str = svg_utils.tostring(svg, indent="  ")
-            return rasterizer.from_string(svg_str)
-
-        # ResvgRasterizer path: Pass font files directly via API
-        if isinstance(rasterizer, ResvgRasterizer):
-            svg_str = self.tostring(embed_images=True)
-            # Extract font families from SVG and resolve to font files
-            font_families = svg_utils.extract_font_families(self.svg)
-            font_files = []
-            for ps_name in font_families:
-                # Use find_with_files() to explicitly get font files
-                resolved_font = FontInfo.find_with_files(ps_name)
-                if resolved_font and resolved_font.file:
-                    font_files.append(resolved_font.file)
-            if font_files:
-                return rasterizer.from_string(svg_str, font_files=font_files)
-            else:
-                return rasterizer.from_string(svg_str)
-
-        # Default path: No fonts or other rasterizer
-        svg_str = self.tostring(embed_images=True)
+        # Unified path: Prepare SVG with fonts embedded as file:// URLs
+        # This allows both PlaywrightRasterizer and ResvgRasterizer to handle
+        # fonts appropriately. ResvgRasterizer will extract font paths from
+        # the @font-face CSS rules and pass them via its font_files API.
+        svg = self._prepare_svg_for_output(
+            embed_images=True,
+            embed_fonts=True,
+            subset_fonts=False,  # No subsetting for file URLs (faster)
+            font_format="ttf",  # Not used for file URLs
+            image_prefix=None,
+            image_format=DEFAULT_IMAGE_FORMAT,
+            optimize=False,  # No optimization needed for rasterization
+            svg_filepath=None,
+            use_data_uri_for_fonts=False,  # Use file:// URLs for better performance
+        )
+        svg_str = svg_utils.tostring(svg, indent="")
         return rasterizer.from_string(svg_str)
 
     def export(

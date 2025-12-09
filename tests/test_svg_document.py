@@ -517,7 +517,7 @@ class TestSVGDocumentRasterizeWithFonts:
     def test_rasterize_with_resvg_uses_font_files(
         self, mock_find_with_files: MagicMock, tmp_path: Path
     ) -> None:
-        """Test that ResvgRasterizer receives font files directly."""
+        """Test that ResvgRasterizer extracts font files from @font-face CSS."""
         font_file = tmp_path / "arial.ttf"
         font_file.write_bytes(b"FAKE_FONT")
 
@@ -545,15 +545,13 @@ class TestSVGDocumentRasterizeWithFonts:
             rasterizer = ResvgRasterizer()
             document.rasterize(rasterizer=rasterizer)
 
-            # Should pass font_files to from_string
+            # Verify from_string was called
             assert mock_from_string.call_count == 1
-            call_kwargs = mock_from_string.call_args[1]
-            assert "font_files" in call_kwargs
-            assert call_kwargs["font_files"] == [str(font_file)]
-
-            # Should NOT embed fonts in SVG
             svg_arg = mock_from_string.call_args[0][0]
-            assert "@font-face" not in svg_arg
+
+            # Should embed fonts in SVG with file:// URLs
+            assert "@font-face" in svg_arg
+            assert f"file://{font_file}" in svg_arg
 
     @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
     def test_rasterize_with_playwright_embeds_fonts(
