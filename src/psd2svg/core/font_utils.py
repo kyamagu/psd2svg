@@ -5,6 +5,7 @@ import os
 import sys
 import urllib.parse
 from pathlib import Path
+from typing import Any
 
 try:
     from typing import Self  # type: ignore
@@ -275,31 +276,7 @@ class FontInfo:
         logger.debug(f"Resolving font '{self.postscript_name}' via fontconfig")
 
         try:
-            if charset_codepoints is not None:
-                # Charset-based resolution
-                logger.debug(
-                    f"Using charset with {len(charset_codepoints)} codepoints "
-                    f"for '{self.postscript_name}'"
-                )
-
-                # Create CharSet from codepoints
-                charset = fontconfig.CharSet.from_codepoints(sorted(charset_codepoints))
-
-                # Use properties dict for charset-based matching
-                # Cannot specify both 'pattern' and 'properties' in fontconfig API
-                match = fontconfig.match(
-                    properties={
-                        "postscriptname": self.postscript_name,
-                        "charset": charset,
-                    },
-                    select=("file", "family", "style", "weight"),
-                )
-            else:
-                # Standard PostScript name matching (existing behavior)
-                match = fontconfig.match(
-                    pattern=f":postscriptname={self.postscript_name}",
-                    select=("file", "family", "style", "weight"),
-                )
+            match = FontInfo._match_fontconfig(self.postscript_name, charset_codepoints)
 
             if not match or not match.get("file"):
                 logger.debug(f"Font '{self.postscript_name}' not found via fontconfig")
@@ -400,22 +377,25 @@ class FontInfo:
             return None
 
     @staticmethod
-    def _find_via_fontconfig(
+    def _match_fontconfig(
         postscriptname: str, charset_codepoints: set[int] | None
-    ) -> Self | None:
-        """Find font via fontconfig with optional charset matching.
+    ) -> dict[str, Any] | None:
+        """Match font via fontconfig with optional charset support.
+
+        This is a low-level helper that performs the actual fontconfig matching
+        with optional charset-based filtering. Used by both find() and resolve().
 
         Args:
             postscriptname: PostScript name of the font.
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
 
         Returns:
-            FontInfo object if found, None otherwise.
-        """
-        logger.debug(
-            f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
-        )
+            fontconfig match result dict with keys: file, family, style, weight.
+            None if no match found.
 
+        Raises:
+            Exception: If fontconfig matching fails and charset_codepoints is None.
+        """
         try:
             if charset_codepoints is not None:
                 # Use charset-based matching
@@ -437,6 +417,7 @@ class FontInfo:
                     pattern=f":postscriptname={postscriptname}",
                     select=("file", "family", "style", "weight"),
                 )
+            return match  # type: ignore
         except Exception as e:
             # Graceful degradation: fall back to name-only matching
             if charset_codepoints is not None:
@@ -448,9 +429,29 @@ class FontInfo:
                     pattern=f":postscriptname={postscriptname}",
                     select=("file", "family", "style", "weight"),
                 )
+                return match  # type: ignore
             else:
                 # If name-only matching also failed, re-raise
                 raise
+
+    @staticmethod
+    def _find_via_fontconfig(
+        postscriptname: str, charset_codepoints: set[int] | None
+    ) -> Self | None:
+        """Find font via fontconfig with optional charset matching.
+
+        Args:
+            postscriptname: PostScript name of the font.
+            charset_codepoints: Optional set of Unicode codepoints for charset matching.
+
+        Returns:
+            FontInfo object if found, None otherwise.
+        """
+        logger.debug(
+            f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
+        )
+
+        match = FontInfo._match_fontconfig(postscriptname, charset_codepoints)
 
         if match:
             logger.info(
