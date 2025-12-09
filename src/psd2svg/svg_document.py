@@ -647,9 +647,16 @@ class SVGDocument:
                 continue
 
             # Step 2: Resolve PostScript name → family name
-            resolved_font = FontInfo.find(
-                ps_name, charset_codepoints=charset_codepoints
-            )
+            try:
+                resolved_font = FontInfo.find(
+                    ps_name, charset_codepoints=charset_codepoints
+                )
+            except Exception as e:
+                logger.warning(
+                    f"FontInfo.find() failed for PostScript name '{ps_name}': {e}. "
+                    "Keeping PostScript name in SVG."
+                )
+                resolved_font = None
             family_name = resolved_font.family if resolved_font else ps_name
 
             # Step 4: Update font-family attributes and set weight/style
