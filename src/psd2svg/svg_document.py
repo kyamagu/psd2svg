@@ -349,7 +349,7 @@ class SVGDocument:
             font_families = svg_utils.extract_font_families(self.svg)
             font_files = []
             for ps_name in font_families:
-                _, resolved_font = FontInfo.resolve_postscript_name(ps_name)
+                resolved_font = FontInfo.find(ps_name)
                 if resolved_font and resolved_font.file:
                     font_files.append(resolved_font.file)
             if font_files:
@@ -619,9 +619,9 @@ class SVGDocument:
                         f"charset-based resolution of '{ps_name}'"
                     )
 
-            family_name, resolved_font = FontInfo.resolve_postscript_name(
-                ps_name, charset_codepoints
-            )
+            # Step 3: Resolve PostScript name → family name
+            resolved_font = FontInfo.find(ps_name, charset_codepoints=charset_codepoints)
+            family_name = resolved_font.family if resolved_font else ps_name
 
             # Step 4: Update font-family attributes: PostScript → family
             if family_name != ps_name:

@@ -475,11 +475,11 @@ class TestSVGDocumentEmbedFonts:
         font2_file.write_bytes(b"FAKE_FONT2")
 
         # Mock FontInfo.find to handle both PostScript names and family names
-        def mock_find_func(font_name: str, **kwargs: object) -> MagicMock:
+        def mock_find_func(font_name: str, **kwargs: object) -> FontInfo:
             _ = kwargs  # Unused but needed for signature
             # Handle PostScript names (ArialMT) and family names (Arial)
             if font_name in ("ArialMT", "Arial"):
-                mock_font = FontInfo(
+                return FontInfo(
                     postscript_name="ArialMT",
                     family="Arial",
                     style="Regular",
@@ -487,16 +487,13 @@ class TestSVGDocumentEmbedFonts:
                     file=str(font1_file),
                 )
             else:  # TimesNewRomanMT or "Times New Roman"
-                mock_font = FontInfo(
+                return FontInfo(
                     postscript_name="TimesNewRomanMT",
                     family="Times New Roman",
                     style="Regular",
                     weight=80.0,
                     file=str(font2_file),
                 )
-            mock_font_instance = MagicMock()
-            mock_font_instance.resolve.return_value = mock_font
-            return mock_font_instance
 
         mock_find.side_effect = mock_find_func
 
@@ -540,9 +537,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
@@ -593,9 +588,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
@@ -642,9 +635,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = font
 
         # Create SVG with text
         svg_elem = ET.Element("svg", width="100", height="100")
@@ -802,9 +793,7 @@ class TestAppendCss:
             style="Regular",
             weight=80.0,
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
