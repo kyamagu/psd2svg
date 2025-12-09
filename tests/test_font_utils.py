@@ -544,6 +544,7 @@ class TestFontInfoIsResolved:
         # Should not call os.path.exists for empty string
         mock_exists.assert_not_called()
 
+
 class TestCreateFileUrl:
     """Tests for create_file_url() function."""
 

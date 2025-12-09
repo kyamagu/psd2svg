@@ -222,7 +222,6 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
-
     @staticmethod
     def _match_fontconfig(
         postscriptname: str, charset_codepoints: set[int] | None
