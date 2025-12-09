@@ -384,15 +384,16 @@ class SVGDocument:
         cls,
         svg: str,
         images: dict[str, bytes],
-        fonts: list[dict[str, str | float]] | None = None,
     ) -> "SVGDocument":
         """Load an SVGDocument from SVG content and image bytes.
 
         Args:
             svg: SVG content as a string.
             images: Dictionary mapping image IDs to image bytes.
-            fonts: Deprecated parameter, ignored. Font information is now stored
-                in SVG font-family attributes.
+
+        Note:
+            Font information is stored in SVG font-family attributes, not
+            as a separate parameter.
         """
         svg_node = ET.fromstring(svg)
         images_dict = {

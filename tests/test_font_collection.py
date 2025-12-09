@@ -83,24 +83,6 @@ class TestFontExportLoad:
         loaded_ps_names = svg_utils.extract_font_families(loaded_document.svg)
         assert original_ps_names == loaded_ps_names
 
-    def test_load_with_deprecated_fonts_param(self) -> None:
-        """Test that load ignores deprecated fonts parameter (backward compatibility)."""
-        psd_path = get_fixture("layer-types/pixel-layer.psd")
-        psdimage = PSDImage.open(psd_path)
-        document = SVGDocument.from_psd(psdimage)
-
-        exported = document.export()
-
-        # Load with deprecated fonts parameter (should be ignored)
-        loaded_document = SVGDocument.load(
-            cast(str, exported["svg"]),
-            cast(dict[str, bytes], exported["images"]),
-            fonts=[],  # Deprecated parameter, ignored
-        )
-
-        # Should work fine
-        assert loaded_document is not None
-
 
 class TestFontRasterization:
     """Tests for font usage in rasterization."""
