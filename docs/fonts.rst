@@ -256,7 +256,7 @@ Custom font mappings are useful when:
 Font Embedding with Custom Mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Custom mappings enable text conversion but don't provide font file paths. For font embedding, the ``FontInfo.resolve()`` method automatically queries platform-specific font resolution:
+Custom mappings enable text conversion but don't provide font file paths. For font embedding, the ``FontInfo.find_with_files()`` method automatically queries platform-specific font resolution:
 
 **On Linux/macOS:**
 
