@@ -425,12 +425,13 @@ class TestSVGDocumentEmbedFonts:
         # Should only encode once due to caching
         mock_encode.assert_called_once()
 
-    @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
     def test_embed_fonts_handles_missing_font_gracefully(
-        self, mock_encode: MagicMock, caplog: pytest.LogCaptureFixture
+        self, mock_find_with_files: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that missing fonts are skipped with a warning."""
-        mock_encode.side_effect = FileNotFoundError("Font not found")
+        # Mock font resolution to return None (font not found)
+        mock_find_with_files.return_value = None
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -446,8 +447,8 @@ class TestSVGDocumentEmbedFonts:
         # Should not raise exception
         assert "<style>" not in result
 
-        # Should log warning about no fonts embedded (font is skipped early because file doesn't exist)
-        assert "No css font rules inserted" in caplog.text
+        # Should log warning about no fonts embedded (font resolution returned None)
+        assert "No resolved fonts provided; skipping font embedding" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
     @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
