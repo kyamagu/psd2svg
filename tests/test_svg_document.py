@@ -17,7 +17,7 @@ import pytest
 from PIL import Image
 
 from psd2svg import SVGDocument
-from psd2svg.core.font_utils import FontInfo, encode_font_data_uri
+from psd2svg.core.font_utils import FontInfo, create_file_url, encode_font_data_uri
 from psd2svg.rasterizer import ResvgRasterizer
 
 
@@ -552,7 +552,6 @@ class TestSVGDocumentRasterizeWithFonts:
             # Should embed fonts in SVG with file:// URLs
             assert "@font-face" in svg_arg
             # Check for properly formatted file URL (cross-platform)
-            from psd2svg.core.font_utils import create_file_url
             expected_url = create_file_url(str(font_file))
             assert expected_url in svg_arg
 
