@@ -291,9 +291,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = mock_font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -332,9 +330,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = mock_font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -371,9 +367,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = mock_font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add two text elements with the same PostScript font name
@@ -414,9 +408,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_font_instance = MagicMock()
-        mock_font_instance.resolve.return_value = mock_font
-        mock_find.return_value = mock_font_instance
+        mock_find.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
