@@ -217,6 +217,63 @@ class FontInfo:
   font-style: {font_style};
 }}"""
 
+    @classmethod
+    def resolve_postscript_name(
+        cls,
+        postscript_name: str,
+        charset_codepoints: set[int] | None = None,
+    ) -> tuple[str, Self | None]:
+        """Resolve PostScript name to family name with charset-based matching.
+
+        Attempts to resolve a PostScript font name to a font family name using:
+        1. Static mapping (fast, 572 common fonts)
+        2. System font resolution with optional charset matching
+
+        Args:
+            postscript_name: PostScript font name from PSD (e.g., "ArialMT", "Helvetica-Bold").
+            charset_codepoints: Optional set of Unicode codepoints for charset-based matching.
+                Improves font selection for multilingual text.
+
+        Returns:
+            Tuple of (family_name, resolved_font_info):
+            - family_name: Font family name to use in font-family attribute.
+                Falls back to PostScript name if resolution fails.
+            - resolved_font_info: Resolved FontInfo with file path for embedding,
+                or None if resolution failed.
+
+        Example:
+            >>> # Basic resolution
+            >>> family, font = FontInfo.resolve_postscript_name('Arial-BoldMT')
+            >>> print(family)  # 'Arial'
+            >>> print(font.css_weight)  # 700
+            >>>
+            >>> # With charset matching
+            >>> codepoints = {0x3042, 0x3044}  # Japanese hiragana
+            >>> family, font = FontInfo.resolve_postscript_name('ArialMT', codepoints)
+        """
+        # Try to find font metadata (static mapping first)
+        try:
+            font_info = cls.find(postscript_name, charset_codepoints=charset_codepoints)
+        except Exception as e:
+            logger.debug(f"FontInfo.find() failed for {postscript_name}: {e}")
+            # No mapping found - use PostScript name as-is
+            return postscript_name, None
+
+        if not font_info or not font_info.family:
+            # No mapping found - use PostScript name as-is
+            return postscript_name, None
+
+        # Try to resolve to system font file (for embedding)
+        try:
+            resolved = font_info.resolve(charset_codepoints=charset_codepoints)
+            if resolved and resolved.family:
+                return resolved.family, resolved
+        except Exception as e:
+            logger.debug(f"FontInfo.resolve() failed for {postscript_name}: {e}")
+
+        # Resolution failed but we have family name from static mapping
+        return font_info.family, None
+
     def resolve(self, charset_codepoints: set[int] | None = None) -> Self | None:
         """Resolve font to actual available system font via fontconfig.
 

@@ -349,7 +349,7 @@ class SVGDocument:
             font_families = svg_utils.extract_font_families(self.svg)
             font_files = []
             for ps_name in font_families:
-                _, resolved_font = self._resolve_postscript_to_family(ps_name)
+                _, resolved_font = FontInfo.resolve_postscript_name(ps_name)
                 if resolved_font and resolved_font.file:
                     font_files.append(resolved_font.file)
             if font_files:
@@ -401,54 +401,6 @@ class SVGDocument:
             for image_id, img_bytes in images.items()
         }
         return SVGDocument(svg=svg_node, images=images_dict)
-
-    def _resolve_postscript_to_family(
-        self,
-        postscript_name: str,
-        charset_codepoints: set[int] | None = None,
-    ) -> tuple[str, FontInfo | None]:
-        """Resolve PostScript name to family name with charset-based matching.
-
-        Attempts to resolve a PostScript font name to a font family name using:
-        1. Static mapping (fast, 572 common fonts)
-        2. System font resolution with optional charset matching
-
-        Args:
-            postscript_name: PostScript font name from PSD (e.g., "ArialMT", "Helvetica-Bold").
-            charset_codepoints: Optional set of Unicode codepoints for charset-based matching.
-                Improves font selection for multilingual text.
-
-        Returns:
-            Tuple of (family_name, resolved_font_info):
-            - family_name: Font family name to use in font-family attribute.
-                Falls back to PostScript name if resolution fails.
-            - resolved_font_info: Resolved FontInfo with file path for embedding,
-                or None if resolution failed.
-        """
-        # Try to find font metadata (static mapping first)
-        try:
-            font_info = FontInfo.find(
-                postscript_name, charset_codepoints=charset_codepoints
-            )
-        except Exception as e:
-            logger.debug(f"FontInfo.find() failed for {postscript_name}: {e}")
-            # No mapping found - use PostScript name as-is
-            return postscript_name, None
-
-        if not font_info or not font_info.family:
-            # No mapping found - use PostScript name as-is
-            return postscript_name, None
-
-        # Try to resolve to system font file (for embedding)
-        try:
-            resolved = font_info.resolve(charset_codepoints=charset_codepoints)
-            if resolved and resolved.family:
-                return resolved.family, resolved
-        except Exception as e:
-            logger.debug(f"FontInfo.resolve() failed for {postscript_name}: {e}")
-
-        # Resolution failed but we have family name from static mapping
-        return font_info.family, None
 
     def _handle_images(
         self,
@@ -667,7 +619,7 @@ class SVGDocument:
                         f"charset-based resolution of '{ps_name}'"
                     )
 
-            family_name, resolved_font = self._resolve_postscript_to_family(
+            family_name, resolved_font = FontInfo.resolve_postscript_name(
                 ps_name, charset_codepoints
             )
 
