@@ -161,6 +161,7 @@ class SVGDocument:
         image_format: str,
         optimize: bool,
         svg_filepath: str | None,
+        use_data_uri_for_fonts: bool = True,
     ) -> ET.Element:
         """Prepare SVG element for output by handling images, fonts, and optimization.
 
@@ -173,6 +174,8 @@ class SVGDocument:
             image_format: Image format to use when embedding or saving images.
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
             svg_filepath: Path to the output SVG file (for save()), or None (for tostring()).
+            use_data_uri_for_fonts: If True, embed fonts as data URIs. If False, use file:// URLs.
+                Only applies when embed_fonts=True. Default is True.
 
         Returns:
             Prepared SVG element ready for serialization.
@@ -194,7 +197,7 @@ class SVGDocument:
                 svg,
                 subset_fonts=subset_fonts,
                 font_format=font_format,
-                use_data_uri=True,
+                use_data_uri=use_data_uri_for_fonts,
                 resolved_fonts_map=resolved_fonts_map,
             )
 
@@ -345,28 +348,17 @@ class SVGDocument:
 
         # NEW PATH: Auto-embed fonts for PlaywrightRasterizer with file:// URLs
         if is_playwright:
-            # Create a deep copy to avoid modifying the original SVG
-            svg = deepcopy(self.svg)
-
-            # Embed images as data URIs (required for browser)
-            nodes = svg.findall(".//image")
-            if nodes:
-                self._embed_images_as_data_uris(nodes, DEFAULT_IMAGE_FORMAT)
-
-            # Always resolve PostScript names to CSS font families
-            # Use platform resolution to get font files for embedding
-            resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=True)
-
-            # Embed fonts with file:// URLs (NEW)
-            self._insert_css_fontface(
-                svg,
+            svg = self._prepare_svg_for_output(
+                embed_images=True,
+                embed_fonts=True,
                 subset_fonts=False,  # No subsetting for file URLs (faster)
                 font_format="ttf",  # Not used for file URLs
-                use_data_uri=False,
-                resolved_fonts_map=resolved_fonts_map,
+                image_prefix=None,
+                image_format=DEFAULT_IMAGE_FORMAT,
+                optimize=False,  # No optimization needed for rasterization
+                svg_filepath=None,
+                use_data_uri_for_fonts=False,  # Use file:// URLs for better performance
             )
-
-            # Convert to string and rasterize
             svg_str = svg_utils.tostring(svg, indent="  ")
             return rasterizer.from_string(svg_str)
 
