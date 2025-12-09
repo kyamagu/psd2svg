@@ -731,60 +731,68 @@ class FontInfo:
         font_mapping: dict[str, dict[str, float | str]] | None = None,
         charset_codepoints: set[int] | None = None,
     ) -> Self | None:
-        """Find font using platform-specific resolution (with file paths).
+        """Find font with file path using platform-specific resolution.
 
-        This method locates font files on the system using fontconfig (Linux/macOS)
-        or Windows registry. It is suitable for font embedding scenarios (embed_fonts=True)
-        where actual font files must be located and embedded in the output.
-
-        Static mapping is skipped as an optimization since it doesn't provide file paths.
-        Platform-specific resolution may perform font substitution if the exact PostScript
-        name is not found, which is acceptable for embedding scenarios.
-
-        Resolution order:
-        1. Custom font mapping (if provided)
-        2. Platform resolution: fontconfig (Linux/macOS) or Windows registry
-        3. Return None if not found
+        Uses fontconfig (Linux/macOS) or Windows registry to locate font files.
+        Suitable for font embedding where actual font files are needed.
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
-            font_mapping: Optional custom font mapping dictionary. Takes priority
-                         over platform resolution. Format:
-                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
-            charset_codepoints: Optional set of Unicode codepoints for charset-based
-                               font matching. When provided, prioritizes fonts with better
-                               glyph coverage for the specified characters. Gracefully falls
-                               back to name-only matching on errors. Default: None.
+            font_mapping: Optional custom mapping with file paths. Must include "file"
+                         field with existing font file path. Format:
+                         {"PostScriptName": {"family": str, "style": str,
+                                            "weight": float, "file": str}}
+                         If mapping lacks "file" field or file doesn't exist, falls back
+                         to platform resolution.
+            charset_codepoints: Optional Unicode codepoints for charset-based matching.
+                               Prioritizes fonts with better glyph coverage.
 
         Returns:
-            FontInfo object with family/style/weight AND file path, or None if not found.
-            Note that custom mapping entries will have empty file path.
+            FontInfo with non-empty file path, or None if not found. File path is
+            guaranteed to be non-empty when FontInfo is returned.
 
         Example:
-            >>> # Resolve font with file path for embedding
             >>> font = FontInfo.find_with_files('ArialMT')
-            >>> if font and font.file:
-            ...     print(f"Font file: {font.file}")
-            >>>
-            >>> # With charset matching for better multilingual support
-            >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
-            >>> font = FontInfo.find_with_files('NotoSansCJK-Regular', charset_codepoints=codepoints)
+            >>> if font:
+            ...     print(f"Font file: {font.file}")  # Always has file path
         """
-        # 1. Check custom mapping first
+        # 1. Check custom mapping first (must have file path for embedding)
         if font_mapping:
             custom_data = _font_mapping.find_in_mapping(postscriptname, font_mapping)
             if custom_data:
-                logger.debug(
-                    f"Resolved '{postscriptname}' via custom font mapping: "
-                    f"{custom_data['family']}"
-                )
-                return FontInfo(
-                    postscript_name=postscriptname,
-                    file="",  # Custom mapping doesn't provide file paths
-                    family=str(custom_data["family"]),
-                    style=str(custom_data["style"]),
-                    weight=float(custom_data["weight"]),
-                )
+                # Validate custom mapping has required fields including file path
+                if (
+                    "family" in custom_data
+                    and "style" in custom_data
+                    and "weight" in custom_data
+                    and "file" in custom_data
+                    and custom_data["file"]  # Must be non-empty
+                ):
+                    file_path = str(custom_data["file"])
+                    # Validate file exists
+                    if not os.path.exists(file_path):
+                        logger.warning(
+                            f"Custom mapping for '{postscriptname}' specifies file '{file_path}' "
+                            "but file does not exist. Falling back to platform resolution."
+                        )
+                    else:
+                        logger.debug(
+                            f"Resolved '{postscriptname}' via custom font mapping with file path: "
+                            f"{file_path}"
+                        )
+                        return FontInfo(
+                            postscript_name=postscriptname,
+                            file=file_path,
+                            family=str(custom_data["family"]),
+                            style=str(custom_data["style"]),
+                            weight=float(custom_data["weight"]),
+                        )
+                else:
+                    # Custom mapping found but missing file path - fall back to platform resolution
+                    logger.debug(
+                        f"Custom mapping for '{postscriptname}' found but missing 'file' field. "
+                        "Falling back to platform resolution."
+                    )
 
         # 2. Platform-specific resolution (skip static mapping - optimization)
         # Try fontconfig (Linux/macOS)
