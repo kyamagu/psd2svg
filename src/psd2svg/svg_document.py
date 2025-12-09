@@ -566,9 +566,45 @@ class SVGDocument:
                 prefix = os.path.basename(image_prefix)
                 return base_dir, prefix
 
-    def _resolve_postscript_names(
-        self, svg: ET.Element
-    ) -> dict[str, FontInfo]:
+    def _extract_font_elements_and_charset(
+        self, svg: ET.Element, font_name: str
+    ) -> tuple[list[ET.Element], set[int] | None]:
+        """Extract elements using a font and their charset codepoints.
+
+        Args:
+            svg: SVG element to search.
+            font_name: Font family or PostScript name to search for.
+
+        Returns:
+            Tuple of (matching_elements, charset_codepoints).
+            Returns ([], None) if no elements found.
+            Returns (elements, None) if elements found but no characters extracted.
+        """
+        # Step 1: Find elements using this font
+        matching_elements = svg_utils.find_elements_with_font_family(svg, font_name)
+        if not matching_elements:
+            return [], None
+
+        # Step 2: Extract characters from these elements
+        chars_for_font: set[str] = set()
+        for element in matching_elements:
+            text_content = svg_utils.extract_text_characters(element)
+            if text_content:
+                chars_for_font.update(text_content)
+
+        # Step 3: Convert to codepoints
+        charset_codepoints = None
+        if chars_for_font:
+            charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
+            if charset_codepoints:
+                logger.debug(
+                    f"Extracted {len(chars_for_font)} characters "
+                    f"({len(charset_codepoints)} codepoints) for font '{font_name}'"
+                )
+
+        return matching_elements, charset_codepoints
+
+    def _resolve_postscript_names(self, svg: ET.Element) -> dict[str, FontInfo]:
         """Resolve PostScript names in SVG to CSS font family names.
 
         Scans SVG for elements with PostScript names in font-family attributes,
@@ -603,37 +639,17 @@ class SVGDocument:
         resolved_fonts_map: dict[str, FontInfo] = {}
 
         for ps_name in postscript_names:
-            # Step 1: Find elements using this PostScript name
-            matching_elements = svg_utils.find_elements_with_font_family(svg, ps_name)
+            # Step 1: Extract elements and charset for this PostScript name
+            matching_elements, charset_codepoints = (
+                self._extract_font_elements_and_charset(svg, ps_name)
+            )
             if not matching_elements:
                 continue
 
-            # Step 2: Extract characters from these elements
-            chars_for_font: set[str] = set()
-            for element in matching_elements:
-                text_content = svg_utils.extract_text_characters(element)
-                if text_content:
-                    chars_for_font.update(text_content)
-
-            if chars_for_font:
-                logger.debug(
-                    f"Extracted {len(chars_for_font)} characters for PostScript font '{ps_name}'"
-                )
-
-            # Step 3: Resolve PostScript name → family name
-            charset_codepoints = None
-            if chars_for_font:
-                charset_codepoints = font_utils.create_charset_codepoints(
-                    chars_for_font
-                )
-                if charset_codepoints:
-                    logger.debug(
-                        f"Using {len(charset_codepoints)} codepoints for "
-                        f"charset-based resolution of '{ps_name}'"
-                    )
-
-            # Step 3: Resolve PostScript name → family name
-            resolved_font = FontInfo.find(ps_name, charset_codepoints=charset_codepoints)
+            # Step 2: Resolve PostScript name → family name
+            resolved_font = FontInfo.find(
+                ps_name, charset_codepoints=charset_codepoints
+            )
             family_name = resolved_font.family if resolved_font else ps_name
 
             # Step 4: Update font-family attributes and set weight/style
@@ -653,9 +669,7 @@ class SVGDocument:
                     if not element.get("font-weight"):
                         css_weight = resolved_font.css_weight
                         if css_weight != 400:
-                            svg_utils.set_attribute(
-                                element, "font-weight", css_weight
-                            )
+                            svg_utils.set_attribute(element, "font-weight", css_weight)
 
                     # Set font-style if italic
                     # Note: Only set if element doesn't already have font-style
@@ -669,17 +683,17 @@ class SVGDocument:
                     # (multiple PostScript names can map to the same file)
                     file_key = resolved_font.file
                     if file_key not in resolved_fonts_map:
-                        # Create new FontInfo with charset populated
-                        resolved_fonts_map[file_key] = dataclasses.replace(
-                            resolved_font, charset=chars_for_font
-                        )
+                        # Store font with charset (may already be populated from find())
+                        if not resolved_font.charset and charset_codepoints:
+                            resolved_font = dataclasses.replace(
+                                resolved_font, charset=charset_codepoints
+                            )
+                        resolved_fonts_map[file_key] = resolved_font
                     else:
-                        # Merge characters if same file already tracked
+                        # Merge codepoints if same file already tracked
                         existing_font = resolved_fonts_map[file_key]
-                        merged_charset = (existing_font.charset or set()) | chars_for_font
-                        resolved_fonts_map[file_key] = dataclasses.replace(
-                            existing_font, charset=merged_charset
-                        )
+                        if existing_font.charset and charset_codepoints:
+                            existing_font.charset.update(charset_codepoints)
             else:
                 # No resolution - keep PostScript name
                 logger.debug(f"Keeping PostScript name '{ps_name}' (no resolution)")
@@ -718,26 +732,14 @@ class SVGDocument:
         font_families = svg_utils.extract_font_families(svg)
 
         for family_name in font_families:
-            # Step 1: Find elements using this font family
-            matching_elements = svg_utils.find_elements_with_font_family(
-                svg, family_name
+            # Step 1: Extract elements and charset for this font family
+            matching_elements, charset_codepoints = (
+                self._extract_font_elements_and_charset(svg, family_name)
             )
             if not matching_elements:
                 continue
 
-            # Step 2: Extract characters from these elements
-            chars_for_font: set[str] = set()
-            for element in matching_elements:
-                text_content = svg_utils.extract_text_characters(element)
-                if text_content:
-                    chars_for_font.update(text_content)
-
-            # Step 3: Try to find and resolve font
-            charset_codepoints = None
-            if chars_for_font:
-                charset_codepoints = font_utils.create_charset_codepoints(
-                    chars_for_font
-                )
+            # Step 2: Try to find and resolve font
 
             try:
                 found_font: FontInfo | None = FontInfo.find(
@@ -753,7 +755,9 @@ class SVGDocument:
 
             # Step 4: Resolve to system font file (found_font is guaranteed non-None here)
             try:
-                resolved_font = found_font.resolve(charset_codepoints=charset_codepoints)
+                resolved_font = found_font.resolve(
+                    charset_codepoints=charset_codepoints
+                )
             except Exception as e:
                 logger.debug(f"Font resolution failed for '{family_name}': {e}")
                 continue
@@ -767,17 +771,13 @@ class SVGDocument:
             # Step 5: Track for embedding (deduplicate by file path)
             file_key = resolved_font.file
             if file_key not in resolved_fonts:
-                # Create new FontInfo with charset populated
-                resolved_fonts[file_key] = dataclasses.replace(
-                    resolved_font, charset=chars_for_font
-                )
+                # Store font with charset (already populated from resolve())
+                resolved_fonts[file_key] = resolved_font
             else:
-                # Merge characters for the same font file
+                # Merge codepoints for the same font file
                 existing_font = resolved_fonts[file_key]
-                merged_charset = (existing_font.charset or set()) | chars_for_font
-                resolved_fonts[file_key] = dataclasses.replace(
-                    existing_font, charset=merged_charset
-                )
+                if existing_font.charset and charset_codepoints:
+                    existing_font.charset.update(charset_codepoints)
 
         return list(resolved_fonts.values())
 
@@ -808,10 +808,10 @@ class SVGDocument:
             try:
                 # Generate CSS source based on mode
                 if use_data_uri:
-                    # Prepare subset characters from FontInfo.charset
+                    # Prepare subset characters from FontInfo.charset (convert codepoints to chars)
                     subset_chars: set[str] | None = None
                     if subset_fonts and resolved_font.charset:
-                        subset_chars = resolved_font.charset
+                        subset_chars = {chr(cp) for cp in resolved_font.charset}
                     css_source = font_utils.encode_font_with_options(
                         font_path=resolved_font.file,
                         cache=self._font_data_cache,
