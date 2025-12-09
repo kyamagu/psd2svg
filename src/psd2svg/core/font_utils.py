@@ -518,8 +518,7 @@ class FontInfo:
             FontInfo object if found, None otherwise.
         """
         logger.debug(
-            f"Font '{postscriptname}' not in static mapping, "
-            "trying Windows registry..."
+            f"Font '{postscriptname}' not in static mapping, trying Windows registry..."
         )
 
         match = FontInfo._match_windows(postscriptname, charset_codepoints)
@@ -610,7 +609,9 @@ class FontInfo:
         if enable_fontconfig:
             # Try fontconfig (Linux/macOS)
             if HAS_FONTCONFIG:
-                result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
+                result = FontInfo._find_via_fontconfig(
+                    postscriptname, charset_codepoints
+                )
                 if result:
                     return result
 

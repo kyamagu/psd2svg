@@ -935,9 +935,7 @@ class TestFontInfoFindWithCharset:
 
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
-    def test_find_with_charset_in_static_mapping(
-        self, mock_match: MagicMock
-    ) -> None:
+    def test_find_with_charset_in_static_mapping(self, mock_match: MagicMock) -> None:
         """Test find with charset for font in static mapping (charset ignored)."""
         codepoints = {0x3042, 0x3044, 0x3046}
 
@@ -999,9 +997,7 @@ class TestFontInfoFindWithCharset:
 
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
-    def test_find_without_charset_uses_name_only(
-        self, mock_match: MagicMock
-    ) -> None:
+    def test_find_without_charset_uses_name_only(self, mock_match: MagicMock) -> None:
         """Test find without charset parameter uses name-only matching."""
         mock_match.return_value = {
             "file": "/path/to/font.ttf",
