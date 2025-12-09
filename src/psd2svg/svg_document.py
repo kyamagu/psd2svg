@@ -672,6 +672,11 @@ class SVGDocument:
             elements_with_font = svg_utils.find_elements_with_font_family(svg, ps_name)
 
             if not elements_with_font:
+                # This shouldn't happen since extract_font_families() found it
+                logger.warning(
+                    f"Font '{ps_name}' was extracted from SVG tree but no elements "
+                    "found with this font-family. This indicates an inconsistency."
+                )
                 continue
 
             # Log resolution
