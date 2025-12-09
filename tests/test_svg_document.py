@@ -551,7 +551,10 @@ class TestSVGDocumentRasterizeWithFonts:
 
             # Should embed fonts in SVG with file:// URLs
             assert "@font-face" in svg_arg
-            assert f"file://{font_file}" in svg_arg
+            # Check for properly formatted file URL (cross-platform)
+            from psd2svg.core.font_utils import create_file_url
+            expected_url = create_file_url(str(font_file))
+            assert expected_url in svg_arg
 
     @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
     def test_rasterize_with_playwright_embeds_fonts(
