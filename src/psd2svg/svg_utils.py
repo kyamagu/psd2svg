@@ -939,6 +939,9 @@ def _element_uses_font_family(
 
     Returns:
         True if element uses the target font, False otherwise.
+
+    Note:
+        Ignores CSS 'font' shorthand property, only checks 'font-family'.
     """
     current = element
     while True:
@@ -1058,6 +1061,7 @@ def add_font_family(element: ET.Element, font_family: str) -> None:
         - Updates font-family attribute with higher priority than style
         - Quotes font family names in the output for CSS compliance
         - Idempotent: does not add font if already present in the chain
+        - Ignores CSS 'font' shorthand property, only handles 'font-family'
     """
     # Check font-family attribute first (higher priority)
     existing_font_family = element.get("font-family")
