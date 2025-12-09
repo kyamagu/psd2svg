@@ -126,7 +126,6 @@ When resolving fonts, psd2svg analyzes actual text characters for better matchin
 - `FontInfo.find_static()`: Resolve PostScript name to CSS family (no platform queries)
 - `FontInfo.find_with_files()`: Resolve PostScript name to font file with platform resolution
 - `FontInfo.find()`: Backward-compatible wrapper (delegates to `find_static()` or `find_with_files()`)
-- `FontInfo.resolve()`: Resolve to system font file with charset matching
 - SVG tree is single source of truth for fonts (no separate font list maintained)
 
 ## Architecture Overview
