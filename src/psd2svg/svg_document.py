@@ -192,10 +192,9 @@ class SVGDocument:
         )
 
         # Always resolve PostScript names to CSS font families
-        # Skip static mapping when embed_fonts=True (optimization)
-        resolved_fonts_map = self._resolve_postscript_names(
-            svg, disable_static_mapping=embed_fonts
-        )
+        # Use platform resolution when embed_fonts=True (needs font files)
+        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
+        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
 
         if embed_fonts:
             self._insert_css_fontface(
@@ -254,10 +253,9 @@ class SVGDocument:
         )
 
         # Always resolve PostScript names to CSS font families
-        # Skip static mapping when embed_fonts=True (optimization)
-        resolved_fonts_map = self._resolve_postscript_names(
-            svg, disable_static_mapping=embed_fonts
-        )
+        # Use platform resolution when embed_fonts=True (needs font files)
+        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
+        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
 
         if embed_fonts:
             self._insert_css_fontface(
@@ -332,10 +330,8 @@ class SVGDocument:
                 self._embed_images_as_data_uris(nodes, DEFAULT_IMAGE_FORMAT)
 
             # Always resolve PostScript names to CSS font families
-            # Skip static mapping since we're embedding fonts (optimization)
-            resolved_fonts_map = self._resolve_postscript_names(
-                svg, disable_static_mapping=True
-            )
+            # Use platform resolution to get font files for embedding
+            resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=True)
 
             # Embed fonts with file:// URLs (NEW)
             self._insert_css_fontface(
@@ -357,7 +353,8 @@ class SVGDocument:
             font_families = svg_utils.extract_font_families(self.svg)
             font_files = []
             for ps_name in font_families:
-                resolved_font = FontInfo.find(ps_name)
+                # Use find_with_files() to explicitly get font files
+                resolved_font = FontInfo.find_with_files(ps_name)
                 if resolved_font and resolved_font.file:
                     font_files.append(resolved_font.file)
             if font_files:
@@ -610,7 +607,7 @@ class SVGDocument:
         return matching_elements, charset_codepoints
 
     def _resolve_postscript_names(
-        self, svg: ET.Element, disable_static_mapping: bool = False
+        self, svg: ET.Element, embed_fonts: bool = False
     ) -> dict[str, FontInfo]:
         """Resolve PostScript names in SVG to CSS font family names.
 
@@ -628,9 +625,9 @@ class SVGDocument:
         Args:
             svg: SVG element to search for font usage and update with family names
                 and weight/style attributes.
-            disable_static_mapping: If True, skip static mapping tier and go directly
-                to platform-specific resolution. Use when embed_fonts=True since static
-                mapping doesn't provide file paths needed for embedding.
+            embed_fonts: If True, resolve to font files (find_with_files). If False,
+                resolve to CSS family names only (find_static). This prevents unwanted
+                font substitution when only CSS names are needed.
 
         Returns:
             Dictionary mapping font file paths to FontInfo instances with charset populated.
@@ -658,14 +655,18 @@ class SVGDocument:
 
             # Step 2: Resolve PostScript name → family name
             try:
-                resolved_font = FontInfo.find(
-                    ps_name,
-                    charset_codepoints=charset_codepoints,
-                    disable_static_mapping=disable_static_mapping,
-                )
+                if embed_fonts:
+                    # Need font files for embedding - use platform resolution
+                    resolved_font = FontInfo.find_with_files(
+                        ps_name,
+                        charset_codepoints=charset_codepoints,
+                    )
+                else:
+                    # Only need CSS family names - use static mapping only
+                    resolved_font = FontInfo.find_static(ps_name)
             except Exception as e:
                 logger.warning(
-                    f"FontInfo.find() failed for PostScript name '{ps_name}': {e}. "
+                    f"Font resolution failed for PostScript name '{ps_name}': {e}. "
                     "Keeping PostScript name in SVG."
                 )
                 resolved_font = None
