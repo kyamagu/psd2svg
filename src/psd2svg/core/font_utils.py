@@ -908,7 +908,7 @@ def encode_font_bytes_to_data_uri(font_bytes: bytes, font_format: str) -> str:
 def encode_font_with_options(
     font_path: str,
     cache: dict[str, str],
-    subset_chars: set[str] | None = None,
+    subset_codepoints: set[int] | None = None,
     font_format: str = "ttf",
 ) -> str:
     """Encode a font file as a data URI with optional subsetting and caching.
@@ -919,7 +919,7 @@ def encode_font_with_options(
     Args:
         font_path: Path to the font file.
         cache: Dictionary to use for caching encoded data URIs.
-        subset_chars: Optional set of characters to subset the font to.
+        subset_codepoints: Optional set of Unicode codepoints (integers) to subset the font to.
             If None, the full font is encoded.
         font_format: Font format for output: "ttf", "otf", or "woff2".
 
@@ -932,25 +932,25 @@ def encode_font_with_options(
         IOError: If font file can't be read.
 
     Note:
-        - Cache keys include format and character count for subset fonts
+        - Cache keys include format and codepoint count for subset fonts
         - Full fonts use just the file path as cache key
-        - Missing characters trigger fallback to full font with warning
+        - Missing codepoints trigger fallback to full font with warning
     """
     # Subsetting path
-    if subset_chars:
-        # Create cache key for subset fonts (include format and char count)
-        cache_key = f"{font_path}:{font_format}:{len(subset_chars)}"
+    if subset_codepoints:
+        # Create cache key for subset fonts (include format and codepoint count)
+        cache_key = f"{font_path}:{font_format}:{len(subset_codepoints)}"
 
         if cache_key not in cache:
             logger.debug(
                 f"Subsetting font: {font_path} -> {font_format} "
-                f"({len(subset_chars)} chars)"
+                f"({len(subset_codepoints)} codepoints)"
             )
             try:
                 font_bytes = font_subsetting.subset_font(  # type: ignore
                     input_path=font_path,
                     output_format=font_format,
-                    unicode_chars=subset_chars,
+                    unicode_codepoints=subset_codepoints,
                 )
                 data_uri = encode_font_bytes_to_data_uri(font_bytes, font_format)
                 cache[cache_key] = data_uri
@@ -996,11 +996,11 @@ def create_charset_codepoints(chars: set[str]) -> set[int] | None:
     if not chars:
         return None
 
-    from psd2svg.font_subsetting import _chars_to_unicode_list
-
-    # Reuse existing conversion logic
-    codepoint_list = _chars_to_unicode_list(chars)
-    codepoint_set = set(codepoint_list)
+    # Convert characters to codepoints (handles multi-codepoint characters like emoji)
+    codepoint_set = set()
+    for char in chars:
+        for code_point in char:
+            codepoint_set.add(ord(code_point))
 
     logger.debug(
         f"Created {len(codepoint_set)} codepoints from {len(chars)} characters"
