@@ -683,9 +683,7 @@ class SVGDocument:
                 # Set weight and style attributes
                 self._update_element_font_attributes(element, resolved_font)
 
-    def _resolve_and_collect_fonts(
-        self, svg: ET.Element
-    ) -> dict[str, FontInfo]:
+    def _resolve_and_collect_fonts(self, svg: ET.Element) -> dict[str, FontInfo]:
         """Resolve PostScript names to system fonts and collect for embedding.
 
         Performs single-pass resolution:
