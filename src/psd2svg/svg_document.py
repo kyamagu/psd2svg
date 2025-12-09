@@ -633,9 +633,7 @@ class SVGDocument:
                 f"Font fallback: '{font_info.family}' → '{resolved_font.family}'"
             )
             for element in matching_elements:
-                svg_utils.add_font_family(
-                    element, font_info.family, resolved_font.family
-                )
+                svg_utils.add_font_family(element, resolved_font.family)
 
     def _resolve_fonts_with_fallbacks(
         self, svg: ET.Element
