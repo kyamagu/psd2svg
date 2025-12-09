@@ -41,139 +41,80 @@ uv run pytest
 
 ### Font Resolution Strategy
 
-psd2svg uses a sophisticated multi-tiered approach to resolve fonts with intelligent charset-based matching:
+#### Background
 
-#### 1. Resolution Tiers
+PSD files store font references as **PostScript names** (e.g., "ArialMT", "HelveticaNeue-Bold"). For SVG output, we need to convert these to **CSS font families** (e.g., "Arial", "Helvetica Neue"). Additionally:
 
-**Tier 1 - Static mapping (primary)**: 572 common fonts mapped by PostScript name
+- **When `embed_fonts=False`**: Only family names are needed for the SVG `font-family` attribute
+- **When `embed_fonts=True`**: Must locate actual system font files for embedding
 
-- Cross-platform compatibility
-- No external dependencies
-- Works on Windows, Linux, macOS
-- Enables text conversion everywhere
+#### Architecture: Deferred Resolution
 
-**Tier 2 - Platform-specific resolution (fallback)**: Query system fonts when needed
+psd2svg uses a **two-phase approach** to optimize performance:
 
-- **Linux/macOS**: fontconfig with CharSet API (requires fontconfig-py >= 0.4.0)
-- **Windows**: Windows registry + fontTools parsing with cmap table checking
-- Font file path discovery enables font embedding
-- Automatically invoked by `FontInfo.resolve()` when resolving fonts
+**Phase 1 - PSD Conversion** (`from_psd()`):
 
-**Resolution priority**: Custom mapping (via `font_mapping` parameter) → Static mapping → Platform-specific
+- PostScript names stored directly in SVG `font-family` attributes
+- No font resolution performed (fast conversion)
+- Original PSD intent preserved
 
-**Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter for fonts not in default mapping. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
+**Phase 2 - Output** (`save()`, `tostring()`, `rasterize()`):
 
-#### 2. Unicode Codepoint-Based Matching
+- Extract PostScript names from SVG tree
+- Resolve to CSS family names based on context:
+  - **`embed_fonts=False`**: Use static mapping (fast, no system queries)
+  - **`embed_fonts=True`**: Use platform-specific resolution (locates font files)
+- Update `font-family` attributes with resolved names
+- Embed fonts if requested
 
-**Feature**: Charset-aware font matching (implemented in feature/charset-font-matching)
+#### Resolution Methods
 
-psd2svg performs intelligent font matching by analyzing which Unicode characters are actually used in the text:
+**Static Mapping** (cross-platform, no dependencies):
 
-**How it works**:
+- 572 common fonts mapped by PostScript name
+- Returns family name, style, and weight (no file path)
+- Used when `embed_fonts=False` for fast resolution
 
-1. **Character extraction**: Extracts all Unicode characters from text layers
-2. **Codepoint conversion**: Converts characters to numeric codepoints (e.g., 'あ' → 0x3042)
-3. **Smart resolution**: Prioritizes fonts with better glyph coverage for those specific characters
-4. **Automatic fallback**: Gracefully falls back to name-only matching on any errors
+**Platform-Specific Resolution** (requires system queries):
 
-**Platform implementation**:
+- **Linux/macOS**: fontconfig with CharSet API (fontconfig-py >= 0.4.0)
+- **Windows**: Windows registry + fontTools cmap parsing
+- Returns complete font metadata including file path
+- Used when `embed_fonts=True` to locate font files for embedding
 
-- **Linux/macOS**: Uses fontconfig CharSet API for native charset querying
-- **Windows**: Uses fontTools cmap table checking (requires 80%+ coverage by default)
-- **Automatic**: Always enabled, no configuration needed, graceful degradation
+**Resolution Priority**: Custom mapping → Static mapping → Platform-specific
 
-**Benefits**:
+**Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter. See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
 
-- Better font selection for multilingual text (CJK, Arabic, Devanagari, etc.)
-- Reduces font substitution warnings
-- Finds fonts with actual glyph support vs. just name matching
-- Minimal performance overhead (~10-50ms per document)
-- Character extraction reused for both charset matching and font subsetting
+#### Charset-Based Font Matching
 
-#### 3. Automatic Font Fallback Chains
+When resolving fonts, psd2svg analyzes actual text characters for better matching:
 
-When fonts are embedded, psd2svg automatically:
+1. Extract Unicode characters from text layers
+2. Convert to codepoints (e.g., 'あ' → 0x3042)
+3. Query system for fonts with best glyph coverage
+4. Fallback to name-only matching on errors
 
-1. Resolves requested fonts to actual system fonts via `FontInfo.resolve()`
-2. Detects font substitutions (e.g., Arial → DejaVu Sans)
-3. Generates CSS fallback chains: `font-family: 'Arial', 'DejaVu Sans'`
-4. Embeds the actual substitute font in @font-face rules
-5. Updates SVG text elements with fallback chains
+**Benefits**: Better selection for multilingual text (CJK, Arabic, etc.), minimal overhead (~10-50ms)
 
-This ensures correct rendering when requested fonts are unavailable. Font substitutions are logged at INFO level, charset matching at DEBUG level.
+#### Font Embedding Features
 
-#### 4. Font CSS Insertion Architecture
+**Font Subsetting** (when `embed_fonts=True`):
 
-**Unified implementation** with boolean flag for encoding mode:
+- Character extraction reused for both charset matching and subsetting
+- Typically 90%+ size reduction with WOFF2 format
 
-```text
-_insert_css_fontface(svg, subset_fonts, font_format, use_data_uri)
-  │
-  ├─ _collect_resolved_fonts(svg)
-  │   └─ Returns: list[(FontInfo, set[str])] (deduplicated by font path)
-  │
-  ├─ _generate_css_rules_for_fonts()
-  │   └─ if use_data_uri: encode_font_with_options() (with subsetting)
-  │   └─ else: create_file_url() (no subsetting)
-  │
-  └─ insert_or_update_style_element() - Insert CSS into SVG
-```
+**Embedding Modes**:
 
-**Usage modes:**
+- `tostring()`/`save()`: Data URIs (portable files)
+- `rasterize()` with PlaywrightRasterizer: file:// URLs (60-80% faster)
 
-- `tostring()`/`save()`: use_data_uri=True (portable SVG files)
-- `rasterize()` with PlaywrightRasterizer: use_data_uri=False (60-80% faster, file:// URLs)
+#### Key API Methods
 
-#### 5. Font Resolution Patterns
-
-**Deferred Resolution Architecture** (current implementation):
-
-psd2svg uses a deferred font resolution approach that preserves original PostScript names from PSD files:
-
-```python
-# During PSD → SVG conversion:
-# - PostScript names stored directly in font-family attributes
-# - No font resolution performed (fast conversion)
-# - Original PSD intent preserved perfectly
-
-# During output (save/tostring/rasterize):
-# - Extract PostScript names from SVG tree
-# - Resolve PostScript → family names with charset-based matching
-# - Update font-family attributes with resolved names + fallbacks
-# - Embed fonts if requested
-```
-
-**Benefits**:
-
-- **Faster conversion**: No font resolution during PSD parsing
-- **Better accuracy**: Original PostScript names preserved until output
-- **Better matching**: Charset-based resolution with actual text content
-- **No information loss**: Failed resolution doesn't lose PostScript names
-
-**Font resolution flow**:
-
-1. **Conversion time**: `TypeSetting.get_postscript_name(font_index)` extracts PostScript names from PSD font set
-2. **Output time**: `_resolve_postscript_to_family(ps_name, charset_codepoints)` resolves to family names
-3. **Font embedding**: Only performed when `embed_fonts=True` or using PlaywrightRasterizer
-
-**Two-step resolution pattern** (used internally):
-
-```python
-# Step 1: Find font metadata (static mapping for 572 common fonts)
-font = FontInfo.find('ArialMT')
-# Returns immediately if in static mapping, with family/style/weight but no file path
-
-# Step 2: Resolve to system font file with charset matching (when needed for embedding)
-codepoints = {0x3042, 0x3044}  # Japanese hiragana
-resolved = font.resolve(charset_codepoints=codepoints)
-# Queries system with charset-based matching to find font file
-```
-
-**Key architectural points**:
-
-- `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD (no resolution)
-- `FontInfo.find()`: Metadata lookup with optional charset-based fallback (Tier 3 only)
-- `FontInfo.resolve()`: System font file resolution with charset matching (always queries system)
+- `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD
+- `FontInfo.find()`: Find font metadata (static mapping or platform-specific)
+  - With `disable_static_mapping=True`: Skip static mapping, go directly to platform resolution (optimization for `embed_fonts=True`)
+- `FontInfo.resolve()`: Resolve to system font file with charset matching
 - SVG tree is single source of truth for fonts (no separate font list maintained)
 
 ## Architecture Overview
