@@ -60,7 +60,6 @@ class SVGDocument:
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
-        enable_fontconfig: bool = True,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -91,14 +90,12 @@ class SVGDocument:
                 enum values. Only affects bounding box text (ShapeType=1); point text
                 always uses native SVG <text> elements.
             font_mapping: Optional custom font mapping dictionary for resolving PostScript
-                font names to font families without fontconfig. Useful on Windows or when
-                fonts are not installed. Format:
-                {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+                font names to font families. Takes priority over built-in static mapping.
+                Useful for providing custom fonts or overriding default mappings.
+                Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
                 Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
-                When not provided, uses built-in mapping for common fonts.
-            enable_fontconfig: If True (default), fall back to fontconfig for fonts not in
-                static mapping. If False, only use static/custom mapping. Setting to False
-                can prevent unexpected font substitutions when fontconfig is available.
+                When not provided, uses built-in mapping for 572 common fonts, with automatic
+                fallback to system font resolution (fontconfig/Windows registry) if needed.
         Returns:
             SVGDocument object containing the converted SVG and images.
         """
@@ -112,7 +109,6 @@ class SVGDocument:
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
             font_mapping=font_mapping,
-            enable_fontconfig=enable_fontconfig,
         )
         converter.build()
 

@@ -789,11 +789,14 @@ class TestFontInfoIsResolved:
         assert font_info.is_resolved() is False
         mock_exists.assert_called_once_with("/nonexistent/path/arial.ttf")
 
+    @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False)
+    @patch("psd2svg.core.font_utils.HAS_WINDOWS_FONTS", False)
     @patch("os.path.exists")
     def test_is_resolved_from_static_mapping(self, mock_exists: MagicMock) -> None:
         """Test is_resolved() returns False for font from static mapping (no file)."""
         # Static mapping doesn't provide file paths
-        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+        # Mock platform-specific resolution as unavailable to force static mapping
+        font_info = FontInfo.find("ArialMT")
 
         assert font_info is not None
         assert font_info.file == ""
@@ -804,6 +807,7 @@ class TestFontInfoIsResolved:
 
     @patch("os.path.exists")
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", True)
+    @patch("psd2svg.core.font_utils.HAS_WINDOWS_FONTS", False)
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig")
     def test_is_resolved_after_resolve(
@@ -818,8 +822,9 @@ class TestFontInfoIsResolved:
             "weight": 80.0,
         }
 
-        # Start with unresolved font
-        font_info = FontInfo.find("ArialMT", enable_fontconfig=False)
+        # Start with unresolved font from static mapping
+        with patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False):
+            font_info = FontInfo.find("ArialMT")
         assert font_info is not None
         assert font_info.is_resolved() is False
 
