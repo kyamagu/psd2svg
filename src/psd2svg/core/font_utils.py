@@ -322,18 +322,7 @@ class FontInfo:
         logger.debug(f"Resolving font '{self.postscript_name}' via Windows registry")
 
         try:
-            resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
-
-            if charset_codepoints is not None:
-                logger.debug(
-                    f"Resolving '{self.postscript_name}' on Windows "
-                    f"with {len(charset_codepoints)} codepoints"
-                )
-                match = resolver.find_with_charset(
-                    self.postscript_name, charset_codepoints
-                )
-            else:
-                match = resolver.find(self.postscript_name)
+            match = FontInfo._match_windows(self.postscript_name, charset_codepoints)
 
             if not match:
                 logger.debug(
@@ -435,6 +424,53 @@ class FontInfo:
                 raise
 
     @staticmethod
+    def _match_windows(
+        postscriptname: str, charset_codepoints: set[int] | None
+    ) -> dict[str, Any] | None:
+        """Match font via Windows registry with optional charset support.
+
+        This is a low-level helper that performs the actual Windows registry matching
+        with optional charset-based filtering. Used by both find() and resolve().
+
+        Args:
+            postscriptname: PostScript name of the font.
+            charset_codepoints: Optional set of Unicode codepoints for charset matching.
+
+        Returns:
+            Windows font resolver match result dict with keys: file, family, style, weight.
+            None if no match found.
+
+        Raises:
+            Exception: If Windows matching fails and charset_codepoints is None.
+        """
+        resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
+
+        try:
+            if charset_codepoints is not None:
+                # Use charset-based matching
+                logger.debug(
+                    f"Using charset with {len(charset_codepoints)} codepoints "
+                    f"for '{postscriptname}'"
+                )
+                match = resolver.find_with_charset(postscriptname, charset_codepoints)
+            else:
+                # Standard PostScript name matching
+                match = resolver.find(postscriptname)
+            return match  # type: ignore
+        except Exception as e:
+            # Graceful degradation: fall back to name-only matching
+            if charset_codepoints is not None:
+                logger.warning(
+                    f"Charset-based matching failed for '{postscriptname}': {e}. "
+                    "Falling back to name-only matching"
+                )
+                match = resolver.find(postscriptname)
+                return match  # type: ignore
+            else:
+                # If name-only matching also failed, re-raise
+                raise
+
+    @staticmethod
     def _find_via_fontconfig(
         postscriptname: str, charset_codepoints: set[int] | None
     ) -> Self | None:
@@ -485,30 +521,8 @@ class FontInfo:
             f"Font '{postscriptname}' not in static mapping, "
             "trying Windows registry..."
         )
-        resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
 
-        try:
-            if charset_codepoints is not None:
-                # Use charset-based matching
-                logger.debug(
-                    f"Using charset with {len(charset_codepoints)} codepoints "
-                    f"for '{postscriptname}'"
-                )
-                match = resolver.find_with_charset(postscriptname, charset_codepoints)
-            else:
-                # Standard PostScript name matching
-                match = resolver.find(postscriptname)
-        except Exception as e:
-            # Graceful degradation: fall back to name-only matching
-            if charset_codepoints is not None:
-                logger.warning(
-                    f"Charset-based matching failed for '{postscriptname}': {e}. "
-                    "Falling back to name-only matching"
-                )
-                match = resolver.find(postscriptname)
-            else:
-                # If name-only matching also failed, re-raise
-                raise
+        match = FontInfo._match_windows(postscriptname, charset_codepoints)
 
         if match:
             logger.info(
