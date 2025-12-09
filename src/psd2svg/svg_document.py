@@ -151,6 +151,58 @@ class SVGDocument:
         """
         svg_utils.insert_or_update_style_element(self.svg, css)
 
+    def _prepare_svg_for_output(
+        self,
+        embed_images: bool,
+        embed_fonts: bool,
+        subset_fonts: bool,
+        font_format: str,
+        image_prefix: str | None,
+        image_format: str,
+        optimize: bool,
+        svg_filepath: str | None,
+    ) -> ET.Element:
+        """Prepare SVG element for output by handling images, fonts, and optimization.
+
+        Args:
+            embed_images: If True, embed images as base64 data URIs.
+            embed_fonts: If True, embed fonts as @font-face rules in <style> element.
+            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
+            font_format: Font format for embedding: "woff2", "woff", "ttf", or "otf".
+            image_prefix: If provided, save images to files with this prefix.
+            image_format: Image format to use when embedding or saving images.
+            optimize: If True, apply SVG optimizations (consolidate defs, etc.).
+            svg_filepath: Path to the output SVG file (for save()), or None (for tostring()).
+
+        Returns:
+            Prepared SVG element ready for serialization.
+        """
+        # Create a copy to avoid modifying the original SVG
+        svg = deepcopy(self.svg)
+
+        svg = self._handle_images(
+            svg, embed_images, image_prefix, image_format, svg_filepath=svg_filepath
+        )
+
+        # Always resolve PostScript names to CSS font families
+        # Use platform resolution when embed_fonts=True (needs font files)
+        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
+        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
+
+        if embed_fonts:
+            self._insert_css_fontface(
+                svg,
+                subset_fonts=subset_fonts,
+                font_format=font_format,
+                use_data_uri=True,
+                resolved_fonts_map=resolved_fonts_map,
+            )
+
+        if optimize:
+            svg_utils.consolidate_defs(svg)
+
+        return svg
+
     def tostring(
         self,
         embed_images: bool = True,
@@ -184,30 +236,16 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Create a copy to avoid modifying the original SVG
-        svg = deepcopy(self.svg)
-
-        svg = self._handle_images(
-            svg, embed_images, image_prefix, image_format, svg_filepath=None
+        svg = self._prepare_svg_for_output(
+            embed_images=embed_images,
+            embed_fonts=embed_fonts,
+            subset_fonts=subset_fonts,
+            font_format=font_format,
+            image_prefix=image_prefix,
+            image_format=image_format,
+            optimize=optimize,
+            svg_filepath=None,
         )
-
-        # Always resolve PostScript names to CSS font families
-        # Use platform resolution when embed_fonts=True (needs font files)
-        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
-        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
-
-        if embed_fonts:
-            self._insert_css_fontface(
-                svg,
-                subset_fonts=subset_fonts,
-                font_format=font_format,
-                use_data_uri=True,
-                resolved_fonts_map=resolved_fonts_map,
-            )
-
-        if optimize:
-            svg_utils.consolidate_defs(svg)
-
         return svg_utils.tostring(svg, indent=indent)
 
     def save(
@@ -245,30 +283,16 @@ class SVGDocument:
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
                 Default is True.
         """
-        # Create a copy to avoid modifying the original SVG
-        svg = deepcopy(self.svg)
-
-        svg = self._handle_images(
-            svg, embed_images, image_prefix, image_format, svg_filepath=filepath
+        svg = self._prepare_svg_for_output(
+            embed_images=embed_images,
+            embed_fonts=embed_fonts,
+            subset_fonts=subset_fonts,
+            font_format=font_format,
+            image_prefix=image_prefix,
+            image_format=image_format,
+            optimize=optimize,
+            svg_filepath=filepath,
         )
-
-        # Always resolve PostScript names to CSS font families
-        # Use platform resolution when embed_fonts=True (needs font files)
-        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
-        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
-
-        if embed_fonts:
-            self._insert_css_fontface(
-                svg,
-                subset_fonts=subset_fonts,
-                font_format=font_format,
-                use_data_uri=True,
-                resolved_fonts_map=resolved_fonts_map,
-            )
-
-        if optimize:
-            svg_utils.consolidate_defs(svg)
-
         with open(filepath, "w", encoding="utf-8") as f:
             svg_utils.write(svg, f, indent=indent)
 
