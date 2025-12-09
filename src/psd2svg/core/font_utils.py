@@ -225,20 +225,30 @@ class FontInfo:
     def resolve(self, charset_codepoints: set[int] | None = None) -> Self | None:
         """Resolve font to actual available system font via fontconfig.
 
-        This method queries fontconfig to find the actual font file and complete
-        metadata for the font. When charset_codepoints is provided, resolution
-        prioritizes fonts with better glyph coverage for those characters.
+        This method queries the system font resolver (fontconfig/Windows registry)
+        to find the actual font file and complete metadata. When charset information
+        is available (either from self.charset or charset_codepoints parameter),
+        resolution prioritizes fonts with better glyph coverage for those characters.
+
+        **Charset Merging**: If this FontInfo instance already has a charset (self.charset)
+        and charset_codepoints is also provided, the method merges both character sets
+        (union operation) before font resolution. This ensures the resolved font supports
+        ALL characters from both the existing context and the new request.
 
         Args:
-            charset_codepoints: Optional set of Unicode codepoints (integers)
-                to filter fonts by glyph coverage. When provided:
-                - Linux/macOS: Passed to fontconfig via CharSet
-                - Windows: Used to check cmap table coverage
-                When None, uses standard PostScript name matching.
+            charset_codepoints: Optional set of Unicode codepoints (integers) for
+                additional charset-based font matching. When provided:
+                - Merged with self.charset (if present) before resolution
+                - Used for charset-based font matching:
+                  * Linux/macOS: Passed to fontconfig via CharSet API
+                  * Windows: Used to check cmap table coverage
+                - When None and self.charset is None: Uses standard PostScript name matching
 
         Returns:
-            New FontInfo instance with resolved metadata, or None if font not found.
-            The original FontInfo instance is not modified (immutable pattern).
+            New FontInfo instance with resolved metadata and merged charset, or None
+            if font not found. The original FontInfo instance is not modified
+            (immutable pattern). The returned FontInfo.charset contains the merged
+            character set used for resolution.
 
         Note:
             Generic family (sans-serif, serif, monospace) is not included in the
@@ -247,13 +257,23 @@ class FontInfo:
             external databases.
 
         Example:
-            >>> # Standard resolution
+            >>> # Standard resolution (no charset)
             >>> font = FontInfo.find('ArialMT')
             >>> resolved = font.resolve()
             >>>
             >>> # Charset-based resolution
             >>> codepoints = {0x3042, 0x3044, 0x3046}  # Japanese hiragana
             >>> resolved = font.resolve(charset_codepoints=codepoints)
+            >>> assert resolved.charset == {'あ', 'い', 'う'}
+            >>>
+            >>> # Charset merging example
+            >>> font_with_charset = FontInfo(
+            ...     postscript_name='ArialMT', file='', family='Arial',
+            ...     style='Regular', weight=80.0, charset={'A', 'B'}
+            ... )
+            >>> # Add more characters to existing charset
+            >>> resolved = font_with_charset.resolve(charset_codepoints={0x43})  # 'C'
+            >>> assert resolved.charset == {'A', 'B', 'C'}  # Merged charset
         """
         # If font already has a valid file path, no need to resolve
         if self.file and os.path.exists(self.file):
