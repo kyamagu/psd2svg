@@ -187,12 +187,15 @@ class SVGDocument:
             svg, embed_images, image_prefix, image_format, svg_filepath=svg_filepath
         )
 
-        # Always resolve PostScript names to CSS font families
-        # Use platform resolution when embed_fonts=True (needs font files)
-        # Use static mapping when embed_fonts=False (prevents unwanted substitution)
-        resolved_fonts_map = self._resolve_postscript_names(svg, embed_fonts=embed_fonts)
-
+        # EARLY SPLIT: Different font resolution strategies based on embed_fonts
+        # This optimization eliminates unnecessary charset extraction and platform
+        # queries when only CSS family names are needed.
         if embed_fonts:
+            # Path 1: Full resolution with font files and charset
+            # - Uses platform-specific resolution (fontconfig/Windows registry)
+            # - Extracts charset from text elements for optimal matching
+            # - Returns resolved_fonts_map for font embedding
+            resolved_fonts_map = self._resolve_postscript_names_for_embedding(svg)
             self._insert_css_fontface(
                 svg,
                 subset_fonts=subset_fonts,
@@ -200,6 +203,13 @@ class SVGDocument:
                 use_data_uri=use_data_uri_for_fonts,
                 resolved_fonts_map=resolved_fonts_map,
             )
+        else:
+            # Path 2: Lightweight static mapping only
+            # - Uses static mapping (572 fonts) with NO platform queries
+            # - Does NOT extract charset (performance optimization)
+            # - Preserves PostScript names when fonts not in static mapping
+            # - No resolved_fonts_map needed (no embedding)
+            self._resolve_postscript_names_static(svg)
 
         if optimize:
             svg_utils.consolidate_defs(svg)
@@ -595,28 +605,112 @@ class SVGDocument:
 
         return matching_elements, charset_codepoints
 
-    def _resolve_postscript_names(
-        self, svg: ET.Element, embed_fonts: bool = False
+    @staticmethod
+    def _update_element_font_attributes(
+        element: ET.Element, resolved_font: FontInfo
+    ) -> None:
+        """Update font attributes on an SVG element based on resolved font info.
+
+        Args:
+            element: SVG element to update (text, tspan, etc.)
+            resolved_font: Resolved font information with family, weight, and style.
+
+        Note:
+            Only sets font-weight if not 400 (Regular, CSS default).
+            Only sets font-style if italic.
+            Preserves existing font-weight/font-style (from faux bold/italic).
+        """
+        # Set font-weight if not Regular (400)
+        # Note: Only set if element doesn't already have font-weight
+        # (preserve faux-bold from text.py if present)
+        if not element.get("font-weight"):
+            css_weight = resolved_font.css_weight
+            if css_weight != 400:
+                svg_utils.set_attribute(element, "font-weight", css_weight)
+
+        # Set font-style if italic
+        # Note: Only set if element doesn't already have font-style
+        # (preserve faux-italic from text.py if present)
+        if not element.get("font-style") and resolved_font.italic:
+            svg_utils.set_attribute(element, "font-style", "italic")
+
+    def _resolve_postscript_names_static(self, svg: ET.Element) -> None:
+        """Resolve PostScript names using static mapping only (no platform queries).
+
+        Used when embed_fonts=False. This lightweight method only resolves PostScript
+        names to CSS family names without accessing system fonts or extracting charset.
+        Fonts not in the static mapping will preserve their PostScript names.
+
+        Args:
+            svg: SVG element to search for font usage and update with family names.
+
+        Note:
+            - Does NOT extract charset (performance optimization)
+            - Does NOT query platform fonts (prevents unwanted substitution)
+            - Updates font-family, font-weight, and font-style attributes
+            - Returns nothing (no resolved_fonts_map needed)
+        """
+        # Get all unique PostScript names used in SVG
+        postscript_names = svg_utils.extract_font_families(svg)
+
+        for ps_name in postscript_names:
+            # Resolve using static mapping only (no platform queries)
+            resolved_font = FontInfo.find_static(ps_name)
+
+            if resolved_font is None:
+                # Font not in static mapping - keep PostScript name
+                logger.debug(
+                    f"Font '{ps_name}' not in static mapping. "
+                    "Preserving PostScript name in SVG."
+                )
+                continue
+
+            # Get family name
+            family_name = resolved_font.family
+
+            # Find all elements with this PostScript name
+            # Note: We need to find elements to update them, but we don't extract charset
+            elements_with_font = []
+            for element in svg.iter():
+                font_family = element.get("font-family")
+                if font_family == ps_name:
+                    elements_with_font.append(element)
+
+            if not elements_with_font:
+                continue
+
+            # Log resolution
+            if family_name != ps_name:
+                logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+
+            # Update all elements with this font
+            for element in elements_with_font:
+                # Replace PostScript name with CSS family name
+                if family_name != ps_name:
+                    svg_utils.replace_font_family(element, ps_name, family_name)
+
+                # Set weight and style attributes
+                self._update_element_font_attributes(element, resolved_font)
+
+    def _resolve_postscript_names_for_embedding(
+        self, svg: ET.Element
     ) -> dict[str, FontInfo]:
-        """Resolve PostScript names in SVG to CSS font family names.
+        """Resolve PostScript names for font embedding with full platform resolution.
+
+        Used when embed_fonts=True. This method extracts charset from text elements
+        and uses platform-specific font resolution to locate font files.
 
         Scans SVG for elements with PostScript names in font-family attributes,
-        resolves each to proper CSS family names, and updates font-family,
-        font-weight, and font-style attributes.
+        resolves each to proper CSS family names with platform queries, and updates
+        font-family, font-weight, and font-style attributes.
 
         PostScript names encode weight and style (e.g., "Arial-BoldMT" = Arial Bold).
         When resolved to family names, the weight and style are transferred to
         CSS font-weight and font-style attributes.
 
-        This method MUST be called for all SVG output (even when embed_fonts=False)
-        to ensure PostScript names are converted to standard CSS that browsers understand.
-
         Args:
             svg: SVG element to search for font usage and update with family names
                 and weight/style attributes.
-            embed_fonts: If True, resolve to font files (find_with_files). If False,
-                resolve to CSS family names only (find_static). This prevents unwanted
-                font substitution when only CSS names are needed.
 
         Returns:
             Dictionary mapping font file paths to FontInfo instances with charset populated.
@@ -624,6 +718,8 @@ class SVGDocument:
             Multiple PostScript names may map to the same file (e.g., TTC collections).
 
         Note:
+            - Always uses platform-specific resolution (fontconfig/Windows registry)
+            - Extracts charset from text elements for optimal font matching
             - Preserves existing font-weight/font-style (from faux bold/italic)
             - Only sets font-weight if not 400 (Regular, CSS default)
             - Only sets font-style if italic
@@ -642,70 +738,60 @@ class SVGDocument:
             if not matching_elements:
                 continue
 
-            # Step 2: Resolve PostScript name → family name
+            # Step 2: Resolve PostScript name → family name with platform resolution
             try:
-                if embed_fonts:
-                    # Need font files for embedding - use platform resolution
-                    resolved_font = FontInfo.find_with_files(
-                        ps_name,
-                        charset_codepoints=charset_codepoints,
-                    )
-                else:
-                    # Only need CSS family names - use static mapping only
-                    resolved_font = FontInfo.find_static(ps_name)
+                # Always use platform resolution for embedding (needs font files)
+                resolved_font = FontInfo.find_with_files(
+                    ps_name,
+                    charset_codepoints=charset_codepoints,
+                )
             except Exception as e:
                 logger.warning(
                     f"Font resolution failed for PostScript name '{ps_name}': {e}. "
                     "Keeping PostScript name in SVG."
                 )
                 resolved_font = None
-            family_name = resolved_font.family if resolved_font else ps_name
 
-            # Step 4: Update font-family attributes and set weight/style
-            if resolved_font:
-                # Font was resolved - update SVG elements
-                if family_name != ps_name:
-                    logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
-
-                for element in matching_elements:
-                    # Replace PostScript name with CSS family name (if different)
-                    if family_name != ps_name:
-                        svg_utils.replace_font_family(element, ps_name, family_name)
-
-                    # Set font-weight if not Regular (400)
-                    # Note: Only set if element doesn't already have font-weight
-                    # (preserve faux-bold from text.py if present)
-                    if not element.get("font-weight"):
-                        css_weight = resolved_font.css_weight
-                        if css_weight != 400:
-                            svg_utils.set_attribute(element, "font-weight", css_weight)
-
-                    # Set font-style if italic
-                    # Note: Only set if element doesn't already have font-style
-                    # (preserve faux-italic from text.py if present)
-                    if not element.get("font-style") and resolved_font.italic:
-                        svg_utils.set_attribute(element, "font-style", "italic")
-
-                # Step 5: Store resolved font for embedding (if font has file path)
-                if resolved_font.file:
-                    # Use file path as key to deduplicate fonts by file
-                    # (multiple PostScript names can map to the same file)
-                    file_key = resolved_font.file
-                    if file_key not in resolved_fonts_map:
-                        # Store font with charset (may already be populated from find())
-                        if not resolved_font.charset and charset_codepoints:
-                            resolved_font = dataclasses.replace(
-                                resolved_font, charset=charset_codepoints
-                            )
-                        resolved_fonts_map[file_key] = resolved_font
-                    else:
-                        # Merge codepoints if same file already tracked
-                        existing_font = resolved_fonts_map[file_key]
-                        if existing_font.charset and charset_codepoints:
-                            existing_font.charset.update(charset_codepoints)
-            else:
+            if resolved_font is None:
                 # No resolution - keep PostScript name
-                logger.debug(f"Keeping PostScript name '{ps_name}' (no resolution)")
+                logger.warning(
+                    f"Font '{ps_name}' not found via platform resolution. "
+                    "Keeping PostScript name in SVG."
+                )
+                continue
+
+            family_name = resolved_font.family
+
+            # Log resolution
+            if family_name != ps_name:
+                logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+
+            # Step 3: Update font-family attributes and set weight/style
+            for element in matching_elements:
+                # Replace PostScript name with CSS family name (if different)
+                if family_name != ps_name:
+                    svg_utils.replace_font_family(element, ps_name, family_name)
+
+                # Set weight and style attributes using helper method
+                self._update_element_font_attributes(element, resolved_font)
+
+            # Step 4: Store resolved font for embedding (if font has file path)
+            if resolved_font.file:
+                # Use file path as key to deduplicate fonts by file
+                # (multiple PostScript names can map to the same file)
+                file_key = resolved_font.file
+                if file_key not in resolved_fonts_map:
+                    # Store font with charset (may already be populated from find())
+                    if not resolved_font.charset and charset_codepoints:
+                        resolved_font = dataclasses.replace(
+                            resolved_font, charset=charset_codepoints
+                        )
+                    resolved_fonts_map[file_key] = resolved_font
+                else:
+                    # Merge codepoints if same file already tracked
+                    existing_font = resolved_fonts_map[file_key]
+                    if existing_font.charset and charset_codepoints:
+                        existing_font.charset.update(charset_codepoints)
 
         return resolved_fonts_map
 
