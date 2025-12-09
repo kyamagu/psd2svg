@@ -713,20 +713,17 @@ class SVGDocument:
         Args:
             svg: SVG element to search for font usage.
             resolved_fonts_map: Optional dict mapping font file paths to FontInfo instances
-                from _resolve_postscript_names(). If provided, reuses these resolved fonts
-                instead of re-resolving. If None, performs font resolution from scratch.
+                from _resolve_postscript_names(). Used as a cache to avoid re-resolving
+                fonts that already have file paths. Fonts from static mapping (no file path)
+                will still be resolved via system queries.
 
         Returns:
             List of FontInfo instances with charset populated for embedding.
             Deduplicates fonts by file path.
         """
-        # If resolved fonts provided, use them directly (fast path)
-        if resolved_fonts_map is not None:
-            # Already deduplicated by file path in _resolve_postscript_names()
-            return list(resolved_fonts_map.values())
-
-        # Fallback: Resolve fonts from scratch (slow path)
-        resolved_fonts: dict[str, FontInfo] = {}
+        # Use resolved_fonts_map as cache, but still need to resolve fonts without file paths
+        # (e.g., fonts from static mapping that weren't added to the map)
+        resolved_fonts: dict[str, FontInfo] = resolved_fonts_map.copy() if resolved_fonts_map else {}
 
         # Get all font families from SVG (now resolved to CSS family names)
         font_families = svg_utils.extract_font_families(svg)
@@ -739,8 +736,23 @@ class SVGDocument:
             if not matching_elements:
                 continue
 
-            # Step 2: Try to find and resolve font
+            # Step 2: Check if already in cache with valid file path
+            # The cache may contain fonts from platform-specific resolution (with file paths)
+            # but will NOT contain fonts from static mapping (no file paths)
+            cached_font = None
+            for cached in resolved_fonts.values():
+                if cached.family == family_name:
+                    cached_font = cached
+                    break
 
+            if cached_font and cached_font.file:
+                # Font already resolved with file path - merge charset if needed
+                if cached_font.charset and charset_codepoints:
+                    cached_font.charset.update(charset_codepoints)
+                logger.debug(f"Using cached font for '{family_name}': {cached_font.file}")
+                continue
+
+            # Step 3: Not in cache or no file path - need to find and resolve
             try:
                 found_font: FontInfo | None = FontInfo.find(
                     family_name, charset_codepoints=charset_codepoints
