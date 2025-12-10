@@ -727,7 +727,7 @@ class SVGDocument:
             try:
                 # Single resolution call per font (uses platform-specific resolution)
                 # Empty sets are automatically treated as None (no charset matching)
-                resolved_font = FontInfo.find_with_files(
+                resolved_font = FontInfo.resolve(
                     ps_name,
                     charset_codepoints=charset_codepoints,
                 )

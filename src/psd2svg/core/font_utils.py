@@ -450,10 +450,10 @@ class FontInfo:
             >>> # Font embedding resolution (platform-specific)
             >>> font = FontInfo.find('ArialMT', disable_static_mapping=True)
             >>> # Is equivalent to:
-            >>> font = FontInfo.find_with_files('ArialMT')
+            >>> font = FontInfo.resolve('ArialMT')
         """
         if disable_static_mapping:
-            return FontInfo.find_with_files(
+            return FontInfo.resolve(
                 postscriptname, font_mapping, charset_codepoints
             )
         else:
@@ -535,12 +535,12 @@ class FontInfo:
         return None
 
     @staticmethod
-    def find_with_files(
+    def resolve(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
         charset_codepoints: set[int] | None = None,
     ) -> Self | None:
-        """Find font with file path using platform-specific resolution.
+        """Resolve font with file path using platform-specific resolution.
 
         Uses fontconfig (Linux/macOS) or Windows registry to locate font files.
         Suitable for font embedding where actual font files are needed.
@@ -562,7 +562,7 @@ class FontInfo:
             guaranteed to be non-empty when FontInfo is returned.
 
         Example:
-            >>> font = FontInfo.find_with_files('ArialMT')
+            >>> font = FontInfo.resolve('ArialMT')
             >>> if font:
             ...     print(f"Font file: {font.file}")  # Always has file path
         """

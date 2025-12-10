@@ -80,7 +80,7 @@ psd2svg provides two distinct resolution methods optimized for different use cas
 - Used when `embed_fonts=False` (prevents unwanted font substitution)
 - Fast, cross-platform, no system dependencies
 
-**`FontInfo.find_with_files()`** - For font file access:
+**`FontInfo.resolve()`** - For font file access:
 
 - Resolution chain: Custom mapping → Platform-specific resolution
 - Returns complete font metadata including file path
@@ -92,7 +92,7 @@ psd2svg provides two distinct resolution methods optimized for different use cas
 **`FontInfo.find()`** - Backward-compatible wrapper:
 
 - Delegates to `find_static()` by default (safe behavior)
-- Use `disable_static_mapping=True` to delegate to `find_with_files()`
+- Use `disable_static_mapping=True` to delegate to `resolve()`
 - Maintained for backward compatibility; prefer explicit methods in new code
 
 **Custom font mapping**: Users can provide custom mappings via `font_mapping` parameter (always checked first, regardless of method used). See CLI tool: `python -m psd2svg.tools.generate_font_mapping`
@@ -124,8 +124,8 @@ When resolving fonts, psd2svg analyzes actual text characters for better matchin
 
 - `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD
 - `FontInfo.find_static()`: Resolve PostScript name to CSS family (no platform queries)
-- `FontInfo.find_with_files()`: Resolve PostScript name to font file with platform resolution
-- `FontInfo.find()`: Backward-compatible wrapper (delegates to `find_static()` or `find_with_files()`)
+- `FontInfo.resolve()`: Resolve PostScript name to font file with platform resolution
+- `FontInfo.find()`: Backward-compatible wrapper (delegates to `find_static()` or `resolve()`)
 - SVG tree is single source of truth for fonts (no separate font list maintained)
 
 ## Architecture Overview
