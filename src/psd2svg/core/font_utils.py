@@ -50,14 +50,23 @@ WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
     "Medium": ("Medium", 100.0),
     "SemiBold": ("SemiBold", 180.0),
     "Semibold": ("SemiBold", 180.0),  # Alternative spelling
+    "DemiBold": ("SemiBold", 180.0),  # Alternative name for SemiBold
+    "Demibold": ("SemiBold", 180.0),  # Alternative spelling
     "Bold": ("Bold", 200.0),
     "ExtraBold": ("ExtraBold", 205.0),
     "Extrabold": ("ExtraBold", 205.0),  # Alternative spelling
+    "UltraBold": ("Ultra", 210.0),  # UltraBold variant
+    "Ultrabold": ("Ultra", 210.0),  # Alternative spelling
     "Black": ("Black", 210.0),
     "Heavy": ("Heavy", 210.0),
     "Ultra": ("Ultra", 210.0),
     "Roman": ("Roman", 80.0),  # Times-Roman
     "MT": ("Regular", 80.0),  # Mac Type suffix
+    # Abbreviated suffixes (common in Japanese fonts like Rodin family)
+    "B": ("Bold", 200.0),  # Bold abbreviation
+    "DB": ("SemiBold", 180.0),  # DemiBold abbreviation
+    "EB": ("ExtraBold", 205.0),  # ExtraBold abbreviation
+    "UB": ("Ultra", 210.0),  # UltraBold abbreviation
 }
 
 # Japanese font weight notation (Hiragino fonts)
@@ -85,8 +94,13 @@ COMPOUND_SUFFIXES: dict[str, tuple[str, float]] = {
 }
 
 # Safe suffixes for camelCase parsing (to avoid false positives)
+# NOTE: Abbreviated suffixes (B, DB, EB, UB) are intentionally excluded
+# to prevent false positives like "WebDB", "TestEB", etc.
+# They work fine with hyphenated patterns (Phase 1).
 SAFE_CAMELCASE_SUFFIXES: list[str] = [
     # Order matters: check longest first
+    "UltraBold",  # Must come before "Bold"
+    "DemiBold",  # Must come before "Bold"
     "ExtraBold",
     "ExtraLight",
     "SemiBold",

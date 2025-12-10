@@ -672,3 +672,47 @@ class TestSuffixParsing:
 
         assert font is not None
         assert font.get_css_weight() == 700  # Bold = 700 in CSS
+
+    def test_parse_abbreviated_suffixes(self) -> None:
+        """Test suffix parsing for abbreviated suffixes (B, DB, EB, UB)."""
+        test_cases = [
+            ("RodinCattleyaPro-B", "Bold", 200.0),
+            ("RodinCattleyaPro-DB", "SemiBold", 180.0),  # DemiBold
+            ("RodinCattleyaPro-EB", "ExtraBold", 205.0),
+            ("RodinCattleyaPro-UB", "Ultra", 210.0),  # UltraBold
+            ("RowdyStd-EB", "ExtraBold", 205.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_abbreviated_suffixes_not_in_camelcase(self) -> None:
+        """Test that abbreviated suffixes don't cause false positives in camelCase."""
+        # These should NOT be parsed because abbreviated suffixes
+        # are not in SAFE_CAMELCASE_SUFFIXES to avoid false positives
+        test_cases = [
+            "WebDB",  # Not "Web" + "DB"
+            "TestEB",  # Not "Test" + "EB"
+            "CompanyB",  # Not "Company" + "B"
+        ]
+
+        for name in test_cases:
+            font = FontInfo.lookup_static(name)
+            # Should return None because abbreviated suffixes excluded from camelCase
+            assert font is None, f"{name} should not be parsed"
+
+    def test_parse_demibold_ultrabold_full_names(self) -> None:
+        """Test parsing of full DemiBold and UltraBold names."""
+        test_cases = [
+            ("CustomFont-DemiBold", "SemiBold", 180.0),
+            ("CustomFont-UltraBold", "Ultra", 210.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
