@@ -234,16 +234,17 @@ class FontInfo:
         Args:
             postscriptname: PostScript name of the font.
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
+                               Empty sets are treated as None (no charset matching).
 
         Returns:
             fontconfig match result dict with keys: file, family, style, weight.
             None if no match found.
 
         Raises:
-            Exception: If fontconfig matching fails and charset_codepoints is None.
+            Exception: If fontconfig matching fails and charset_codepoints is None or empty.
         """
         try:
-            if charset_codepoints is not None:
+            if charset_codepoints:
                 # Use charset-based matching
                 logger.debug(
                     f"Using charset with {len(charset_codepoints)} codepoints "
@@ -266,7 +267,7 @@ class FontInfo:
             return match  # type: ignore
         except Exception as e:
             # Graceful degradation: fall back to name-only matching
-            if charset_codepoints is not None:
+            if charset_codepoints:
                 logger.warning(
                     f"Charset-based matching failed for '{postscriptname}': {e}. "
                     "Falling back to name-only matching"
@@ -292,18 +293,19 @@ class FontInfo:
         Args:
             postscriptname: PostScript name of the font.
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
+                               Empty sets are treated as None (no charset matching).
 
         Returns:
             Windows font resolver match result dict with keys: file, family, style, weight.
             None if no match found.
 
         Raises:
-            Exception: If Windows matching fails and charset_codepoints is None.
+            Exception: If Windows matching fails and charset_codepoints is None or empty.
         """
         resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
 
         try:
-            if charset_codepoints is not None:
+            if charset_codepoints:
                 # Use charset-based matching
                 logger.debug(
                     f"Using charset with {len(charset_codepoints)} codepoints "
@@ -316,7 +318,7 @@ class FontInfo:
             return match  # type: ignore
         except Exception as e:
             # Graceful degradation: fall back to name-only matching
-            if charset_codepoints is not None:
+            if charset_codepoints:
                 logger.warning(
                     f"Charset-based matching failed for '{postscriptname}': {e}. "
                     "Falling back to name-only matching"
@@ -336,10 +338,11 @@ class FontInfo:
         Args:
             postscriptname: PostScript name of the font.
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
+                               Empty sets are treated as None (no charset matching).
 
         Returns:
-            FontInfo object if found, None otherwise. If charset_codepoints is provided,
-            the returned FontInfo will have charset populated for later resolution.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided
+            and non-empty, the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
@@ -375,10 +378,11 @@ class FontInfo:
         Args:
             postscriptname: PostScript name of the font.
             charset_codepoints: Optional set of Unicode codepoints for charset matching.
+                               Empty sets are treated as None (no charset matching).
 
         Returns:
-            FontInfo object if found, None otherwise. If charset_codepoints is provided,
-            the returned FontInfo will have charset populated for later resolution.
+            FontInfo object if found, None otherwise. If charset_codepoints is provided
+            and non-empty, the returned FontInfo will have charset populated for later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying Windows registry..."
@@ -429,7 +433,8 @@ class FontInfo:
                          {"PostScriptName": {"family": str, "style": str, "weight": float}}
             charset_codepoints: Optional set of Unicode codepoints for charset-based
                                font matching. Only used when disable_static_mapping=True
-                               (platform resolution). Default: None.
+                               (platform resolution). Empty sets are treated as None
+                               (no charset matching). Default: None.
             disable_static_mapping: If True, use find_with_files(); if False, use find_static().
                                    Default: False.
 
@@ -550,6 +555,7 @@ class FontInfo:
                          to platform resolution.
             charset_codepoints: Optional Unicode codepoints for charset-based matching.
                                Prioritizes fonts with better glyph coverage.
+                               Empty sets are treated as None (no charset matching).
 
         Returns:
             FontInfo with non-empty file path, or None if not found. File path is

@@ -726,10 +726,10 @@ class SVGDocument:
             # Step 2: Resolve PostScript name → family name with platform resolution
             try:
                 # Single resolution call per font (uses platform-specific resolution)
-                # Convert empty set to None to skip charset-based matching
+                # Empty sets are automatically treated as None (no charset matching)
                 resolved_font = FontInfo.find_with_files(
                     ps_name,
-                    charset_codepoints=charset_codepoints or None,
+                    charset_codepoints=charset_codepoints,
                 )
             except Exception as e:
                 logger.warning(
