@@ -459,15 +459,19 @@ class TestSuffixParsing:
         assert font.weight == 180.0
         assert font.style == "W6"
 
-    def test_parse_japanese_w3_to_w8(self) -> None:
-        """Test suffix parsing for all Japanese W3-W8 notations."""
+    def test_parse_japanese_w0_to_w9(self) -> None:
+        """Test suffix parsing for all Japanese W0-W9 notations."""
         test_cases = [
+            ("Font-W0", 0.0, "W0"),
+            ("Font-W1", 40.0, "W1"),
+            ("Font-W2", 45.0, "W2"),
             ("Font-W3", 50.0, "W3"),
             ("Font-W4", 80.0, "W4"),
             ("Font-W5", 100.0, "W5"),
             ("Font-W6", 180.0, "W6"),
             ("Font-W7", 200.0, "W7"),
             ("Font-W8", 205.0, "W8"),
+            ("Font-W9", 210.0, "W9"),
         ]
 
         for name, expected_weight, expected_style in test_cases:

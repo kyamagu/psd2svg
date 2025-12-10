@@ -70,13 +70,18 @@ WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
 }
 
 # Japanese font weight notation (Hiragino fonts)
+# Complete W0-W9 range based on macOS Hiragino Sans system fonts
 JAPANESE_WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
+    "W0": ("W0", 0.0),
+    "W1": ("W1", 40.0),
+    "W2": ("W2", 45.0),
     "W3": ("W3", 50.0),
     "W4": ("W4", 80.0),
     "W5": ("W5", 100.0),
     "W6": ("W6", 180.0),
     "W7": ("W7", 200.0),
     "W8": ("W8", 205.0),
+    "W9": ("W9", 210.0),
 }
 
 # Compound suffixes (weight + style)
