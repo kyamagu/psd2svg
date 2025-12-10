@@ -71,7 +71,7 @@ psd2svg uses a **two-phase approach** to optimize performance:
 
 psd2svg provides two distinct resolution methods optimized for different use cases:
 
-**`FontInfo.find_static()`** - For CSS family names only:
+**`FontInfo.lookup_static()`** - For font metadata lookup only:
 
 - Resolution chain: Custom mapping → Static mapping (572 fonts) → None
 - Returns family name, style, and weight (no file path)
@@ -91,7 +91,7 @@ psd2svg provides two distinct resolution methods optimized for different use cas
 
 **`FontInfo.find()`** - Backward-compatible wrapper:
 
-- Delegates to `find_static()` by default (safe behavior)
+- Delegates to `lookup_static()` by default (safe behavior)
 - Use `disable_static_mapping=True` to delegate to `resolve()`
 - Maintained for backward compatibility; prefer explicit methods in new code
 
@@ -123,9 +123,9 @@ When resolving fonts, psd2svg analyzes actual text characters for better matchin
 #### Key API Methods
 
 - `TypeSetting.get_postscript_name()`: Extract PostScript name from PSD
-- `FontInfo.find_static()`: Resolve PostScript name to CSS family (no platform queries)
+- `FontInfo.lookup_static()`: Lookup PostScript name to get font metadata (no platform queries)
 - `FontInfo.resolve()`: Resolve PostScript name to font file with platform resolution
-- `FontInfo.find()`: Backward-compatible wrapper (delegates to `find_static()` or `resolve()`)
+- `FontInfo.find()`: Backward-compatible wrapper (delegates to `lookup_static()` or `resolve()`)
 - SVG tree is single source of truth for fonts (no separate font list maintained)
 
 ## Architecture Overview
