@@ -560,7 +560,7 @@ class SVGDocument:
 
     def _extract_font_elements_and_charset(
         self, svg: ET.Element, font_name: str
-    ) -> tuple[list[ET.Element], set[int] | None]:
+    ) -> tuple[list[ET.Element], set[int]]:
         """Extract elements using a font and their charset codepoints.
 
         Args:
@@ -569,13 +569,13 @@ class SVGDocument:
 
         Returns:
             Tuple of (matching_elements, charset_codepoints).
-            Returns ([], None) if no elements found.
-            Returns (elements, None) if elements found but no characters extracted.
+            Returns ([], set()) if no elements found.
+            Returns (elements, set()) if elements found but no characters extracted.
         """
         # Step 1: Find elements using this font
         matching_elements = svg_utils.find_elements_with_font_family(svg, font_name)
         if not matching_elements:
-            return [], None
+            return [], set()
 
         # Step 2: Extract characters from these elements
         chars_for_font: set[str] = set()
@@ -585,14 +585,12 @@ class SVGDocument:
                 chars_for_font.update(text_content)
 
         # Step 3: Convert to codepoints
-        charset_codepoints = None
-        if chars_for_font:
-            charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
-            if charset_codepoints:
-                logger.debug(
-                    f"Extracted {len(chars_for_font)} characters "
-                    f"({len(charset_codepoints)} codepoints) for font '{font_name}'"
-                )
+        charset_codepoints = font_utils.create_charset_codepoints(chars_for_font)
+        if charset_codepoints:
+            logger.debug(
+                f"Extracted {len(chars_for_font)} characters "
+                f"({len(charset_codepoints)} codepoints) for font '{font_name}'"
+            )
 
         return matching_elements, charset_codepoints
 
@@ -728,6 +726,7 @@ class SVGDocument:
             # Step 2: Resolve PostScript name → family name with platform resolution
             try:
                 # Single resolution call per font (uses platform-specific resolution)
+                # Empty sets are automatically treated as None (no charset matching)
                 resolved_font = FontInfo.find_with_files(
                     ps_name,
                     charset_codepoints=charset_codepoints,
