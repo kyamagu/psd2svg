@@ -1392,3 +1392,136 @@ class TestAddFontFamily:
         assert "font-family: 'Arial', 'Helvetica'" in style
         # No attribute should be created (style has the font)
         assert text.get("font-family") is None
+
+
+class TestExtractTextCharacters:
+    """Tests for extract_text_characters utility function."""
+
+    def test_simple_text_extraction(self) -> None:
+        """Test extracting plain text from element."""
+        elem = ET.fromstring("<text>Hello World</text>")
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "Hello World"
+
+    def test_html_entity_decoding(self) -> None:
+        """Test that HTML entities are properly decoded."""
+        elem = ET.fromstring("<text>Hello &amp; world &#x4E00;</text>")
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "Hello & world 一"
+
+    def test_filters_control_characters(self) -> None:
+        """Test that control characters (Cc) are filtered out."""
+        elem = ET.fromstring("<text>Hello\nWorld\tTest\r\n</text>")
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "HelloWorldTest"
+        assert "\n" not in result
+        assert "\t" not in result
+        assert "\r" not in result
+
+    def test_filters_variation_selectors(self) -> None:
+        """Test that variation selectors (Mn) are filtered out."""
+        # U+FE0E is VARIATION SELECTOR-15 (text presentation)
+        # U+FE0F is VARIATION SELECTOR-16 (emoji presentation)
+        elem = ET.Element("text")
+        elem.text = "©\ufe0e®\ufe0f"  # Copyright with text selector, registered with emoji selector
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "©®"
+        assert "\ufe0e" not in result
+        assert "\ufe0f" not in result
+
+    def test_filters_combining_marks(self) -> None:
+        """Test that combining marks (Mn, Mc, Me) are filtered out."""
+        # Combining diacritical marks
+        elem = ET.Element("text")
+        elem.text = "e\u0301"  # e + combining acute accent
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "e"
+        assert "\u0301" not in result
+
+    def test_filters_format_characters(self) -> None:
+        """Test that format characters (Cf) are filtered out."""
+        # U+200B is ZERO WIDTH SPACE
+        # U+200C is ZERO WIDTH NON-JOINER
+        # U+200D is ZERO WIDTH JOINER
+        elem = ET.Element("text")
+        elem.text = "Hello\u200bWorld\u200c\u200d"
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "HelloWorld"
+
+    def test_preserves_normal_unicode_characters(self) -> None:
+        """Test that normal Unicode characters are preserved."""
+        # Test various Unicode categories that should be preserved
+        elem = ET.Element("text")
+        elem.text = "Hello 世界 مرحبا שלום"  # Latin, CJK, Arabic, Hebrew
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "Hello 世界 مرحبا שלום"
+
+    def test_preserves_symbols_and_punctuation(self) -> None:
+        """Test that symbols and punctuation are preserved."""
+        elem = ET.Element("text")
+        elem.text = "©®™«»×÷"
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "©®™«»×÷"
+
+    def test_extracts_text_and_tail(self) -> None:
+        """Test that both text and tail are extracted."""
+        root = ET.fromstring("<text><tspan>A</tspan>B</text>")
+        tspan = root[0]
+        result = svg_utils.extract_text_characters(tspan)
+        assert result == "AB"
+
+    def test_tail_with_control_characters_filtered(self) -> None:
+        """Test that control characters in tail are also filtered."""
+        root = ET.fromstring("<text><tspan>A</tspan>B\nC</text>")
+        tspan = root[0]
+        result = svg_utils.extract_text_characters(tspan)
+        assert result == "ABC"
+        assert "\n" not in result
+
+    def test_regression_copyright_with_variation_selector(self) -> None:
+        """Regression test: copyright sign with variation selector.
+
+        This is the actual case that caused .LastResort font substitution.
+        U+FE0E (VARIATION SELECTOR-15) should be filtered out.
+        """
+        elem = ET.Element("text")
+        elem.text = "©\ufe0e"  # Copyright with text presentation selector
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "©"
+        assert len(result) == 1
+        assert ord(result[0]) == 0x00A9  # COPYRIGHT SIGN
+
+    def test_cjk_text_with_variation_selectors(self) -> None:
+        """Test CJK text with variation selectors."""
+        # Japanese text with variation selector
+        elem = ET.Element("text")
+        elem.text = "少\ufe0e年\ufe0e社\ufe0e"
+        result = svg_utils.extract_text_characters(elem)
+        assert result == "少年社"
+        assert "\ufe0e" not in result
+
+    def test_empty_text(self) -> None:
+        """Test with element containing no text."""
+        elem = ET.Element("text")
+        result = svg_utils.extract_text_characters(elem)
+        assert result == ""
+
+    def test_only_tail(self) -> None:
+        """Test with element having only tail text."""
+        root = ET.fromstring("<text><tspan/>After</text>")
+        tspan = root[0]
+        result = svg_utils.extract_text_characters(tspan)
+        assert result == "After"
+
+    def test_real_world_mixed_content(self) -> None:
+        """Test real-world scenario with mixed content."""
+        # Simulate actual PSD text: Japanese with copyright, variation selectors, spaces
+        elem = ET.Element("text")
+        elem.text = "画像肥谷©\ufe0e/報介僕×年／少社『」「"
+        result = svg_utils.extract_text_characters(elem)
+        # Variation selector should be removed, everything else preserved
+        assert "画像肥谷" in result
+        assert "©" in result
+        assert "\ufe0e" not in result
+        assert "/" in result
+        assert "×" in result

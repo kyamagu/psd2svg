@@ -770,9 +770,9 @@ class TestAppendCss:
         assert "@media print" in svg_string
         assert "no-print" in svg_string
 
-    @patch("psd2svg.core.font_utils.FontInfo.find")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_append_css_with_font_embedding(
-        self, mock_find: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, tmp_path: Path
     ) -> None:
         """Test that append_css works alongside font embedding."""
         font_file = tmp_path / "arial.ttf"
@@ -786,7 +786,7 @@ class TestAppendCss:
             style="Regular",
             weight=80.0,
         )
-        mock_find.return_value = font
+        mock_resolve.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
