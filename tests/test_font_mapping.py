@@ -405,3 +405,381 @@ class TestFontMappingIntegration:
 
         assert font_info is not None
         assert font_info.family == "Arial"  # From default mapping
+
+
+class TestSuffixParsing:
+    """Tests for PostScript name suffix parsing fallback."""
+
+    def test_parse_hyphenated_bold(self) -> None:
+        """Test suffix parsing for hyphenated Bold variant."""
+        font = FontInfo.lookup_static("CustomFont-Bold")
+
+        assert font is not None
+        assert font.family == "Custom Font"
+        assert font.style == "Bold"
+        assert font.weight == 200.0
+        assert font.file == ""
+        assert font.postscript_name == "CustomFont-Bold"
+
+    def test_parse_hyphenated_italic(self) -> None:
+        """Test suffix parsing for hyphenated Italic variant."""
+        font = FontInfo.lookup_static("CustomFont-Italic")
+
+        assert font is not None
+        assert font.family == "Custom Font"
+        assert font.style == "Italic"
+        assert font.weight == 80.0
+        assert font.italic is True
+
+    def test_parse_compound_bold_italic(self) -> None:
+        """Test suffix parsing for BoldItalic combined."""
+        font = FontInfo.lookup_static("MyFont-BoldItalic")
+
+        assert font is not None
+        assert font.family == "My Font"
+        assert font.style == "Bold Italic"
+        assert font.weight == 200.0
+        assert font.bold is True
+        assert font.italic is True
+
+    def test_parse_compound_light_italic(self) -> None:
+        """Test suffix parsing for LightItalic combined."""
+        font = FontInfo.lookup_static("TestFont-LightItalic")
+
+        assert font is not None
+        assert font.style == "Light Italic"
+        assert font.weight == 50.0
+        assert font.italic is True
+
+    def test_parse_japanese_w6(self) -> None:
+        """Test suffix parsing for Japanese W6 notation."""
+        font = FontInfo.lookup_static("CustomFont-W6")
+
+        assert font is not None
+        assert font.weight == 180.0
+        assert font.style == "W6"
+
+    def test_parse_japanese_w0_to_w9(self) -> None:
+        """Test suffix parsing for all Japanese W0-W9 notations."""
+        test_cases = [
+            ("Font-W0", 0.0, "W0"),
+            ("Font-W1", 40.0, "W1"),
+            ("Font-W2", 45.0, "W2"),
+            ("Font-W3", 50.0, "W3"),
+            ("Font-W4", 80.0, "W4"),
+            ("Font-W5", 100.0, "W5"),
+            ("Font-W6", 180.0, "W6"),
+            ("Font-W7", 200.0, "W7"),
+            ("Font-W8", 205.0, "W8"),
+            ("Font-W9", 210.0, "W9"),
+        ]
+
+        for name, expected_weight, expected_style in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.weight == expected_weight
+            assert font.style == expected_style
+
+    def test_parse_camelcase_bold(self) -> None:
+        """Test suffix parsing for camelCase Bold variant."""
+        font = FontInfo.lookup_static("RobotoBold")
+
+        assert font is not None
+        assert font.family == "Roboto"
+        assert font.style == "Bold"
+        assert font.weight == 200.0
+
+    def test_parse_camelcase_medium(self) -> None:
+        """Test suffix parsing for camelCase Medium variant."""
+        font = FontInfo.lookup_static("CustomMedium")
+
+        assert font is not None
+        assert font.family == "Custom"
+        assert font.style == "Medium"
+        assert font.weight == 100.0
+
+    def test_parse_various_weights(self) -> None:
+        """Test suffix parsing for various weight values."""
+        test_cases = [
+            ("Font-Thin", 0.0, "Thin"),
+            ("Font-ExtraLight", 40.0, "ExtraLight"),
+            ("Font-Light", 50.0, "Light"),
+            ("Font-Regular", 80.0, "Regular"),
+            ("Font-Medium", 100.0, "Medium"),
+            ("Font-SemiBold", 180.0, "SemiBold"),
+            ("Font-Bold", 200.0, "Bold"),
+            ("Font-ExtraBold", 205.0, "ExtraBold"),
+            ("Font-Black", 210.0, "Black"),
+            ("Font-Heavy", 210.0, "Heavy"),
+        ]
+
+        for name, expected_weight, expected_style in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.weight == expected_weight
+            assert font.style == expected_style
+
+    def test_parse_family_name_cleaning(self) -> None:
+        """Test that CamelCase family names are properly spaced."""
+        test_cases = [
+            ("OpenSans-Bold", "Open Sans"),
+            ("NotoSansJP-Bold", "Noto Sans JP"),
+            ("HelveticaNeue-Bold", "Helvetica Neue"),
+            ("TimesNewRoman-Bold", "Times New Roman"),
+        ]
+
+        for ps_name, expected_family in test_cases:
+            font = FontInfo.lookup_static(ps_name)
+            assert font is not None, f"Failed to parse {ps_name}"
+            assert font.family == expected_family
+
+    def test_parse_multiple_hyphens(self) -> None:
+        """Test suffix parsing with multiple hyphens (uses rsplit)."""
+        font = FontInfo.lookup_static("Font-Name-With-Hyphens-Bold")
+
+        assert font is not None
+        assert font.family == "Font-Name-With-Hyphens"
+        assert font.style == "Bold"
+        assert font.weight == 200.0
+
+    def test_unknown_suffix_returns_none(self) -> None:
+        """Test that unrecognized suffix returns None."""
+        font = FontInfo.lookup_static("MyFont-SuperCustomSuffix")
+        assert font is None
+
+    def test_numeric_suffix_returns_none(self) -> None:
+        """Test that numeric suffix returns None."""
+        font = FontInfo.lookup_static("Font-123")
+        assert font is None
+
+    def test_empty_suffix_returns_none(self) -> None:
+        """Test that empty suffix returns None."""
+        font = FontInfo.lookup_static("Font-")
+        assert font is None
+
+    def test_very_short_base_name_rejected(self) -> None:
+        """Test that very short base names are rejected in camelCase parsing."""
+        # AB-Bold should parse via hyphenated (Phase 1)
+        font1 = FontInfo.lookup_static("AB-Bold")
+        assert font1 is not None  # Hyphenated allows any length
+
+        # ABBold should be rejected in camelCase (Phase 2)
+        font2 = FontInfo.lookup_static("ABBold")
+        assert font2 is None  # Base "AB" too short (< 3 chars)
+
+    def test_static_mapping_takes_precedence(self) -> None:
+        """Test that static mapping takes precedence over suffix parsing."""
+        # ArialMT is in static mapping
+        font = FontInfo.lookup_static("ArialMT")
+
+        assert font is not None
+        assert font.family == "Arial"  # From static mapping
+        assert font.style == "Regular"  # From static mapping, not parsed from "MT"
+
+    def test_custom_mapping_takes_precedence(self) -> None:
+        """Test that custom mapping takes precedence over suffix parsing."""
+        custom_mapping: dict[str, dict[str, str | float]] = {
+            "CustomFont-Bold": {
+                "family": "Override Family",
+                "style": "Override Style",
+                "weight": 999.0,
+            }
+        }
+
+        font = FontInfo.lookup_static("CustomFont-Bold", font_mapping=custom_mapping)
+
+        assert font is not None
+        assert font.family == "Override Family"  # From custom mapping
+        assert font.weight == 999.0  # Not 200.0 from suffix parsing
+
+    def test_parse_oblique_variants(self) -> None:
+        """Test suffix parsing for Oblique style variants."""
+        test_cases = [
+            ("Font-BoldOblique", "Bold Oblique", 200.0),
+            ("Font-SemiBoldOblique", "SemiBold Oblique", 180.0),
+            ("Font-ExtraBoldOblique", "ExtraBold Oblique", 205.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_alternative_spellings(self) -> None:
+        """Test suffix parsing for alternative spellings."""
+        # Semibold vs SemiBold
+        font1 = FontInfo.lookup_static("Font-Semibold")
+        font2 = FontInfo.lookup_static("Font-SemiBold")
+
+        assert font1 is not None
+        assert font2 is not None
+        assert font1.style == "SemiBold"  # Normalized
+        assert font2.style == "SemiBold"
+        assert font1.weight == font2.weight == 180.0
+
+        # Extrabold vs ExtraBold
+        font3 = FontInfo.lookup_static("Font-Extrabold")
+        font4 = FontInfo.lookup_static("Font-ExtraBold")
+
+        assert font3 is not None
+        assert font4 is not None
+        assert font3.style == "ExtraBold"  # Normalized
+        assert font4.style == "ExtraBold"
+        assert font3.weight == font4.weight == 205.0
+
+    def test_parse_roman_suffix(self) -> None:
+        """Test suffix parsing for Roman style (Times-Roman pattern)."""
+        font = FontInfo.lookup_static("CustomTimes-Roman")
+
+        assert font is not None
+        assert font.family == "Custom Times"
+        assert font.style == "Roman"
+        assert font.weight == 80.0
+
+    def test_parse_mt_suffix(self) -> None:
+        """Test suffix parsing for MT (Mac Type) suffix."""
+        font = FontInfo.lookup_static("CustomFont-MT")
+
+        assert font is not None
+        assert font.family == "Custom Font"
+        assert font.style == "Regular"  # MT maps to Regular
+        assert font.weight == 80.0
+
+    def test_no_false_positive_on_ambiguous_names(self) -> None:
+        """Test that ambiguous font names don't cause false positives."""
+        # "MyBoldIdea" should not be parsed as "MyBold" + "Idea" suffix
+        # "Idea" is not a recognized suffix, should return None
+        font = FontInfo.lookup_static("MyBoldIdea")
+        assert font is None
+
+        # "CompanyMedium" should not be parsed as "Company" + "Medium"
+        # Actually, it SHOULD be parsed because "Medium" is a valid suffix
+        # and the base "Company" is valid (>= 3 chars, starts uppercase)
+        font2 = FontInfo.lookup_static("CompanyMedium")
+        assert font2 is not None
+        assert font2.family == "Company"
+        assert font2.style == "Medium"
+
+    def test_unicode_font_names(self) -> None:
+        """Test suffix parsing with Unicode characters in base name."""
+        font = FontInfo.lookup_static("日本語Font-Bold")
+
+        assert font is not None
+        assert font.family == "日本語Font"
+        assert font.style == "Bold"
+        assert font.weight == 200.0
+
+    def test_css_weight_from_parsed_font(self) -> None:
+        """Test that CSS weight is correctly derived from parsed fonts."""
+        font = FontInfo.lookup_static("Custom-Bold")
+
+        assert font is not None
+        assert font.get_css_weight() == 700  # Bold = 700 in CSS
+
+    def test_parse_abbreviated_suffixes(self) -> None:
+        """Test suffix parsing for abbreviated suffixes (B, DB, EB, UB, DeBold, ExBold, ExLight)."""
+        test_cases = [
+            ("RodinCattleyaPro-B", "Bold", 200.0),
+            ("RodinCattleyaPro-DB", "SemiBold", 180.0),  # DemiBold (short)
+            ("RodinCattleyaPro-EB", "ExtraBold", 205.0),  # ExtraBold (short)
+            ("RodinCattleyaPro-UB", "Ultra", 210.0),  # UltraBold
+            ("RowdyStd-EB", "ExtraBold", 205.0),
+            ("PAotoGothicStdN-DeBold", "SemiBold", 180.0),  # DemiBold (medium)
+            ("PAotoGothicStdN-ExBold", "ExtraBold", 205.0),  # ExtraBold (medium)
+            ("PAotoGothicStdN-ExLight", "ExtraLight", 40.0),  # ExtraLight abbreviation
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_abbreviated_suffixes_not_in_camelcase(self) -> None:
+        """Test that abbreviated suffixes don't cause false positives in camelCase."""
+        # These should NOT be parsed because abbreviated suffixes
+        # are not in SAFE_CAMELCASE_SUFFIXES to avoid false positives
+        test_cases = [
+            "WebDB",  # Not "Web" + "DB"
+            "TestEB",  # Not "Test" + "EB"
+            "CompanyB",  # Not "Company" + "B"
+        ]
+
+        for name in test_cases:
+            font = FontInfo.lookup_static(name)
+            # Should return None because abbreviated suffixes excluded from camelCase
+            assert font is None, f"{name} should not be parsed"
+
+    def test_parse_demibold_ultrabold_full_names(self) -> None:
+        """Test parsing of full DemiBold and UltraBold names."""
+        test_cases = [
+            ("CustomFont-DemiBold", "SemiBold", 180.0),
+            ("CustomFont-UltraBold", "Ultra", 210.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_lowercase_suffixes(self) -> None:
+        """Test case-insensitive suffix parsing for lowercase variants."""
+        test_cases = [
+            ("mplus-1c-bold", "mplus-1c", "Bold", 200.0),
+            ("mplus-1c-medium", "mplus-1c", "Medium", 100.0),
+            ("mplus-2c-heavy", "mplus-2c", "Heavy", 210.0),
+            ("rounded-x-mplus-1c-light", "rounded-x-mplus-1c", "Light", 50.0),
+            ("CustomFont-italic", "Custom Font", "Italic", 80.0),
+            ("TestFont-regular", "Test Font", "Regular", 80.0),
+        ]
+
+        for name, expected_family, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.family == expected_family
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_uppercase_suffixes(self) -> None:
+        """Test case-insensitive suffix parsing for uppercase variants."""
+        test_cases = [
+            ("Font-BOLD", "Bold", 200.0),
+            ("Font-MEDIUM", "Medium", 100.0),
+            ("Font-LIGHT", "Light", 50.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_japanese_w_case_insensitive(self) -> None:
+        """Test Japanese W-notation is case-insensitive."""
+        test_cases = [
+            ("Font-w6", "W6", 180.0),
+            ("Font-W6", "W6", 180.0),
+            ("Font-w3", "W3", 50.0),
+            ("Font-W9", "W9", 210.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_mixed_case_suffixes(self) -> None:
+        """Test suffix parsing handles mixed case gracefully."""
+        test_cases = [
+            ("Font-bOlD", "Bold", 200.0),
+            ("Font-MeDiUm", "Medium", 100.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight

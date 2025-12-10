@@ -34,6 +34,95 @@ else:
 logger = logging.getLogger(__name__)
 
 
+# ==============================================================================
+# Font Suffix Parsing for PostScript Names
+# ==============================================================================
+# These constants support suffix-based inference in FontInfo.lookup_static().
+# Conservative design: only suffixes present in the 572-entry static mapping.
+# See FontInfo._parse_postscript_name_suffix() for algorithm details.
+
+# Weight suffix mappings (fontconfig weight values)
+WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
+    "Thin": ("Thin", 0.0),
+    "ExtraLight": ("ExtraLight", 40.0),
+    "Light": ("Light", 50.0),
+    "Regular": ("Regular", 80.0),
+    "Medium": ("Medium", 100.0),
+    "SemiBold": ("SemiBold", 180.0),
+    "Semibold": ("SemiBold", 180.0),  # Alternative spelling
+    "DemiBold": ("SemiBold", 180.0),  # Alternative name for SemiBold
+    "Demibold": ("SemiBold", 180.0),  # Alternative spelling
+    "Bold": ("Bold", 200.0),
+    "ExtraBold": ("ExtraBold", 205.0),
+    "Extrabold": ("ExtraBold", 205.0),  # Alternative spelling
+    "UltraBold": ("Ultra", 210.0),  # UltraBold variant
+    "Ultrabold": ("Ultra", 210.0),  # Alternative spelling
+    "Black": ("Black", 210.0),
+    "Heavy": ("Heavy", 210.0),
+    "Ultra": ("Ultra", 210.0),
+    "Roman": ("Roman", 80.0),  # Times-Roman
+    "MT": ("Regular", 80.0),  # Mac Type suffix
+    # Abbreviated suffixes (common in Japanese fonts)
+    "B": ("Bold", 200.0),  # Bold abbreviation
+    "DB": ("SemiBold", 180.0),  # DemiBold abbreviation (short)
+    "DeBold": ("SemiBold", 180.0),  # DemiBold abbreviation (medium)
+    "EB": ("ExtraBold", 205.0),  # ExtraBold abbreviation (short)
+    "ExBold": ("ExtraBold", 205.0),  # ExtraBold abbreviation (medium)
+    "ExLight": ("ExtraLight", 40.0),  # ExtraLight abbreviation
+    "UB": ("Ultra", 210.0),  # UltraBold abbreviation
+}
+
+# Japanese font weight notation (Hiragino fonts)
+# Complete W0-W9 range based on macOS Hiragino Sans system fonts
+JAPANESE_WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
+    "W0": ("W0", 0.0),
+    "W1": ("W1", 40.0),
+    "W2": ("W2", 45.0),
+    "W3": ("W3", 50.0),
+    "W4": ("W4", 80.0),
+    "W5": ("W5", 100.0),
+    "W6": ("W6", 180.0),
+    "W7": ("W7", 200.0),
+    "W8": ("W8", 205.0),
+    "W9": ("W9", 210.0),
+}
+
+# Compound suffixes (weight + style)
+COMPOUND_SUFFIXES: dict[str, tuple[str, float]] = {
+    # Ordered by length (longest first for matching)
+    "ExtraBoldItalic": ("ExtraBold Italic", 205.0),
+    "ExtraLightItalic": ("ExtraLight Italic", 40.0),
+    "SemiBoldItalic": ("SemiBold Italic", 180.0),
+    "BoldItalic": ("Bold Italic", 200.0),
+    "MediumItalic": ("Medium Italic", 100.0),
+    "LightItalic": ("Light Italic", 50.0),
+    "BoldOblique": ("Bold Oblique", 200.0),
+    "ExtraBoldOblique": ("ExtraBold Oblique", 205.0),
+    "SemiBoldOblique": ("SemiBold Oblique", 180.0),
+}
+
+# Safe suffixes for camelCase parsing (to avoid false positives)
+# NOTE: Abbreviated suffixes (B, DB, EB, UB) are intentionally excluded
+# to prevent false positives like "WebDB", "TestEB", etc.
+# They work fine with hyphenated patterns (Phase 1).
+SAFE_CAMELCASE_SUFFIXES: list[str] = [
+    # Order matters: check longest first
+    "UltraBold",  # Must come before "Bold"
+    "DemiBold",  # Must come before "Bold"
+    "ExtraBold",
+    "ExtraLight",
+    "SemiBold",
+    "Semibold",
+    "Black",
+    "Heavy",
+    "Medium",
+    "Light",
+    "Bold",
+    "Thin",
+    "Italic",
+]
+
+
 @dataclasses.dataclass
 class FontInfo:
     """Font information from fontconfig.
@@ -458,6 +547,161 @@ class FontInfo:
             return FontInfo.lookup_static(postscriptname, font_mapping)
 
     @staticmethod
+    def _clean_family_name(base_name: str) -> str:
+        """Convert CamelCase to space-separated family name.
+
+        This helper converts PostScript base names like "HelveticaNeue" to
+        "Helvetica Neue" by inserting spaces before uppercase letters that
+        follow lowercase letters.
+
+        Args:
+            base_name: Base font name without suffix (e.g., "HelveticaNeue").
+
+        Returns:
+            Space-separated family name (e.g., "Helvetica Neue").
+
+        Example:
+            >>> FontInfo._clean_family_name("HelveticaNeue")
+            'Helvetica Neue'
+            >>> FontInfo._clean_family_name("NotoSansJP")
+            'Noto Sans JP'
+        """
+        result = []
+        for i, char in enumerate(base_name):
+            if i > 0 and char.isupper() and base_name[i - 1].islower():
+                result.append(" ")
+            result.append(char)
+
+        family = "".join(result)
+
+        # Preserve two-letter abbreviations commonly used in font names
+        family = family.replace(" J P", " JP")
+        family = family.replace(" K R", " KR")
+        family = family.replace(" S C", " SC")
+        family = family.replace(" T C", " TC")
+
+        return family
+
+    @staticmethod
+    def _parse_suffix_component(suffix: str) -> dict[str, str | float] | None:
+        """Parse suffix to extract style and weight.
+
+        This helper parses a single PostScript suffix (e.g., "Bold", "BoldItalic")
+        and returns the corresponding style string and fontconfig weight value.
+
+        Case-insensitive: "bold" and "Bold" are treated the same.
+
+        Args:
+            suffix: Font suffix (e.g., "Bold", "Italic", "BoldItalic", "W6").
+
+        Returns:
+            Dict with "style" and "weight" keys, or None if suffix not recognized.
+
+        Example:
+            >>> FontInfo._parse_suffix_component("Bold")
+            {'style': 'Bold', 'weight': 200.0}
+            >>> FontInfo._parse_suffix_component("bold")
+            {'style': 'Bold', 'weight': 200.0}
+            >>> FontInfo._parse_suffix_component("BoldItalic")
+            {'style': 'Bold Italic', 'weight': 200.0}
+            >>> FontInfo._parse_suffix_component("Unknown")
+            None
+        """
+        # Case-insensitive matching: try suffix as-is first, then uppercase version
+        # This handles both exact matches and case variations
+
+        # Check compound patterns first (longest matches) - case-sensitive first
+        if suffix in COMPOUND_SUFFIXES:
+            style, weight = COMPOUND_SUFFIXES[suffix]
+            return {"style": style, "weight": weight}
+
+        # Try case-insensitive compound lookup
+        for key, (style, weight) in COMPOUND_SUFFIXES.items():
+            if key.lower() == suffix.lower():
+                return {"style": style, "weight": weight}
+
+        # Check Japanese weight notation (case-insensitive)
+        suffix_upper = suffix.upper()
+        if suffix_upper in JAPANESE_WEIGHT_SUFFIXES:
+            style, weight = JAPANESE_WEIGHT_SUFFIXES[suffix_upper]
+            return {"style": style, "weight": weight}
+
+        # Check simple weight suffixes - case-sensitive first
+        if suffix in WEIGHT_SUFFIXES:
+            style, weight = WEIGHT_SUFFIXES[suffix]
+            return {"style": style, "weight": weight}
+
+        # Try case-insensitive weight suffix lookup
+        for key, (style, weight) in WEIGHT_SUFFIXES.items():
+            if key.lower() == suffix.lower():
+                return {"style": style, "weight": weight}
+
+        # Standalone Italic/Oblique (edge case) - case-insensitive
+        if suffix.lower() in ("italic", "oblique"):
+            # Return capitalized form
+            return {"style": suffix.capitalize(), "weight": 80.0}
+
+        return None
+
+    @staticmethod
+    def _parse_postscript_name_suffix(
+        postscript_name: str,
+    ) -> dict[str, str | float] | None:
+        """Parse PostScript name suffix to infer family, style, and weight.
+
+        This method attempts to extract font metadata from PostScript names that
+        are not in the static mapping by parsing common suffix patterns.
+
+        Two-phase algorithm:
+        1. Hyphenated patterns (e.g., "CustomFont-Bold") - primary approach
+        2. CamelCase patterns (e.g., "RobotoBold") - conservative fallback
+
+        Args:
+            postscript_name: Full PostScript name (e.g., "CustomFont-Bold").
+
+        Returns:
+            Dict with "family", "style", "weight" if parsing succeeds, None otherwise.
+
+        Example:
+            >>> FontInfo._parse_postscript_name_suffix("CustomFont-Bold")
+            {'family': 'Custom Font', 'style': 'Bold', 'weight': 200.0}
+            >>> FontInfo._parse_postscript_name_suffix("MyFont-BoldItalic")
+            {'family': 'My Font', 'style': 'Bold Italic', 'weight': 200.0}
+            >>> FontInfo._parse_postscript_name_suffix("UnknownPattern")
+            None
+        """
+        # Phase 1: Hyphenated patterns (primary approach)
+        if "-" in postscript_name:
+            parts = postscript_name.rsplit("-", 1)
+            if len(parts) == 2:
+                base, suffix = parts
+                parsed = FontInfo._parse_suffix_component(suffix)
+                if parsed:
+                    family = FontInfo._clean_family_name(base)
+                    return {
+                        "family": family,
+                        "style": parsed["style"],
+                        "weight": parsed["weight"],
+                    }
+
+        # Phase 2: CamelCase (safe suffixes only, to avoid false positives)
+        for suffix in SAFE_CAMELCASE_SUFFIXES:
+            if postscript_name.endswith(suffix):
+                base = postscript_name[: -len(suffix)]
+                # Validate base name to avoid false positives
+                if len(base) >= 3 and base[0].isupper():
+                    parsed = FontInfo._parse_suffix_component(suffix)
+                    if parsed:
+                        family = FontInfo._clean_family_name(base)
+                        return {
+                            "family": family,
+                            "style": parsed["style"],
+                            "weight": parsed["weight"],
+                        }
+
+        return None
+
+    @staticmethod
     def lookup_static(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
@@ -472,7 +716,8 @@ class FontInfo:
         Resolution order:
         1. Custom font mapping (if provided)
         2. Static font mapping (572 common fonts)
-        3. Return None if not found (preserves PostScript name in SVG)
+        3. Suffix parsing fallback (infer from common PostScript patterns)
+        4. Return None if not found (preserves PostScript name in SVG)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
@@ -525,9 +770,24 @@ class FontInfo:
                 weight=float(static_data["weight"]),
             )
 
-        # 3. Not found - return None (no platform fallback)
+        # 3. Try suffix parsing fallback
+        parsed = FontInfo._parse_postscript_name_suffix(postscriptname)
+        if parsed:
+            logger.debug(
+                f"Resolved '{postscriptname}' via suffix parsing: "
+                f"{parsed['family']} ({parsed['style']}, weight={parsed['weight']})"
+            )
+            return FontInfo(
+                postscript_name=postscriptname,
+                file="",
+                family=str(parsed["family"]),
+                style=str(parsed["style"]),
+                weight=float(parsed["weight"]),
+            )
+
+        # 4. Not found - return None (no platform fallback)
         logger.debug(
-            f"Font '{postscriptname}' not found in static mapping. "
+            f"Font '{postscriptname}' not found in mappings or suffix parsing. "
             "Keeping PostScript name in SVG."
         )
         return None
