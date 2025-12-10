@@ -274,7 +274,7 @@ class TestFontInfoFind:
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
-    def test_find_static_mapping_priority(self, mock_match: MagicMock) -> None:
+    def test_lookup_static_mapping_priority(self, mock_match: MagicMock) -> None:
         """Test that static mapping is used first, fontconfig not called."""
         # ArialMT is in the static mapping, so fontconfig should NOT be called
         font = FontInfo.find("ArialMT")

@@ -84,11 +84,11 @@ class FontInfo:
 
         Example:
             >>> # Font from static mapping (not resolved)
-            >>> font_info = FontInfo.find_static('ArialMT')
+            >>> font_info = FontInfo.lookup_static('ArialMT')
             >>> font_info.is_resolved()
             False
             >>> # Font with file path (resolved)
-            >>> resolved = FontInfo.find_with_files('ArialMT')
+            >>> resolved = FontInfo.resolve('ArialMT')
             >>> if resolved:
             ...     resolved.is_resolved()
             True
@@ -420,12 +420,12 @@ class FontInfo:
 
         This method is kept for backward compatibility. New code should use the more
         explicit methods:
-        - find_static() for CSS family names (embed_fonts=False scenarios)
-        - find_with_files() for font embedding (embed_fonts=True scenarios)
+        - lookup_static() for CSS family names (embed_fonts=False scenarios)
+        - resolve() for font embedding (embed_fonts=True scenarios)
 
         This wrapper delegates to the appropriate method based on disable_static_mapping:
-        - If disable_static_mapping=False: Uses find_static() (name resolution only)
-        - If disable_static_mapping=True: Uses find_with_files() (with file paths)
+        - If disable_static_mapping=False: Uses lookup_static() (name resolution only)
+        - If disable_static_mapping=True: Uses resolve() (with file paths)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
@@ -445,7 +445,7 @@ class FontInfo:
             >>> # Standard resolution (static mapping)
             >>> font = FontInfo.find('ArialMT')
             >>> # Is equivalent to:
-            >>> font = FontInfo.find_static('ArialMT')
+            >>> font = FontInfo.lookup_static('ArialMT')
             >>>
             >>> # Font embedding resolution (platform-specific)
             >>> font = FontInfo.find('ArialMT', disable_static_mapping=True)
@@ -455,14 +455,14 @@ class FontInfo:
         if disable_static_mapping:
             return FontInfo.resolve(postscriptname, font_mapping, charset_codepoints)
         else:
-            return FontInfo.find_static(postscriptname, font_mapping)
+            return FontInfo.lookup_static(postscriptname, font_mapping)
 
     @staticmethod
-    def find_static(
+    def lookup_static(
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
     ) -> Self | None:
-        """Find font using custom and static mappings only (no platform resolution).
+        """Lookup font metadata using custom and static mappings only (no platform resolution).
 
         This method resolves PostScript names to CSS font families without accessing
         system fonts. It is suitable for SVG generation when embed_fonts=False, where
@@ -486,12 +486,12 @@ class FontInfo:
 
         Example:
             >>> # Resolve common font (found in static mapping)
-            >>> font = FontInfo.find_static('ArialMT')
+            >>> font = FontInfo.lookup_static('ArialMT')
             >>> assert font.family == 'Arial'
             >>> assert font.file == ''  # No file path
             >>>
             >>> # Resolve uncommon font (not in static mapping)
-            >>> font = FontInfo.find_static('UnknownFont')
+            >>> font = FontInfo.lookup_static('UnknownFont')
             >>> assert font is None  # Preserves PostScript name in SVG
         """
         # 1. Check custom mapping first

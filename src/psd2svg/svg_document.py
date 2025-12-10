@@ -644,7 +644,7 @@ class SVGDocument:
 
         for ps_name in postscript_names:
             # Resolve using static mapping only (no platform queries)
-            resolved_font = FontInfo.find_static(ps_name)
+            resolved_font = FontInfo.lookup_static(ps_name)
 
             if resolved_font is None:
                 # Font not in static mapping - keep PostScript name
