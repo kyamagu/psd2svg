@@ -777,7 +777,7 @@ def encode_font_with_options(
     return cache[font_path]
 
 
-def create_charset_codepoints(chars: set[str]) -> set[int] | None:
+def create_charset_codepoints(chars: set[str]) -> set[int]:
     """Create set of Unicode codepoints from characters.
 
     This function converts a set of Unicode characters to a set of
@@ -787,7 +787,7 @@ def create_charset_codepoints(chars: set[str]) -> set[int] | None:
         chars: Set of Unicode characters (e.g., {"A", "あ", "中"}).
 
     Returns:
-        Set of Unicode codepoints (integers), or None if chars is empty.
+        Set of Unicode codepoints (integers). Returns empty set if chars is empty.
         Multi-codepoint characters (emoji with modifiers) are split into
         individual codepoints.
 
@@ -796,19 +796,19 @@ def create_charset_codepoints(chars: set[str]) -> set[int] | None:
         >>> codepoints = create_charset_codepoints(chars)
         >>> codepoints
         {72, 101, 108, 111}
+        >>> create_charset_codepoints(set())
+        set()
     """
-    if not chars:
-        return None
-
     # Convert characters to codepoints (handles multi-codepoint characters like emoji)
     codepoint_set = set()
     for char in chars:
         for code_point in char:
             codepoint_set.add(ord(code_point))
 
-    logger.debug(
-        f"Created {len(codepoint_set)} codepoints from {len(chars)} characters"
-    )
+    if codepoint_set:
+        logger.debug(
+            f"Created {len(codepoint_set)} codepoints from {len(chars)} characters"
+        )
 
     return codepoint_set
 
