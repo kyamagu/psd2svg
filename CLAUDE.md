@@ -261,14 +261,33 @@ brew install --cask font-noto-sans font-noto-sans-cjk-jp
 
 **Release Workflow** (`.github/workflows/release.yml`):
 
-- Triggered by version tags (`v*`)
+- Triggered by version tags (`v*`) on the main branch
 - Builds and publishes to PyPI (OIDC)
 - Creates GitHub releases
 
+**Release process** (follows PR workflow):
+
 ```bash
-# To release:
-git tag v0.3.0
-git push origin v0.3.0
+# 1. Create release branch
+git checkout -b release/v0.8.0
+
+# 2. Update version and changelog
+# - Edit version in pyproject.toml
+# - Update CHANGELOG.md with release notes
+
+# 3. Commit and push
+git add pyproject.toml CHANGELOG.md
+git commit -m "Prepare release v0.8.0"
+git push -u origin release/v0.8.0
+
+# 4. Create PR for release
+gh pr create --title "Release v0.8.0" --body "Release notes..."
+
+# 5. After PR is merged to main, create and push tag
+git checkout main
+git pull origin main
+git tag v0.8.0
+git push origin v0.8.0
 ```
 
 ### Git Workflow
