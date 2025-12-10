@@ -330,10 +330,10 @@ class FontInfo:
                 raise
 
     @staticmethod
-    def _find_via_fontconfig(
+    def _resolve_via_fontconfig(
         postscriptname: str, charset_codepoints: set[int] | None
     ) -> Self | None:
-        """Find font via fontconfig with optional charset matching.
+        """Resolve font via fontconfig with optional charset matching.
 
         Args:
             postscriptname: PostScript name of the font.
@@ -370,10 +370,10 @@ class FontInfo:
         return None
 
     @staticmethod
-    def _find_via_windows(
+    def _resolve_via_windows(
         postscriptname: str, charset_codepoints: set[int] | None
     ) -> Self | None:
-        """Find font via Windows registry with optional charset matching.
+        """Resolve font via Windows registry with optional charset matching.
 
         Args:
             postscriptname: PostScript name of the font.
@@ -641,13 +641,15 @@ class FontInfo:
         # 2. Platform-specific resolution (skip static mapping - optimization)
         # Try fontconfig (Linux/macOS)
         if HAS_FONTCONFIG:
-            result = FontInfo._find_via_fontconfig(postscriptname, charset_codepoints)
+            result = FontInfo._resolve_via_fontconfig(
+                postscriptname, charset_codepoints
+            )
             if result:
                 return result
 
         # Try Windows registry (Windows)
         elif HAS_WINDOWS_FONTS:
-            result = FontInfo._find_via_windows(postscriptname, charset_codepoints)
+            result = FontInfo._resolve_via_windows(postscriptname, charset_codepoints)
             if result:
                 return result
 
