@@ -1033,15 +1033,15 @@ def extract_text_characters(element: ET.Element) -> str:
     decoding. The tail is included because it's rendered using the element's
     font-family (not the parent's), which is important for accurate font subsetting.
 
-    Control characters (newlines, tabs, etc.) are filtered out as they are not
-    actually rendered in SVG text elements and should not be included in charset
-    matching for font resolution.
+    Control characters, format characters, and combining marks (like variation
+    selectors) are filtered out as they are not rendered in SVG text elements
+    and should not be included in charset matching for font resolution.
 
     Args:
         element: XML element to extract text from (typically text or tspan).
 
     Returns:
-        Text content (text + tail) with HTML entities decoded and control
+        Text content (text + tail) with HTML entities decoded and non-renderable
         characters removed.
 
     Note:
@@ -1049,7 +1049,11 @@ def extract_text_characters(element: ET.Element) -> str:
         - ALSO extracts tail (content after element's closing tag)
         - Does NOT include text from child elements
         - Decodes HTML/XML entities (e.g., &lt; → <, &#x4E00; → 一)
-        - Filters out control characters (codepoints 0-31 except space)
+        - Filters out:
+          * Control characters (Cc, Cf): newlines, tabs, format controls
+          * Surrogate characters (Cs): invalid in UTF-8
+          * Unassigned characters (Cn): not valid Unicode
+          * Combining marks (Mn, Mc, Me): variation selectors, diacritics
         - Tail is included because SVG inherits font-family: the tail is rendered
           using the element's font, not the parent's font
 
@@ -1066,8 +1070,13 @@ def extract_text_characters(element: ET.Element) -> str:
         >>> elem = ET.fromstring('<text>Hello\\nWorld</text>')
         >>> extract_text_characters(elem)  # Newline filtered
         'HelloWorld'
+
+        >>> elem = ET.fromstring('<text>©\\uFE0E</text>')  # Copyright + variation selector
+        >>> extract_text_characters(elem)  # Variation selector filtered
+        '©'
     """
     import html
+    import unicodedata
 
     result = ""
     if element.text:
@@ -1075,12 +1084,21 @@ def extract_text_characters(element: ET.Element) -> str:
     if element.tail:
         result += html.unescape(element.tail)
 
-    # Filter out control characters (C0: 0-31, DEL: 127, C1: 128-159)
-    # These are not rendered in SVG text and cause incorrect font matching
-    # (e.g., newline causes Arial to be substituted with LastResort on macOS)
-    result = "".join(
-        char for char in result if ord(char) >= 32 and not (127 <= ord(char) <= 159)
-    )
+    # Filter out non-renderable characters using Unicode categories
+    # These characters have no glyphs and cause incorrect font matching in fontconfig
+    def should_keep(char: str) -> bool:
+        category = unicodedata.category(char)
+        # Keep everything except:
+        # - Cc: Control characters (newlines, tabs, etc.)
+        # - Cf: Format characters (zero-width, direction marks, etc.)
+        # - Cs: Surrogate characters (invalid in UTF-8)
+        # - Cn: Unassigned characters
+        # - Mn: Nonspacing marks (variation selectors, combining diacritics)
+        # - Mc: Spacing marks (some combining characters)
+        # - Me: Enclosing marks
+        return category not in ("Cc", "Cf", "Cs", "Cn", "Mn", "Mc", "Me")
+
+    result = "".join(char for char in result if should_keep(char))
 
     return result
 
