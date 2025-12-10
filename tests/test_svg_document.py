@@ -273,9 +273,9 @@ class TestSVGDocumentEmbedFonts:
         assert "<style>" not in result
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_tostring_with_embed_fonts_true(
-        self, mock_find_with_files: MagicMock, mock_encode: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test tostring with embed_fonts=True adds style element."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -291,7 +291,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_find_with_files.return_value = mock_font
+        mock_resolve.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -311,9 +311,9 @@ class TestSVGDocumentEmbedFonts:
         mock_encode.assert_called_once_with(str(font_file))
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_save_with_embed_fonts_true(
-        self, mock_find_with_files: MagicMock, mock_encode: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test save with embed_fonts=True writes style element to file."""
         mock_encode.return_value = "data:font/ttf;base64,MOCKDATA"
@@ -330,7 +330,7 @@ class TestSVGDocumentEmbedFonts:
             weight=80.0,
             file=str(font_file),
         )
-        mock_find_with_files.return_value = mock_font
+        mock_resolve.return_value = mock_font
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -425,13 +425,13 @@ class TestSVGDocumentEmbedFonts:
         # Should only encode once due to caching
         mock_encode.assert_called_once()
 
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_embed_fonts_handles_missing_font_gracefully(
-        self, mock_find_with_files: MagicMock, caplog: pytest.LogCaptureFixture
+        self, mock_resolve: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that missing fonts are skipped with a warning."""
         # Mock font resolution to return None (font not found)
-        mock_find_with_files.return_value = None
+        mock_resolve.return_value = None
 
         svg_elem = ET.Element("svg")
         # Add text element with PostScript font name
@@ -451,9 +451,9 @@ class TestSVGDocumentEmbedFonts:
         assert "No resolved fonts found; skipping font embedding" in caplog.text
 
     @patch("psd2svg.core.font_utils.encode_font_data_uri")
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_embed_fonts_with_multiple_fonts(
-        self, mock_find_with_files: MagicMock, mock_encode: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, mock_encode: MagicMock, tmp_path: Path
     ) -> None:
         """Test embedding multiple different fonts."""
 
@@ -467,7 +467,7 @@ class TestSVGDocumentEmbedFonts:
         font2_file = tmp_path / "times.ttf"
         font2_file.write_bytes(b"FAKE_FONT2")
 
-        # Mock FontInfo.find_with_files to handle both PostScript names and family names
+        # Mock FontInfo.resolve to handle both PostScript names and family names
         def mock_find_func(font_name: str, **kwargs: object) -> FontInfo:
             _ = kwargs  # Unused but needed for signature
             # Handle PostScript names (ArialMT) and family names (Arial)
@@ -488,7 +488,7 @@ class TestSVGDocumentEmbedFonts:
                     file=str(font2_file),
                 )
 
-        mock_find_with_files.side_effect = mock_find_func
+        mock_resolve.side_effect = mock_find_func
 
         svg_elem = ET.Element("svg")
         # Add text elements with different PostScript font names
@@ -514,9 +514,9 @@ class TestSVGDocumentEmbedFonts:
 class TestSVGDocumentRasterizeWithFonts:
     """Tests for font embedding in rasterize() method."""
 
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_rasterize_with_resvg_uses_font_files(
-        self, mock_find_with_files: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, tmp_path: Path
     ) -> None:
         """Test that ResvgRasterizer extracts font files from @font-face CSS."""
         font_file = tmp_path / "arial.ttf"
@@ -530,7 +530,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_find_with_files.return_value = font
+        mock_resolve.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
@@ -556,9 +556,9 @@ class TestSVGDocumentRasterizeWithFonts:
             expected_url = create_file_url(str(font_file))
             assert expected_url in svg_arg
 
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_rasterize_with_playwright_embeds_fonts(
-        self, mock_find_with_files: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, tmp_path: Path
     ) -> None:
         """Test that PlaywrightRasterizer gets fonts embedded with file:// URLs.
 
@@ -581,7 +581,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_find_with_files.return_value = font
+        mock_resolve.return_value = font
 
         svg_elem = ET.Element("svg", width="100", height="100")
         # Add text element with PostScript font name
@@ -606,9 +606,9 @@ class TestSVGDocumentRasterizeWithFonts:
             assert "file://" in svg_arg
             assert str(font_file) in svg_arg or font_file.as_posix() in svg_arg
 
-    @patch("psd2svg.core.font_utils.FontInfo.find_with_files")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_rasterize_with_playwright_uses_file_urls(
-        self, mock_find_with_files: MagicMock, tmp_path: Path
+        self, mock_resolve: MagicMock, tmp_path: Path
     ) -> None:
         """Test that PlaywrightRasterizer gets fonts embedded with file:// URLs."""
         try:
@@ -628,7 +628,7 @@ class TestSVGDocumentRasterizeWithFonts:
             style="Regular",
             weight=80.0,
         )
-        mock_find_with_files.return_value = font
+        mock_resolve.return_value = font
 
         # Create SVG with text
         svg_elem = ET.Element("svg", width="100", height="100")

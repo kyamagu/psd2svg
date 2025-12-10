@@ -390,6 +390,108 @@ class TestFontInfoFind:
         )
 
 
+class TestResolveFromCustomMappingWithFile:
+    """Tests for FontInfo._resolve_from_custom_mapping_with_file helper method."""
+
+    def test_successful_resolution(self, tmp_path: Path) -> None:
+        """Test successful resolution with valid custom mapping and existing file."""
+        # Create a temporary font file
+        font_file = tmp_path / "arial.ttf"
+        font_file.write_bytes(b"FAKE_FONT_DATA")
+
+        font_mapping: dict[str, dict[str, float | str]] = {
+            "ArialMT": {
+                "family": "Arial",
+                "style": "Regular",
+                "weight": 80.0,
+                "file": str(font_file),
+            }
+        }
+
+        result = FontInfo._resolve_from_custom_mapping_with_file(
+            "ArialMT", font_mapping
+        )
+
+        assert result is not None
+        assert result.postscript_name == "ArialMT"
+        assert result.family == "Arial"
+        assert result.style == "Regular"
+        assert result.weight == 80.0
+        assert result.file == str(font_file)
+
+    def test_fallback_when_file_missing(self) -> None:
+        """Test fallback to None when file field is missing."""
+        font_mapping: dict[str, dict[str, float | str]] = {
+            "ArialMT": {
+                "family": "Arial",
+                "style": "Regular",
+                "weight": 80.0,
+                # Missing "file" field
+            }
+        }
+
+        result = FontInfo._resolve_from_custom_mapping_with_file(
+            "ArialMT", font_mapping
+        )
+
+        assert result is None
+
+    def test_fallback_when_file_doesnt_exist(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test fallback to None when file doesn't exist."""
+        font_mapping: dict[str, dict[str, float | str]] = {
+            "ArialMT": {
+                "family": "Arial",
+                "style": "Regular",
+                "weight": 80.0,
+                "file": "/nonexistent/path/arial.ttf",
+            }
+        }
+
+        with caplog.at_level(logging.WARNING):
+            result = FontInfo._resolve_from_custom_mapping_with_file(
+                "ArialMT", font_mapping
+            )
+
+        assert result is None
+        assert "does not exist" in caplog.text
+        assert "Falling back to platform resolution" in caplog.text
+
+    def test_fallback_when_required_fields_missing(self) -> None:
+        """Test fallback when other required fields are missing."""
+        font_mapping: dict[str, dict[str, float | str]] = {
+            "ArialMT": {
+                "family": "Arial",
+                # Missing "style" and "weight"
+                "file": "/path/to/arial.ttf",
+            }
+        }
+
+        result = FontInfo._resolve_from_custom_mapping_with_file(
+            "ArialMT", font_mapping
+        )
+
+        assert result is None
+
+    def test_font_not_in_mapping(self) -> None:
+        """Test returns None when font not found in mapping."""
+        font_mapping: dict[str, dict[str, float | str]] = {
+            "HelveticaMT": {
+                "family": "Helvetica",
+                "style": "Regular",
+                "weight": 80.0,
+                "file": "/path/to/helvetica.ttf",
+            }
+        }
+
+        result = FontInfo._resolve_from_custom_mapping_with_file(
+            "ArialMT", font_mapping
+        )
+
+        assert result is None
+
+
 class TestFontInfoSerialization:
     """Tests for FontInfo serialization methods."""
 
