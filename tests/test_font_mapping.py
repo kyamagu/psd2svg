@@ -678,13 +678,16 @@ class TestSuffixParsing:
         assert font.get_css_weight() == 700  # Bold = 700 in CSS
 
     def test_parse_abbreviated_suffixes(self) -> None:
-        """Test suffix parsing for abbreviated suffixes (B, DB, EB, UB)."""
+        """Test suffix parsing for abbreviated suffixes (B, DB, EB, UB, DeBold, ExBold, ExLight)."""
         test_cases = [
             ("RodinCattleyaPro-B", "Bold", 200.0),
-            ("RodinCattleyaPro-DB", "SemiBold", 180.0),  # DemiBold
-            ("RodinCattleyaPro-EB", "ExtraBold", 205.0),
+            ("RodinCattleyaPro-DB", "SemiBold", 180.0),  # DemiBold (short)
+            ("RodinCattleyaPro-EB", "ExtraBold", 205.0),  # ExtraBold (short)
             ("RodinCattleyaPro-UB", "Ultra", 210.0),  # UltraBold
             ("RowdyStd-EB", "ExtraBold", 205.0),
+            ("PAotoGothicStdN-DeBold", "SemiBold", 180.0),  # DemiBold (medium)
+            ("PAotoGothicStdN-ExBold", "ExtraBold", 205.0),  # ExtraBold (medium)
+            ("PAotoGothicStdN-ExLight", "ExtraLight", 40.0),  # ExtraLight abbreviation
         ]
 
         for name, expected_style, expected_weight in test_cases:

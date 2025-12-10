@@ -62,10 +62,13 @@ WEIGHT_SUFFIXES: dict[str, tuple[str, float]] = {
     "Ultra": ("Ultra", 210.0),
     "Roman": ("Roman", 80.0),  # Times-Roman
     "MT": ("Regular", 80.0),  # Mac Type suffix
-    # Abbreviated suffixes (common in Japanese fonts like Rodin family)
+    # Abbreviated suffixes (common in Japanese fonts)
     "B": ("Bold", 200.0),  # Bold abbreviation
-    "DB": ("SemiBold", 180.0),  # DemiBold abbreviation
-    "EB": ("ExtraBold", 205.0),  # ExtraBold abbreviation
+    "DB": ("SemiBold", 180.0),  # DemiBold abbreviation (short)
+    "DeBold": ("SemiBold", 180.0),  # DemiBold abbreviation (medium)
+    "EB": ("ExtraBold", 205.0),  # ExtraBold abbreviation (short)
+    "ExBold": ("ExtraBold", 205.0),  # ExtraBold abbreviation (medium)
+    "ExLight": ("ExtraLight", 40.0),  # ExtraLight abbreviation
     "UB": ("Ultra", 210.0),  # UltraBold abbreviation
 }
 
