@@ -720,3 +720,63 @@ class TestSuffixParsing:
             assert font is not None, f"Failed to parse {name}"
             assert font.style == expected_style
             assert font.weight == expected_weight
+
+    def test_parse_lowercase_suffixes(self) -> None:
+        """Test case-insensitive suffix parsing for lowercase variants."""
+        test_cases = [
+            ("mplus-1c-bold", "mplus-1c", "Bold", 200.0),
+            ("mplus-1c-medium", "mplus-1c", "Medium", 100.0),
+            ("mplus-2c-heavy", "mplus-2c", "Heavy", 210.0),
+            ("rounded-x-mplus-1c-light", "rounded-x-mplus-1c", "Light", 50.0),
+            ("CustomFont-italic", "Custom Font", "Italic", 80.0),
+            ("TestFont-regular", "Test Font", "Regular", 80.0),
+        ]
+
+        for name, expected_family, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.family == expected_family
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_uppercase_suffixes(self) -> None:
+        """Test case-insensitive suffix parsing for uppercase variants."""
+        test_cases = [
+            ("Font-BOLD", "Bold", 200.0),
+            ("Font-MEDIUM", "Medium", 100.0),
+            ("Font-LIGHT", "Light", 50.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_japanese_w_case_insensitive(self) -> None:
+        """Test Japanese W-notation is case-insensitive."""
+        test_cases = [
+            ("Font-w6", "W6", 180.0),
+            ("Font-W6", "W6", 180.0),
+            ("Font-w3", "W3", 50.0),
+            ("Font-W9", "W9", 210.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight
+
+    def test_parse_mixed_case_suffixes(self) -> None:
+        """Test suffix parsing handles mixed case gracefully."""
+        test_cases = [
+            ("Font-bOlD", "Bold", 200.0),
+            ("Font-MeDiUm", "Medium", 100.0),
+        ]
+
+        for name, expected_style, expected_weight in test_cases:
+            font = FontInfo.lookup_static(name)
+            assert font is not None, f"Failed to parse {name}"
+            assert font.style == expected_style
+            assert font.weight == expected_weight

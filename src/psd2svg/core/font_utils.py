@@ -586,6 +586,8 @@ class FontInfo:
         This helper parses a single PostScript suffix (e.g., "Bold", "BoldItalic")
         and returns the corresponding style string and fontconfig weight value.
 
+        Case-insensitive: "bold" and "Bold" are treated the same.
+
         Args:
             suffix: Font suffix (e.g., "Bold", "Italic", "BoldItalic", "W6").
 
@@ -595,29 +597,46 @@ class FontInfo:
         Example:
             >>> FontInfo._parse_suffix_component("Bold")
             {'style': 'Bold', 'weight': 200.0}
+            >>> FontInfo._parse_suffix_component("bold")
+            {'style': 'Bold', 'weight': 200.0}
             >>> FontInfo._parse_suffix_component("BoldItalic")
             {'style': 'Bold Italic', 'weight': 200.0}
             >>> FontInfo._parse_suffix_component("Unknown")
             None
         """
-        # Check compound patterns first (longest matches)
+        # Case-insensitive matching: try suffix as-is first, then uppercase version
+        # This handles both exact matches and case variations
+
+        # Check compound patterns first (longest matches) - case-sensitive first
         if suffix in COMPOUND_SUFFIXES:
             style, weight = COMPOUND_SUFFIXES[suffix]
             return {"style": style, "weight": weight}
 
-        # Check Japanese weight notation
-        if suffix in JAPANESE_WEIGHT_SUFFIXES:
-            style, weight = JAPANESE_WEIGHT_SUFFIXES[suffix]
+        # Try case-insensitive compound lookup
+        for key, (style, weight) in COMPOUND_SUFFIXES.items():
+            if key.lower() == suffix.lower():
+                return {"style": style, "weight": weight}
+
+        # Check Japanese weight notation (case-insensitive)
+        suffix_upper = suffix.upper()
+        if suffix_upper in JAPANESE_WEIGHT_SUFFIXES:
+            style, weight = JAPANESE_WEIGHT_SUFFIXES[suffix_upper]
             return {"style": style, "weight": weight}
 
-        # Check simple weight suffixes
+        # Check simple weight suffixes - case-sensitive first
         if suffix in WEIGHT_SUFFIXES:
             style, weight = WEIGHT_SUFFIXES[suffix]
             return {"style": style, "weight": weight}
 
-        # Standalone Italic/Oblique (edge case)
-        if suffix in ("Italic", "Oblique"):
-            return {"style": suffix, "weight": 80.0}
+        # Try case-insensitive weight suffix lookup
+        for key, (style, weight) in WEIGHT_SUFFIXES.items():
+            if key.lower() == suffix.lower():
+                return {"style": style, "weight": weight}
+
+        # Standalone Italic/Oblique (edge case) - case-insensitive
+        if suffix.lower() in ("italic", "oblique"):
+            # Return capitalized form
+            return {"style": suffix.capitalize(), "weight": 80.0}
 
         return None
 
