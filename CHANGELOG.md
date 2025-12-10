@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-12-10
+
+### Added
+
+- **Font weight and style inference from PostScript name suffixes** (#156)
+  - Automatically infers font weight and style from PostScript name suffixes (e.g., "-Bold", "-Italic", "Mt", "Rg")
+  - Supports abbreviated suffixes: Bd, Md, Lt, Rg, It, Obl, Cn, Ex
+  - Supports medium-length suffixes: Bold, Demi, Book, Black, Thin, Heavy, Ital, Oblique, Narrow, Extended
+  - Supports Japanese font weight notation: W0-W9 (e.g., "NotoSansJP-W7" → weight 700)
+  - Case-insensitive suffix parsing for better compatibility
+  - Improves font matching accuracy when exact PostScript names aren't found
+
+### Fixed
+
+- **Font resolution with variation selectors and combining marks** (#157)
+  - Fixed charset-based font matching to properly handle Unicode variation selectors (U+FE00-FE0F, U+E0100-E01EF)
+  - Fixed handling of combining diacritical marks (U+0300-U+036F, U+1AB0-U+1AFF, U+1DC0-U+1DFF, U+20D0-U+20FF, U+FE20-FE2F)
+  - Filters these special characters before querying font charset to prevent matching failures
+  - Resolves issues with CJK text containing variation selectors and accented characters
+  - Control characters (C0: 0-31, DEL: 127, C1: 128-159) now properly filtered
+
+### Changed
+
+- **Refactored font resolution architecture** (#145, #148, #149)
+  - Split `FontInfo.find()` into two explicit methods:
+    - `FontInfo.lookup_static()`: Fast lookup using static mapping (no platform queries)
+    - `FontInfo.resolve()`: Full resolution with platform-specific queries and file paths
+  - `FontInfo.find()` now delegates to `lookup_static()` by default (backward compatible)
+  - Eliminated redundant font resolution in `embed_fonts=True` flow
+  - Font subsetting now uses `set[int]` for codepoints instead of `set[str]`
+  - Made `resolved_fonts_map` parameter required in `_insert_css_fontface()`
+  - Improved performance and code clarity throughout font resolution pipeline
+
+- **Charset-based font matching improvements** (#144)
+  - Added charset matching to `FontInfo.find()` API
+  - Empty charset codepoints now handled as `None` in font matching
+  - Refactored `create_charset_codepoints()` to never return `None`
+
+### Internal
+
+- **Documentation improvements**
+  - Complete rewrite of Font Resolution Strategy section in CLAUDE.md
+  - Added detailed explanation of deferred resolution architecture
+  - Documented distinction between `lookup_static()` and `resolve()` methods
+  - Added charset-based font matching documentation
+  - Updated release workflow to require pull requests for all changes
+
+- **Code quality**
+  - Refactored internal helpers for naming consistency
+  - Extracted custom mapping validation in `FontInfo.resolve()`
+  - Removed unused `FontInfo.resolve()` method (old implementation)
+  - Added docstring notes about CSS 'font' shorthand property
+  - Refactored and added tests for `add_font_family()` function
+
+### Testing
+
+- All 666 tests passing (15 skipped, 15 xfailed)
+- Added comprehensive tests for font weight suffix parsing
+- Added tests for variation selector and combining mark handling
+- Updated font resolution tests for new API structure
+
+## [0.7.1] - 2025-12-09
+
+### Fixed
+
+- Control character filtering in charset-based font matching
+- Fontconfig API usage in charset-based font resolution
+
 ## [0.7.0] - 2025-12-08
 
 ### Added
@@ -65,5 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Previous releases - see git history for details.
 
+[0.8.0]: https://github.com/kyamagu/psd2svg/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/kyamagu/psd2svg/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/kyamagu/psd2svg/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/kyamagu/psd2svg/releases/tag/v0.6.0
