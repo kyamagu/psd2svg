@@ -981,7 +981,9 @@ def test_text_whitespace_preservation_foreign_object() -> None:
     )
 
 
-def test_text_style_horizontal_scale_warning(caplog):
+def test_text_style_horizontal_scale_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Test that scaled text logs a warning about browser compatibility."""
     import logging
 
@@ -991,35 +993,40 @@ def test_text_style_horizontal_scale_warning(caplog):
 
     # Should log a warning about text scaling not being supported
     assert any(
-        "text scaling" in record.message.lower() and "not supported" in record.message.lower()
+        "text scaling" in record.message.lower()
+        and "not supported" in record.message.lower()
         for record in caplog.records
     ), "Should warn about text scaling not being supported by browsers"
 
     # Transform should still be on tspan (even though it won't render)
     tspan_with_transform = svg.find(".//tspan[@transform]")
     assert tspan_with_transform is not None, "Transform should be on tspan"
-    assert "scale" in tspan_with_transform.attrib["transform"], "Should have scale transform"
+    assert "scale" in tspan_with_transform.attrib["transform"], (
+        "Should have scale transform"
+    )
 
 
-def test_text_style_vertical_scale_warning(caplog):
+def test_text_style_vertical_scale_warning(caplog: pytest.LogCaptureFixture) -> None:
     """Test that vertically scaled text logs a warning."""
     import logging
 
     with caplog.at_level(logging.WARNING):
         convert_psd_to_svg("texts/style-vertically-scale-200.psd")
 
-    assert any(
-        "text scaling" in record.message.lower() for record in caplog.records
-    ), "Should warn about text scaling"
+    assert any("text scaling" in record.message.lower() for record in caplog.records), (
+        "Should warn about text scaling"
+    )
 
 
-def test_text_style_scale_combination_warning(caplog):
+def test_text_style_scale_combination_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Test that combined scaled text logs a warning."""
     import logging
 
     with caplog.at_level(logging.WARNING):
         convert_psd_to_svg("texts/style-scale-combination.psd")
 
-    assert any(
-        "text scaling" in record.message.lower() for record in caplog.records
-    ), "Should warn about text scaling"
+    assert any("text scaling" in record.message.lower() for record in caplog.records), (
+        "Should warn about text scaling"
+    )
