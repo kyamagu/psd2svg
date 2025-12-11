@@ -424,6 +424,42 @@ class TextConverter(ConverterProtocol):
         # Get PostScript name from font index - no font resolution needed
         postscript_name = text_setting.get_postscript_name(style.font)
 
+        # Handle horizontal and vertical scaling
+        # For uniform scaling, scale font-size directly (browser-compatible workaround)
+        # For non-uniform scaling, use transform (still broken in browsers, but more consistent)
+        SCALE_TOLERANCE = 1e-6  # Consistent with Transform.is_translation_only()
+        has_scaling = style.vertical_scale != 1.0 or style.horizontal_scale != 1.0
+        is_uniform_scale = (
+            abs(style.vertical_scale - style.horizontal_scale) < SCALE_TOLERANCE
+        )
+
+        # Validate scale values and determine approach
+        if has_scaling and (style.vertical_scale <= 0 or style.horizontal_scale <= 0):
+            logger.warning(
+                f"Invalid scale values: horizontal={style.horizontal_scale}, "
+                f"vertical={style.vertical_scale}. Using original font-size."
+            )
+            scaled_font_size = style.font_size
+            transform_scale = None
+            should_warn = False
+        elif has_scaling and is_uniform_scale:
+            # Uniform scaling: scale font-size directly (browser-compatible)
+            scale = style.horizontal_scale  # Could use vertical_scale, they're equal
+            scaled_font_size = style.font_size * scale
+            transform_scale = None  # No transform needed
+            should_warn = False
+        elif has_scaling:
+            # Non-uniform scaling: scale by vertical, adjust horizontal with transform
+            scaled_font_size = style.font_size * style.vertical_scale
+            # Transform adjusts horizontal to match
+            transform_scale = (style.horizontal_scale / style.vertical_scale, 1.0)
+            should_warn = True  # Still broken in browsers
+        else:
+            # No scaling
+            scaled_font_size = style.font_size
+            transform_scale = None
+            should_warn = False
+
         # Determine font weight - only set for faux bold (PostScript name encodes actual weight)
         font_weight: int | str | None = None
         if style.faux_bold:
@@ -433,7 +469,7 @@ class TextConverter(ConverterProtocol):
             tspan = self.create_node(
                 "tspan",
                 text=span.text.strip("\r"),  # Remove carriage return characters
-                font_size=style.font_size,
+                font_size=scaled_font_size,
                 font_family=postscript_name,  # Store PostScript name directly
                 font_weight=font_weight,
                 font_style="italic"
@@ -486,19 +522,19 @@ class TextConverter(ConverterProtocol):
             svg_utils.set_attribute(
                 tspan,
                 "baseline-shift",
-                style.font_size * text_setting.superscript_position,
+                scaled_font_size * text_setting.superscript_position,
             )
             svg_utils.set_attribute(
-                tspan, "font-size", style.font_size * text_setting.superscript_size
+                tspan, "font-size", scaled_font_size * text_setting.superscript_size
             )
         elif style.font_baseline == FontBaseline.SUBSCRIPT:
             svg_utils.set_attribute(
                 tspan,
                 "baseline-shift",
-                -style.font_size * text_setting.subscript_position,
+                -scaled_font_size * text_setting.subscript_position,
             )
             svg_utils.set_attribute(
-                tspan, "font-size", style.font_size * text_setting.subscript_size
+                tspan, "font-size", scaled_font_size * text_setting.subscript_size
             )
 
         # Apply letter spacing from tracking, tsume, and optional global offset
@@ -507,8 +543,8 @@ class TextConverter(ConverterProtocol):
         # NOTE: It seems Photoshop applies 1/10 of the tsume value to letter spacing.
         # NOTE: There is a slight offset difference for the first charactor because
         # letter-spacing applies after the character.
-        letter_spacing = style.tracking / 1000 * style.font_size
-        letter_spacing -= style.tsume / 10 * style.font_size  # Tsume tightens spacing
+        letter_spacing = style.tracking / 1000 * scaled_font_size
+        letter_spacing -= style.tsume / 10 * scaled_font_size  # Tsume tightens spacing
         if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
 
@@ -525,29 +561,29 @@ class TextConverter(ConverterProtocol):
         # We use dx/dy to shift the character position, which effectively adjusts the space before it.
         # NOTE: letter-spacing adds space AFTER characters, so we can't use it for kerning.
         if style.kerning != 0:
-            kerning_offset = style.kerning / 1000 * style.font_size
+            kerning_offset = style.kerning / 1000 * scaled_font_size
             # Use dx for horizontal text, dy for vertical text
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
                 svg_utils.set_attribute(tspan, "dx", svg_utils.num2str(kerning_offset))
             elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
                 svg_utils.set_attribute(tspan, "dy", svg_utils.num2str(kerning_offset))
 
-        if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
-            # NOTE: Transform on tspan is only supported in SVG 2.0, which no browser
-            # currently supports. The scaled text will not render correctly in browsers.
-            # Workaround would be to split tspan's into separate text elements, but this
-            # requires complex line height calculations and transform matrix operations.
-            logger.warning(
-                "Text scaling (horizontal_scale or vertical_scale) on spans is not "
-                "supported by browsers. Scaled text will not render correctly. "
-                "Consider using enable_text=False to rasterize text layers."
-            )
+        # Apply non-uniform scale transform if needed
+        # (Uniform scaling is already handled via scaled_font_size above)
+        if transform_scale is not None:
+            if should_warn:
+                logger.warning(
+                    "Non-uniform text scaling (different horizontal and vertical scale) "
+                    "on spans is not supported by browsers. Scaled text will not render "
+                    "correctly. Consider using enable_text=False to rasterize text layers."
+                )
+
             svg_utils.append_attribute(
                 tspan,
                 "transform",
                 "scale({},{})".format(
-                    svg_utils.num2str(style.horizontal_scale),
-                    svg_utils.num2str(style.vertical_scale),
+                    svg_utils.num2str(transform_scale[0]),
+                    svg_utils.num2str(transform_scale[1]),
                 ),
             )
 
