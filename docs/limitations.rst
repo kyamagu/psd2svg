@@ -212,12 +212,74 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 * Line height (leading)
 * Horizontal and vertical text scaling
 * Position, rotation, and scaling transformations
+* **Arc warp effects** (experimental) - see Text Warp Effects below
 
 **Unsupported Features:**
 
 * Gradient fills and pattern strokes (solid colors only)
 * Advanced OpenType features (e.g., stylistic sets, contextual alternates, positional forms)
 * Variable fonts and font variations
+
+**Text Warp Effects (Experimental):**
+
+Text layers with arc warp effects are converted to SVG ``<textPath>`` elements that follow curved paths. This feature is experimental and automatically enabled when arc warp is detected.
+
+**Supported Warp Types:**
+
+* **Arc warp** (horizontal orientation only)
+
+  * Positive values (+1 to +100): Arc bulging upward
+  * Negative values (-1 to -100): Arc bulging downward
+  * All intermediate warp values
+
+**Not Yet Supported:**
+
+* Vertical arc warp
+* Other warp styles (Fish, Wave, Flag, etc.)
+* Warp perspective transforms
+
+**Technical Implementation:**
+
+Arc-warped text uses SVG ``<textPath>`` with dynamically generated arc paths. The arc radius is calculated using trigonometry:
+
+* ``scale = sin(π/2 × |warp_value|/100)``
+* ``radius = (width + height) / 2 / scale``
+
+For extreme warp values (|value| > 50), the ``textLength`` attribute is set to improve browser rendering consistency.
+
+**Renderer Compatibility:**
+
+* ✅ **Modern browsers**: Chrome, Firefox, Safari, Edge (good support)
+* ✅ **PlaywrightRasterizer**: Full support via Chromium
+* ⚠️ **ResvgRasterizer**: Basic support, but may have rendering differences
+* ⚠️ **Vector editors**: Variable support (Inkscape, Sketch, Figma)
+
+**Known Limitations:**
+
+* Height adjustment uses half box height; should ideally use baseline height
+* Only horizontal orientation supported
+* Text wrapping with warp not yet implemented
+* Unsupported warp styles fall back to straight line rendering
+
+**Example:**
+
+.. code-block:: python
+
+   from psd2svg import SVGDocument
+   from psd_tools import PSDImage
+
+   # Text with arc warp is automatically converted to textPath
+   psdimage = PSDImage.open("curved_text.psd")
+   document = SVGDocument.from_psd(psdimage)
+   document.save("output.svg")
+
+**Fallback:**
+
+To disable text warp conversion and rasterize warped text instead:
+
+.. code-block:: python
+
+   document = SVGDocument.from_psd(psdimage, enable_text=False)
 
 **Text Wrapping Support:**
 
@@ -351,7 +413,8 @@ Since text is rasterized:
 
 * Text appears exactly as rendered in Photoshop, including all effects
 * Complex text effects (gradients, strokes, shadows) are preserved
-* Warped text and custom transformations work correctly
+* All warp effects (arc, fish, wave, etc.) work correctly
+* Custom transformations work correctly
 * No font installation required on the target system
 
 **Workarounds:**
