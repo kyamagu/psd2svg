@@ -18,6 +18,53 @@ from psd2svg.core.base import ConverterProtocol
 logger = logging.getLogger(__name__)
 
 
+def _needs_whitespace_preservation(text: str) -> bool:
+    """Check if text needs whitespace preservation.
+
+    Returns True if the text contains:
+    - Leading or trailing spaces
+    - Multiple consecutive spaces (2 or more)
+    - Tabs or other whitespace characters
+
+    When whitespace needs preservation, the xml:space="preserve" attribute is added
+    to the SVG element. While MDN recommends the CSS white-space property as the
+    modern approach (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/xml:space),
+    we use xml:space for better compatibility with SVG renderers including resvg-py.
+    The attribute works equivalently to CSS "white-space: pre".
+
+    Note: Carriage returns (\r) are ignored since they are stripped
+    during text processing.
+
+    Args:
+        text: Text content to check.
+
+    Returns:
+        True if xml:space="preserve" is needed, False otherwise.
+    """
+    if not text:
+        return False
+
+    # Strip carriage returns as they're removed during text processing
+    text = text.replace("\r", "")
+
+    if not text:
+        return False
+
+    # Check for leading or trailing spaces
+    if text != text.strip():
+        return True
+
+    # Check for multiple consecutive spaces
+    if "  " in text:
+        return True
+
+    # Check for tabs or other special whitespace
+    if "\t" in text or "\n" in text or "\f" in text:
+        return True
+
+    return False
+
+
 class TextWrappingMode(IntEnum):
     """Text wrapping mode values."""
 
@@ -108,14 +155,24 @@ class TextConverter(ConverterProtocol):
 
         paragraphs = list(text_setting)
 
+        # Check if any span needs whitespace preservation
+        needs_preserve = any(
+            _needs_whitespace_preservation(span.text)
+            for paragraph in paragraphs
+            for span in paragraph
+        )
+
         if uses_native_positioning:
             # Don't set x/y on parent - each tspan will have its own position
-            text_node = self.create_node("text")
+            text_node = self.create_node(
+                "text", xml_space="preserve" if needs_preserve else None
+            )
         else:
             # Use transform for non-translation transforms
             text_node = self.create_node(
                 "text",
                 transform=transform.to_svg_matrix(),
+                xml_space="preserve" if needs_preserve else None,
             )
 
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
@@ -541,10 +598,16 @@ class TextConverter(ConverterProtocol):
         # Get paragraph CSS styles
         p_styles = self._get_foreign_object_paragraph_styles(paragraph)
 
+        # Check if any span in this paragraph needs whitespace preservation
+        needs_preserve = any(
+            _needs_whitespace_preservation(span.text) for span in paragraph
+        )
+
         # Create <p> element
         p_elem = svg_utils.create_xhtml_node(
             "p",
             parent=container,
+            xml_space="preserve" if needs_preserve else None,
             style=svg_utils.styles_to_string(p_styles),
         )
 

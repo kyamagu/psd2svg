@@ -879,3 +879,103 @@ def test_text_wrapping_foreign_object_vertical() -> None:
     assert div is not None
     style = div.attrib.get("style", "")
     assert "writing-mode: vertical-rl" in style or "writing-mode:vertical-rl" in style
+
+
+def test_text_whitespace_preservation() -> None:
+    """Test that whitespace in text is preserved with xml:space='preserve'.
+
+    Verifies:
+    - Leading spaces preserved
+    - Trailing spaces preserved
+    - Consecutive spaces (10 spaces) preserved
+    - Whitespace-only spans preserved
+    - xml:space attribute set correctly
+    """
+    svg = convert_psd_to_svg("texts/whitespaces.psd")
+
+    # Verify xml:space="preserve" attribute is set on text element
+    text_node = svg.find(".//text")
+    assert text_node is not None, "Should have text element"
+
+    # Check for xml:space attribute with proper XML namespace
+    xml_space_attr = text_node.attrib.get("{http://www.w3.org/XML/1998/namespace}space")
+    assert xml_space_attr == "preserve", (
+        f"text element should have xml:space='preserve', got: {repr(xml_space_attr)}"
+    )
+
+    # Find all tspan elements (one per paragraph)
+    tspans = text_node.findall(".//tspan")
+    assert len(tspans) == 3, f"Expected 3 paragraphs, got {len(tspans)}"
+
+    # Paragraph 1: " Lorem" (leading space + text)
+    assert tspans[0].text == " Lorem", (
+        f"First paragraph should have leading space, got: {repr(tspans[0].text)}"
+    )
+
+    # Paragraph 2: "          Ipsum" (10 consecutive spaces + text)
+    assert tspans[1].text == "          Ipsum", (
+        f"Second paragraph should have 10 spaces, got: {repr(tspans[1].text)}"
+    )
+    assert len(tspans[1].text) == 15, (
+        f"Second paragraph should be 15 chars (10 spaces + 5 chars), "
+        f"got: {len(tspans[1].text)}"
+    )
+
+    # Paragraph 3: "   " (3 trailing spaces only)
+    assert tspans[2].text == "   ", (
+        f"Third paragraph should be 3 spaces, got: {repr(tspans[2].text)}"
+    )
+    assert len(tspans[2].text) == 3, (
+        f"Third paragraph should be exactly 3 chars, got: {len(tspans[2].text)}"
+    )
+
+
+def test_text_whitespace_preservation_foreign_object() -> None:
+    """Test whitespace preservation in foreignObject mode with XHTML.
+
+    Uses a bounding box text fixture (ShapeType 1) that supports foreignObject mode.
+    """
+    psdimage = PSDImage.open(get_fixture("texts/whitespaces-shapetype1.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+    )
+
+    # Find foreignObject and container div
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None, "Should have foreignObject element"
+
+    # Get all paragraphs
+    paragraphs = foreign_obj.findall(".//{http://www.w3.org/1999/xhtml}p")
+    assert len(paragraphs) == 3, f"Expected 3 paragraphs, got {len(paragraphs)}"
+
+    # Verify xml:space="preserve" attribute on paragraph elements
+    # Paragraphs 0 and 1 have whitespace that needs preservation, paragraph 2 is empty
+    for i, p in enumerate(paragraphs):
+        xml_space = p.attrib.get("{http://www.w3.org/XML/1998/namespace}space")
+        if i < 2:  # First two paragraphs have whitespace
+            assert xml_space == "preserve", (
+                f"Paragraph {i} should have xml:space='preserve', got: {repr(xml_space)}"
+            )
+        else:  # Last paragraph is empty (\r only), no xml:space needed
+            assert xml_space is None, (
+                f"Paragraph {i} should not have xml:space, got: {repr(xml_space)}"
+            )
+
+    # Extract text content from each paragraph
+    p1_text = "".join(paragraphs[0].itertext())
+    p2_text = "".join(paragraphs[1].itertext())
+    p3_text = "".join(paragraphs[2].itertext())
+
+    # Verify whitespace is preserved (fixture has: '  Lorem\r        ipsum\r\r')
+    assert p1_text == "  Lorem", (
+        f"Paragraph 1 should be '  Lorem' (2 leading spaces), got: {repr(p1_text)}"
+    )
+    assert p2_text == "        ipsum", (
+        f"Paragraph 2 should have 8 spaces, got: {repr(p2_text)}"
+    )
+    assert len(p2_text) == 13, (
+        f"Paragraph 2 should be 13 chars (8 spaces + 5 chars), got: {len(p2_text)}"
+    )
+    assert p3_text == "", (
+        f"Paragraph 3 should be empty (carriage return only), got: {repr(p3_text)}"
+    )
