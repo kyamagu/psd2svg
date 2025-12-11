@@ -492,8 +492,11 @@ class TextConverter(ConverterProtocol):
         # Apply letter spacing from tracking, tsume, and optional global offset
         # NOTE: Tracking is in 1/1000 em units.
         # NOTE: Tsume is a percentage (0-1) that reduces spacing by that amount of font size.
+        # NOTE: It seems Photoshop applies 1/10 of the tsume value to letter spacing.
+        # NOTE: There is a slight offset difference for the first charactor because
+        # letter-spacing applies after the character.
         letter_spacing = style.tracking / 1000 * style.font_size
-        letter_spacing -= style.tsume * style.font_size  # Tsume tightens spacing
+        letter_spacing -= style.tsume / 10 * style.font_size  # Tsume tightens spacing
         if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
 

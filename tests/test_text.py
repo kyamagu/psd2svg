@@ -395,9 +395,44 @@ def test_text_style_tsume() -> None:
     """Test tsume (character tightening) effect on letter-spacing."""
     svg = convert_psd_to_svg("texts/style-tsume.psd")
 
+    # Find all tspan elements
+    tspans = svg.findall(".//tspan")
+    assert len(tspans) == 2, f"Expected 2 tspans, got {len(tspans)}"
+
+    # Get letter-spacing values (0.0 if not set)
+    spacing_values = []
+    for tspan in tspans:
+        spacing = float(tspan.attrib.get("letter-spacing", "0"))
+        spacing_values.append(spacing)
+
+    # First paragraph: tracking=50, tsume=0 -> spacing = 50/1000 * 32 = 1.6
+    # Second paragraph: tracking=50, tsume=0.5 -> spacing = 50/1000 * 32 - 0.5/10 * 32 = 1.6 - 1.6 = 0.0
+    assert abs(spacing_values[0] - 1.6) < 1e-6, (
+        f"Expected first paragraph letter-spacing to be 1.6, got {spacing_values[0]}"
+    )
+    assert abs(spacing_values[1] - 0.0) < 1e-6, (
+        f"Expected second paragraph letter-spacing to be 0.0, got {spacing_values[1]}"
+    )
+
+    # Verify that tsume reduces spacing
+    assert spacing_values[0] > spacing_values[1], (
+        "Expected reduced spacing from tsume=0.5"
+    )
+
+
+def test_text_style_tracking_and_tsume() -> None:
+    """Test combined tracking and tsume effect on letter-spacing.
+
+    This test verifies that both tracking and tsume are correctly applied together.
+    The fixture has two spans with the same tracking but different tsume values.
+    """
+    svg = convert_psd_to_svg("texts/style-tracking-tsume.psd")
+
     # Find all tspan elements with letter-spacing
     tspans_with_spacing = svg.findall(".//tspan[@letter-spacing]")
-    assert len(tspans_with_spacing) > 0
+    assert len(tspans_with_spacing) == 2, (
+        f"Expected 2 tspans with letter-spacing, got {len(tspans_with_spacing)}"
+    )
 
     # Collect letter-spacing values
     spacing_values = []
@@ -405,15 +440,22 @@ def test_text_style_tsume() -> None:
         spacing = float(tspan.attrib["letter-spacing"])
         spacing_values.append(spacing)
 
-    # Should have multiple different spacing values
-    # First paragraph: tracking=50, tsume=0 -> spacing = 50/1000 * 32 = 1.6
-    # Second paragraph: tracking=50, tsume=0.5 -> spacing = 50/1000 * 32 - 0.5 * 32 = 1.6 - 16 = -14.4
-    unique_values = set(spacing_values)
-    assert len(unique_values) > 1, "Expected varying letter-spacing due to tsume"
+    # Verify expected letter-spacing values:
+    # Span 0: tracking=-50, tsume=1.0, font_size=40.0
+    #   -> spacing = -50/1000 * 40 - 1.0/10 * 40 = -2.0 - 4.0 = -6.0
+    # Span 1: tracking=-50, tsume=0.0, font_size=40.0
+    #   -> spacing = -50/1000 * 40 - 0.0/10 * 40 = -2.0 - 0.0 = -2.0
 
-    # Verify that tsume reduces spacing (some values should be negative)
-    assert any(s < 0 for s in spacing_values), (
-        "Expected negative spacing from tsume=0.5"
+    assert abs(spacing_values[0] - (-6.0)) < 1e-6, (
+        f"Expected first span letter-spacing to be -6.0, got {spacing_values[0]}"
+    )
+    assert abs(spacing_values[1] - (-2.0)) < 1e-6, (
+        f"Expected second span letter-spacing to be -2.0, got {spacing_values[1]}"
+    )
+
+    # Verify that the span with higher tsume has more negative spacing
+    assert spacing_values[0] < spacing_values[1], (
+        "Span with tsume=1.0 should have more negative spacing than span with tsume=0.0"
     )
 
 
