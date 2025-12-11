@@ -364,6 +364,32 @@ def test_text_style_baseline_shift() -> None:
     assert baseline_shift != 0
 
 
+def test_text_style_baseline_shift_scale() -> None:
+    """Test that baseline-shift stays unchanged with uniform scaling.
+
+    Photoshop stores baseline-shift as absolute pixels, unchanged by scale parameter.
+    When uniform scaling is applied (e.g., 150%), the font-size is scaled but
+    baseline-shift should remain at its original value.
+    """
+    svg = convert_psd_to_svg("texts/style-baseline-shift-scale.psd")
+
+    # Find element with baseline-shift
+    element = svg.find(".//*[@baseline-shift]")
+    assert element is not None, "Should have element with baseline-shift"
+
+    # Get baseline-shift value
+    baseline_shift = float(element.attrib.get("baseline-shift", "0"))
+    assert baseline_shift != 0, "Should have non-zero baseline-shift"
+
+    # Font should be scaled (uniform 150% scale)
+    font_size = float(element.attrib.get("font-size", "0"))
+    assert font_size > 0, "Should have positive font-size"
+
+    # Should NOT have transform for uniform scaling
+    transform = element.attrib.get("transform")
+    assert transform is None, "Uniform scaling should not use transform"
+
+
 def test_text_style_tracking() -> None:
     """Test tracking (letter-spacing) handling."""
     svg = convert_psd_to_svg("texts/style-tracking.psd")
@@ -587,33 +613,49 @@ def test_text_style_leading() -> None:
 
 
 def test_text_style_horizontal_scale() -> None:
-    """Test horizontal scale transform handling."""
+    """Test horizontal scale transform handling (non-uniform).
+
+    When only horizontal_scale=0.5 and vertical_scale=1.0:
+    - Font-size is scaled by vertical_scale (1.0, unchanged)
+    - Transform adjusts horizontal: scale(h/v, 1) = scale(0.5/1.0, 1) = scale(0.5, 1)
+    """
     svg = convert_psd_to_svg("texts/style-horizontally-scale-50.psd")
+
     # Check for transform on tspan or text element (optimization may move it to text)
     element = svg.find(".//tspan[@transform]")
     if element is None:
         element = svg.find(".//text[@transform]")
-    assert element is not None
+    assert element is not None, "Should have element with transform"
+
     transform = element.attrib.get("transform", "")
     # Should contain scale transformation
-    assert "scale" in transform
-    # Should have horizontal scale of 0.5 (50%)
-    assert "0.5" in transform or ".5" in transform
+    assert "scale" in transform, "Should have scale transform"
+    # Transform should be scale(0.5,1) for horizontal compression
+    assert ("0.5" in transform or ".5" in transform) and "1" in transform, (
+        "Should have scale(0.5,1) transform"
+    )
 
 
 def test_text_style_vertical_scale() -> None:
-    """Test vertical scale transform handling."""
+    """Test vertical scale transform handling (non-uniform).
+
+    When only vertical_scale=0.5 and horizontal_scale=1.0:
+    - Font-size is scaled by vertical_scale (0.5)
+    - Transform adjusts horizontal: scale(h/v, 1) = scale(1.0/0.5, 1) = scale(2, 1)
+    """
     svg = convert_psd_to_svg("texts/style-vertically-scale-50.psd")
+
     # Check for transform on tspan or text element (optimization may move it to text)
     element = svg.find(".//tspan[@transform]")
     if element is None:
         element = svg.find(".//text[@transform]")
-    assert element is not None
+    assert element is not None, "Should have element with transform"
+
     transform = element.attrib.get("transform", "")
     # Should contain scale transformation
-    assert "scale" in transform
-    # Should have vertical scale of 0.5 (50%)
-    assert "0.5" in transform or ".5" in transform
+    assert "scale" in transform, "Should have scale transform"
+    # Transform should be scale(2,1) for horizontal adjustment
+    assert "2" in transform and "1" in transform, "Should have scale(2,1) transform"
 
 
 def test_text_native_positioning_point_type() -> None:
@@ -1061,16 +1103,24 @@ def test_text_style_vertical_scale_warning(caplog: pytest.LogCaptureFixture) -> 
     )
 
 
-def test_text_style_scale_combination_warning(
+def test_text_style_uniform_scale_no_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Test that combined scaled text logs a warning."""
+    """Test that uniform scaled text does NOT log a warning (now browser-compatible)."""
     with caplog.at_level(logging.WARNING):
-        convert_psd_to_svg("texts/style-scale-combination.psd")
+        svg = convert_psd_to_svg("texts/style-scale-combination.psd")
 
-    assert any("text scaling" in record.message.lower() for record in caplog.records), (
-        "Should warn about text scaling"
-    )
+    # Should NOT warn for uniform scaling (we fixed it)
+    warnings = [r for r in caplog.records if "text scaling" in r.message.lower()]
+    assert len(warnings) == 0, "Should not warn about uniform text scaling"
+
+    # Should use scaled font-size, not transform
+    tspan = svg.find(".//tspan[@font-size]")
+    assert tspan is not None, "Should have tspan with font-size"
+
+    # Should NOT have transform attribute for uniform scaling
+    transform = tspan.attrib.get("transform")
+    assert transform is None, "Uniform scaling should not use transform"
 
 
 # Arc Warping Tests
