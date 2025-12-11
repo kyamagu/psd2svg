@@ -891,6 +891,221 @@ def consolidate_defs(svg: ET.Element) -> None:
         svg.remove(global_defs)
 
 
+def _normalize_element_for_comparison(element: ET.Element) -> str:
+    """Create normalized string for structural comparison.
+
+    This function creates a canonical string representation of an element
+    for content-based comparison, excluding identity attributes like 'id'.
+
+    Normalizations applied:
+    - Remove id attribute (identity, not equality)
+    - Sort attributes alphabetically (consistent ordering)
+    - Recursively sort child attributes
+    - Strip whitespace from text and tail
+    - Serialize without whitespace
+
+    Args:
+        element: The element to normalize.
+
+    Returns:
+        Canonical string representation suitable for deduplication.
+    """
+    import copy
+
+    # Deep copy to avoid modifying original
+    temp = copy.deepcopy(element)
+
+    # Remove id attribute - it represents identity, not content equality
+    temp.attrib.pop("id", None)
+
+    # Sort all attributes and normalize whitespace recursively
+    # (XML doesn't guarantee attribute order, and whitespace can vary)
+    for elem in temp.iter():
+        sorted_attrib = dict(sorted(elem.attrib.items()))
+        elem.attrib.clear()
+        elem.attrib.update(sorted_attrib)
+
+        # Normalize text and tail whitespace
+        if elem.text:
+            elem.text = elem.text.strip() or None
+        if elem.tail:
+            elem.tail = elem.tail.strip() or None
+
+    # Serialize to string for comparison
+    return ET.tostring(temp, encoding="unicode", method="xml")
+
+
+def _update_url_references(
+    svg: ET.Element,
+    id_mapping: dict[str, str],
+) -> None:
+    """Update all url(#id) references using id mapping.
+
+    Searches the SVG tree for elements with URL reference attributes
+    (fill, stroke, filter, clip-path, mask, marker-*) and updates
+    any url(#id) references according to the provided mapping.
+
+    Note:
+        The converter only creates URL references in direct attributes,
+        never in style attributes. Style attributes only contain
+        font-family properties.
+
+    Args:
+        svg: The root SVG element to search.
+        id_mapping: Mapping from old element IDs to canonical IDs.
+    """
+    # Attributes that can contain url() references
+    url_attrs = {
+        "fill",
+        "stroke",
+        "filter",
+        "clip-path",
+        "mask",
+        "marker-start",
+        "marker-mid",
+        "marker-end",
+    }
+
+    # Pattern to match url(#id)
+    url_pattern = re.compile(r"url\(#([^)]+)\)")
+
+    updated_count = 0
+
+    # Only iterate over elements that actually have URL reference attributes
+    # This is more efficient than checking every element in the tree
+    for attr in url_attrs:
+        # Use XPath to find elements with this attribute
+        for element in svg.findall(f".//*[@{attr}]"):
+            value = element.get(attr)
+            if value and "url(#" in value:
+
+                def replace_url(match: re.Match[str]) -> str:
+                    nonlocal updated_count
+                    old_id = match.group(1)
+                    if old_id in id_mapping:
+                        new_id = id_mapping[old_id]
+                        if new_id != old_id:
+                            updated_count += 1
+                            return f"url(#{new_id})"
+                    return match.group(0)
+
+                new_value = url_pattern.sub(replace_url, value)
+                if new_value != value:
+                    element.set(attr, new_value)
+
+    if updated_count > 0:
+        logger.debug(f"Updated {updated_count} url(#id) references")
+
+
+def deduplicate_definitions(svg: ET.Element) -> None:
+    """Deduplicate identical definition elements in <defs>.
+
+    Identifies structurally identical definition elements (filter, gradients,
+    patterns, clipPath, marker, symbol) and merges duplicates by keeping the
+    first occurrence and updating all url(#id) references throughout the SVG tree.
+
+    This function should be called AFTER consolidate_defs() to ensure all
+    definition elements are in a single global <defs>.
+
+    Priority order (based on PSD per-layer structure):
+    1. filter, linearGradient, radialGradient, pattern (most common duplicates)
+    2. clipPath, marker, symbol (less common but still beneficial)
+
+    Args:
+        svg: The root SVG element (modified in-place).
+
+    Note:
+        Elements are considered identical if they have:
+        - Same tag
+        - Same attributes (except 'id')
+        - Same child structure and content
+
+    Example:
+        Before:
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+                <linearGradient id="g2"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#g1)"/>
+            <circle fill="url(#g2)"/>
+
+        After:
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#g1)"/>
+            <circle fill="url(#g1)"/>
+    """
+    # Phase 1: Find global <defs> and extract definition elements
+    global_defs = None
+    for child in svg:
+        tag = child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+        if local_name == "defs":
+            global_defs = child
+            break
+
+    if global_defs is None:
+        return
+
+    # All definition types from consolidate_defs
+    # Prioritize high-duplication types (filters, gradients, patterns)
+    definition_tags = {
+        "filter",
+        "linearGradient",
+        "radialGradient",
+        "pattern",
+        "clipPath",
+        "marker",
+        "symbol",
+    }
+
+    definitions = []
+    for child in global_defs:
+        tag = child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+        if local_name in definition_tags:
+            definitions.append(child)
+
+    if not definitions:
+        return
+
+    # Phase 2: Build canonical mapping using normalized serialization
+    content_to_id: dict[str, str] = {}  # normalized_content -> canonical_id
+    id_to_canonical: dict[str, str] = {}  # element_id -> canonical_id
+    duplicates_to_remove: list[ET.Element] = []
+
+    for element in definitions:
+        element_id = element.get("id")
+        if not element_id:
+            logger.warning(f"Definition element missing id: {element.tag}")
+            continue
+
+        # Normalize element for comparison (remove id, sort attributes, serialize)
+        normalized = _normalize_element_for_comparison(element)
+
+        if normalized in content_to_id:
+            # Duplicate found - map to canonical (first occurrence)
+            canonical_id = content_to_id[normalized]
+            id_to_canonical[element_id] = canonical_id
+            duplicates_to_remove.append(element)
+        else:
+            # First occurrence - this becomes the canonical element
+            content_to_id[normalized] = element_id
+            id_to_canonical[element_id] = element_id  # Maps to itself
+
+    # Phase 3: Update all url(#id) references
+    if id_to_canonical:
+        _update_url_references(svg, id_to_canonical)
+
+    # Phase 4: Remove duplicates from defs
+    for element in duplicates_to_remove:
+        global_defs.remove(element)
+
+    if duplicates_to_remove:
+        logger.debug(f"Deduplicated {len(duplicates_to_remove)} definition elements")
+
+
 def extract_font_families(svg: ET.Element) -> set[str]:
     """Extract all unique font families from font-family attributes in SVG tree.
 
