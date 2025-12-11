@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import xml.etree.ElementTree as ET
 from psd_tools import PSDImage
@@ -985,8 +987,6 @@ def test_text_style_horizontal_scale_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that scaled text logs a warning about browser compatibility."""
-    import logging
-
     # Capture warning logs
     with caplog.at_level(logging.WARNING):
         svg = convert_psd_to_svg("texts/style-horizontally-scale-200.psd")
@@ -1008,8 +1008,6 @@ def test_text_style_horizontal_scale_warning(
 
 def test_text_style_vertical_scale_warning(caplog: pytest.LogCaptureFixture) -> None:
     """Test that vertically scaled text logs a warning."""
-    import logging
-
     with caplog.at_level(logging.WARNING):
         convert_psd_to_svg("texts/style-vertically-scale-200.psd")
 
@@ -1022,8 +1020,6 @@ def test_text_style_scale_combination_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that combined scaled text logs a warning."""
-    import logging
-
     with caplog.at_level(logging.WARNING):
         convert_psd_to_svg("texts/style-scale-combination.psd")
 
