@@ -1525,3 +1525,61 @@ class TestExtractTextCharacters:
         assert "\ufe0e" not in result
         assert "/" in result
         assert "×" in result
+
+
+def test_strip_text_element_whitespace_with_xml_space() -> None:
+    """Test that xml:space='preserve' is compatible with indentation stripping.
+
+    The _strip_text_element_whitespace function should remove whitespace-only
+    text/tail (from pretty-printing indentation) while preserving actual content
+    whitespace in elements with xml:space='preserve'.
+    """
+    # Create SVG with xml:space and pretty-printing indentation
+    svg_string = """<svg xmlns="http://www.w3.org/2000/svg">
+  <text xml:space="preserve">
+    <tspan> Lorem </tspan>
+    <tspan>  Test  </tspan>
+  </text>
+</svg>"""
+
+    svg = ET.fromstring(svg_string)
+
+    # Before stripping: text element has whitespace-only text (indentation)
+    text = svg.find(".//{http://www.w3.org/2000/svg}text")
+    assert text is not None
+
+    # Verify indentation exists before stripping
+    assert text.text is not None
+    assert text.text.strip() == ""  # It's whitespace-only
+
+    # Apply whitespace stripping
+    svg_utils._strip_text_element_whitespace(svg)
+
+    # After stripping: verify correct behavior
+    text = svg.find(".//{http://www.w3.org/2000/svg}text")
+    assert text is not None
+
+    # xml:space attribute should still be present (not touched)
+    assert (
+        text.attrib.get("{http://www.w3.org/XML/1998/namespace}space") == "preserve"
+    ), "xml:space attribute should be preserved"
+
+    # Indentation whitespace should be removed (whitespace-only text)
+    assert text.text is None or text.text.strip() == "", (
+        "Whitespace-only text (indentation) should be stripped"
+    )
+
+    # Content whitespace should be preserved (actual text with spaces)
+    tspans = text.findall(".//{http://www.w3.org/2000/svg}tspan")
+    assert len(tspans) == 2
+    assert tspans[0].text == " Lorem ", (
+        f"Content whitespace should be preserved, got: {repr(tspans[0].text)}"
+    )
+    assert tspans[1].text == "  Test  ", (
+        f"Content whitespace should be preserved, got: {repr(tspans[1].text)}"
+    )
+
+    # Tails (whitespace between elements) should be removed
+    assert tspans[0].tail is None or tspans[0].tail.strip() == "", (
+        "Whitespace-only tail should be stripped"
+    )
