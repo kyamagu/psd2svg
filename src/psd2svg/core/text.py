@@ -518,12 +518,14 @@ class TextConverter(ConverterProtocol):
                 svg_utils.set_attribute(tspan, "dy", svg_utils.num2str(kerning_offset))
 
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
-            # NOTE: Transform cannot be applied to tspan in SVG 1.1 but only in SVG 2.
-            # Workaround would be to split tspan's into text nodes, but it's complex.
-            # Singleton merge won't work as long as the text container has transform attribute,
-            # which always happens here.
-            logger.debug(
-                "Applying scale transform to tspan is not supported in SVG 1.1."
+            # NOTE: Transform on tspan is only supported in SVG 2.0, which no browser
+            # currently supports. The scaled text will not render correctly in browsers.
+            # Workaround would be to split tspan's into separate text elements, but this
+            # requires complex line height calculations and transform matrix operations.
+            logger.warning(
+                "Text scaling (horizontal_scale or vertical_scale) on spans is not "
+                "supported by browsers. Scaled text will not render correctly. "
+                "Consider using enable_text=False to rasterize text layers."
             )
             svg_utils.append_attribute(
                 tspan,
