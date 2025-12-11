@@ -412,3 +412,516 @@ class TestConsolidateDefs:
         # Mask should not contain any defs elements
         mask_defs = [child for child in mask if get_local_tag(child) == "defs"]
         assert len(mask_defs) == 0
+
+
+class TestDeduplicateDefinitions:
+    """Tests for deduplicate_definitions optimization."""
+
+    def test_deduplicate_identical_linear_gradients(self) -> None:
+        """Test merging two identical linearGradient elements."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1">
+                    <stop offset="0%" stop-color="red"/>
+                    <stop offset="100%" stop-color="blue"/>
+                </linearGradient>
+                <linearGradient id="g2">
+                    <stop offset="0%" stop-color="red"/>
+                    <stop offset="100%" stop-color="blue"/>
+                </linearGradient>
+            </defs>
+            <rect fill="url(#g1)"/>
+            <circle fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one gradient
+        defs = svg[0]
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "linearGradient"
+        assert defs[0].get("id") == "g1"  # First occurrence kept
+
+        # Both elements should reference g1
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("fill") == "url(#g1)"
+        assert circle.get("fill") == "url(#g1)"
+
+    def test_deduplicate_identical_radial_gradients(self) -> None:
+        """Test merging two identical radialGradient elements."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="rg1" cx="50%" cy="50%">
+                    <stop offset="0%" stop-color="white"/>
+                    <stop offset="100%" stop-color="black"/>
+                </radialGradient>
+                <radialGradient id="rg2" cx="50%" cy="50%">
+                    <stop offset="0%" stop-color="white"/>
+                    <stop offset="100%" stop-color="black"/>
+                </radialGradient>
+            </defs>
+            <ellipse fill="url(#rg1)"/>
+            <circle fill="url(#rg2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one gradient
+        defs = svg[0]
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "radialGradient"
+        assert defs[0].get("id") == "rg1"
+
+        # Both elements should reference rg1
+        ellipse = svg[1]
+        circle = svg[2]
+        assert ellipse.get("fill") == "url(#rg1)"
+        assert circle.get("fill") == "url(#rg1)"
+
+    def test_deduplicate_identical_filters(self) -> None:
+        """Test merging two identical filter elements with children."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="f1">
+                    <feGaussianBlur stdDeviation="2"/>
+                </filter>
+                <filter id="f2">
+                    <feGaussianBlur stdDeviation="2"/>
+                </filter>
+            </defs>
+            <rect filter="url(#f1)"/>
+            <circle filter="url(#f2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one filter
+        defs = svg[0]
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "filter"
+        assert defs[0].get("id") == "f1"
+
+        # Both elements should reference f1
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("filter") == "url(#f1)"
+        assert circle.get("filter") == "url(#f1)"
+
+    def test_deduplicate_identical_patterns(self) -> None:
+        """Test merging two identical pattern elements."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="p1" width="10" height="10">
+                    <circle cx="5" cy="5" r="3"/>
+                </pattern>
+                <pattern id="p2" width="10" height="10">
+                    <circle cx="5" cy="5" r="3"/>
+                </pattern>
+            </defs>
+            <rect fill="url(#p1)"/>
+            <path fill="url(#p2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one pattern
+        defs = svg[0]
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "pattern"
+        assert defs[0].get("id") == "p1"
+
+        # Both elements should reference p1
+        rect = svg[1]
+        path = svg[2]
+        assert rect.get("fill") == "url(#p1)"
+        assert path.get("fill") == "url(#p1)"
+
+    def test_deduplicate_clippath_marker_symbol(self) -> None:
+        """Test merging less common types (clipPath, marker, symbol)."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <clipPath id="c1">
+                    <circle cx="50" cy="50" r="40"/>
+                </clipPath>
+                <clipPath id="c2">
+                    <circle cx="50" cy="50" r="40"/>
+                </clipPath>
+            </defs>
+            <rect clip-path="url(#c1)"/>
+            <circle clip-path="url(#c2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one clipPath
+        defs = svg[0]
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "clipPath"
+        assert defs[0].get("id") == "c1"
+
+        # Both elements should reference c1
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("clip-path") == "url(#c1)"
+        assert circle.get("clip-path") == "url(#c1)"
+
+    def test_deduplicate_mixed_types(self) -> None:
+        """Test merging multiple types at once."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+                <filter id="f1">
+                    <feGaussianBlur stdDeviation="2"/>
+                </filter>
+                <linearGradient id="g2">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+                <filter id="f2">
+                    <feGaussianBlur stdDeviation="2"/>
+                </filter>
+            </defs>
+            <rect fill="url(#g1)" filter="url(#f1)"/>
+            <circle fill="url(#g2)" filter="url(#f2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only two elements (one gradient, one filter)
+        defs = svg[0]
+        assert len(defs) == 2
+        assert defs[0].get("id") == "g1"
+        assert defs[1].get("id") == "f1"
+
+        # Both elements should reference g1 and f1
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("fill") == "url(#g1)"
+        assert rect.get("filter") == "url(#f1)"
+        assert circle.get("fill") == "url(#g1)"
+        assert circle.get("filter") == "url(#f1)"
+
+    def test_update_fill_references(self) -> None:
+        """Test updating fill='url(#id)' references."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+                <linearGradient id="g2"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        rect = svg[1]
+        assert rect.get("fill") == "url(#g1)"
+
+    def test_update_stroke_references(self) -> None:
+        """Test updating stroke='url(#id)' references."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+                <linearGradient id="g2"><stop offset="0%"/></linearGradient>
+            </defs>
+            <line stroke="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        line = svg[1]
+        assert line.get("stroke") == "url(#g1)"
+
+    def test_update_filter_references(self) -> None:
+        """Test updating filter='url(#id)' references."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="f1"><feGaussianBlur stdDeviation="2"/></filter>
+                <filter id="f2"><feGaussianBlur stdDeviation="2"/></filter>
+            </defs>
+            <rect filter="url(#f2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        rect = svg[1]
+        assert rect.get("filter") == "url(#f1)"
+
+    def test_update_clippath_references(self) -> None:
+        """Test updating clip-path='url(#id)' references."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <clipPath id="c1"><circle cx="50" cy="50" r="40"/></clipPath>
+                <clipPath id="c2"><circle cx="50" cy="50" r="40"/></clipPath>
+            </defs>
+            <rect clip-path="url(#c2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        rect = svg[1]
+        assert rect.get("clip-path") == "url(#c1)"
+
+    def test_update_marker_references(self) -> None:
+        """Test updating marker-start/mid/end='url(#id)' references."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="m1"><circle cx="5" cy="5" r="2"/></marker>
+                <marker id="m2"><circle cx="5" cy="5" r="2"/></marker>
+            </defs>
+            <path marker-start="url(#m2)" marker-mid="url(#m2)" marker-end="url(#m2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        path = svg[1]
+        assert path.get("marker-start") == "url(#m1)"
+        assert path.get("marker-mid") == "url(#m1)"
+        assert path.get("marker-end") == "url(#m1)"
+
+    def test_multiple_references_to_same_id(self) -> None:
+        """Test same duplicate referenced multiple times."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+                <linearGradient id="g2"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#g2)"/>
+            <circle fill="url(#g2)"/>
+            <ellipse fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # All three should reference g1
+        rect = svg[1]
+        circle = svg[2]
+        ellipse = svg[3]
+        assert rect.get("fill") == "url(#g1)"
+        assert circle.get("fill") == "url(#g1)"
+        assert ellipse.get("fill") == "url(#g1)"
+
+    def test_attribute_order_independence(self) -> None:
+        """Test elements identical except attribute order."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+                <linearGradient id="g2" y2="0%" x2="100%" y1="0%" x1="0%">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+            </defs>
+            <rect fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one gradient (attribute order normalized)
+        defs = svg[0]
+        assert len(defs) == 1
+        assert defs[0].get("id") == "g1"
+
+        # Reference should be updated
+        rect = svg[1]
+        assert rect.get("fill") == "url(#g1)"
+
+    def test_no_duplicates(self) -> None:
+        """Test all elements unique (no changes)."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+                <linearGradient id="g2">
+                    <stop offset="0%" stop-color="blue"/>
+                </linearGradient>
+            </defs>
+            <rect fill="url(#g1)"/>
+            <circle fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should still have two gradients
+        defs = svg[0]
+        assert len(defs) == 2
+        assert defs[0].get("id") == "g1"
+        assert defs[1].get("id") == "g2"
+
+        # References unchanged
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("fill") == "url(#g1)"
+        assert circle.get("fill") == "url(#g2)"
+
+    def test_empty_defs(self) -> None:
+        """Test no definition elements (no changes)."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs/>
+            <rect fill="red"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should still have empty defs
+        defs = svg[0]
+        assert get_local_tag(defs) == "defs"
+        assert len(defs) == 0
+
+    def test_partial_duplicates(self) -> None:
+        """Test mix of unique and duplicate elements."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+                <linearGradient id="g2"><stop offset="50%"/></linearGradient>
+                <linearGradient id="g3"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#g1)"/>
+            <circle fill="url(#g2)"/>
+            <ellipse fill="url(#g3)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have two gradients (g1 and g2)
+        defs = svg[0]
+        assert len(defs) == 2
+        assert defs[0].get("id") == "g1"
+        assert defs[1].get("id") == "g2"
+
+        # g3 reference updated to g1
+        rect = svg[1]
+        circle = svg[2]
+        ellipse = svg[3]
+        assert rect.get("fill") == "url(#g1)"
+        assert circle.get("fill") == "url(#g2)"
+        assert ellipse.get("fill") == "url(#g1)"  # Updated
+
+    def test_nested_filter_elements(self) -> None:
+        """Test complex filters with nested children."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="f1">
+                    <feGaussianBlur stdDeviation="2"/>
+                    <feOffset dx="3" dy="3"/>
+                </filter>
+                <filter id="f2">
+                    <feGaussianBlur stdDeviation="2"/>
+                    <feOffset dx="3" dy="3"/>
+                </filter>
+            </defs>
+            <rect filter="url(#f1)"/>
+            <circle filter="url(#f2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one filter
+        defs = svg[0]
+        assert len(defs) == 1
+        assert defs[0].get("id") == "f1"
+
+        # Both should reference f1
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("filter") == "url(#f1)"
+        assert circle.get("filter") == "url(#f1)"
+
+    def test_first_occurrence_kept(self) -> None:
+        """Test first occurrence is canonical, others removed."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="gradient"><stop offset="0%"/></linearGradient>
+                <linearGradient id="gradient_2"><stop offset="0%"/></linearGradient>
+                <linearGradient id="gradient_3"><stop offset="0%"/></linearGradient>
+            </defs>
+            <rect fill="url(#gradient)"/>
+            <circle fill="url(#gradient_2)"/>
+            <ellipse fill="url(#gradient_3)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have only one gradient with id="gradient"
+        defs = svg[0]
+        assert len(defs) == 1
+        assert defs[0].get("id") == "gradient"
+
+        # All should reference "gradient"
+        rect = svg[1]
+        circle = svg[2]
+        ellipse = svg[3]
+        assert rect.get("fill") == "url(#gradient)"
+        assert circle.get("fill") == "url(#gradient)"
+        assert ellipse.get("fill") == "url(#gradient)"
+
+    def test_integration_with_consolidate_defs(self) -> None:
+        """Test pipeline: consolidate → deduplicate."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <rect fill="url(#g1)"/>
+            <linearGradient id="g1"><stop offset="0%"/></linearGradient>
+            <defs>
+                <linearGradient id="g2"><stop offset="0%"/></linearGradient>
+            </defs>
+            <circle fill="url(#g2)"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+
+        # Apply both optimizations
+        svg_utils.consolidate_defs(svg)
+        svg_utils.deduplicate_definitions(svg)
+
+        # Should have global defs as first child
+        assert get_local_tag(svg[0]) == "defs"
+        # Should have only one gradient after deduplication
+        assert len(svg[0]) == 1
+        # Note: consolidate_defs processes defs content first, then inline elements
+        # So g2 (from defs) becomes first occurrence and is kept
+        canonical_id = svg[0][0].get("id")
+        assert canonical_id in ("g1", "g2")  # Either is valid after consolidation
+
+        # All references should point to the same canonical ID
+        rect = svg[1]
+        circle = svg[2]
+        assert rect.get("fill") == f"url(#{canonical_id})"
+        assert circle.get("fill") == f"url(#{canonical_id})"

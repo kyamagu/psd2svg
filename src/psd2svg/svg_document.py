@@ -204,6 +204,7 @@ class SVGDocument:
 
         if optimize:
             svg_utils.consolidate_defs(svg)
+            svg_utils.deduplicate_definitions(svg)
 
         return svg
 
