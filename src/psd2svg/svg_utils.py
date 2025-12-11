@@ -178,7 +178,7 @@ def _strip_text_element_whitespace(node: ET.Element) -> None:
     if isinstance(tag, str):
         # Handle namespaced tags
         local_name = tag.split("}")[-1] if "}" in tag else tag
-        is_text_element = local_name in ("text", "tspan")
+        is_text_element = local_name in ("text", "tspan", "textPath")
     else:
         is_text_element = False
 

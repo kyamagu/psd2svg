@@ -107,17 +107,44 @@ class TextConverter(ConverterProtocol):
         )
 
         if use_foreign_object:
-            return self._create_foreign_object_text(layer, text_setting)
+            return self._create_foreign_object_text(text_setting)
         else:
-            return self._create_native_svg_text(layer, text_setting)
+            return self._create_native_svg_text(text_setting)
 
-    def _create_native_svg_text(
-        self, layer: layers.TypeLayer, text_setting: TypeSetting
+    def _create_text_path_node(
+        self, text_setting: TypeSetting, text_node: ET.Element
     ) -> ET.Element:
+        """Create SVG textPath element from a TypeLayer."""
+        defs = self.create_node("defs")
+        warp_path = self.create_node(
+            "path",
+            parent=defs,
+            d=text_setting.get_warp_path(),
+            id=self.auto_id("warp-path"),
+        )
+        # NOTE: Due to browser inconsistencies with textLength on textPath,
+        # we only set textLength for extreme warp values to better match Photoshop.
+        text_length = (
+            "100%"
+            if text_setting.warp_style == "warpArc"
+            and abs(text_setting.warp_value) > 50
+            else None
+        )
+        text_path_node = self.create_node(
+            "textPath",
+            parent=text_node,
+            startOffset="50%",
+            href=svg_utils.get_uri(warp_path),
+            lengthAdjust="spacingAndGlyphs",
+            method="stretch",
+            textLength=text_length,
+        )
+        return text_path_node
+
+    def _create_native_svg_text(self, text_setting: TypeSetting) -> ET.Element:
         """Create native SVG <text> element (current implementation).
 
         Args:
-            layer: TypeLayer to convert.
             text_setting: TypeSetting object with text data.
 
         Returns:
@@ -125,7 +152,9 @@ class TextConverter(ConverterProtocol):
         """
         # Use native x, y attributes for translation-only transforms
         transform = text_setting.transform
-        uses_native_positioning = transform.is_translation_only()
+        uses_native_positioning = (
+            transform.is_translation_only() and not text_setting.has_warp()
+        )
 
         paragraphs = list(text_setting)
 
@@ -152,28 +181,42 @@ class TextConverter(ConverterProtocol):
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
             svg_utils.set_attribute(text_node, "writing-mode", "vertical-rl")
 
-        for i, paragraph in enumerate(paragraphs):
-            paragraph_node = self._add_paragraph(
-                text_setting,
-                text_node,
-                paragraph,
-                first_paragraph=(i == 0),
-                uses_native_positioning=uses_native_positioning,
-            )
-            for span in paragraph:
-                self._add_text_span(text_setting, paragraph_node, span)
+        container_node = text_node
+        if text_setting.has_warp():
+            container_node = self._create_text_path_node(text_setting, text_node)
 
-        svg_utils.merge_common_child_attributes(
-            text_node, excludes={"x", "y", "dx", "dy", "transform"}
-        )
-        svg_utils.merge_consecutive_siblings(text_node)
-        svg_utils.merge_singleton_children(text_node)
-        svg_utils.merge_attribute_less_children(text_node)
+        with self.set_current(container_node):
+            for i, paragraph in enumerate(paragraphs):
+                paragraph_node = self._add_paragraph(
+                    text_setting,
+                    paragraph,
+                    first_paragraph=(i == 0),
+                    uses_native_positioning=uses_native_positioning,
+                )
+                for span in paragraph:
+                    self._add_text_span(text_setting, paragraph_node, span)
+
+        if text_setting.has_warp():
+            # When there is <textPath>, we can only optimize at the paragraph level.
+            for child in container_node:
+                svg_utils.merge_common_child_attributes(
+                    child,
+                    excludes={"x", "y", "dx", "dy", "transform"},
+                )
+                svg_utils.merge_consecutive_siblings(child)
+                svg_utils.merge_singleton_children(child)
+                svg_utils.merge_attribute_less_children(child)
+        else:
+            svg_utils.merge_common_child_attributes(
+                text_node,
+                excludes={"x", "y", "dx", "dy", "transform"},
+            )
+            svg_utils.merge_consecutive_siblings(text_node)
+            svg_utils.merge_singleton_children(text_node)
+            svg_utils.merge_attribute_less_children(text_node)
         return text_node
 
-    def _create_foreign_object_text(
-        self, layer: layers.TypeLayer, text_setting: TypeSetting
-    ) -> ET.Element:
+    def _create_foreign_object_text(self, text_setting: TypeSetting) -> ET.Element:
         """Create <foreignObject> with XHTML content for text wrapping.
 
         This method creates a foreignObject element containing XHTML div/p/span
@@ -181,7 +224,6 @@ class TextConverter(ConverterProtocol):
         box text, which is not natively supported by SVG.
 
         Args:
-            layer: TypeLayer to convert.
             text_setting: TypeSetting object with text data.
 
         Returns:
@@ -227,7 +269,6 @@ class TextConverter(ConverterProtocol):
     def _add_paragraph(
         self,
         text_setting: TypeSetting,
-        text_node: ET.Element,
         paragraph: Paragraph,
         first_paragraph: bool = False,
         uses_native_positioning: bool = False,
@@ -244,7 +285,6 @@ class TextConverter(ConverterProtocol):
         # Create paragraph node
         paragraph_node = self._create_paragraph_node(
             text_setting,
-            text_node,
             x,
             y,
             line_height,
@@ -299,7 +339,6 @@ class TextConverter(ConverterProtocol):
     def _create_paragraph_node(
         self,
         text_setting: TypeSetting,
-        text_node: ET.Element,
         x: float,
         y: float,
         line_height: float,
@@ -346,15 +385,14 @@ class TextConverter(ConverterProtocol):
 
         # Create paragraph node
         # TODO: There is still a difference with PSD rendering on dominant-baseline.
-        with self.set_current(text_node):
-            return self.create_node(
-                "tspan",
-                text_anchor=text_anchor,
-                x=x if should_set_x else None,
-                y=y if should_set_y else None,
-                dy=line_height if not first_paragraph else None,
-                dominant_baseline=dominant_baseline,
-            )
+        return self.create_node(
+            "tspan",
+            text_anchor=text_anchor,
+            x=x if should_set_x else None,
+            y=y if should_set_y else None,
+            dy=line_height if not first_paragraph else None,
+            dominant_baseline=dominant_baseline,
+        )
 
     def _apply_justification(
         self,
