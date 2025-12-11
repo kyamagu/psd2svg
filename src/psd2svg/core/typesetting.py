@@ -10,15 +10,17 @@ over paragraph and style runs extracted from PSD text layers.
 
 import dataclasses
 import logging
+import math
 from enum import IntEnum
 from itertools import groupby
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
 
-from psd_tools.psd.descriptor import RawData
+from psd_tools.psd.descriptor import Enumerated, RawData
 from psd_tools.psd.engine_data import DictElement, EngineData
-from psd_tools.psd.tagged_blocks import TypeToolObjectSetting
+from psd_tools.psd.tagged_blocks import DescriptorBlock, TypeToolObjectSetting
 from psd_tools.terminology import Key
 
+from psd2svg import svg_utils
 from psd2svg.core import color_utils, font_utils
 
 logger = logging.getLogger(__name__)
@@ -717,6 +719,93 @@ class TypeSetting:
         )
 
     @property
+    def warp_version(self) -> int:
+        """Warp version."""
+        return int(self._setting.warp_version)
+
+    @property
+    def _warp(self) -> DescriptorBlock:
+        """Warp descriptor block from type tool object setting."""
+        warp = self._setting.warp
+        assert isinstance(warp, DescriptorBlock)
+        assert warp.classID == b"warp"
+        return warp
+
+    @property
+    def warp_style(self) -> str | None:
+        """Warp style.
+
+        Example warp content::
+
+            warp=DescriptorBlock(b'warp'){
+                'warpStyle': (b'warpStyle', b'warpArc'),
+                'warpValue': -100.0,
+                'warpPerspective': 0.0,
+                'warpPerspectiveOther': 0.0,
+                'warpRotate': (b'Ornt', b'Hrzn')
+            }
+        """
+        # TODO: Check for other warp styles, and make an enum if needed.
+        warp_style = self._warp.get("warpStyle", None)
+        if warp_style is None:
+            return None
+        assert isinstance(warp_style, Enumerated)
+        assert warp_style.typeID == b"warpStyle"
+        return warp_style.enum.decode("ascii")
+
+    @property
+    def warp_value(self) -> float:
+        """Warp value from warp descriptor."""
+        warp_value = self._warp.get("warpValue", 0.0)
+        return float(warp_value)
+
+    @property
+    def warp_perspective(self) -> float:
+        """Warp perspective from warp descriptor."""
+        perspective = self._warp.get("warpPerspective", 0.0)
+        return float(perspective)
+
+    @property
+    def warp_perspective_other(self) -> float:
+        """Warp perspective other from warp descriptor."""
+        perspective_other = self._warp.get("warpPerspectiveOther", 0.0)
+        return float(perspective_other)
+
+    @property
+    def warp_rotate(self) -> Literal["Hrzn", "Vrtc"] | None:
+        """Warp rotate from warp descriptor."""
+        warp_rotate = self._warp.get("warpRotate", None)
+        if warp_rotate is None:
+            return None
+        assert isinstance(warp_rotate, Enumerated)
+        assert warp_rotate.typeID == b"Ornt"
+        return warp_rotate.enum.decode("ascii")  # type: ignore
+
+    @property
+    def left(self) -> float:
+        """Left offset likely in normalized coordinate space."""
+        # NOTE: Not sure what coordinate space this is in.
+        return float(self._setting.left / (2 << 32 - 1))
+
+    @property
+    def top(self) -> float:
+        """Top offset likely in normalized coordinate space."""
+        # NOTE: Not sure what coordinate space this is in.
+        return float(self._setting.top / (2 << 32 - 1))
+
+    @property
+    def right(self) -> float:
+        """Right offset likely in normalized coordinate space."""
+        # NOTE: Not sure what coordinate space this is in.
+        return float(self._setting.right / (2 << 32 - 1))
+
+    @property
+    def bottom(self) -> float:
+        """Bottom offset likely in normalized coordinate space."""
+        # NOTE: Not sure what coordinate space this is in.
+        return float(self._setting.bottom / (2 << 32 - 1))
+
+    @property
     def superscript_size(self) -> float:
         """Superscript size from document resources."""
         assert "SuperscriptSize" in self.document_resources
@@ -843,6 +932,64 @@ class TypeSetting:
             name=sheet.name,
             style_sheet_data=default_sheet_data,
         )
+
+    def has_warp(self) -> bool:
+        """Check if the text has a warp effect applied."""
+        return self.warp_style is not None and self.warp_style != "warpNone"
+
+    def get_warp_path(self) -> str:
+        """Generate SVG path data for the warp effect."""
+        if self.warp_style != "warpArc":
+            logger.debug("Warp style not supported for path generation.")
+            return ""
+        if self.warp_rotate != "Hrzn":
+            logger.debug(
+                "Warp rotate only supported for horizontal orientation, falling back to straight line."
+            )
+            return "M%s L%s" % (
+                svg_utils.seq2str((self.bounding_box.left, self.bounding_box.bottom)),
+                svg_utils.seq2str((self.bounding_box.right, self.bounding_box.bottom)),
+            )
+
+        # NOTE: warp_value 100 = 180 degrees arc
+        # NOTE: warp_value -100 = -180 degrees arc
+        # NOTE: warp_value 0 = straight line
+
+        if self.warp_value == 0:
+            # No warp, straight line.
+            return "M%s L%s" % (
+                svg_utils.seq2str((self.bounding_box.left, self.bounding_box.bottom)),
+                svg_utils.seq2str((self.bounding_box.right, self.bounding_box.bottom)),
+            )
+
+        # We have a warp, compute the arc parameters.
+        scale = math.sin(math.pi / 2 * abs(self.warp_value) / 100)
+        radius = (self.bounding_box.width + self.bounding_box.height) / 2 / scale
+        commands = []
+        if self.warp_value > 0:
+            # Positive warp, arc bulging upwards.
+            x1 = self.bounding_box.left - self.bounding_box.height / 2
+            y1 = self.bounding_box.bottom
+            commands.append("M%s" % svg_utils.seq2str((x1, y1)))
+            x2 = self.bounding_box.right + self.bounding_box.height / 2
+            y2 = self.bounding_box.bottom
+            commands.append(
+                "A%s 0 0 1 %s"
+                % (svg_utils.seq2str((radius, radius)), svg_utils.seq2str((x2, y2)))
+            )
+        else:
+            # Negative warp, arc bulging downwards.
+            # TODO: Height adjustment should be the baseline height, not the half box height.
+            x1 = self.bounding_box.left - self.bounding_box.height / 2
+            y1 = self.bounding_box.top + self.bounding_box.height / 2
+            commands.append("M%s" % svg_utils.seq2str((x1, y1)))
+            x2 = self.bounding_box.right + self.bounding_box.height / 2
+            y2 = self.bounding_box.top + self.bounding_box.height / 2
+            commands.append(
+                "A%s 0 0 0 %s"
+                % (svg_utils.seq2str((radius, radius)), svg_utils.seq2str((x2, y2)))
+            )
+        return " ".join(commands)
 
 
 def _get_hex_color_from_argb(argb: tuple[float, float, float, float]) -> str | None:

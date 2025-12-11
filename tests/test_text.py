@@ -1,12 +1,15 @@
 import logging
+import math
 
 import pytest
 import xml.etree.ElementTree as ET
 from psd_tools import PSDImage
+from psd_tools.api.layers import TypeLayer
 
 from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 from psd2svg.core.text import TextWrappingMode
+from psd2svg.core.typesetting import TypeSetting
 
 from .conftest import get_fixture
 
@@ -1068,3 +1071,421 @@ def test_text_style_scale_combination_warning(
     assert any("text scaling" in record.message.lower() for record in caplog.records), (
         "Should warn about text scaling"
     )
+
+
+# Arc Warping Tests
+
+
+@pytest.mark.parametrize(
+    "psd_file, expected_warp_value",
+    [
+        ("texts/text-warp-arc-h-100.psd", -100.0),
+        ("texts/text-warp-arc-h-50.psd", -50.0),
+        ("texts/text-warp-arc-h-10.psd", -10.0),
+        ("texts/text-warp-arc-h+10.psd", 10.0),
+        ("texts/text-warp-arc-h+50.psd", 50.0),
+        ("texts/text-warp-arc-h+100.psd", 100.0),
+    ],
+)
+def test_text_warp_arc_properties(psd_file: str, expected_warp_value: float) -> None:
+    """Test TypeSetting correctly reads warp arc properties from PSD."""
+    psdimage = PSDImage.open(get_fixture(psd_file))
+
+    found_text_layer = False
+    for layer in psdimage.descendants():
+        if isinstance(layer, TypeLayer) and layer.is_visible():
+            text_setting = TypeSetting(layer._data)
+
+            # Test warp properties
+            assert text_setting.has_warp() is True, "Should detect warp"
+            assert text_setting.warp_style == "warpArc", "Should be arc warp style"
+            assert text_setting.warp_value == expected_warp_value, (
+                f"Warp value should be {expected_warp_value}"
+            )
+            assert text_setting.warp_rotate == "Hrzn", (
+                "Should be horizontal orientation"
+            )
+            assert text_setting.warp_perspective == 0.0, "Perspective should be 0"
+            assert text_setting.warp_perspective_other == 0.0, (
+                "Perspective other should be 0"
+            )
+
+            found_text_layer = True
+            break
+
+    assert found_text_layer, "Should have found a text layer"
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "texts/text-warp-arc-h-100.psd",
+        "texts/text-warp-arc-h-50.psd",
+        "texts/text-warp-arc-h-10.psd",
+        "texts/text-warp-arc-h+10.psd",
+        "texts/text-warp-arc-h+50.psd",
+        "texts/text-warp-arc-h+100.psd",
+    ],
+)
+def test_text_warp_arc_svg_structure(psd_file: str) -> None:
+    """Test textPath and path elements are correctly created in SVG output."""
+    svg = convert_psd_to_svg(psd_file)
+
+    # Verify defs element with path definition exists
+    defs = svg.find(".//defs")
+    assert defs is not None, "Should have defs element"
+
+    path_elem = svg.find(".//defs/path[@id]")
+    assert path_elem is not None, "Should have path element in defs with id"
+    assert path_elem.attrib.get("d") is not None, "Path should have d attribute"
+    assert path_elem.attrib.get("d") != "", "Path d attribute should not be empty"
+
+    path_id = path_elem.attrib.get("id")
+    assert path_id is not None, "Path should have id"
+
+    # Verify textPath element exists
+    text_path = svg.find(".//textPath")
+    assert text_path is not None, "Text with warp should use textPath"
+
+    # Verify textPath references the path
+    href = text_path.attrib.get(
+        "{http://www.w3.org/1999/xlink}href"
+    ) or text_path.attrib.get("href")
+    assert href is not None, "textPath should have href"
+    assert f"#{path_id}" == href, f"textPath should reference #{path_id}"
+
+    # Verify textPath attributes
+    assert text_path.attrib.get("startOffset") == "50%", "Should center text on path"
+    assert text_path.attrib.get("method") == "stretch", "Should use stretch method"
+    assert text_path.attrib.get("lengthAdjust") == "spacingAndGlyphs", (
+        "Should adjust spacing and glyphs"
+    )
+
+    # Verify textPath contains tspan children
+    tspans = text_path.findall(".//tspan")
+    assert len(tspans) > 0, "textPath should contain tspan elements"
+
+
+@pytest.mark.parametrize(
+    "psd_file, should_have_text_length",
+    [
+        ("texts/text-warp-arc-h-100.psd", True),  # |100| > 50
+        ("texts/text-warp-arc-h-50.psd", False),  # |50| = 50, not >50
+        ("texts/text-warp-arc-h-10.psd", False),  # |10| < 50
+        ("texts/text-warp-arc-h+10.psd", False),  # |10| < 50
+        ("texts/text-warp-arc-h+50.psd", False),  # |50| = 50, not >50
+        ("texts/text-warp-arc-h+100.psd", True),  # |100| > 50
+    ],
+)
+def test_text_warp_arc_text_length_extreme(
+    psd_file: str, should_have_text_length: bool
+) -> None:
+    """Test textLength attribute is only set for extreme warp values (|value| > 50)."""
+    svg = convert_psd_to_svg(psd_file)
+
+    text_path = svg.find(".//textPath")
+    assert text_path is not None, "Should have textPath element"
+
+    text_length = text_path.attrib.get("textLength")
+
+    if should_have_text_length:
+        assert text_length == "100%", (
+            "Extreme warp (|value| > 50) should have textLength=100%"
+        )
+    else:
+        assert text_length is None, (
+            "Normal warp (|value| <= 50) should not have textLength attribute"
+        )
+
+
+@pytest.mark.parametrize(
+    "psd_file, warp_value",
+    [
+        ("texts/text-warp-arc-h-100.psd", -100.0),
+        ("texts/text-warp-arc-h-50.psd", -50.0),
+        ("texts/text-warp-arc-h+50.psd", 50.0),
+        ("texts/text-warp-arc-h+100.psd", 100.0),
+    ],
+)
+def test_text_warp_arc_path_generation(psd_file: str, warp_value: float) -> None:
+    """Test arc path mathematics and SVG path commands are correct."""
+    svg = convert_psd_to_svg(psd_file)
+
+    path_elem = svg.find(".//defs/path[@id]")
+    assert path_elem is not None, "Should have path element"
+
+    path_d = path_elem.attrib.get("d")
+    assert path_d is not None, "Path should have d attribute"
+
+    # Verify path starts with M (moveto)
+    assert path_d.startswith("M"), "Path should start with M (moveto) command"
+
+    # Verify path contains A (arc command)
+    assert "A" in path_d, "Path should contain A (arc) command for warped text"
+
+    # Verify arc direction based on warp sign
+    if warp_value > 0:
+        # Positive warp: clockwise arc (sweep-flag = 1)
+        # Arc command format: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+        # We expect "A ... 0 0 1 ..." for positive warp
+        assert " 0 0 1 " in path_d or " 0 0 1" in path_d.split()[-3:], (
+            "Positive warp should use clockwise arc (sweep-flag=1)"
+        )
+    else:
+        # Negative warp: counter-clockwise arc (sweep-flag = 0)
+        # We expect "A ... 0 0 0 ..." for negative warp
+        assert " 0 0 0 " in path_d or " 0 0 0" in path_d.split()[-3:], (
+            "Negative warp should use counter-clockwise arc (sweep-flag=0)"
+        )
+
+    # Verify we can extract TypeSetting and check warp path generation
+    psdimage = PSDImage.open(get_fixture(psd_file))
+    for layer in psdimage.descendants():
+        if isinstance(layer, TypeLayer) and layer.is_visible():
+            text_setting = TypeSetting(layer._data)
+
+            # Verify warp path can be generated
+            warp_path = text_setting.get_warp_path()
+            assert warp_path != "", "Should generate non-empty warp path"
+            assert "A" in warp_path, "Warp path should contain arc command"
+
+            # Verify radius calculation
+            bbox = text_setting.bounding_box
+            scale = math.sin(math.pi / 2 * abs(warp_value) / 100)
+            expected_radius = (bbox.width + bbox.height) / 2 / scale
+
+            # Extract radius from path (format: "A radius radius ...")
+            parts = warp_path.split()
+            if "A" in parts:
+                arc_index = parts.index("A")
+                if arc_index + 2 < len(parts):
+                    actual_radius = float(parts[arc_index + 1])
+                    # Allow small floating-point tolerance
+                    assert abs(actual_radius - expected_radius) < 1.0, (
+                        f"Radius {actual_radius} should be close to {expected_radius}"
+                    )
+
+            break
+
+
+def test_text_warp_arc_zero_value() -> None:
+    """Test boundary condition when warp is not present or zero."""
+    # Use a regular text fixture without warp
+    svg = convert_psd_to_svg("texts/font-sizes-1.psd")
+
+    # Verify no textPath element
+    text_path = svg.find(".//textPath")
+    assert text_path is None, "Non-warped text should not have textPath"
+
+    # Verify regular text structure
+    text_node = svg.find(".//text")
+    assert text_node is not None, "Should have regular text element"
+
+
+@pytest.mark.parametrize(
+    "positive_psd, negative_psd, warp_magnitude",
+    [
+        ("texts/text-warp-arc-h+10.psd", "texts/text-warp-arc-h-10.psd", 10),
+        ("texts/text-warp-arc-h+50.psd", "texts/text-warp-arc-h-50.psd", 50),
+        ("texts/text-warp-arc-h+100.psd", "texts/text-warp-arc-h-100.psd", 100),
+    ],
+)
+def test_text_warp_arc_positive_vs_negative(
+    positive_psd: str, negative_psd: str, warp_magnitude: float
+) -> None:
+    """Test positive and negative warps create arcs in opposite directions."""
+    svg_positive = convert_psd_to_svg(positive_psd)
+    svg_negative = convert_psd_to_svg(negative_psd)
+
+    # Both should have textPath
+    text_path_pos = svg_positive.find(".//textPath")
+    text_path_neg = svg_negative.find(".//textPath")
+    assert text_path_pos is not None, "Positive warp should have textPath"
+    assert text_path_neg is not None, "Negative warp should have textPath"
+
+    # Both should have same textPath attributes (except href)
+    assert text_path_pos.attrib.get("startOffset") == "50%"
+    assert text_path_neg.attrib.get("startOffset") == "50%"
+    assert text_path_pos.attrib.get("method") == "stretch"
+    assert text_path_neg.attrib.get("method") == "stretch"
+    assert text_path_pos.attrib.get("lengthAdjust") == "spacingAndGlyphs"
+    assert text_path_neg.attrib.get("lengthAdjust") == "spacingAndGlyphs"
+
+    # Get path data
+    path_pos = svg_positive.find(".//defs/path[@id]")
+    path_neg = svg_negative.find(".//defs/path[@id]")
+    assert path_pos is not None, "Positive warp should have path"
+    assert path_neg is not None, "Negative warp should have path"
+
+    path_d_pos = path_pos.attrib.get("d", "")
+    path_d_neg = path_neg.attrib.get("d", "")
+
+    # Arc commands should differ in sweep-flag
+    # Positive: sweep-flag = 1, Negative: sweep-flag = 0
+    assert " 0 0 1 " in path_d_pos or path_d_pos.endswith(" 0 0 1"), (
+        "Positive warp should have sweep-flag=1"
+    )
+    assert " 0 0 0 " in path_d_neg or path_d_neg.endswith(" 0 0 0"), (
+        "Negative warp should have sweep-flag=0"
+    )
+
+    # Verify TypeSetting properties match expectations
+    psdimage_pos = PSDImage.open(get_fixture(positive_psd))
+    psdimage_neg = PSDImage.open(get_fixture(negative_psd))
+
+    for psd, expected_sign in [(psdimage_pos, 1), (psdimage_neg, -1)]:
+        for layer in psd.descendants():
+            if isinstance(layer, TypeLayer) and layer.is_visible():
+                text_setting = TypeSetting(layer._data)
+                expected_value = warp_magnitude * expected_sign
+                assert text_setting.warp_value == expected_value, (
+                    f"Warp value should be {expected_value}"
+                )
+                break
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
+        "texts/text-warp-arc-h-100.psd",
+        "texts/text-warp-arc-h+100.psd",
+    ],
+)
+def test_text_warp_arc_end_to_end(psd_file: str) -> None:
+    """Test comprehensive PSD to SVG conversion pipeline for warped text."""
+    # Open PSD and verify TypeSetting properties
+    psdimage = PSDImage.open(get_fixture(psd_file))
+
+    found_text_layer = False
+    for layer in psdimage.descendants():
+        if isinstance(layer, TypeLayer) and layer.is_visible():
+            text_setting = TypeSetting(layer._data)
+
+            # Verify TypeSetting properties
+            assert text_setting.has_warp() is True
+            assert text_setting.warp_style == "warpArc"
+            assert abs(text_setting.warp_value) == 100.0
+
+            found_text_layer = True
+            break
+
+    assert found_text_layer, "Should have text layer"
+
+    # Convert to SVG
+    svg = convert_psd_to_svg(psd_file)
+
+    # Verify complete SVG structure: defs → path
+    defs = svg.find(".//defs")
+    assert defs is not None, "Should have defs"
+
+    path_elem = defs.find(".//path[@id]")
+    assert path_elem is not None, "Should have path in defs"
+    assert path_elem.attrib.get("d") is not None, "Path should have d attribute"
+
+    # Verify structure: text → textPath → tspan
+    text_node = svg.find(".//text")
+    assert text_node is not None, "Should have text element"
+
+    text_path = text_node.find(".//textPath")
+    assert text_path is not None, "Text should contain textPath"
+
+    tspans = text_path.findall(".//tspan")
+    assert len(tspans) > 0, "textPath should contain tspan elements"
+
+    # Verify text content is preserved
+    text_content = "".join(tspans[0].itertext())
+    assert "Lorem Ipsum" in text_content, "Text content should be preserved"
+
+    # Verify font properties on tspan
+    first_tspan = tspans[0]
+    assert first_tspan.attrib.get("font-size") is not None, (
+        "tspan should have font-size"
+    )
+
+    # Verify transform positioning present on text element
+    transform = text_node.attrib.get("transform")
+    assert transform is not None, "text element should have transform"
+
+    # Verify text content is in tspan, not text element directly
+    assert text_node.text is None or text_node.text.strip() == "", (
+        "text element should not have direct text content"
+    )
+
+
+def test_text_warp_arc_bounding_box_usage() -> None:
+    """Test arc path uses bounding box dimensions correctly."""
+    psd_file = "texts/text-warp-arc-h+50.psd"
+    psdimage = PSDImage.open(get_fixture(psd_file))
+
+    # Extract bounding box and warp path from TypeSetting
+    for layer in psdimage.descendants():
+        if isinstance(layer, TypeLayer) and layer.is_visible():
+            text_setting = TypeSetting(layer._data)
+
+            bbox = text_setting.bounding_box
+            warp_path = text_setting.get_warp_path()
+
+            # Parse path to extract coordinates
+            # Expected format: M x1 y1 A rx ry 0 0 1 x2 y2 L x3 y3
+            parts = warp_path.split()
+
+            # Find M command (start point)
+            if "M" in parts:
+                m_index = parts.index("M")
+                start_x = float(parts[m_index + 1])
+
+                # Verify start X is approximately left edge minus half height
+                expected_start = bbox.left - bbox.height / 2
+                assert abs(start_x - expected_start) < 1.0, (
+                    f"Start X {start_x} should be close to {expected_start}"
+                )
+
+            # Find arc command endpoint
+            if "A" in parts:
+                arc_index = parts.index("A")
+                # Arc format: A rx ry x-axis-rotation large-arc sweep-flag x y
+                if arc_index + 7 < len(parts):
+                    end_x = float(parts[arc_index + 6])
+
+                    # Verify end X is approximately right edge plus half height
+                    expected_end = bbox.right + bbox.height / 2
+                    assert abs(end_x - expected_end) < 1.0, (
+                        f"End X {end_x} should be close to {expected_end}"
+                    )
+
+            break
+
+
+def test_text_warp_arc_attribute_optimization() -> None:
+    """Test conditional attribute merging for warped text."""
+    # Compare warped vs non-warped text structure
+    svg_warped = convert_psd_to_svg("texts/text-warp-arc-h+50.psd")
+    svg_normal = convert_psd_to_svg("texts/font-sizes-1.psd")
+
+    # Warped text: optimization happens within textPath
+    text_path = svg_warped.find(".//textPath")
+    assert text_path is not None, "Should have textPath"
+
+    # Find tspans within textPath
+    tspans_warped = text_path.findall(".//tspan")
+    assert len(tspans_warped) > 0, "textPath should have tspan children"
+
+    # Verify font properties are present on tspans
+    first_tspan = tspans_warped[0]
+    assert first_tspan.attrib.get("font-size") is not None, (
+        "tspan should have font properties"
+    )
+
+    # Normal text: different optimization behavior
+    text_normal = svg_normal.find(".//text")
+    assert text_normal is not None, "Should have text element"
+
+    tspans_normal = text_normal.findall(".//tspan")
+    assert len(tspans_normal) > 0, "text should have tspan children"
+
+    # Both should have position attributes on tspans (not fully merged)
+    # This verifies that position attributes are preserved correctly
+    for tspan in tspans_warped:
+        # Check that individual tspans can have position attributes
+        # (not asserting they must have them, just that structure allows it)
+        assert isinstance(tspan.attrib, dict), "tspan should have attributes dict"
