@@ -19,7 +19,7 @@ from psd_tools.psd.engine_data import DictElement, EngineData
 from psd_tools.psd.tagged_blocks import TypeToolObjectSetting
 from psd_tools.terminology import Key
 
-from psd2svg.core import font_utils
+from psd2svg.core import color_utils, font_utils
 
 logger = logging.getLogger(__name__)
 
@@ -847,8 +847,6 @@ class TypeSetting:
 
 def _get_hex_color_from_argb(argb: tuple[float, float, float, float]) -> str | None:
     """Convert ARGB color tuple to hex string."""
-    from psd2svg.core import color_utils
-
     a, r, g, b = argb
     if a == 0:
         return "none"
