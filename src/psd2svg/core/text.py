@@ -1,3 +1,26 @@
+"""SVG text conversion logic for PSD text layers.
+
+This module contains the TextConverter mixin class that converts Photoshop text layers
+(TypeLayer) to SVG text elements. It supports two rendering modes:
+
+1. Native SVG <text> elements (default) - Uses SVG text/tspan for accurate text rendering
+2. Foreign object mode - Uses <foreignObject> with XHTML for text wrapping support
+
+The TextConverter works with TypeSetting and related data structures from the
+typesetting module to extract PSD text data and generate corresponding SVG markup.
+
+Key features:
+- Point text and bounding box text
+- Paragraph alignment and justification
+- Text styling (font, color, size, decoration, etc.)
+- Vertical and horizontal text direction
+- Letter spacing, tracking, and kerning
+- Font effects (superscript, subscript, small caps)
+
+Note: This module re-exports TypeSetting and TextWrappingMode for backward compatibility.
+New code should import these directly from psd2svg.core.typesetting.
+"""
+
 import logging
 import xml.etree.ElementTree as ET
 
