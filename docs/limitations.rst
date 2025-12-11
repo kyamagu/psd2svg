@@ -277,7 +277,32 @@ Rendering quality varies significantly across SVG renderers:
 
 For best results with vertical text, use Chromium-based browsers for viewing or rendering.
 
-**Note on Text Scaling:** Horizontal and vertical text scaling uses ``transform`` on ``<tspan>`` elements, which is an SVG 2.0 feature. While most modern browsers support this, some older SVG 1.1 renderers may not render scaled text correctly.
+**Text Scaling Limitation:**
+
+Horizontal and vertical text scaling (``horizontal_scale`` and ``vertical_scale`` in PSD) uses ``transform`` on ``<tspan>`` elements, which is only supported in SVG 2.0. **No major browser currently supports this feature** (Chrome, Firefox, Safari, and Edge all ignore transforms on tspan elements).
+
+**Impact:**
+
+* Scaled text will not render correctly in any browser
+* Text appears at normal size instead of scaled size
+* A warning is logged during conversion
+
+**Workarounds:**
+
+1. **Recommended**: Use ``enable_text=False`` to rasterize text layers with scaling
+2. Convert text to vector shapes (outlines) in Photoshop before conversion
+3. Avoid using text scaling in your PSD designs
+
+**Technical Background:**
+
+While splitting scaled spans into separate ``<text>`` elements (which do support transforms in browsers) seems like a potential solution, this approach has fundamental issues:
+
+* Line height calculations - scaled text affects vertical spacing in complex ways
+* Transform combination - when layers have their own transforms, matrix multiplication is required
+* Position calculations - would require knowing rendered text widths without a layout engine
+* Missing attributes - parent attributes need careful propagation
+
+Given these complexities, the current implementation emits a clear warning rather than attempting unreliable splitting.
 
 **Letter Spacing Differences:**
 
