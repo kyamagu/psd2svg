@@ -22,7 +22,7 @@ from psd_tools import PSDImage
 from psd_tools.api.layers import TypeLayer
 
 from psd2svg.core import font_mapping as fm
-from psd2svg.core.text import TypeSetting
+from psd2svg.core.typesetting import TypeSetting
 
 # Check if fontconfig is available
 try:

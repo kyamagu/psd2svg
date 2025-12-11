@@ -359,7 +359,8 @@ Use `psd-tools` API to inspect PSD content. For text layers, use the following a
 ```python
 from psd_tools import PSDImage
 from psd_tools.api.layers import TypeLayer
-from psd2svg.core.text import TypeSetting
+from psd2svg.core.typesetting import TypeSetting  # Direct import (recommended)
+# Or: from psd2svg.core.text import TypeSetting  # Via re-export (backward compatible)
 
 psdimage = PSDImage.open("tests/fixtures/texts/style-tsume.psd")
 for layer in psd.descendants():
