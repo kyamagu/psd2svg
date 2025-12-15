@@ -659,8 +659,10 @@ class SVGDocument:
             # Get family name
             family_name = resolved_font.family
 
-            # Find all elements with this PostScript name
-            elements_with_font = svg_utils.find_elements_with_font_family(svg, ps_name)
+            # Find all elements with this PostScript name (direct declarations only)
+            elements_with_font = svg_utils.find_elements_with_font_family(
+                svg, ps_name, include_inherited=False
+            )
 
             if not elements_with_font:
                 # This shouldn't happen since extract_font_families() found it
