@@ -1352,10 +1352,10 @@ def replace_font_family(
 
     Example:
         Before: <text font-family="ArialMT">Hello</text>
-        After:  <text font-family="'Arial'">Hello</text>
+        After:  <text font-family="Arial">Hello</text>
 
-        Before: <text font-family="'ArialMT', 'Helvetica'">Hello</text>
-        After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
+        Before: <text font-family="ArialMT, Helvetica">Hello</text>
+        After:  <text font-family="Arial, Helvetica">Hello</text>
 
         Before: <text style="font-family: ArialMT">Hello</text>
         After:  <text style="font-family: 'Arial'">Hello</text>
@@ -1363,7 +1363,8 @@ def replace_font_family(
     Note:
         - Replaces first occurrence of old_font_family in comma-separated list
         - If old_font_family not found, does nothing
-        - Quotes font family names in the output for CSS compliance
+        - For font-family attributes: no quotes (attribute delimiter is sufficient)
+        - For style attributes: quotes font names for CSS compliance
         - Updates font-family attribute with higher priority than style
     """
     # Check font-family attribute first (higher priority)
@@ -1376,8 +1377,8 @@ def replace_font_family(
             families = [
                 new_font_family if f == old_font_family else f for f in families
             ]
-            # Quote all families and rejoin
-            element.set("font-family", ", ".join(f"'{f}'" for f in families))
+            # No quotes for SVG attributes (attribute delimiter is sufficient)
+            element.set("font-family", ", ".join(families))
         return  # Attribute has priority, don't check style
 
     # Check style attribute for font-family
@@ -1393,7 +1394,7 @@ def replace_font_family(
                 families = [
                     new_font_family if f == old_font_family else f for f in families
                 ]
-            # Quote all families and rejoin
+            # Quote all families for CSS compliance
             return "font-family: " + ", ".join(f"'{f}'" for f in families)
 
         # Replace font-family in style attribute
@@ -1421,17 +1422,18 @@ def add_font_family(element: ET.Element, font_family: str) -> None:
 
     Example:
         Before: <text font-family="Arial">Hello</text>
-        After:  <text font-family="'Arial', 'Helvetica'">Hello</text>
+        After:  <text font-family="Arial, Helvetica">Hello</text>
 
         Before: <text style="font-family: Arial">Hello</text>
         After:  <text style="font-family: 'Arial', 'Helvetica'">Hello</text>
 
         Before: <text>Hello</text>
-        After:  <text font-family="'Helvetica'">Hello</text>
+        After:  <text font-family="Helvetica">Hello</text>
 
     Note:
         - Updates font-family attribute with higher priority than style
-        - Quotes font family names in the output for CSS compliance
+        - For font-family attributes: no quotes (attribute delimiter is sufficient)
+        - For style attributes: quotes font names for CSS compliance
         - Idempotent: does not add font if already present in the chain
         - Ignores CSS 'font' shorthand property, only handles 'font-family'
     """
@@ -1443,8 +1445,8 @@ def add_font_family(element: ET.Element, font_family: str) -> None:
         # Only add if not already present
         if font_family not in families:
             families.append(font_family)
-            # Quote all families and rejoin
-            element.set("font-family", ", ".join(f"'{f}'" for f in families))
+            # No quotes for SVG attributes (attribute delimiter is sufficient)
+            element.set("font-family", ", ".join(families))
         return  # Attribute has priority, don't check style
 
     # Check style attribute for font-family
@@ -1458,7 +1460,7 @@ def add_font_family(element: ET.Element, font_family: str) -> None:
             # Only add if not already present
             if font_family not in families:
                 families.append(font_family)
-            # Quote all families and rejoin
+            # Quote all families for CSS compliance
             return "font-family: " + ", ".join(f"'{f}'" for f in families)
 
         # Replace font-family in style attribute
@@ -1468,7 +1470,7 @@ def add_font_family(element: ET.Element, font_family: str) -> None:
         return
 
     # No font-family found, create new attribute
-    element.set("font-family", f"'{font_family}'")
+    element.set("font-family", font_family)
 
 
 def insert_or_update_style_element(svg: ET.Element, css_content: str) -> None:
