@@ -361,6 +361,55 @@ class TestDefaultFontMapping:
         assert any("Noto Sans CJK SC" in f for f in families)
         assert any("Noto Sans CJK TC" in f for f in families)
 
+    def test_default_mapping_hiragino_weight_variants(self) -> None:
+        """Test that Hiragino fonts have complete W0-W9 weight variants."""
+        # Test HiraKakuStd family as a representative example
+        base_name = "HiraKakuStd"
+        expected_weights = {
+            f"{base_name}-W0": 0.0,
+            f"{base_name}-W1": 40.0,
+            f"{base_name}-W2": 45.0,
+            f"{base_name}-W3": 50.0,
+            f"{base_name}-W4": 80.0,
+            f"{base_name}-W5": 100.0,
+            f"{base_name}-W6": 180.0,
+            f"{base_name}-W7": 200.0,
+            f"{base_name}-W8": 205.0,
+            f"{base_name}-W9": 210.0,
+        }
+
+        for postscript_name, expected_weight in expected_weights.items():
+            # Check entry exists
+            assert postscript_name in fm.DEFAULT_FONT_MAPPING, (
+                f"{postscript_name} not found in mapping"
+            )
+
+            # Check weight is correct
+            font_data = fm.DEFAULT_FONT_MAPPING[postscript_name]
+            assert font_data["weight"] == expected_weight, (
+                f"{postscript_name} has wrong weight: "
+                f"{font_data['weight']} != {expected_weight}"
+            )
+
+            # Check family is correct
+            assert font_data["family"] == "Hiragino Kaku Gothic Std"
+
+            # Check style matches weight suffix
+            assert font_data["style"] == postscript_name.split("-")[-1]
+
+        # Verify total count of Hiragino entries (should be 370 = 37 base * 10 weights)
+        hiragino_count = sum(
+            1
+            for k in fm.DEFAULT_FONT_MAPPING.keys()
+            if (
+                any(k.startswith(prefix) for prefix in ["Hiragino", "Hira", "Koburina"])
+                and "-W" in k
+            )
+        )
+        assert hiragino_count == 370, (
+            f"Expected 370 Hiragino entries, got {hiragino_count}"
+        )
+
 
 class TestFontMappingIntegration:
     """Integration tests for font_mapping parameter in conversion."""
