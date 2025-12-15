@@ -259,7 +259,7 @@ class EffectConverter(ConverterProtocol):
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
-            fill="transparent",
+            fill="none",
             class_="stroke-effect",
         )
         # Check effect.fill_type.

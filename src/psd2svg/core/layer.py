@@ -201,7 +201,7 @@ class LayerConverter(ConverterProtocol):
                 self.set_opacity(layer.opacity / 255.0, node)
                 node = self.apply_mask(layer, node)
 
-            # We need to set stroke for the shape here when fill is transparent.
+            # We need to set stroke for the shape here when fill is none.
             # Otherwise, effects won't use the correct alpha.
             if (
                 layer.has_stroke()
@@ -209,7 +209,7 @@ class LayerConverter(ConverterProtocol):
                 and layer.stroke.enabled
                 and not layer.stroke.fill_enabled
             ):
-                svg_utils.set_attribute(node, "fill", "transparent")
+                svg_utils.set_attribute(node, "fill", "none")
                 self.set_stroke(layer, node)
 
             self.apply_background_effects(layer, node, insert_before_target=False)
