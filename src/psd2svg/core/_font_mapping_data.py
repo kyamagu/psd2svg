@@ -1106,6 +1106,7 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     },
     # macOS CJK fonts
     # Hiragino family (macOS Japanese)
+    # Modern Hiragino Sans/Serif (macOS 10.11+)
     "HiraginoSans-W3": {"family": "Hiragino Sans", "style": "W3", "weight": 50.0},
     "HiraginoSans-W4": {"family": "Hiragino Sans", "style": "W4", "weight": 80.0},
     "HiraginoSans-W5": {"family": "Hiragino Sans", "style": "W5", "weight": 100.0},
@@ -1116,6 +1117,240 @@ FONT_MAPPING: dict[str, dict[str, Any]] = {
     "HiraginoSerif-W6": {"family": "Hiragino Serif", "style": "W6", "weight": 180.0},
     "HiraginoSansGB-W3": {"family": "Hiragino Sans GB", "style": "W3", "weight": 50.0},
     "HiraginoSansGB-W6": {"family": "Hiragino Sans GB", "style": "W6", "weight": 180.0},
+    # Hiragino Kaku Gothic Std/Pro/ProN (角ゴ - Square Gothic)
+    "HiraKakuStd-W3": {
+        "family": "Hiragino Kaku Gothic Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraKakuStd-W8": {
+        "family": "Hiragino Kaku Gothic Std",
+        "style": "W8",
+        "weight": 205.0,
+    },
+    "HiraKakuPro-W3": {
+        "family": "Hiragino Kaku Gothic Pro",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraKakuPro-W6": {
+        "family": "Hiragino Kaku Gothic Pro",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraKakuProN-W3": {
+        "family": "Hiragino Kaku Gothic ProN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraKakuProN-W6": {
+        "family": "Hiragino Kaku Gothic ProN",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraKakuStdN-W3": {
+        "family": "Hiragino Kaku Gothic StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraKakuStdN-W8": {
+        "family": "Hiragino Kaku Gothic StdN",
+        "style": "W8",
+        "weight": 205.0,
+    },
+    # Hiragino Sans Pr6N/Upr variants (newer naming)
+    "HiraginoSansPr6N-W3": {
+        "family": "Hiragino Sans",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoSansPr6N-W6": {
+        "family": "Hiragino Sans",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraginoSansUpr-W3": {"family": "Hiragino Sans", "style": "W3", "weight": 50.0},
+    "HiraginoSansUpr-W6": {"family": "Hiragino Sans", "style": "W6", "weight": 180.0},
+    # Hiragino Maru Gothic (丸ゴ - Rounded Gothic)
+    "HiraMaruStd-W4": {
+        "family": "Hiragino Maru Gothic Std",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraMaruPro-W4": {
+        "family": "Hiragino Maru Gothic Pro",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraMaruProN-W4": {
+        "family": "Hiragino Maru Gothic ProN",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraMaruStdN-W4": {
+        "family": "Hiragino Maru Gothic StdN",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    # Hiragino Sans R (Rounded) Pr6N/Upr variants
+    "HiraginoSansRPr6N-W4": {
+        "family": "Hiragino Maru Gothic",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraginoSansRUpr-W4": {
+        "family": "Hiragino Maru Gothic",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    # Hiragino Mincho (明朝 - Serif/Ming)
+    "HiraMinStd-W3": {
+        "family": "Hiragino Mincho Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraMinStd-W6": {
+        "family": "Hiragino Mincho Std",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraMinPro-W3": {
+        "family": "Hiragino Mincho Pro",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraMinPro-W6": {
+        "family": "Hiragino Mincho Pro",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraMinProN-W3": {
+        "family": "Hiragino Mincho ProN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraMinProN-W6": {
+        "family": "Hiragino Mincho ProN",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraMinStdN-W3": {
+        "family": "Hiragino Mincho StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraMinStdN-W6": {
+        "family": "Hiragino Mincho StdN",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    # Hiragino Serif Pr6N/Upr variants
+    "HiraginoSerifPr6N-W3": {
+        "family": "Hiragino Serif",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoSerifPr6N-W6": {
+        "family": "Hiragino Serif",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraginoSerifUpr-W3": {"family": "Hiragino Serif", "style": "W3", "weight": 50.0},
+    "HiraginoSerifUpr-W6": {"family": "Hiragino Serif", "style": "W6", "weight": 180.0},
+    # Hiragino Gyosho (行書 - Semi-cursive/Running script)
+    "HiraGyoStd-W4": {
+        "family": "Hiragino Gyosho Std",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraGyoStd-W8": {
+        "family": "Hiragino Gyosho Std",
+        "style": "W8",
+        "weight": 205.0,
+    },
+    "HiraGyoStdN-W4": {
+        "family": "Hiragino Gyosho StdN",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraGyoStdN-W8": {
+        "family": "Hiragino Gyosho StdN",
+        "style": "W8",
+        "weight": 205.0,
+    },
+    # Hiragino UD (Universal Design) series
+    "HiraginoUDSansStd-W3": {
+        "family": "Hiragino UD Sans Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSansStdN-W3": {
+        "family": "Hiragino UD Sans StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSansFStd-W3": {
+        "family": "Hiragino UD Sans F Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSansFStdN-W3": {
+        "family": "Hiragino UD Sans F StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSansRStd-W3": {
+        "family": "Hiragino UD Maru Gothic Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSansRStdN-W3": {
+        "family": "Hiragino UD Maru Gothic StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "HiraginoUDSerifStd-W4": {
+        "family": "Hiragino UD Serif Std",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraginoUDSerifStdN-W4": {
+        "family": "Hiragino UD Serif StdN",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    # Hiragino Sans Old variants
+    "HiraSansOldStd-W6": {
+        "family": "Hiragino Sans Old Std",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraSansOldStdN-W6": {
+        "family": "Hiragino Sans Old StdN",
+        "style": "W6",
+        "weight": 180.0,
+    },
+    "HiraginoSansROldStd-W4": {
+        "family": "Hiragino Maru Gothic Old Std",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    "HiraginoSansROldStdN-W4": {
+        "family": "Hiragino Maru Gothic Old StdN",
+        "style": "W4",
+        "weight": 80.0,
+    },
+    # Other Hiragino variants
+    "KoburinaGoStd-W3": {
+        "family": "Koburina Gothic Std",
+        "style": "W3",
+        "weight": 50.0,
+    },
+    "KoburinaGoStdN-W3": {
+        "family": "Koburina Gothic StdN",
+        "style": "W3",
+        "weight": 50.0,
+    },
     # STHeiti family (macOS Simplified Chinese, legacy)
     "STHeiti": {"family": "STHeiti", "style": "Regular", "weight": 80.0},
     "STHeitiSC-Light": {"family": "STHeiti SC", "style": "Light", "weight": 50.0},
