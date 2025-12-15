@@ -425,40 +425,11 @@ class TextConverter(ConverterProtocol):
         postscript_name = text_setting.get_postscript_name(style.font)
 
         # Handle horizontal and vertical scaling
-        # For uniform scaling, scale font-size directly (browser-compatible workaround)
-        # For non-uniform scaling, use transform (still broken in browsers, but more consistent)
-        SCALE_TOLERANCE = 1e-6  # Consistent with Transform.is_translation_only()
-        has_scaling = style.vertical_scale != 1.0 or style.horizontal_scale != 1.0
-        is_uniform_scale = (
-            abs(style.vertical_scale - style.horizontal_scale) < SCALE_TOLERANCE
+        scaled_font_size, transform_scale = self._calculate_text_scaling(
+            style.font_size,
+            style.horizontal_scale,
+            style.vertical_scale,
         )
-
-        # Validate scale values and determine approach
-        if has_scaling and (style.vertical_scale <= 0 or style.horizontal_scale <= 0):
-            logger.warning(
-                f"Invalid scale values: horizontal={style.horizontal_scale}, "
-                f"vertical={style.vertical_scale}. Using original font-size."
-            )
-            scaled_font_size = style.font_size
-            transform_scale = None
-            should_warn = False
-        elif has_scaling and is_uniform_scale:
-            # Uniform scaling: scale font-size directly (browser-compatible)
-            scale = style.horizontal_scale  # Could use vertical_scale, they're equal
-            scaled_font_size = style.font_size * scale
-            transform_scale = None  # No transform needed
-            should_warn = False
-        elif has_scaling:
-            # Non-uniform scaling: scale by vertical, adjust horizontal with transform
-            scaled_font_size = style.font_size * style.vertical_scale
-            # Transform adjusts horizontal to match
-            transform_scale = (style.horizontal_scale / style.vertical_scale, 1.0)
-            should_warn = True  # Still broken in browsers
-        else:
-            # No scaling
-            scaled_font_size = style.font_size
-            transform_scale = None
-            should_warn = False
 
         # Determine font weight - only set for faux bold (PostScript name encodes actual weight)
         font_weight: int | str | None = None
@@ -571,12 +542,11 @@ class TextConverter(ConverterProtocol):
         # Apply non-uniform scale transform if needed
         # (Uniform scaling is already handled via scaled_font_size above)
         if transform_scale is not None:
-            if should_warn:
-                logger.warning(
-                    "Non-uniform text scaling (different horizontal and vertical scale) "
-                    "on spans is not supported by browsers. Scaled text will not render "
-                    "correctly. Consider using enable_text=False to rasterize text layers."
-                )
+            logger.warning(
+                "Non-uniform text scaling (different horizontal and vertical scale) "
+                "on spans is not supported by browsers. Scaled text will not render "
+                "correctly. Consider using enable_text=False to rasterize text layers."
+            )
 
             svg_utils.append_attribute(
                 tspan,
@@ -610,6 +580,57 @@ class TextConverter(ConverterProtocol):
             # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
             # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
         return tspan
+
+    def _calculate_text_scaling(
+        self,
+        font_size: float,
+        horizontal_scale: float,
+        vertical_scale: float,
+    ) -> tuple[float, tuple[float, float] | None]:
+        """Calculate font-size scaling for text spans.
+
+        Handles uniform and non-uniform text scaling with browser compatibility workarounds.
+        For uniform scaling, scales font-size directly (browser-compatible).
+        For non-uniform scaling, uses transform (still broken in browsers, but more consistent).
+
+        Args:
+            font_size: Base font size in pixels
+            horizontal_scale: Horizontal scale factor (default 1.0)
+            vertical_scale: Vertical scale factor (default 1.0)
+
+        Returns:
+            Tuple of (scaled_font_size, transform_scale):
+            - scaled_font_size: Font size after applying scaling
+            - transform_scale: (sx, sy) tuple for transform attribute, or None if not needed
+        """
+        SCALE_TOLERANCE = 1e-6  # Consistent with Transform.is_translation_only()
+        has_scaling = vertical_scale != 1.0 or horizontal_scale != 1.0
+        is_uniform_scale = abs(vertical_scale - horizontal_scale) < SCALE_TOLERANCE
+
+        # Validate scale values and determine approach
+        if has_scaling and (vertical_scale <= 0 or horizontal_scale <= 0):
+            logger.warning(
+                f"Invalid scale values: horizontal={horizontal_scale}, "
+                f"vertical={vertical_scale}. Using original font-size."
+            )
+            scaled_font_size = font_size
+            transform_scale = None
+        elif has_scaling and is_uniform_scale:
+            # Uniform scaling: scale font-size directly (browser-compatible)
+            scale = horizontal_scale  # Could use vertical_scale, they're equal
+            scaled_font_size = font_size * scale
+            transform_scale = None  # No transform needed
+        elif has_scaling:
+            # Non-uniform scaling: scale by vertical, adjust horizontal with transform
+            scaled_font_size = font_size * vertical_scale
+            # Transform adjusts horizontal to match
+            transform_scale = (horizontal_scale / vertical_scale, 1.0)
+        else:
+            # No scaling
+            scaled_font_size = font_size
+            transform_scale = None
+
+        return scaled_font_size, transform_scale
 
     def _get_foreign_object_container_styles(
         self, text_setting: TypeSetting, bounds: Rectangle
