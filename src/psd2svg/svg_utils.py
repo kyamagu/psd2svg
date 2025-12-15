@@ -1138,8 +1138,7 @@ def _is_unwrappable_group(group: ET.Element) -> bool:
             if local_attr == "class":
                 if not attr_value or attr_value.strip() == "":
                     continue
-                else:
-                    return False  # Non-empty class
+                return False  # Non-empty class
 
             # Any other attribute prevents unwrapping
             return False

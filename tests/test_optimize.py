@@ -945,7 +945,11 @@ class TestUnwrapGroups:
         # Group should be unwrapped, rect moved to svg level
         assert len(svg) == 1
         assert get_local_tag(svg[0]) == "rect"
+        # Verify all attributes are preserved
         assert svg[0].get("x") == "0"
+        assert svg[0].get("y") == "0"
+        assert svg[0].get("width") == "100"
+        assert svg[0].get("height") == "100"
 
     def test_preserve_group_with_opacity(self) -> None:
         """Test that groups with opacity are NOT unwrapped."""
