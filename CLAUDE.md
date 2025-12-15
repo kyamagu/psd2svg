@@ -275,15 +275,18 @@ git checkout -b release/v0.8.0
 # - Edit version in pyproject.toml
 # - Update CHANGELOG.md with release notes
 
-# 3. Commit and push
-git add pyproject.toml CHANGELOG.md
+# 3. Sync dependencies to update lock file
+uv sync
+
+# 4. Commit and push
+git add pyproject.toml CHANGELOG.md uv.lock
 git commit -m "Prepare release v0.8.0"
 git push -u origin release/v0.8.0
 
-# 4. Create PR for release
+# 5. Create PR for release
 gh pr create --title "Release v0.8.0" --body "Release notes..."
 
-# 5. After PR is merged to main, create and push tag
+# 6. After PR is merged to main, create and push tag
 git checkout main
 git pull origin main
 git tag v0.8.0
