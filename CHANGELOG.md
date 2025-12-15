@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-12-15
+
+### Added
+
+- **Experimental arc warp support for text layers** (#164)
+  - Implements `TextPathData.ArcWarp` conversion to SVG `<textPath>` with arc
+  - Supports horizontal/vertical arc orientation with upper/lower placement
+  - Comprehensive unit tests for arc warping feature
+  - Enables rendering of text along curved paths from PSD files
+
+- **SVG optimization features** (#163, #168)
+  - Definition deduplication: Consolidates duplicate gradient/pattern/filter definitions
+  - Unwrap attribute-less `<g>` elements to reduce SVG nesting and file size
+  - Improves SVG output quality and reduces redundancy
+
+- **Japanese font mappings** (#167)
+  - Added comprehensive Japanese font mappings from Screen website
+  - Improves font resolution for Japanese typography
+
+- **Conditional whitespace preservation** (#159)
+  - Intelligently preserves whitespace only when necessary for text layers
+  - Reduces unnecessary `xml:space="preserve"` attributes
+
+### Fixed
+
+- **Font attribute redundancy** (#170)
+  - Fixed redundant `font-weight` and `font-style` attributes on inherited elements
+  - Reduces SVG file size and improves output cleanliness
+
+- **Font-family quote handling** (#166)
+  - Fixed redundant quotes in `font-family` attributes
+  - Ensures proper CSS formatting
+
+- **Hiragino font PostScript names** (#171)
+  - Fixed double-W suffix bug in Hiragino font PostScript name generation
+  - Improves font matching accuracy for Hiragino font family
+
+- **Text property conversions** (#161, #165)
+  - Fixed tsume property scaling for accurate letter-spacing calculation
+  - Refactored text scaling to use `font-size` for uniform scaling instead of transform
+  - Extracted font scaling logic into helper method for better maintainability
+
+### Changed
+
+- **SVG output improvements** (#172, #174)
+  - Wrap mask and clipPath elements in `<defs>` containers for better SVG structure
+  - Use `fill="none"` instead of `fill="transparent"` for cleaner SVG output
+
+- **Font mapping refactoring** (#171)
+  - Refactored Hiragino font mapping to use declarative structure
+  - Improves maintainability and extensibility of font mappings
+
+- **Logging improvements** (#173)
+  - Adjusted font resolution logging levels to reduce verbosity
+  - Less noisy output during normal operations
+
+- **Browser compatibility warnings** (#160)
+  - Added warning about text scaling not being supported by browsers
+  - Helps users understand rendering limitations
+
+### Internal
+
+- **Code organization** (#162)
+  - Split text module into separate `text` and `typesetting` modules
+  - Improves code structure and maintainability
+
+- **Documentation** (#169)
+  - Enhanced `consolidate_defs` documentation for mask exclusion behavior
+  - Updated arc warp support documentation
+
+### Testing
+
+- All 770 tests passing
+- Added comprehensive unit tests for arc warping feature
+- Added tests for SVG optimization features
+
 ## [0.8.0] - 2025-12-10
 
 ### Added
@@ -133,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Previous releases - see git history for details.
 
+[0.9.0]: https://github.com/kyamagu/psd2svg/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/kyamagu/psd2svg/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/kyamagu/psd2svg/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/kyamagu/psd2svg/compare/v0.6.0...v0.7.0
