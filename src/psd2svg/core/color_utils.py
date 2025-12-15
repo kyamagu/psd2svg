@@ -37,7 +37,7 @@ def cmyk2rgb(values: Sequence[float]) -> tuple[int, int, int]:
     )
 
 
-def descriptor2hex(desc: Descriptor, fallback: str = "transparent") -> str:
+def descriptor2hex(desc: Descriptor, fallback: str = "none") -> str:
     """Convert a color descriptor to an RGB hex string."""
 
     if desc.classID == Klass.RGBColor:

@@ -66,7 +66,7 @@ class PaintConverter(ConverterProtocol):
         use = self.create_node(
             "use",
             href=svg_utils.get_uri(target),
-            fill="transparent",
+            fill="none",
             class_="stroke",
         )
         self.set_stroke(layer, use)
@@ -75,14 +75,14 @@ class PaintConverter(ConverterProtocol):
         self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
     ) -> None:
         """Set fill attribute to the given element."""
-        # Transparent fill when stroke is enabled but fill is disabled.
+        # No fill when stroke is enabled but fill is disabled.
         if (
             layer.has_stroke()
             and layer.stroke is not None
             and not layer.stroke.fill_enabled
         ):
-            logger.debug("Fill is disabled; setting fill to transparent.")
-            svg_utils.set_attribute(node, "fill", "transparent")
+            logger.debug("Fill is disabled; setting fill to none.")
+            svg_utils.set_attribute(node, "fill", "none")
             return
 
         # Shapes have the following tagged blocks for fill content.
@@ -181,7 +181,7 @@ class PaintConverter(ConverterProtocol):
             logger.warning(f"Unsupported stroke content: {stroke.content}")
 
         if not stroke.fill_enabled:
-            svg_utils.set_attribute(node, "fill", "transparent")
+            svg_utils.set_attribute(node, "fill", "none")
 
         if stroke.opacity.value < 100:
             svg_utils.set_attribute(
