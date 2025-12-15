@@ -1772,7 +1772,7 @@ _HIRAGINO_BASE_FONTS = [
 def _generate_weight_variants(
     base_fonts: list[tuple[str, str]],
     weights: dict[str, float],
-    suffix_pattern: str = "-W{weight}",
+    suffix_pattern: str = "-{weight}",
 ) -> dict[str, dict[str, Any]]:
     """
     Generate font entries with weight variants.
@@ -1780,7 +1780,7 @@ def _generate_weight_variants(
     Args:
         base_fonts: List of (base_name, family_name) tuples
         weights: Dict mapping weight suffix (e.g., "W0") to weight value
-        suffix_pattern: Pattern for generating PostScript names (default: "-W{weight}")
+        suffix_pattern: Pattern for generating PostScript names (default: "-{weight}")
 
     Returns:
         Dictionary of generated font entries
