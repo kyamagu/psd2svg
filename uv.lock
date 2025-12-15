@@ -1337,10 +1337,12 @@ dependencies = [
     { name = "resvg-py" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 browser = [
     { name = "playwright" },
 ]
+
+[package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
     { name = "mypy" },
@@ -1363,12 +1365,13 @@ requires-dist = [
     { name = "fonttools", extras = ["woff"], specifier = ">=4.50.0" },
     { name = "numpy" },
     { name = "pillow" },
+    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.40.0" },
     { name = "psd-tools", specifier = ">=1.12.0" },
     { name = "resvg-py", specifier = ">=0.2.3" },
 ]
+provides-extras = ["browser"]
 
 [package.metadata.requires-dev]
-browser = [{ name = "playwright", specifier = ">=1.40.0" }]
 dev = [
     { name = "ipykernel", specifier = ">=6.30.1" },
     { name = "mypy" },
