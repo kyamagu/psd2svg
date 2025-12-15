@@ -307,9 +307,11 @@ class LayerConverter(ConverterProtocol):
             raise ValueError(f"Layer has no vector mask: '{layer.name}'")
 
         # Create a clipping path definition.
-        clip_path = self.create_node(
-            "clipPath", id=self.auto_id("clip"), class_="clipping"
-        )
+        defs = self.create_node("defs")
+        with self.set_current(defs):
+            clip_path = self.create_node(
+                "clipPath", id=self.auto_id("clip"), class_="clipping"
+            )
         with self.set_current(clip_path):
             target = self.create_shape(
                 layer,
@@ -350,13 +352,14 @@ class LayerConverter(ConverterProtocol):
         """
 
         # Create a clipping mask definition.
-        mask = self.create_node(
-            "mask",
-            parent=self.current,
-            class_="clipping",
-            id=self.auto_id("mask"),
-            mask_type="alpha",
-        )
+        defs = self.create_node("defs")
+        with self.set_current(defs):
+            mask = self.create_node(
+                "mask",
+                class_="clipping",
+                id=self.auto_id("mask"),
+                mask_type="alpha",
+            )
         with self.set_current(mask):
             target = self.add_layer(layer)
             if target is None:
@@ -524,12 +527,13 @@ class LayerConverter(ConverterProtocol):
             viewbox = (0, 0, self.psd.width, self.psd.height)
 
         # Create the mask node.
-        mask = self.create_node(
-            "mask",
-            parent=self.current,
-            class_="layer-mask",
-            id=self.auto_id("mask"),
-        )
+        defs = self.create_node("defs")
+        with self.set_current(defs):
+            mask = self.create_node(
+                "mask",
+                class_="layer-mask",
+                id=self.auto_id("mask"),
+            )
 
         # If the mask has a background color (invert mask), add a white rectangle first.
         if layer.mask.background_color > 0:
@@ -570,13 +574,12 @@ class LayerConverter(ConverterProtocol):
             if self.current.tag != "defs":
                 defs = self.create_node("defs")
                 svg_utils.wrap_element(target, self.current, defs)
-            use = self.create_node(
+            return self.create_node(
                 "use",
                 href=svg_utils.get_uri(target),
                 mask=svg_utils.get_funciri(mask),
+                id=self.auto_id("use"),
             )
-            svg_utils.set_attribute(use, "id", self.auto_id("use"))
-            return use
 
         svg_utils.set_attribute(target, "mask", svg_utils.get_funciri(mask))
         return target

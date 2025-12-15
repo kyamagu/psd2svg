@@ -74,30 +74,31 @@ class ShapeConverter(ConverterProtocol):
         # It's possible when all operations are Union (OR) or Intersect (AND).
 
         # Composite shape with multiple paths.
-        current = self.create_node(
-            "mask",
-            id=self.auto_id("mask"),
-            mask=attrib.pop("mask", None),  # Combine with existing mask if any.
-        )
-        for path_group in subpaths:
-            path = path_group[0]
-            previous = current
-            if path.operation == 0:  # XOR
-                current = self.apply_xor_operation(
-                    layer, path_group, current, previous, rule
-                )
-            elif path.operation == 1:  # Union (OR)
-                current = self.apply_union_operation(layer, path_group, current, rule)
-            elif path.operation == 2:  # Subtract (NOT OR)
-                current = self.apply_subtract_operation(
-                    layer, path_group, current, rule
-                )
-            elif path.operation == 3:  # Intersect (AND)
-                current = self.apply_intersect_operation(
-                    layer, path_group, current, previous, rule
-                )
-            else:
-                raise ValueError(f"Unsupported path operation: {path.operation}")
+        with self.set_current(self.create_node("defs")):
+            current = self.create_node(
+                "mask",
+                id=self.auto_id("mask"),
+                mask=attrib.pop("mask", None),  # Combine with existing mask if any.
+            )
+            for path_group in subpaths:
+                path = path_group[0]
+                previous = current
+                if path.operation == 0:  # XOR
+                    current = self.apply_xor_operation(
+                        layer, path_group, current, previous, rule
+                    )
+                elif path.operation == 1:  # Union (OR)
+                    current = self.apply_union_operation(layer, path_group, current, rule)
+                elif path.operation == 2:  # Subtract (NOT OR)
+                    current = self.apply_subtract_operation(
+                        layer, path_group, current, rule
+                    )
+                elif path.operation == 3:  # Intersect (AND)
+                    current = self.apply_intersect_operation(
+                        layer, path_group, current, previous, rule
+                    )
+                else:
+                    raise ValueError(f"Unsupported path operation: {path.operation}")
 
         return self.create_node(
             "rect",
