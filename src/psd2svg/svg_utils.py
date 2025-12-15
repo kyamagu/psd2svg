@@ -1322,7 +1322,7 @@ def extract_font_families(svg: ET.Element) -> set[str]:
 
 
 def find_elements_with_font_family(
-    svg: ET.Element, font_family: str
+    svg: ET.Element, font_family: str, include_inherited: bool = True
 ) -> list[ET.Element]:
     """Find all text/tspan elements that use the given font family.
 
@@ -1333,19 +1333,25 @@ def find_elements_with_font_family(
     Args:
         svg: SVG element tree to search.
         font_family: Font family name to search for (case-insensitive).
+        include_inherited: If True, include elements that inherit the font from parents.
+                          If False, only include elements with direct font-family declarations.
+                          Default is True for backward compatibility.
 
     Returns:
         List of text/tspan elements that use the specified font family.
 
     Note:
         - Searches both font-family attributes and style attributes
-        - Supports CSS inheritance (walks up parent chain)
+        - Supports CSS inheritance (walks up parent chain) when include_inherited=True
         - Case-insensitive font family matching
         - Only returns text and tspan elements (not their parents)
 
     Example:
         >>> svg = svg_utils.fromstring('<svg><text font-family="Arial">Hi</text></svg>')
         >>> elements = find_elements_with_font_family(svg, "Arial")
+        >>> len(elements)
+        1
+        >>> elements = find_elements_with_font_family(svg, "Arial", include_inherited=False)
         >>> len(elements)
         1
     """
@@ -1365,15 +1371,20 @@ def find_elements_with_font_family(
         if tag not in ("text", "tspan"):
             continue
 
-        # Check if element uses target font (with inheritance)
-        if _element_uses_font_family(element, parent_map, font_family_lower):
+        # Check if element uses target font (with or without inheritance)
+        if _element_uses_font_family(
+            element, parent_map, font_family_lower, include_inherited
+        ):
             matching_elements.append(element)
 
     return matching_elements
 
 
 def _element_uses_font_family(
-    element: ET.Element, parent_map: dict[ET.Element, ET.Element], target_font: str
+    element: ET.Element,
+    parent_map: dict[ET.Element, ET.Element],
+    target_font: str,
+    include_inherited: bool = True,
 ) -> bool:
     """Check if element uses the target font (directly or through inheritance).
 
@@ -1384,6 +1395,7 @@ def _element_uses_font_family(
         element: Element to check.
         parent_map: Dictionary mapping children to parents.
         target_font: Target font family name (lowercase).
+        include_inherited: If True, walk up parent chain. If False, check only this element.
 
     Returns:
         True if element uses the target font, False otherwise.
@@ -1410,6 +1422,10 @@ def _element_uses_font_family(
                 ]
                 if families:
                     return families[0].lower() == target_font
+
+        # If not checking inheritance, stop here
+        if not include_inherited:
+            return False
 
         # Walk up to parent
         if current not in parent_map:
