@@ -440,7 +440,7 @@ class FontInfo:
         match = FontInfo._match_fontconfig(postscriptname, charset_codepoints)
 
         if match:
-            logger.info(
+            logger.debug(
                 f"Resolved '{postscriptname}' via fontconfig fallback: "
                 f"{match['family']}"
             )
@@ -480,7 +480,7 @@ class FontInfo:
         match = FontInfo._match_windows(postscriptname, charset_codepoints)
 
         if match:
-            logger.info(
+            logger.debug(
                 f"Resolved '{postscriptname}' via Windows registry fallback: "
                 f"{match['family']}"
             )

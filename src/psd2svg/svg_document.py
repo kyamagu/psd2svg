@@ -674,7 +674,7 @@ class SVGDocument:
 
             # Log resolution
             if family_name != ps_name:
-                logger.info(f"Font resolution: '{ps_name}' → '{family_name}'")
+                logger.debug(f"Font resolution: '{ps_name}' → '{family_name}'")
 
             # Update all elements with this font
             for element in elements_with_font:
@@ -753,7 +753,7 @@ class SVGDocument:
             family_name = resolved_font.family
 
             # Log resolution with file path
-            logger.debug(
+            logger.info(
                 f"Resolved font '{ps_name}' → '{family_name}' "
                 f"(file: {resolved_font.file})"
             )
