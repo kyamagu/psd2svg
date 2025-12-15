@@ -1106,6 +1106,138 @@ def deduplicate_definitions(svg: ET.Element) -> None:
         logger.debug(f"Deduplicated {len(duplicates_to_remove)} definition elements")
 
 
+def _is_unwrappable_group(group: ET.Element) -> bool:
+    """Check if a <g> element can be safely unwrapped.
+
+    Returns True if group has no attributes (or only empty class), and no <title>
+    child elements. Returns False if group has ANY meaningful attributes or contains
+    <title> children that could conflict if moved up.
+
+    Meaningful attributes that prevent unwrapping:
+    - id (may be referenced by <use> or JavaScript)
+    - opacity (affects rendering)
+    - style (may contain mix-blend-mode, isolation, etc.)
+    - filter, clip-path, mask (affect rendering)
+    - transform (affects coordinate space)
+    - Any other unknown attributes (conservative approach)
+
+    Args:
+        group: The <g> element to check.
+
+    Returns:
+        True if safe to unwrap, False otherwise.
+    """
+    # Check attributes first
+    if group.attrib:
+        # Check each attribute
+        for attr_name, attr_value in group.attrib.items():
+            # Strip namespace from attribute name
+            local_attr = attr_name.split("}")[-1] if "}" in attr_name else attr_name
+
+            # Empty class is safe (debugging attribute, usually disabled)
+            if local_attr == "class":
+                if not attr_value or attr_value.strip() == "":
+                    continue
+                else:
+                    return False  # Non-empty class
+
+            # Any other attribute prevents unwrapping
+            return False
+
+    # Check for <title> children that would conflict if moved up
+    for child in group:
+        tag = child.tag
+        local_tag = tag.split("}")[-1] if "}" in tag else tag
+        if local_tag == "title":
+            return False  # Preserve groups with <title> children
+
+    return True
+
+
+def _unwrap_groups_recursive(element: ET.Element) -> None:
+    """Recursively unwrap attribute-less <g> elements (helper for unwrap_groups).
+
+    Processes the tree bottom-up: children first, then parent. This allows
+    nested unwrappable groups to be eliminated in a single traversal.
+
+    Args:
+        element: Element to process recursively.
+    """
+    # Step 1: Recursively process all children first (bottom-up)
+    for child in list(element):
+        _unwrap_groups_recursive(child)
+
+    # Step 2: After recursion, check for unwrappable <g> children
+    children = list(element)
+    for i, child in enumerate(children):
+        # Get local tag name (strip namespace)
+        tag = child.tag
+        local_name = tag.split("}")[-1] if "}" in tag else tag
+
+        # Only process <g> elements
+        if local_name != "g":
+            continue
+
+        # Check if this group can be unwrapped
+        if not _is_unwrappable_group(child):
+            continue
+
+        # Empty group after recursion? Remove it entirely
+        if len(child) == 0:
+            element.remove(child)
+            continue
+
+        # Unwrap: move grandchildren up to parent level
+        # Find current position of child in parent
+        child_index = list(element).index(child)
+        # Reuse existing helper (handles tail, order, etc.)
+        _unwrap_wrapper_element(element, child, insert_position=child_index)
+
+
+def unwrap_groups(svg: ET.Element) -> None:
+    """Unwrap <g> elements that have no meaningful attributes.
+
+    This optimization removes redundant <g> wrapper elements that don't affect
+    rendering, moving their children directly to the parent level. This reduces
+    SVG nesting depth and file size.
+
+    Groups are unwrapped if they have NO attributes (or only empty class), AND
+    no <title> child elements. Groups with rendering attributes (opacity, style,
+    filter, mask, clip-path, transform) or identity attributes (id) are preserved.
+
+    Empty groups (no children) are removed entirely.
+
+    Args:
+        svg: The root SVG element to optimize (modified in-place).
+
+    Example:
+        Before:
+            <svg>
+                <g>
+                    <rect x="0" y="0" width="100" height="100"/>
+                </g>
+            </svg>
+
+        After:
+            <svg>
+                <rect x="0" y="0" width="100" height="100"/>
+            </svg>
+
+        Preserved (has opacity):
+            <svg>
+                <g opacity="0.5">
+                    <rect x="0" y="0" width="100" height="100"/>
+                </g>
+            </svg>
+
+    Note:
+        This function is automatically called when optimize=True in save()
+        and tostring(). It processes the tree recursively, unwrapping all
+        eligible groups in a single pass.
+    """
+    _unwrap_groups_recursive(svg)
+
+
 def extract_font_families(svg: ET.Element) -> set[str]:
     """Extract all unique font families from font-family attributes in SVG tree.
 

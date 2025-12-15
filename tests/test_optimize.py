@@ -925,3 +925,325 @@ class TestDeduplicateDefinitions:
         circle = svg[2]
         assert rect.get("fill") == f"url(#{canonical_id})"
         assert circle.get("fill") == f"url(#{canonical_id})"
+
+
+class TestUnwrapGroups:
+    """Tests for unwrap_groups optimization."""
+
+    def test_unwrap_simple_group(self) -> None:
+        """Test unwrapping a simple group with no attributes."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be unwrapped, rect moved to svg level
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "rect"
+        assert svg[0].get("x") == "0"
+
+    def test_preserve_group_with_opacity(self) -> None:
+        """Test that groups with opacity are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g opacity="0.5">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert svg[0].get("opacity") == "0.5"
+        assert len(svg[0]) == 1
+        assert get_local_tag(svg[0][0]) == "rect"
+
+    def test_preserve_group_with_style(self) -> None:
+        """Test that groups with style are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g style="isolation: isolate">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert "isolation" in svg[0].get("style", "")
+        assert len(svg[0]) == 1
+
+    def test_preserve_group_with_mask(self) -> None:
+        """Test that groups with mask are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g mask="url(#m1)">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert svg[0].get("mask") == "url(#m1)"
+
+    def test_preserve_group_with_clip_path(self) -> None:
+        """Test that groups with clip-path are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g clip-path="url(#c1)">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert svg[0].get("clip-path") == "url(#c1)"
+
+    def test_preserve_group_with_filter(self) -> None:
+        """Test that groups with filter are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g filter="url(#f1)">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert svg[0].get("filter") == "url(#f1)"
+
+    def test_preserve_group_with_id(self) -> None:
+        """Test that groups with id are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g id="group1">
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved (may be referenced)
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert svg[0].get("id") == "group1"
+
+    def test_preserve_group_with_title_child(self) -> None:
+        """Test that groups with <title> children are NOT unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <title>Label</title>
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group should be preserved to avoid <title> conflicts
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "g"
+        assert len(svg[0]) == 2
+        assert get_local_tag(svg[0][0]) == "title"
+
+    def test_unwrap_nested_groups(self) -> None:
+        """Test unwrapping multiple levels of nested groups."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <g>
+                    <g>
+                        <rect x="0" y="0" width="100" height="100"/>
+                    </g>
+                </g>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # All nested groups should be unwrapped
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "rect"
+
+    def test_remove_empty_groups(self) -> None:
+        """Test that empty groups are removed entirely."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g></g>
+            <rect x="0" y="0" width="100" height="100"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Empty group should be removed
+        assert len(svg) == 1
+        assert get_local_tag(svg[0]) == "rect"
+
+    def test_unwrap_groups_in_defs(self) -> None:
+        """Test that groups inside <defs> are unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <g>
+                    <linearGradient id="g1"/>
+                </g>
+            </defs>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Group inside defs should be unwrapped
+        defs = svg[0]
+        assert get_local_tag(defs) == "defs"
+        assert len(defs) == 1
+        assert get_local_tag(defs[0]) == "linearGradient"
+
+    def test_unwrap_group_with_multiple_children(self) -> None:
+        """Test unwrapping preserves order of multiple children."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <rect x="0" y="0" width="100" height="100"/>
+                <circle cx="50" cy="50" r="25"/>
+                <ellipse cx="75" cy="75" rx="10" ry="20"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # All three children should be at svg level in order
+        assert len(svg) == 3
+        assert get_local_tag(svg[0]) == "rect"
+        assert get_local_tag(svg[1]) == "circle"
+        assert get_local_tag(svg[2]) == "ellipse"
+
+    def test_selective_unwrapping(self) -> None:
+        """Test that only unwrappable groups are unwrapped."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <rect x="0" y="0" width="100" height="100"/>
+            </g>
+            <g opacity="0.5">
+                <circle cx="50" cy="50" r="25"/>
+            </g>
+            <g>
+                <ellipse cx="75" cy="75" rx="10" ry="20"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # First and third groups unwrapped, second preserved
+        assert len(svg) == 3
+        assert get_local_tag(svg[0]) == "rect"
+        assert get_local_tag(svg[1]) == "g"  # Preserved (has opacity)
+        assert svg[1].get("opacity") == "0.5"
+        assert get_local_tag(svg[2]) == "ellipse"
+
+    def test_no_groups_to_unwrap(self) -> None:
+        """Test SVG with no groups remains unchanged."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="100" height="100"/>
+            <circle cx="50" cy="50" r="25"/>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Should remain unchanged
+        assert len(svg) == 2
+        assert get_local_tag(svg[0]) == "rect"
+        assert get_local_tag(svg[1]) == "circle"
+
+    def test_complex_real_world_structure(self) -> None:
+        """Test unwrapping in complex nested structure."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <g opacity="0.8">
+                    <rect x="0" y="0" width="100" height="100"/>
+                </g>
+                <g>
+                    <circle cx="50" cy="50" r="25"/>
+                </g>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+        svg_utils.unwrap_groups(svg)
+
+        # Outer group unwrapped, inner group with opacity preserved
+        assert len(svg) == 2
+        assert get_local_tag(svg[0]) == "g"  # Preserved (has opacity)
+        assert svg[0].get("opacity") == "0.8"
+        assert get_local_tag(svg[1]) == "circle"  # Inner unwrappable group unwrapped
+
+    def test_integration_with_other_optimizations(self) -> None:
+        """Test full pipeline: consolidate → deduplicate → unwrap."""
+        svg_str = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <linearGradient id="g1">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+            </g>
+            <defs>
+                <linearGradient id="g2">
+                    <stop offset="0%" stop-color="red"/>
+                </linearGradient>
+            </defs>
+            <g>
+                <rect fill="url(#g1)"/>
+            </g>
+            <g>
+                <circle fill="url(#g2)"/>
+            </g>
+        </svg>
+        """
+        svg = ET.fromstring(svg_str)
+
+        # Apply full optimization pipeline
+        svg_utils.consolidate_defs(svg)
+        svg_utils.deduplicate_definitions(svg)
+        svg_utils.unwrap_groups(svg)
+
+        # Should have consolidated defs + unwrapped groups
+        assert get_local_tag(svg[0]) == "defs"
+        # After deduplication, only one gradient
+        assert len(svg[0]) == 1
+        # After unwrapping, rect and circle at root level
+        assert len(svg) == 3  # defs + rect + circle
+        assert get_local_tag(svg[1]) == "rect"
+        assert get_local_tag(svg[2]) == "circle"
