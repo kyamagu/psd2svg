@@ -88,7 +88,9 @@ class ShapeConverter(ConverterProtocol):
                         layer, path_group, current, previous, rule
                     )
                 elif path.operation == 1:  # Union (OR)
-                    current = self.apply_union_operation(layer, path_group, current, rule)
+                    current = self.apply_union_operation(
+                        layer, path_group, current, rule
+                    )
                 elif path.operation == 2:  # Subtract (NOT OR)
                     current = self.apply_subtract_operation(
                         layer, path_group, current, rule
