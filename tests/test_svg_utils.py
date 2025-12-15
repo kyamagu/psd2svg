@@ -1047,7 +1047,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Helvetica")
 
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
     def test_add_fallback_to_quoted_font_family(self) -> None:
         """Test adding fallback when original font-family has single quotes."""
@@ -1056,7 +1056,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Helvetica")
 
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
     def test_add_fallback_to_double_quoted_font_family(self) -> None:
         """Test adding fallback when original font-family has double quotes."""
@@ -1065,27 +1065,27 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Helvetica")
 
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
     def test_idempotent_does_not_add_duplicate_attribute(self) -> None:
         """Test that function is idempotent - doesn't add duplicate fallback."""
-        text = ET.Element("text", attrib={"font-family": "'Arial', 'Helvetica'"})
+        text = ET.Element("text", attrib={"font-family": "Arial, Helvetica"})
         text.text = "Hello"
 
         svg_utils.add_font_family(text, "Helvetica")
 
         # Should remain unchanged - Helvetica already present
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
     def test_add_second_fallback_to_chain(self) -> None:
         """Test adding a second fallback to existing fallback chain."""
-        text = ET.Element("text", attrib={"font-family": "'Arial', 'Helvetica'"})
+        text = ET.Element("text", attrib={"font-family": "Arial, Helvetica"})
         text.text = "Hello"
 
         svg_utils.add_font_family(text, "sans-serif")
 
         # Should append new fallback
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica', 'sans-serif'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica, sans-serif"
 
     def test_unquoted_font_list_in_attribute(self) -> None:
         """Test handling unquoted font list in attribute."""
@@ -1099,7 +1099,7 @@ class TestAddFontFamily:
         # Should add DejaVu Sans if not present
         assert (
             text.attrib.get("font-family")
-            == "'Arial', 'Helvetica', 'sans-serif', 'DejaVu Sans'"
+            == "Arial, Helvetica, sans-serif, DejaVu Sans"
         )
 
     # Test cases for style attribute
@@ -1186,7 +1186,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "Helvetica")
 
         # Attribute should be updated
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
         # Style should remain unchanged
         style = text.attrib.get("style")
         assert style is not None
@@ -1202,7 +1202,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "Helvetica")
 
         # Should create new font-family attribute
-        assert text.attrib.get("font-family") == "'Helvetica'"
+        assert text.attrib.get("font-family") == "Helvetica"
         assert text.attrib.get("font-size") == "12px"
 
     def test_create_font_family_when_style_has_no_font(self) -> None:
@@ -1213,7 +1213,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "Helvetica")
 
         # Should create font-family attribute (not add to style)
-        assert text.attrib.get("font-family") == "'Helvetica'"
+        assert text.attrib.get("font-family") == "Helvetica"
         # Style should remain unchanged
         style = text.attrib.get("style")
         assert style is not None
@@ -1227,7 +1227,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "Helvetica")
 
         # Should create font-family attribute
-        assert text.attrib.get("font-family") == "'Helvetica'"
+        assert text.attrib.get("font-family") == "Helvetica"
 
     # Test cases with various font names
     def test_add_fallback_tspan_element(self) -> None:
@@ -1237,10 +1237,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(tspan, "Noto Sans CJK JP")
 
-        assert (
-            tspan.attrib.get("font-family")
-            == "'Kozuka Gothic Pr6N', 'Noto Sans CJK JP'"
-        )
+        assert tspan.attrib.get("font-family") == "Kozuka Gothic Pr6N, Noto Sans CJK JP"
 
     def test_add_fallback_with_font_name_with_spaces(self) -> None:
         """Test adding fallback for font names containing spaces."""
@@ -1249,7 +1246,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Liberation Serif")
 
-        assert text.attrib.get("font-family") == "'Times New Roman', 'Liberation Serif'"
+        assert text.attrib.get("font-family") == "Times New Roman, Liberation Serif"
 
     def test_mixed_quoting_styles(self) -> None:
         """Test handling of mixed quoting styles in font list."""
@@ -1263,7 +1260,7 @@ class TestAddFontFamily:
         # Should normalize quoting and add new font
         assert (
             text.attrib.get("font-family")
-            == "'Arial', 'Times New Roman', 'sans-serif', 'Helvetica'"
+            == "Arial, Times New Roman, sans-serif, Helvetica"
         )
 
     def test_whitespace_handling_in_font_names(self) -> None:
@@ -1274,7 +1271,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "DejaVu Sans")
 
         # Should trim whitespace and add new font
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica', 'DejaVu Sans'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica, DejaVu Sans"
 
     # Test preservation of other properties
     def test_preserve_other_style_properties(self) -> None:
@@ -1310,7 +1307,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Helvetica")
 
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
         assert text.attrib.get("font-size") == "12"
         assert text.attrib.get("transform") == "matrix(1,0,0,1,0,0)"
 
@@ -1332,9 +1329,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Noto Sans CJK JP")
 
-        assert (
-            text.attrib.get("font-family") == "'Kozuka Gothic Pr6N', 'Noto Sans CJK JP'"
-        )
+        assert text.attrib.get("font-family") == "Kozuka Gothic Pr6N, Noto Sans CJK JP"
         assert text.attrib.get("transform") == "matrix(3.36,0,-0.68,3.35,253.68,244.16)"
 
     def test_multiple_calls_build_fallback_chain(self) -> None:
@@ -1343,21 +1338,21 @@ class TestAddFontFamily:
         text.text = "Hello"
 
         svg_utils.add_font_family(text, "Helvetica")
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
         # Second call with same fallback - should be idempotent
         svg_utils.add_font_family(text, "Helvetica")
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica"
 
         # Third call with different fallback - should append
         svg_utils.add_font_family(text, "DejaVu Sans")
-        assert text.attrib.get("font-family") == "'Arial', 'Helvetica', 'DejaVu Sans'"
+        assert text.attrib.get("font-family") == "Arial, Helvetica, DejaVu Sans"
 
         # Fourth call with another fallback
         svg_utils.add_font_family(text, "sans-serif")
         assert (
             text.attrib.get("font-family")
-            == "'Arial', 'Helvetica', 'DejaVu Sans', 'sans-serif'"
+            == "Arial, Helvetica, DejaVu Sans, sans-serif"
         )
 
     def test_generic_font_family_names(self) -> None:
@@ -1367,7 +1362,7 @@ class TestAddFontFamily:
 
         svg_utils.add_font_family(text, "Helvetica")
 
-        assert text.attrib.get("font-family") == "'Arial', 'sans-serif', 'Helvetica'"
+        assert text.attrib.get("font-family") == "Arial, sans-serif, Helvetica"
 
     def test_case_sensitive_duplicate_detection(self) -> None:
         """Test that duplicate detection is case-sensitive."""
@@ -1378,7 +1373,7 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "arial")
 
         # Should add because case doesn't match
-        assert text.attrib.get("font-family") == "'Arial', 'arial'"
+        assert text.attrib.get("font-family") == "Arial, arial"
 
     def test_only_style_updated_when_no_attribute(self) -> None:
         """Test that only style is updated when element has no font-family attribute."""
