@@ -769,7 +769,36 @@ def consolidate_defs(svg: ET.Element) -> None:
 
     Note:
         This function preserves all id references and element ordering within defs.
-        It does NOT move <mask> elements as they can contain rendered content.
+
+        **Mask Element Exclusion:**
+
+        This function does NOT move <mask> elements for the following technical reasons:
+
+        1. **Coordinate Systems**: Masks use ``maskContentUnits="userSpaceOnUse"``
+           by default, meaning mask content coordinates are evaluated at reference
+           time (where ``mask="url(#id)"`` is applied), not at definition time.
+           Moving masks to a different DOM position could affect coordinate system
+           evaluation.
+
+        2. **Property Inheritance**: Masks inherit CSS properties (fill, stroke,
+           opacity, etc.) from their DOM ancestors. Moving a mask to <defs> changes
+           its inheritance chain, which can alter rendering for masks with styled
+           content.
+
+        3. **Transform Handling**: psd2svg uses special transform workarounds for
+           masked elements that rely on specific mask positioning in the DOM tree.
+
+        4. **Renderer Compatibility**: Known compatibility issues exist with some
+           SVG renderers regarding mask positioning and interactions with other
+           elements (e.g., clipPath-mask interactions).
+
+        **Nested Definitions Are Consolidated:**
+
+        While <mask> elements themselves are not moved, any nested <defs> and
+        definition elements (filters, gradients, etc.) WITHIN masks ARE moved
+        to the global defs. This provides optimization benefits while preserving
+        mask rendering fidelity. See ``test_consolidate_complex_real_world_example``
+        in tests/test_optimize.py for demonstration.
 
     Example:
         Before:
