@@ -22,6 +22,11 @@ Weight values follow fontconfig conventions:
 from typing import Any
 
 # Japanese weight system (W0-W9) used by Hiragino fonts
+# Note: W1-W3 mappings were corrected in v0.8.0 to match actual font weights:
+#   W1: 0.0 → 40.0 (extralight)
+#   W2: 0.0 → 45.0 (between extralight and light)
+#   W3: 0.0 → 50.0 (light)
+# This provides better progression and accuracy for Japanese font weight variants.
 _JAPANESE_WEIGHTS = {
     "W0": 0.0,
     "W1": 40.0,
