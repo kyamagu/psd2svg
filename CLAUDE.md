@@ -13,6 +13,7 @@ uv run pytest                    # Run tests
 uv run mypy src/ tests/          # Type checking
 uv run ruff check src/ tests/    # Linting
 uv run ruff format src/ tests/   # Format code
+uv run python                    # Run python interpreter
 
 # Optional dependencies
 uv sync --group docs             # Documentation tools
