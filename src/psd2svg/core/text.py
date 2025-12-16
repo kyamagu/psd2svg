@@ -434,7 +434,7 @@ class TextConverter(ConverterProtocol):
         # Determine font weight - only set for faux bold (PostScript name encodes actual weight)
         font_weight: int | str | None = None
         if style.faux_bold:
-            font_weight = "bold"
+            font_weight = "700"
 
         with self.set_current(paragraph_node):
             tspan = self.create_node(
@@ -791,7 +791,7 @@ class TextConverter(ConverterProtocol):
 
         # Font weight - only set for faux bold (PostScript name encodes actual weight)
         if style.faux_bold:
-            styles["font-weight"] = "bold"
+            styles["font-weight"] = "700"
 
         # Font style - only set for faux italic (PostScript name encodes actual style)
         if style.faux_italic:
