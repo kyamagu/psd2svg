@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Adjustment layer support** (#189, #191, #192, #194)
+  - Posterize adjustment layer support
+  - HueSaturation adjustment layer support
+  - Exposure adjustment layer support
+  - BrightnessContrast adjustment layer support
 - **Morisawa font mappings** (#180)
   - Added 4,042 Morisawa fonts for enhanced Japanese typography support
   - Migrated font mappings to JSON resource files with lazy loading
@@ -36,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - Documentation improvements (CLAUDE.md, development.rst, font mapping docs)
+- Added PSD file debugging tips and low-level inspection examples (#190, #193)
+- Refactored lightness adjustment into shared helper method
 - Updated release workflow to include `uv sync` and `uv.lock`
 
 ## [0.9.0] - 2025-12-15
