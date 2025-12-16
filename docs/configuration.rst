@@ -229,7 +229,8 @@ psd2svg provides different strategies for handling text that wraps within boundi
 
 .. code-block:: python
 
-   from psd2svg import SVGDocument, TextWrappingMode
+   from psd2svg import SVGDocument
+   from psd2svg.core.text import TextWrappingMode
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
@@ -284,7 +285,8 @@ For a text layer with wrapping in a 200px wide box:
 
 .. code-block:: python
 
-   from psd2svg import SVGDocument, TextWrappingMode
+   from psd2svg import SVGDocument
+   from psd2svg.core.text import TextWrappingMode
    from psd_tools import PSDImage
 
    psdimage = PSDImage.open("input.psd")
