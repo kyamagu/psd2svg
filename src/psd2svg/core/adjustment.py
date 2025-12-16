@@ -101,6 +101,136 @@ class AdjustmentConverter(ConverterProtocol):
                 )
         return use
 
+    def add_huesaturation_adjustment(
+        self, layer: adjustments.HueSaturation, **attrib: str
+    ) -> ET.Element | None:
+        """Add a hue/saturation adjustment layer to the svg document.
+
+        Supports two modes:
+        - Normal mode: Adjusts hue, saturation, and lightness using master values
+        - Colorize mode: Desaturates then applies colorization tint
+
+        Note: Per-range color adjustments (layer.data) are not yet supported.
+        """
+        # Extract adjustment parameters
+        hue, saturation, lightness = layer.master
+        enable_colorization = layer.enable_colorization
+
+        # Check if this is a no-op adjustment
+        if enable_colorization == 0 and hue == 0 and saturation == 0 and lightness == 0:
+            logger.info(
+                f"HueSaturation adjustment '{layer.name}' has no effect, skipping"
+            )
+            return None
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="huesaturation", **attrib)
+
+        with self.set_current(filter):
+            if enable_colorization == 1:
+                # Colorize mode: desaturate, then apply colorization
+                self._apply_colorize_mode(layer)
+            else:
+                # Normal mode: apply master adjustments
+                self._apply_normal_huesaturation(hue, saturation, lightness)
+
+        return use
+
+    def _apply_normal_huesaturation(
+        self, hue: int, saturation: int, lightness: int
+    ) -> None:
+        """Apply normal mode hue/saturation adjustments."""
+        # Apply lightness decrease first (darkening)
+        if lightness < 0:
+            slope = 1 + (lightness / 100)
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                    self.create_node(func, type="linear", slope=slope, intercept=0)
+
+        # Apply hue rotation
+        if hue != 0:
+            self.create_node(
+                "feColorMatrix",
+                type="hueRotate",
+                values=hue,
+                color_interpolation_filters="sRGB",
+            )
+
+        # Apply saturation adjustment
+        if saturation != 0:
+            saturate_factor = 1 + (saturation / 100)
+            self.create_node(
+                "feColorMatrix",
+                type="saturate",
+                values=saturate_factor,
+                color_interpolation_filters="sRGB",
+            )
+
+        # Apply lightness increase (brightening)
+        if lightness > 0:
+            slope = 1 - (lightness / 100)
+            intercept = lightness / 100
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                    self.create_node(
+                        func, type="linear", slope=slope, intercept=intercept
+                    )
+
+    def _apply_colorize_mode(self, layer: adjustments.HueSaturation) -> None:
+        """Apply colorize mode adjustments."""
+        hue, saturation, lightness = layer.colorization
+
+        # Step 1: Desaturate completely
+        self.create_node(
+            "feColorMatrix",
+            type="saturate",
+            values=0,
+            color_interpolation_filters="sRGB",
+        )
+
+        # Step 2: Apply colorization hue rotation
+        if hue != 0:
+            self.create_node(
+                "feColorMatrix",
+                type="hueRotate",
+                values=hue,
+                color_interpolation_filters="sRGB",
+            )
+
+        # Step 3: Apply colorization saturation (absolute, not delta)
+        # Note: Photoshop's colorization saturation is 0-100, not -100 to +100
+        saturate_factor = 1 + (saturation / 100)
+        self.create_node(
+            "feColorMatrix",
+            type="saturate",
+            values=saturate_factor,
+            color_interpolation_filters="sRGB",
+        )
+
+        # Step 4: Apply lightness adjustment
+        if lightness != 0:
+            if lightness < 0:
+                slope = 1 + (lightness / 100)
+                intercept = 0
+            else:
+                slope = 1 - (lightness / 100)
+                intercept = lightness / 100
+
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                    self.create_node(
+                        func, type="linear", slope=slope, intercept=intercept
+                    )
+
     def _create_filter(
         self, layer: layers.AdjustmentLayer, name: str, **attrib: str
     ) -> tuple[ET.Element, ET.Element]:

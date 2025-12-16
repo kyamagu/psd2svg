@@ -122,6 +122,9 @@ class ConverterProtocol(Protocol):
     def add_posterize_adjustment(
         self, layer: adjustments.Posterize, **attrib: str
     ) -> ET.Element | None: ...
+    def add_huesaturation_adjustment(
+        self, layer: adjustments.HueSaturation, **attrib: str
+    ) -> ET.Element | None: ...
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...

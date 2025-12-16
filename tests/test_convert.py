@@ -521,6 +521,36 @@ def test_adjustment_posterize(psd_file: str) -> None:
 @pytest.mark.parametrize(
     "psd_file",
     [
+        "adjustments/huesaturation-h0-s0-l0.psd",
+        "adjustments/huesaturation-h+180-s0-l0.psd",
+        "adjustments/huesaturation-h-180-s0-l0.psd",
+        "adjustments/huesaturation-h0-s+100-l0.psd",
+        "adjustments/huesaturation-h0-s-100-l0.psd",
+        "adjustments/huesaturation-h0-s0-l+100.psd",
+        "adjustments/huesaturation-h0-s0-l-100.psd",
+        "adjustments/huesaturation-colorize.psd",
+    ],
+)
+def test_adjustment_huesaturation(psd_file: str) -> None:
+    """Test conversion quality of hue/saturation adjustment layer."""
+    # Use 0.02 threshold for lightness (RGB approximation of HSL)
+    # and extreme hue rotations (±180 degrees have edge case rounding)
+    # Use 0.01 for saturation (accurate with feColorMatrix)
+    if (
+        "l+" in psd_file
+        or "l-" in psd_file
+        or "h+180" in psd_file
+        or "h-180" in psd_file
+    ):
+        threshold = 0.02
+    else:
+        threshold = 0.01
+    evaluate_quality(psd_file, threshold)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
         "texts/paragraph-shapetype0-justification0.psd",
         "texts/paragraph-shapetype0-justification1.psd",
         "texts/paragraph-shapetype0-justification2.psd",
