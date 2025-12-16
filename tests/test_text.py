@@ -264,7 +264,7 @@ def test_text_style_italic() -> None:
 def test_text_style_faux_bold() -> None:
     """Test faux bold handling.
 
-    Faux bold (synthetic bold) should set font-weight="bold".
+    Faux bold (synthetic bold) should set font-weight="700".
     This ensures proper rendering even with variable fonts.
     """
     svg = convert_psd_to_svg("texts/style-faux-bold.psd")
@@ -272,10 +272,10 @@ def test_text_style_faux_bold() -> None:
     tspans = svg.findall(".//tspan[@font-weight]")
     assert len(tspans) > 0, "Should have at least one tspan with font-weight"
 
-    # Check that we have a bold tspan (font-weight="bold" for faux bold)
+    # Check that we have a bold tspan (font-weight="700" for faux bold)
     font_weights = [t.attrib.get("font-weight") for t in tspans]
-    assert "bold" in font_weights, (
-        f"Expected to find font-weight='bold' (faux bold), got: {font_weights}"
+    assert "700" in font_weights, (
+        f"Expected to find font-weight='700' (faux bold), got: {font_weights}"
     )
 
 
