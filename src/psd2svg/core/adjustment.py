@@ -291,7 +291,7 @@ class AdjustmentConverter(ConverterProtocol):
                 with self.set_current(fe_brightness):
                     for func in ["feFuncR", "feFuncG", "feFuncB"]:
                         self.create_node(
-                            func, type="linear", slope=1, intercept=brightness_offset
+                            func, type="linear", slope=1.0, intercept=brightness_offset
                         )
 
             # Stage 2: Apply contrast (if non-zero)
