@@ -128,7 +128,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed development instructions.
 
 - SVG 1.1 does not support all Photoshop blending modes
 - Filter effects are approximations
-- Most adjustment layers not implemented
+- Some adjustment layers not yet implemented (Curves, Levels, etc.)
 - Smart object filters not implemented
 - APIs are not thread-safe
 
