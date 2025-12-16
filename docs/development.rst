@@ -385,7 +385,7 @@ The package provides two rasterization backends:
    image = rasterizer.from_file('input.svg')
    image.save('output.png')
 
-**PlaywrightRasterizer** (optional, requires ``browser`` group):
+**PlaywrightRasterizer** (optional, requires ``browser`` extra):
 
 .. code-block:: python
 
