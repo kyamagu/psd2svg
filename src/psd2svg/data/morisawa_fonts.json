@@ -3677,12 +3677,12 @@
   "HiraKakADKStd-W1": {
     "family": "Hiragino KakuGo ADKana Std",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "HiraKakADKStd-W2": {
     "family": "Hiragino KakuGo ADKana Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraKakADKStd-W3": {
     "family": "Hiragino KakuGo ADKana Std",
@@ -3722,7 +3722,7 @@
   "HiraKakuPKStd-W2": {
     "family": "Hiragino KakuGo PackKana Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraKakuPKStd-W3": {
     "family": "Hiragino KakuGo PackKana Std",
@@ -3757,12 +3757,12 @@
   "HiraKakuProN-W1": {
     "family": "Hiragino Kaku Gothic ProN",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "HiraKakuProN-W2": {
     "family": "Hiragino Kaku Gothic ProN",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraKakuProN-W3": {
     "family": "Hiragino Kaku Gothic ProN",
@@ -3792,12 +3792,12 @@
   "HiraKakuStd-W1": {
     "family": "Hiragino Kaku Gothic Std",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "HiraKakuStd-W2": {
     "family": "Hiragino Kaku Gothic Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraKakuStd-W3": {
     "family": "Hiragino Kaku Gothic Std",
@@ -3842,12 +3842,12 @@
   "HiraKakuStdN-W1": {
     "family": "Hiragino Kaku Gothic StdN",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "HiraKakuStdN-W2": {
     "family": "Hiragino Kaku Gothic StdN",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraKakuStdN-W3": {
     "family": "Hiragino Kaku Gothic StdN",
@@ -3897,7 +3897,7 @@
   "HiraMaruStd-W2": {
     "family": "Hiragino Maru Gothic Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMaruStd-W3": {
     "family": "Hiragino Maru Gothic Std",
@@ -3932,7 +3932,7 @@
   "HiraMaruStdN-W2": {
     "family": "Hiragino Maru Gothic StdN",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMaruStdN-W3": {
     "family": "Hiragino Maru Gothic StdN",
@@ -3987,7 +3987,7 @@
   "HiraMinPro-W2": {
     "family": "Hiragino Mincho Pro",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMinPro-W3": {
     "family": "Hiragino Mincho Pro",
@@ -4002,7 +4002,7 @@
   "HiraMinProN-W2": {
     "family": "Hiragino Mincho ProN",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMinProN-W3": {
     "family": "Hiragino Mincho ProN",
@@ -4017,7 +4017,7 @@
   "HiraMinStd-W2": {
     "family": "Hiragino Mincho Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMinStd-W3": {
     "family": "Hiragino Mincho Std",
@@ -4052,7 +4052,7 @@
   "HiraMinStdN-W2": {
     "family": "Hiragino Mincho StdN",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraMinStdN-W3": {
     "family": "Hiragino Mincho StdN",
@@ -4142,12 +4142,12 @@
   "HiraginoSansGBStd-W1": {
     "family": "Hiragino Sans GB Std",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "HiraginoSansGBStd-W2": {
     "family": "Hiragino Sans GB Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "HiraginoSansGBStd-W3": {
     "family": "Hiragino Sans GB Std",
@@ -4867,7 +4867,7 @@
   "KoburinaGoStd-W1": {
     "family": "Koburina Gothic Std",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "KoburinaGoStd-W3": {
     "family": "Koburina Gothic Std",
@@ -4892,7 +4892,7 @@
   "KoburinaGoStdN-W1": {
     "family": "Koburina Gothic StdN",
     "style": "W1",
-    "weight": 0.0
+    "weight": 40.0
   },
   "KoburinaGoStdN-W3": {
     "family": "Koburina Gothic StdN",
@@ -19957,7 +19957,7 @@
   "Yutuki36PKStd-W2": {
     "family": "Yutuki 36PoKana Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "Yutuki36PKStd-W3": {
     "family": "Yutuki 36PoKana Std",
@@ -19992,7 +19992,7 @@
   "Yutuki5GoKStd-W2": {
     "family": "Yutuki 5GoKana Std",
     "style": "W2",
-    "weight": 40.0
+    "weight": 45.0
   },
   "Yutuki5GoKStd-W3": {
     "family": "Yutuki 5GoKana Std",

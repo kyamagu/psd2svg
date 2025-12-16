@@ -397,7 +397,9 @@ class TestDefaultFontMapping:
             # Check style matches weight suffix
             assert font_data["style"] == postscript_name.split("-")[-1]
 
-        # Verify total count of Hiragino entries (should be 370 = 37 base * 10 weights)
+        # Verify total count of Hiragino entries
+        # Should be at least 370 (37 base * 10 weights from generation)
+        # May be more due to additional Morisawa Hiragino variants
         hiragino_count = sum(
             1
             for k in fm.DEFAULT_FONT_MAPPING.keys()
@@ -406,8 +408,8 @@ class TestDefaultFontMapping:
                 and "-W" in k
             )
         )
-        assert hiragino_count == 370, (
-            f"Expected 370 Hiragino entries, got {hiragino_count}"
+        assert hiragino_count >= 370, (
+            f"Expected at least 370 Hiragino entries, got {hiragino_count}"
         )
 
 
@@ -734,9 +736,14 @@ class TestSuffixParsing:
             ("RodinCattleyaPro-EB", "ExtraBold", 205.0),  # ExtraBold (short)
             ("RodinCattleyaPro-UB", "Ultra", 210.0),  # UltraBold
             ("RowdyStd-EB", "ExtraBold", 205.0),
-            ("PAotoGothicStdN-DeBold", "SemiBold", 180.0),  # DemiBold (medium)
-            ("PAotoGothicStdN-ExBold", "ExtraBold", 205.0),  # ExtraBold (medium)
-            ("PAotoGothicStdN-ExLight", "ExtraLight", 40.0),  # ExtraLight abbreviation
+            # PAotoGothicStdN fonts now come from Morisawa data (authoritative)
+            ("PAotoGothicStdN-DeBold", "DeBold", 180.0),  # Morisawa uses "DeBold" style
+            ("PAotoGothicStdN-ExBold", "ExBold", 205.0),  # Morisawa uses "ExBold" style
+            (
+                "PAotoGothicStdN-ExLight",
+                "ExLight",
+                40.0,
+            ),  # Morisawa uses "ExLight" style
         ]
 
         for name, expected_style, expected_weight in test_cases:

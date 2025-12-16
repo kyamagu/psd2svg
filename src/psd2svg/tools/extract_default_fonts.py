@@ -9,8 +9,6 @@ The resulting files are:
 - src/psd2svg/data/morisawa_fonts.json (4,042 fonts)
 """
 
-import json
-from pathlib import Path
 from typing import Any
 
 

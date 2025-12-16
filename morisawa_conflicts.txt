@@ -1,113 +1,11 @@
 Morisawa Font Conflicts Report
 ======================================================================
-Generated: 2025-12-16 14:17:01
+Generated: 2025-12-16 15:28:57
 
 Total Morisawa fonts: 4042
-Total default fonts before: 559
-Conflicts found: 20
-Removed from default: 20
+Total default fonts before: 539
+Conflicts found: 0
+Removed from default: 0
 Default fonts after: 539
 
-Conflicts resolved (Morisawa fonts kept, removed from default):
-----------------------------------------------------------------------
-
-1. A1MinchoStd-Bold
-   Default (REMOVED):  A1 Mincho Std | Bold | 200.0
-   Morisawa (KEPT):    A-OTF A1 Mincho Std | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-2. FutoGoB101Pro-Bold
-   Default (REMOVED):  Futo Go B101 Pro | Bold | 200.0
-   Morisawa (KEPT):    A-OTF Futo Go B101 Pro | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-3. FutoMinA101Pro-Bold
-   Default (REMOVED):  Futo Min A101 Pro | Bold | 200.0
-   Morisawa (KEPT):    A-OTF Futo Min A101 Pro | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-4. GothicMB101Pro-Bold
-   Default (REMOVED):  Gothic MB101 Pro | Bold | 200.0
-   Morisawa (KEPT):    A-OTF Gothic MB101 Pro | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-5. GothicMB101Pro-Heavy
-   Default (REMOVED):  Gothic MB101 Pro | Heavy | 210.0
-   Morisawa (KEPT):    A-OTF Gothic MB101 Pro | Heavy | 210.0
-   Decision: Keep Morisawa (authoritative source)
-
-6. GothicMB101Pro-Light
-   Default (REMOVED):  Gothic MB101 Pro | Light | 50.0
-   Morisawa (KEPT):    A-OTF Gothic MB101 Pro | Light | 50.0
-   Decision: Keep Morisawa (authoritative source)
-
-7. GothicMB101Pro-Regular
-   Default (REMOVED):  Gothic MB101 Pro | Regular | 80.0
-   Morisawa (KEPT):    A-OTF Gothic MB101 Pro | Regular | 80.0
-   Decision: Keep Morisawa (authoritative source)
-
-8. Jun101Pro-Light
-   Default (REMOVED):  Jun 101 Pro | Light | 50.0
-   Morisawa (KEPT):    A-OTF Jun Pro 101 | Light | 50.0
-   Decision: Keep Morisawa (authoritative source)
-
-9. RyuminPro-Bold
-   Default (REMOVED):  Ryumin Pro | Bold | 200.0
-   Morisawa (KEPT):    A-OTF Ryumin Pro | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-10. RyuminPro-Heavy
-   Default (REMOVED):  Ryumin Pro | Heavy | 210.0
-   Morisawa (KEPT):    A-OTF Ryumin Pro | Heavy | 210.0
-   Decision: Keep Morisawa (authoritative source)
-
-11. RyuminPro-Light
-   Default (REMOVED):  Ryumin Pro | Light | 50.0
-   Morisawa (KEPT):    A-OTF Ryumin Pro | Light | 50.0
-   Decision: Keep Morisawa (authoritative source)
-
-12. RyuminPro-Medium
-   Default (REMOVED):  Ryumin Pro | Medium | 100.0
-   Morisawa (KEPT):    A-OTF Ryumin Pro | Medium | 100.0
-   Decision: Keep Morisawa (authoritative source)
-
-13. RyuminPro-Regular
-   Default (REMOVED):  Ryumin Pro | Regular | 80.0
-   Morisawa (KEPT):    A-OTF Ryumin Pro | Regular | 80.0
-   Decision: Keep Morisawa (authoritative source)
-
-14. ShinGoPro-Bold
-   Default (REMOVED):  Shin Go Pro | Bold | 200.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Bold | 200.0
-   Decision: Keep Morisawa (authoritative source)
-
-15. ShinGoPro-DeBold
-   Default (REMOVED):  Shin Go Pro | DeBold | 180.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | DeBold | 180.0
-   Decision: Keep Morisawa (authoritative source)
-
-16. ShinGoPro-Heavy
-   Default (REMOVED):  Shin Go Pro | Heavy | 210.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Heavy | 210.0
-   Decision: Keep Morisawa (authoritative source)
-
-17. ShinGoPro-Light
-   Default (REMOVED):  Shin Go Pro | Light | 50.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Light | 50.0
-   Decision: Keep Morisawa (authoritative source)
-
-18. ShinGoPro-Medium
-   Default (REMOVED):  Shin Go Pro | Medium | 100.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Medium | 100.0
-   Decision: Keep Morisawa (authoritative source)
-
-19. ShinGoPro-Regular
-   Default (REMOVED):  Shin Go Pro | Regular | 80.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Regular | 80.0
-   Decision: Keep Morisawa (authoritative source)
-
-20. ShinGoPro-Ultra
-   Default (REMOVED):  Shin Go Pro | Ultra | 210.0
-   Morisawa (KEPT):    A-OTF Shin Go Pro | Ultra | 215.0
-   Decision: Keep Morisawa (authoritative source)
-
+No conflicts found.
