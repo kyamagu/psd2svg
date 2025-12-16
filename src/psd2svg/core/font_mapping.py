@@ -24,6 +24,31 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _load_font_json(
+    filename: str, description: str, error_context: str
+) -> dict[str, dict[str, Any]]:
+    """Load font mapping from JSON resource file.
+
+    Args:
+        filename: Name of the JSON file in psd2svg.data package.
+        description: Description for debug logging (e.g., "default fonts").
+        error_context: Context message for error logging (e.g., "Using empty mapping").
+
+    Returns:
+        Dictionary mapping PostScript names to font metadata.
+        Returns empty dict if loading fails (graceful degradation).
+    """
+    try:
+        data_path = files("psd2svg.data").joinpath(filename)
+        font_data_json = data_path.read_text(encoding="utf-8")
+        mapping = json.loads(font_data_json)
+        logger.debug(f"Loaded {len(mapping)} {description} from resource file")
+        return mapping
+    except Exception as e:
+        logger.warning(f"Failed to load {description}: {e}. {error_context}")
+        return {}
+
+
 @functools.lru_cache(maxsize=1)
 def _load_default_fonts() -> dict[str, dict[str, Any]]:
     """Load default font mapping on first access (lazy loading with caching).
@@ -35,15 +60,9 @@ def _load_default_fonts() -> dict[str, dict[str, Any]]:
         Dictionary mapping PostScript names to font metadata.
         Returns empty dict if loading fails (graceful degradation).
     """
-    try:
-        data_path = files("psd2svg.data").joinpath("default_fonts.json")
-        font_data_json = data_path.read_text(encoding="utf-8")
-        default_mapping = json.loads(font_data_json)
-        logger.debug(f"Loaded {len(default_mapping)} default fonts from resource file")
-        return default_mapping
-    except Exception as e:
-        logger.warning(f"Failed to load default fonts: {e}. Using empty mapping.")
-        return {}
+    return _load_font_json(
+        "default_fonts.json", "default fonts", "Using empty mapping."
+    )
 
 
 @functools.lru_cache(maxsize=1)
@@ -56,19 +75,9 @@ def _load_morisawa_fonts() -> dict[str, dict[str, Any]]:
         Dictionary mapping PostScript names to font metadata.
         Returns empty dict if loading fails (graceful degradation).
     """
-    try:
-        data_path = files("psd2svg.data").joinpath("morisawa_fonts.json")
-        font_data_json = data_path.read_text(encoding="utf-8")
-        morisawa_mapping = json.loads(font_data_json)
-        logger.debug(
-            f"Loaded {len(morisawa_mapping)} Morisawa fonts from resource file"
-        )
-        return morisawa_mapping
-    except Exception as e:
-        logger.warning(
-            f"Failed to load Morisawa fonts: {e}. Continuing without Morisawa support."
-        )
-        return {}
+    return _load_font_json(
+        "morisawa_fonts.json", "Morisawa fonts", "Continuing without Morisawa support."
+    )
 
 
 @functools.lru_cache(maxsize=1)
