@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Clipping mask and layer mask combination rendering**
+  - Fixed browser compatibility issue when both clipping mask and layer mask exist on the same layer
+  - Previous approach using nested mask references (`<mask mask="url(#id)">`) doesn't work reliably across browsers
+  - Now transfers mask/clip-path attributes to mask content elements for proper composition hierarchy
+  - Improved test quality thresholds for clipping-4 test cases (from 0.005 to 0.001 MSE)
+  - Added test fixture `clipping-5-mask-with-effect.psd` to validate the fix
+
 ## [0.9.0] - 2025-12-15
 
 ### Added

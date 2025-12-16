@@ -1,7 +1,7 @@
 import contextlib
 import logging
-from xml.etree import ElementTree as ET
 from typing import Callable, Iterator
+from xml.etree import ElementTree as ET
 
 from psd_tools import PSDImage
 from psd_tools.api import adjustments, layers
@@ -521,6 +521,16 @@ class LayerConverter(ConverterProtocol):
             return target
         logger.debug(f"Adding mask: '{layer.name}' ({layer.kind})")
 
+        # If the target already has a mask or a clip-path, we need to transfer them to the content.
+        # NOTE: Nested mask references like <mask mask="url(#id)"> don't work reliably in browsers.
+        # Instead, we apply the existing mask/clip-path to the mask content elements themselves,
+        # creating a proper composition hierarchy where masking operations combine at the content level.
+        context: dict[str, str] = {}
+        if "mask" in target.attrib:
+            context["mask"] = target.attrib.pop("mask")
+        if "clip-path" in target.attrib:
+            context["clip-path"] = target.attrib.pop("clip-path")
+
         # Viewbox for the mask. If the mask is empty, use the full canvas.
         viewbox = layer.bbox
         if viewbox == (0, 0, 0, 0):
@@ -545,6 +555,7 @@ class LayerConverter(ConverterProtocol):
                     width=viewbox[2] - viewbox[0],
                     height=viewbox[3] - viewbox[1],
                     fill="#ffffff",
+                    **context,  # type: ignore[arg-type]
                 )
 
         # Mask image.
@@ -560,12 +571,8 @@ class LayerConverter(ConverterProtocol):
                     y=layer.mask.top,
                     width=layer.mask.width,
                     height=layer.mask.height,
+                    **context,  # type: ignore[arg-type]
                 )
-
-        # If the target already has a mask, we need to combine them.
-        # We cannot set clip-path to <mask> elements, so we don't pop clip-path here.
-        if "mask" in target.attrib:
-            svg_utils.set_attribute(mask, "mask", target.attrib.pop("mask"))
 
         # If the target has a transform, we cannot directly apply it to the mask.
         if "transform" in target.attrib:

@@ -117,23 +117,27 @@ def test_layer_types_quality(psd_file: str, quality: float) -> None:
         # Tests for clipping with masks and transforms.
         pytest.param(
             "clipping/clipping-4-pixel-mask-with-transform-w-mask.psd",
-            0.005,
+            0.001,
         ),
         pytest.param(
             "clipping/clipping-4-pixel-mask-with-transform-wo-mask.psd",
-            0.005,
+            0.001,
         ),
         pytest.param(
             "clipping/clipping-4-shape-mask-with-transform-w-mask.psd",
-            0.005,
+            0.001,
         ),
         pytest.param(
             "clipping/clipping-4-shape-mask-with-transform-wo-mask.psd",
-            0.005,
+            0.001,
         ),
         pytest.param(
             "clipping/clipping-4-shape-mask-clippath.psd",
-            0.005,
+            0.001,
+        ),
+        pytest.param(
+            "clipping/clipping-5-mask-with-effect.psd",
+            0.001,
         ),
     ],
 )
