@@ -11,7 +11,7 @@ PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools
 - Preserve layers, groups, and artboards
 - Convert text layers to native SVG text elements (experimental)
 - **Smart font matching**: Unicode codepoint-based font selection for optimal glyph coverage (multilingual support)
-- Hybrid font resolution: Static mapping (572 fonts) + dynamic system resolution
+- Hybrid font resolution: Static mapping (~4,950 fonts) + dynamic system resolution
 - Support for blending modes, effects, and vector shapes
 - Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
 - Command-line tool and Python API
@@ -82,7 +82,7 @@ image.save('output.png')
 
 Text layer conversion uses a hybrid approach:
 
-1. **Static font mapping** (572 common fonts) - works on all platforms
+1. **Static font mapping** (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa) - works on all platforms
 2. **Platform-specific font resolution** for font file discovery when embedding fonts:
    - **Linux/macOS**: fontconfig
    - **Windows**: Windows registry + fontTools parsing
