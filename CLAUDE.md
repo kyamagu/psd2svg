@@ -364,25 +364,9 @@ For detailed feature documentation, configuration options, and usage examples, r
 
 ### Debugging PSD files
 
-Use `psd-tools` API to inspect PSD content. For text layers, use the following approach:
+Use `psd-tools` API to inspect PSD content. Don't forget to use `uv run python` to explore the package API in the uv-managed environment.
 
-```python
-from psd_tools import PSDImage
-from psd_tools.api.layers import TypeLayer
-from psd2svg.core.typesetting import TypeSetting  # Direct import (recommended)
-# Or: from psd2svg.core.text import TypeSetting  # Via re-export (backward compatible)
-
-psdimage = PSDImage.open("tests/fixtures/texts/style-tsume.psd")
-for layer in psd.descendants():
-    if isinstance(layer, TypeLayer) and layer.is_visible():
-        text_setting = TypeSetting(layer._data)
-        for paragraph in text_setting:
-            for style in paragraph:
-                # Do whatever you want to debug with the style span.
-                pass
-```
-
-For inspecting low-level structure in PSD file, you can access the `_record` attribute of each layer, or use the instance method provided by specific layer type.
+For inspecting low-level structure in PSD file, you can use the instance method provided by specific layer type, or access the `_record` attribute of each layer:
 
 ```python
 from psd_tools import PSDImage
@@ -397,4 +381,21 @@ for layer in psdimage.descendants():
         print(layer)              # Layer object
         print(layer.posterize)    # Specific layer has specific attribute
         display(layer._record)    # Low-level record supports pretty printing via IPython
+```
+
+Text layers have a wrapper class `TypeSetting` in psd2svg. Use the following approach:
+
+```python
+from psd_tools import PSDImage
+from psd_tools.api.layers import TypeLayer
+from psd2svg.core.typesetting import TypeSetting
+
+psdimage = PSDImage.open("tests/fixtures/texts/style-tsume.psd")
+for layer in psd.descendants():
+    if isinstance(layer, TypeLayer) and layer.is_visible():
+        text_setting = TypeSetting(layer._data)
+        for paragraph in text_setting:
+            for style in paragraph:
+                # Do whatever you want to debug with the style span.
+                pass
 ```
