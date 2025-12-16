@@ -40,7 +40,7 @@ class LayerConverter(ConverterProtocol):
             layers.SmartObjectLayer: self.add_pixel,
             layers.TypeLayer: self.add_text,
             adjustments.BlackAndWhite: self.add_adjustment,
-            adjustments.BrightnessContrast: self.add_adjustment,
+            adjustments.BrightnessContrast: self.add_brightnesscontrast_adjustment,
             adjustments.ChannelMixer: self.add_adjustment,
             adjustments.ColorBalance: self.add_adjustment,
             adjustments.ColorLookup: self.add_adjustment,

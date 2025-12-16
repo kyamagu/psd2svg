@@ -224,6 +224,102 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
+    def add_brightnesscontrast_adjustment(
+        self, layer: adjustments.BrightnessContrast, **attrib: str
+    ) -> ET.Element | None:
+        """Add a brightness/contrast adjustment layer to the svg document.
+
+        Applies brightness and contrast adjustments using SVG feComponentTransfer
+        filters with linear transfer functions. Operations are applied sequentially:
+        brightness first, then contrast.
+
+        Brightness adds a constant value to all RGB channels:
+            output = input + (brightness / 255)
+
+        Contrast scales values around the midpoint (0.5):
+            output = (input - 0.5) * factor + 0.5
+            where factor = (259 * (contrast + 255)) / (255 * (259 - contrast))
+
+        Note: Photoshop's modern (non-legacy) brightness/contrast uses a complex
+        curves-based algorithm. Our linear approximation works well for most cases
+        but may have higher error for extreme negative brightness values.
+
+        Args:
+            layer: The BrightnessContrast adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if no-op.
+        """
+        # Extract parameters
+        brightness = layer.brightness
+        contrast = layer.contrast
+
+        # Log parameters for debugging
+        logger.debug(
+            f"BrightnessContrast adjustment '{layer.name}': "
+            f"brightness={brightness}, contrast={contrast}"
+        )
+
+        # Early return for no-op
+        if brightness == 0 and contrast == 0:
+            logger.info(
+                f"BrightnessContrast adjustment '{layer.name}' has no effect, skipping"
+            )
+            return None
+
+        # Parameter validation (warn but don't clamp)
+        if not (-150 <= brightness <= 150):
+            logger.warning(
+                f"Brightness value {brightness} is outside expected range [-150, +150]"
+            )
+        if not (-50 <= contrast <= 100):
+            logger.warning(
+                f"Contrast value {contrast} is outside expected range [-50, +100]"
+            )
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="brightnesscontrast", **attrib)
+
+        with self.set_current(filter):
+            # Stage 1: Apply brightness (if non-zero)
+            if brightness != 0:
+                brightness_offset = brightness / 255.0
+                fe_brightness = self.create_node(
+                    "feComponentTransfer", color_interpolation_filters="sRGB"
+                )
+                with self.set_current(fe_brightness):
+                    for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                        self.create_node(
+                            func, type="linear", slope=1, intercept=brightness_offset
+                        )
+
+            # Stage 2: Apply contrast (if non-zero)
+            if contrast != 0:
+                # Calculate contrast factor using legacy-style formula
+                # This formula: (259 * (contrast + 255)) / (255 * (259 - contrast))
+                # Matches Photoshop's behavior better than the simple modern formula
+                numerator = 259.0 * (contrast + 255.0)
+                denominator = 255.0 * (259.0 - contrast)
+                contrast_factor = numerator / denominator
+
+                # Calculate intercept: 0.5 * (1 - factor)
+                contrast_intercept = 0.5 * (1.0 - contrast_factor)
+
+                fe_contrast = self.create_node(
+                    "feComponentTransfer", color_interpolation_filters="sRGB"
+                )
+                with self.set_current(fe_contrast):
+                    for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                        self.create_node(
+                            func,
+                            type="linear",
+                            slope=contrast_factor,
+                            intercept=contrast_intercept,
+                        )
+
+        return use
+
     def _apply_normal_huesaturation(
         self, hue: int, saturation: int, lightness: int
     ) -> None:
