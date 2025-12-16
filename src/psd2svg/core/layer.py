@@ -53,7 +53,7 @@ class LayerConverter(ConverterProtocol):
             adjustments.Levels: self.add_adjustment,
             adjustments.PatternFill: self.add_fill,
             adjustments.PhotoFilter: self.add_adjustment,
-            adjustments.Posterize: self.add_adjustment,
+            adjustments.Posterize: self.add_posterize_adjustment,
             adjustments.SelectiveColor: self.add_adjustment,
             adjustments.SolidColorFill: self.add_fill,
             adjustments.Threshold: self.add_adjustment,

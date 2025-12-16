@@ -29,6 +29,7 @@ import xml.etree.ElementTree as ET
 
 from psd_tools.api import adjustments, layers
 
+from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,45 @@ class AdjustmentConverter(ConverterProtocol):
                 self.create_node("feFuncR", type="table", tableValues="1 0")
                 self.create_node("feFuncG", type="table", tableValues="1 0")
                 self.create_node("feFuncB", type="table", tableValues="1 0")
+        return use
+
+    def add_posterize_adjustment(
+        self, layer: adjustments.Posterize, **attrib: str
+    ) -> ET.Element | None:
+        """Add a posterize adjustment layer to the svg document."""
+        # Validate and clamp levels to valid range
+        levels = layer.posterize
+        if levels < 2:
+            logger.warning(
+                f"Posterize levels {levels} is below minimum (2), clamping to 2"
+            )
+            levels = 2
+        elif levels > 256:
+            logger.warning(
+                f"Posterize levels {levels} exceeds maximum (256), clamping to 256"
+            )
+            levels = 256
+
+        # Generate discrete table values: [0/(n-1), 1/(n-1), ..., (n-1)/(n-1)]
+        table_values = [i / (levels - 1) for i in range(levels)]
+        table_values_str = svg_utils.seq2str(table_values, sep=" ")
+
+        filter, use = self._create_filter(layer, name="posterize", **attrib)
+        with self.set_current(filter):
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                # Apply discrete posterization to RGB channels
+                self.create_node(
+                    "feFuncR", type="discrete", tableValues=table_values_str
+                )
+                self.create_node(
+                    "feFuncG", type="discrete", tableValues=table_values_str
+                )
+                self.create_node(
+                    "feFuncB", type="discrete", tableValues=table_values_str
+                )
         return use
 
     def _create_filter(
