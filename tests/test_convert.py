@@ -603,6 +603,25 @@ def test_adjustment_brightnesscontrast(psd_file: str) -> None:
 @pytest.mark.parametrize(
     "psd_file",
     [
+        "adjustments/threshold-1.psd",
+        "adjustments/threshold-128.psd",
+        "adjustments/threshold-255.psd",
+    ],
+)
+def test_adjustment_threshold(psd_file: str) -> None:
+    """Test conversion quality of threshold adjustment layer."""
+    # Threshold is a binary operation with some tolerance for anti-aliasing
+    # threshold-128 has slightly higher error due to more edge pixels
+    if "threshold-128" in psd_file:
+        threshold = 0.03
+    else:
+        threshold = 0.02
+    evaluate_quality(psd_file, threshold)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
         "texts/paragraph-shapetype0-justification0.psd",
         "texts/paragraph-shapetype0-justification1.psd",
         "texts/paragraph-shapetype0-justification2.psd",
