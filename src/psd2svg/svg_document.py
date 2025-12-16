@@ -756,7 +756,7 @@ class SVGDocument:
             # Log resolution with file path
             logger.info(
                 f"Resolved font '{ps_name}' → '{family_name}' "
-                f"(file: {resolved_font.file})"
+                f"(file: '{resolved_font.file}')"
             )
 
             # Step 3: Update font-family attributes and set weight/style
