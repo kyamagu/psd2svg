@@ -15,9 +15,10 @@ Features
 * Convert PSD files to clean, editable SVG
 * Preserve layers, groups, and artboards
 * Convert text layers to native SVG text elements (experimental)
+* Smart font matching with Unicode codepoint-based selection
 * Support for blending modes, effects, and vector shapes
-* Rasterize complex layers automatically
-* Optional font subsetting for web optimization
+* Adjustment layers support (Invert, Posterize, Threshold, HueSaturation, Exposure, BrightnessContrast)
+* Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
 * Command-line tool and Python API
 
 Quick Start
@@ -73,10 +74,13 @@ Basic Usage
 Platform Support
 ~~~~~~~~~~~~~~~~
 
-* **Linux/macOS**: Full support including text layer conversion
-* **Windows**: Supported (text layers rasterized as images)
+* **Linux/macOS**: Full support including text layer conversion and font embedding
+* **Windows**: Full support including text layer conversion and font embedding
 
-Text layer conversion requires ``fontconfig`` (available on Linux/macOS).
+Text layer conversion uses hybrid font resolution:
+
+* **Static mapping**: ~4,950 fonts (works on all platforms without external dependencies)
+* **Platform-specific resolution**: fontconfig (Linux/macOS) or Windows registry (Windows) for font file discovery when embedding fonts
 
 Next Steps
 ~~~~~~~~~~

@@ -139,19 +139,25 @@ The converter does its best to approximate these effects, but results may vary.
 Adjustment Layers
 -----------------
 
-Most adjustment layers are **not implemented**:
+**Supported Adjustment Layers (Experimental):**
+
+* **Invert** - Color inversion
+* **Posterize** - Reduces color levels
+* **Threshold** - Converts to black and white based on luminance threshold
+* **HueSaturation** - Adjusts hue, saturation, and lightness (supports colorize mode)
+* **Exposure** - Applies exposure, offset, and gamma correction
+* **BrightnessContrast** - Adjusts brightness and contrast
+
+**Not Yet Implemented:**
 
 * Curves
 * Levels
-* Hue/Saturation
 * Color Balance
-* Brightness/Contrast
 * Channel Mixer
+* Photo Filter
+* Selective Color
+* Vibrance
 * And others
-
-**Experimental Support:**
-
-* **Invert** adjustment layer is partially supported (experimental)
 
 **Technical Limitations:**
 
@@ -249,7 +255,7 @@ Arc-warped text uses SVG ``<textPath>`` with dynamically generated arc paths. Th
 * ``scale = sin(π/2 × |warp_value|/100)``
 * ``radius = (width + height) / 2 / scale``
 
-For extreme warp values (|value| > 50), the ``textLength`` attribute is set to improve browser rendering consistency.
+For extreme warp values (absolute value > 50), the ``textLength`` attribute is set to improve browser rendering consistency.
 
 **Renderer Compatibility:**
 

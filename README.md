@@ -10,9 +10,9 @@ PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools
 - Convert PSD files to clean, editable SVG
 - Preserve layers, groups, and artboards
 - Convert text layers to native SVG text elements (experimental)
-- **Smart font matching**: Unicode codepoint-based font selection for optimal glyph coverage (multilingual support)
-- Hybrid font resolution: Static mapping (~4,950 fonts) + dynamic system resolution
+- Smart font matching with Unicode codepoint-based selection
 - Support for blending modes, effects, and vector shapes
+- Adjustment layers support (Invert, Posterize, Threshold, HueSaturation, Exposure, BrightnessContrast)
 - Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
 - Command-line tool and Python API
 
@@ -128,7 +128,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed development instructions.
 
 - SVG 1.1 does not support all Photoshop blending modes
 - Filter effects are approximations
-- Most adjustment layers not implemented
+- Some adjustment layers not yet implemented (Curves, Levels, etc.)
 - Smart object filters not implemented
 - APIs are not thread-safe
 
