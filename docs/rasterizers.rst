@@ -258,7 +258,7 @@ Browser-based SVG rasterizer with full SVG 2.0 support using Chromium.
 Installation
 ~~~~~~~~~~~~
 
-Requires the ``browser`` optional dependency group:
+Requires the ``browser`` optional dependency:
 
 .. code-block:: bash
 
@@ -489,7 +489,7 @@ PlaywrightRasterizer Issues
 
 **Import error:**
 
-Ensure the ``browser`` group is installed:
+Ensure the ``browser`` extra is installed:
 
 .. code-block:: bash
 

@@ -32,9 +32,9 @@ The project uses ``uv`` for dependency management:
    uv sync
 
    # Optional dependencies
-   uv sync --group docs             # Documentation tools
-   uv sync --group browser          # Playwright rasterizer
-   uv sync --group fonts            # Font subsetting tools
+   uv sync --group docs                   # Documentation tools
+   uv sync --extra browser                # Playwright rasterizer
+   uv run playwright install chromium     # Install Chromium browser for Playwright
 
 Development Commands
 --------------------
@@ -385,7 +385,7 @@ The package provides two rasterization backends:
    image = rasterizer.from_file('input.svg')
    image.save('output.png')
 
-**PlaywrightRasterizer** (optional, requires ``browser`` group):
+**PlaywrightRasterizer** (optional, requires ``browser`` extra):
 
 .. code-block:: python
 
