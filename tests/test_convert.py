@@ -509,6 +509,18 @@ def test_adjustment_invert(psd_file: str) -> None:
 @pytest.mark.parametrize(
     "psd_file",
     [
+        "adjustments/posterize-levels4.psd",
+        "adjustments/posterize-levels16.psd",
+    ],
+)
+def test_adjustment_posterize(psd_file: str) -> None:
+    """Test conversion quality of posterize adjustment layer."""
+    evaluate_quality(psd_file, 0.01)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
         "texts/paragraph-shapetype0-justification0.psd",
         "texts/paragraph-shapetype0-justification1.psd",
         "texts/paragraph-shapetype0-justification2.psd",
