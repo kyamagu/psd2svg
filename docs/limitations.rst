@@ -14,40 +14,44 @@ Operating System Limitations
 **Text Layer Conversion:**
 
 * **Linux/macOS**: Full support with fontconfig for font resolution and file path discovery
-* **Windows**: Text layer conversion supported using static font mapping (572 common fonts)
+* **Windows**: Full support with Windows registry for font resolution and file path discovery
 
 **Font Resolution Strategy:**
 
 psd2svg uses a hybrid font resolution approach:
 
-1. **Static mapping**: 572 common fonts (Arial, Times, Noto, Roboto, etc.) mapped by PostScript name
+1. **Static mapping**: ~4,950 fonts mapped by PostScript name
 
+   * **539 default fonts**: Core fonts (Arial, Times New Roman, Noto fonts, Roboto, Adobe fonts, etc.)
+   * **370 Hiragino variants**: Japanese fonts with W0-W9 weight pattern (generated dynamically)
+   * **4,042 Morisawa fonts**: Professional Japanese typography fonts
    * Provides font family, style, and weight information
    * Works on all platforms without external dependencies
    * Enables text conversion to SVG ``<text>`` elements
+   * JSON-based lazy loading for optimal performance
 
-2. **fontconfig fallback** (Linux/macOS):
+2. **Platform-specific font resolution** (Linux/macOS/Windows):
 
    * Queries system fonts when file paths needed
+   * **Linux/macOS**: fontconfig with CharSet API
+   * **Windows**: Windows registry + fontTools cmap parsing
    * Used automatically by ``FontInfo.find_with_files()`` method during conversion
    * Enables font embedding with ``embed_fonts=True``
 
-**Font Embedding on Windows:**
+**Font Embedding:**
 
-Font embedding has platform-specific limitations:
+Font embedding is fully supported on all platforms:
 
-* **Static mapping**: Provides font metadata but not file paths
-* **Font embedding**: Requires font files, not available from static mapping alone
-* **On Windows**: Font embedding works only if:
-
-  * fontconfig is available (via WSL or custom installation), or
-  * Font files are manually specified (future enhancement)
-
+* **Static mapping**: Provides font metadata (family, style, weight) for text conversion
+* **Font file discovery**: Uses platform-specific resolution to locate font files
+* **Linux/macOS**: fontconfig with CharSet API (fontconfig-py >= 0.4.0)
+* **Windows**: Windows registry + fontTools cmap parsing
 * **Text conversion**: Works without font files (uses SVG ``<text>`` with font-family names)
+* **Font embedding**: Automatically locates font files when ``embed_fonts=True``
 
 **Custom Font Mapping:**
 
-For fonts not in the default mapping (572 fonts), provide custom mappings:
+For fonts not in the default mapping (~4,950 fonts), provide custom mappings:
 
 .. code-block:: python
 

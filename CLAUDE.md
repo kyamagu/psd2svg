@@ -73,12 +73,17 @@ psd2svg provides two distinct resolution methods optimized for different use cas
 
 **`FontInfo.lookup_static()`** - For font metadata lookup only:
 
-- Resolution chain: Custom mapping → Static mapping (572 fonts) → None
+- Resolution chain: Custom mapping → Static mapping (~4,950 fonts) → None
+- Static mapping includes:
+  - 539 default fonts (Arial, Times, Adobe fonts, etc.)
+  - 370 Hiragino variants (W0-W9 pattern, generated dynamically)
+  - 4,042 Morisawa fonts (Japanese typography)
 - Returns family name, style, and weight (no file path)
 - NO platform-specific queries (no fontconfig/Windows registry)
 - Preserves original PostScript names in SVG when fonts not found
 - Used when `embed_fonts=False` (prevents unwanted font substitution)
 - Fast, cross-platform, no system dependencies
+- JSON-based lazy loading (loaded on first access)
 
 **`FontInfo.resolve()`** - For font file access:
 

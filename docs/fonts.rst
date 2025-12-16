@@ -120,7 +120,7 @@ You can manually add generic families in post-processing if needed.
 Custom Font Mapping
 -------------------
 
-For fonts not in the default mapping (572 common fonts), you can provide custom font mappings to enable text conversion.
+For fonts not in the default mapping (~4,950 fonts), you can provide custom font mappings to enable text conversion.
 
 Understanding Font Mapping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,16 +133,28 @@ psd2svg uses PostScript font names (e.g., "ArialMT", "TimesNewRomanPSMT") to res
 
 This information is used to generate SVG ``<text>`` elements with correct font properties.
 
+**Built-in Font Mapping:**
+
+The default static mapping includes approximately 4,950 fonts:
+
+* **539 default fonts**: Core fonts (Arial, Times New Roman, Noto fonts, Roboto, Adobe fonts, etc.)
+* **370 Hiragino variants**: Japanese fonts with W0-W9 weight pattern (generated dynamically)
+* **4,042 Morisawa fonts**: Professional Japanese typography fonts
+
+Font mappings are stored as JSON resource files and lazy-loaded on first access for optimal performance.
+
 **Font Resolution Priority:**
 
 1. Custom mapping (if provided via ``font_mapping`` parameter)
-2. Default static mapping (572 common fonts)
-3. Platform-specific font resolution for file path discovery:
+2. Default static mapping (539 core fonts, lazy-loaded)
+3. Hiragino generated mapping (370 variants, generated on first call)
+4. Morisawa mapping (4,042 fonts, lazy-loaded)
+5. Platform-specific font resolution for file path discovery:
 
    * **Linux/macOS**: fontconfig query
    * **Windows**: Windows registry + fontTools parsing
 
-Custom mappings take priority, allowing you to override built-in font resolution.
+Custom mappings take highest priority, allowing you to override built-in font resolution.
 
 Generating Custom Mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

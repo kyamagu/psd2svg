@@ -68,8 +68,9 @@ class Converter(
             bounding box text (ShapeType=1); point text always uses native SVG <text> elements.
         font_mapping: Optional custom font mapping dictionary. Takes priority over built-in
             static mapping. Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
-            When not provided, uses built-in mapping for 572 common fonts with automatic fallback
-            to system font resolution (fontconfig/Windows registry) if needed.
+            When not provided, uses built-in mapping for ~4,950 fonts (539 default + 370 Hiragino +
+            4,042 Morisawa) with automatic fallback to system font resolution (fontconfig/Windows
+            registry) if needed.
     """
 
     _id_counter: AutoCounter | None = None

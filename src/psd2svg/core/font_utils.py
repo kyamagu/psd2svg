@@ -715,7 +715,7 @@ class FontInfo:
 
         Resolution order:
         1. Custom font mapping (if provided)
-        2. Static font mapping (572 common fonts)
+        2. Static font mapping (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa)
         3. Suffix parsing fallback (infer from common PostScript patterns)
         4. Return None if not found (preserves PostScript name in SVG)
 
