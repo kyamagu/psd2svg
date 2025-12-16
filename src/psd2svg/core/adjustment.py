@@ -142,13 +142,7 @@ class AdjustmentConverter(ConverterProtocol):
         """Apply normal mode hue/saturation adjustments."""
         # Apply lightness decrease first (darkening)
         if lightness < 0:
-            slope = 1 + (lightness / 100)
-            fe_component = self.create_node(
-                "feComponentTransfer", color_interpolation_filters="sRGB"
-            )
-            with self.set_current(fe_component):
-                for func in ["feFuncR", "feFuncG", "feFuncB"]:
-                    self.create_node(func, type="linear", slope=slope, intercept=0)
+            self._apply_lightness_adjustment(lightness)
 
         # Apply hue rotation
         if hue != 0:
@@ -171,16 +165,7 @@ class AdjustmentConverter(ConverterProtocol):
 
         # Apply lightness increase (brightening)
         if lightness > 0:
-            slope = 1 - (lightness / 100)
-            intercept = lightness / 100
-            fe_component = self.create_node(
-                "feComponentTransfer", color_interpolation_filters="sRGB"
-            )
-            with self.set_current(fe_component):
-                for func in ["feFuncR", "feFuncG", "feFuncB"]:
-                    self.create_node(
-                        func, type="linear", slope=slope, intercept=intercept
-                    )
+            self._apply_lightness_adjustment(lightness)
 
     def _apply_colorize_mode(self, layer: adjustments.HueSaturation) -> None:
         """Apply colorize mode adjustments."""
@@ -215,21 +200,29 @@ class AdjustmentConverter(ConverterProtocol):
 
         # Step 4: Apply lightness adjustment
         if lightness != 0:
-            if lightness < 0:
-                slope = 1 + (lightness / 100)
-                intercept = 0
-            else:
-                slope = 1 - (lightness / 100)
-                intercept = lightness / 100
+            self._apply_lightness_adjustment(lightness)
 
-            fe_component = self.create_node(
-                "feComponentTransfer", color_interpolation_filters="sRGB"
-            )
-            with self.set_current(fe_component):
-                for func in ["feFuncR", "feFuncG", "feFuncB"]:
-                    self.create_node(
-                        func, type="linear", slope=slope, intercept=intercept
-                    )
+    def _apply_lightness_adjustment(self, lightness: int) -> None:
+        """Apply lightness adjustment using feComponentTransfer.
+
+        Args:
+            lightness: Lightness value from -100 (darkest) to +100 (brightest).
+        """
+        if lightness < 0:
+            # Darken: compress whites toward black
+            slope: float = 1 + (lightness / 100)
+            intercept: float = 0
+        else:
+            # Brighten: compress blacks toward white
+            slope = 1 - (lightness / 100)
+            intercept = lightness / 100
+
+        fe_component = self.create_node(
+            "feComponentTransfer", color_interpolation_filters="sRGB"
+        )
+        with self.set_current(fe_component):
+            for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                self.create_node(func, type="linear", slope=slope, intercept=intercept)
 
     def _create_filter(
         self, layer: layers.AdjustmentLayer, name: str, **attrib: str
