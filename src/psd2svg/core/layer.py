@@ -45,7 +45,7 @@ class LayerConverter(ConverterProtocol):
             adjustments.ColorBalance: self.add_adjustment,
             adjustments.ColorLookup: self.add_adjustment,
             adjustments.Curves: self.add_adjustment,
-            adjustments.Exposure: self.add_adjustment,
+            adjustments.Exposure: self.add_exposure_adjustment,
             adjustments.GradientFill: self.add_fill,
             adjustments.GradientMap: self.add_adjustment,
             adjustments.HueSaturation: self.add_huesaturation_adjustment,

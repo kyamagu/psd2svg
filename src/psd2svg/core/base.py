@@ -125,6 +125,9 @@ class ConverterProtocol(Protocol):
     def add_huesaturation_adjustment(
         self, layer: adjustments.HueSaturation, **attrib: str
     ) -> ET.Element | None: ...
+    def add_exposure_adjustment(
+        self, layer: adjustments.Exposure, **attrib: str
+    ) -> ET.Element | None: ...
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...

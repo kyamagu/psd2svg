@@ -551,6 +551,34 @@ def test_adjustment_huesaturation(psd_file: str) -> None:
 @pytest.mark.parametrize(
     "psd_file",
     [
+        "adjustments/exposure-e0.0-o0.0-g1.0.psd",
+        "adjustments/exposure-e+4.0-o0.0-g1.0.psd",
+        "adjustments/exposure-e-4.0-o0.0-g1.0.psd",
+        "adjustments/exposure-e0.0-o+0.4-g1.0.psd",
+        "adjustments/exposure-e0.0-o-0.4-g1.0.psd",
+        "adjustments/exposure-e0.0-o0.0-g4.0.psd",
+        "adjustments/exposure-e0.0-o0.0-g0.4.psd",
+    ],
+)
+def test_adjustment_exposure(psd_file: str) -> None:
+    """Test conversion quality of exposure adjustment layer."""
+    # Use adaptive threshold based on parameter extremes
+    # Extreme exposure or gamma values may have higher numerical error
+    if (
+        "e+4.0" in psd_file
+        or "e-4.0" in psd_file
+        or "g4.0" in psd_file
+        or "g0.4" in psd_file
+    ):
+        threshold = 0.02
+    else:
+        threshold = 0.01
+    evaluate_quality(psd_file, threshold)
+
+
+@pytest.mark.parametrize(
+    "psd_file",
+    [
         "texts/paragraph-shapetype0-justification0.psd",
         "texts/paragraph-shapetype0-justification1.psd",
         "texts/paragraph-shapetype0-justification2.psd",
