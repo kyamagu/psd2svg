@@ -136,6 +136,94 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
+    def add_exposure_adjustment(
+        self, layer: adjustments.Exposure, **attrib: str
+    ) -> ET.Element | None:
+        """Add an exposure adjustment layer to the svg document.
+
+        Applies exposure, offset, and gamma correction to simulate Photoshop's
+        Exposure adjustment layer. Operations are applied in linear RGB space
+        to match Photoshop's behavior.
+
+        The three parameters are applied in sequence:
+        1. Exposure: output = input × 2^exposure
+        2. Offset: output = input + offset
+        3. Gamma: output = input^(1/gamma)
+
+        Args:
+            layer: The Exposure adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if no-op.
+        """
+        # Extract parameters
+        exposure = layer.exposure
+        offset = layer.exposure_offset
+        gamma = layer.gamma
+
+        # Log parameters for debugging
+        logger.debug(
+            f"Exposure adjustment '{layer.name}': "
+            f"exposure={exposure}, offset={offset}, gamma={gamma}"
+        )
+
+        # Check if this is a no-op adjustment (within floating-point tolerance)
+        if abs(exposure) < 1e-6 and abs(offset) < 1e-6 and abs(gamma - 1.0) < 1e-6:
+            logger.info(f"Exposure adjustment '{layer.name}' has no effect, skipping")
+            return None
+
+        # Validate parameters (warn but don't clamp)
+        if not (-20.0 <= exposure <= 20.0):
+            logger.warning(
+                f"Exposure value {exposure} is outside expected range [-20, +20]"
+            )
+        if not (-0.5 <= offset <= 0.5):
+            logger.warning(
+                f"Offset value {offset} is outside expected range [-0.5, +0.5]"
+            )
+        if not (0.01 <= gamma <= 9.99):
+            logger.warning(
+                f"Gamma value {gamma} is outside expected range [0.01, 9.99]"
+            )
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="exposure", **attrib)
+
+        with self.set_current(filter):
+            # Stage 1: Apply exposure (multiply by 2^exposure)
+            if abs(exposure) >= 1e-6:  # Only apply if non-zero
+                exposure_scale = 2**exposure
+                fe_exposure = self.create_node(
+                    "feComponentTransfer", color_interpolation_filters="linearRGB"
+                )
+                with self.set_current(fe_exposure):
+                    for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                        self.create_node(
+                            func, type="linear", slope=exposure_scale, intercept=0
+                        )
+
+            # Stage 2: Apply offset (add offset value)
+            if abs(offset) >= 1e-6:  # Only apply if non-zero
+                fe_offset = self.create_node(
+                    "feComponentTransfer", color_interpolation_filters="linearRGB"
+                )
+                with self.set_current(fe_offset):
+                    for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                        self.create_node(func, type="linear", slope=1, intercept=offset)
+
+            # Stage 3: Apply gamma (power function with exponent 1/gamma)
+            if abs(gamma - 1.0) >= 1e-6:  # Only apply if not 1.0
+                gamma_exponent = 1.0 / gamma
+                fe_gamma = self.create_node(
+                    "feComponentTransfer", color_interpolation_filters="linearRGB"
+                )
+                with self.set_current(fe_gamma):
+                    for func in ["feFuncR", "feFuncG", "feFuncB"]:
+                        self.create_node(func, type="gamma", exponent=gamma_exponent)
+
+        return use
+
     def _apply_normal_huesaturation(
         self, hue: int, saturation: int, lightness: int
     ) -> None:
