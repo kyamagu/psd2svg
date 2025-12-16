@@ -374,10 +374,27 @@ from psd2svg.core.typesetting import TypeSetting  # Direct import (recommended)
 
 psdimage = PSDImage.open("tests/fixtures/texts/style-tsume.psd")
 for layer in psd.descendants():
-   if isinstance(layer, TypeLayer) and layer.is_visible():
-      text_setting = TypeSetting(layer._data)
-      for paragraph in text_setting:
-         for style in paragraph:
-            # Do whatever you want to debug with the style span.
-            pass
+    if isinstance(layer, TypeLayer) and layer.is_visible():
+        text_setting = TypeSetting(layer._data)
+        for paragraph in text_setting:
+            for style in paragraph:
+                # Do whatever you want to debug with the style span.
+                pass
+```
+
+For inspecting low-level structure in PSD file, you can access the `_record` attribute of each layer, or use the instance method provided by specific layer type.
+
+```python
+from psd_tools import PSDImage
+from psd_tools.api.adjustments import Posterize
+from IPython.display import display
+
+psdimage = PSDImage.open("tests/fixtures/adjustments/posterize-levels4.psd")
+display(psdimage)   # Use IPython to pretty-print the PSD layer structure
+
+for layer in psdimage.descendants():
+    if isinstance(layer, Posterize) and layer.is_visible():
+        print(layer)              # Layer object
+        print(layer.posterize)    # Specific layer has specific attribute
+        display(layer._record)    # Low-level record supports pretty printing via IPython
 ```
