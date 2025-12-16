@@ -32,9 +32,9 @@ The project uses ``uv`` for dependency management:
    uv sync
 
    # Optional dependencies
-   uv sync --group docs             # Documentation tools
-   uv sync --group browser          # Playwright rasterizer
-   uv sync --group fonts            # Font subsetting tools
+   uv sync --group docs                   # Documentation tools
+   uv sync --extra browser                # Playwright rasterizer
+   uv run playwright install chromium     # Install Chromium browser for Playwright
 
 Development Commands
 --------------------

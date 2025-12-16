@@ -17,7 +17,8 @@ uv run python                    # Run python interpreter
 
 # Optional dependencies
 uv sync --group docs             # Documentation tools
-uv sync --group browser          # Playwright rasterizer
+uv sync --extra browser          # Playwright rasterizer
+uv run playwright install chromium  # Install Chromium browser for Playwright
 
 # Documentation
 uv run sphinx-build -b html docs docs/_build/html

@@ -231,8 +231,7 @@ class SVGDocument:
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
-                Requires embed_fonts=True. Requires fonttools package (install with:
-                uv sync --group fonts). This significantly reduces file size (typically
+                Requires embed_fonts=True. This significantly reduces file size (typically
                 90%+ reduction). Default is True.
             font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
                 WOFF2 provides best compression and is recommended for web use.
@@ -278,8 +277,7 @@ class SVGDocument:
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
             subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
-                Requires embed_fonts=True. Requires fonttools package (install with:
-                uv sync --group fonts). This significantly reduces file size (typically
+                Requires embed_fonts=True. This significantly reduces file size (typically
                 90%+ reduction). Default is True.
             font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
                 WOFF2 provides best compression and is recommended for web use.

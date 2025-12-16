@@ -109,6 +109,10 @@ Topics covered:
 # Install dependencies
 uv sync
 
+# Optional: Install browser support for PlaywrightRasterizer
+uv sync --extra browser
+uv run playwright install chromium
+
 # Run tests
 uv run pytest
 
