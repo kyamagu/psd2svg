@@ -9,7 +9,7 @@ Development Setup
 Prerequisites
 ~~~~~~~~~~~~~
 
-* Python 3.10 or higher
+* Python 3.10-3.14
 * `uv <https://github.com/astral-sh/uv>`_ package manager
 * Git
 
@@ -144,11 +144,11 @@ The core converter uses multiple inheritance with specialized mixins:
 
    class Converter(
        AdjustmentConverter,
-       EffectConverter,
        LayerConverter,
        PaintConverter,
        ShapeConverter,
        TextConverter,
+       EffectConverter,
    ):
        """Main converter class combining all converter mixins."""
 
@@ -166,8 +166,14 @@ The core converter uses multiple inheritance with specialized mixins:
 * ``base.py`` - Base converter class
 * ``color_utils.py`` - Color conversion utilities
 * ``constants.py`` - Constants and enums
+* ``converter.py`` - Main converter class
 * ``counter.py`` - ID generation for SVG elements
+* ``font_mapping.py`` - Font mapping functionality
+* ``font_utils.py`` - Font utilities
 * ``gradient.py`` - Gradient conversion logic
+* ``typesetting.py`` - Text typesetting
+* ``windows_fonts.py`` - Windows font resolution
+* ``_font_mapping_data.py`` - Font mapping data
 
 Rasterizer Layer
 ~~~~~~~~~~~~~~~~
@@ -385,7 +391,7 @@ The package provides two rasterization backends:
    image = rasterizer.from_file('input.svg')
    image.save('output.png')
 
-**PlaywrightRasterizer** (optional, requires ``browser`` extra):
+**PlaywrightRasterizer** (optional, requires ``browser`` optional dependency):
 
 .. code-block:: python
 
@@ -451,18 +457,36 @@ Resources
 Release Process
 ---------------
 
-For maintainers:
+For maintainers, this project follows a pull request workflow for all changes to the main branch:
 
-1. **Update version** in ``pyproject.toml``
-2. **Update CHANGELOG** with release notes
-3. **Run full test suite**
-4. **Commit changes**: ``git commit -m "Bump version to 0.3.0"``
-5. **Create git tag**: ``git tag v0.3.0``
-6. **Push tag**: ``git push origin v0.3.0``
-7. **GitHub Actions** automatically builds and publishes to PyPI via OIDC
+.. code-block:: bash
 
-**Note:** The release is fully automated via GitHub Actions (``.github/workflows/release.yml``).
-Manual publishing with ``uv publish`` is not recommended.
+   # 1. Create release branch
+   git checkout -b release/v0.10.0
+
+   # 2. Update version and changelog
+   # - Edit version in pyproject.toml
+   # - Update CHANGELOG.md with release notes
+
+   # 3. Sync dependencies to update lock file
+   uv sync
+
+   # 4. Commit and push
+   git add pyproject.toml CHANGELOG.md uv.lock
+   git commit -m "Prepare release v0.10.0"
+   git push -u origin release/v0.10.0
+
+   # 5. Create PR for release
+   gh pr create --title "Release v0.10.0" --body "Release notes..."
+
+   # 6. After PR is merged to main, create and push tag
+   git checkout main
+   git pull origin main
+   git tag v0.10.0
+   git push origin v0.10.0
+
+**Note:** GitHub Actions automatically builds and publishes to PyPI via OIDC when a version tag is pushed (``.github/workflows/release.yml``).
+Manual publishing is not necessary as the release workflow handles this automatically.
 
 Getting Help
 ------------
