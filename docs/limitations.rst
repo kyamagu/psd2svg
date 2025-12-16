@@ -255,7 +255,7 @@ Arc-warped text uses SVG ``<textPath>`` with dynamically generated arc paths. Th
 * ``scale = sin(π/2 × |warp_value|/100)``
 * ``radius = (width + height) / 2 / scale``
 
-For extreme warp values (|value| > 50), the ``textLength`` attribute is set to improve browser rendering consistency.
+For extreme warp values (absolute value > 50), the ``textLength`` attribute is set to improve browser rendering consistency.
 
 **Renderer Compatibility:**
 
