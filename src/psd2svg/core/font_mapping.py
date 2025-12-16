@@ -3,24 +3,136 @@
 This module provides fallback font resolution when fontconfig is unavailable
 (e.g., on Windows). It uses a predefined mapping of PostScript names to font
 family names, styles, and weights.
+
+The font mappings are stored as JSON resource files in the data directory:
+- default_fonts.json: ~539 core fonts (Arial, Times, Adobe fonts, etc.)
+- morisawa_fonts.json: 4,042 Morisawa fonts for Japanese typography
+
+Hiragino fonts (~370 variants) are generated dynamically using pattern-based
+weight expansion (W0-W9 pattern).
+
+Font mappings are lazy-loaded on first access for optimal performance.
 """
 
+import functools
 import json
 import logging
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# This will be populated by importing from _font_mapping_data.py
-# For now, start with a minimal mapping that will be expanded
-DEFAULT_FONT_MAPPING: dict[str, dict[str, Any]] = {}
+
+def _load_font_json(
+    filename: str, description: str, error_context: str
+) -> dict[str, dict[str, Any]]:
+    """Load font mapping from JSON resource file.
+
+    Args:
+        filename: Name of the JSON file in psd2svg.data package.
+        description: Description for debug logging (e.g., "default fonts").
+        error_context: Context message for error logging (e.g., "Using empty mapping").
+
+    Returns:
+        Dictionary mapping PostScript names to font metadata.
+        Returns empty dict if loading fails (graceful degradation).
+    """
+    try:
+        data_path = files("psd2svg.data").joinpath(filename)
+        font_data_json = data_path.read_text(encoding="utf-8")
+        mapping = json.loads(font_data_json)
+        logger.debug(f"Loaded {len(mapping)} {description} from resource file")
+        return mapping
+    except Exception as e:
+        logger.warning(f"Failed to load {description}: {e}. {error_context}")
+        return {}
+
+
+@functools.lru_cache(maxsize=1)
+def _load_default_fonts() -> dict[str, dict[str, Any]]:
+    """Load default font mapping on first access (lazy loading with caching).
+
+    Returns ~539 static font entries. Does not include Hiragino variants
+    (those are generated separately) or Morisawa fonts.
+
+    Returns:
+        Dictionary mapping PostScript names to font metadata.
+        Returns empty dict if loading fails (graceful degradation).
+    """
+    return _load_font_json(
+        "default_fonts.json", "default fonts", "Using empty mapping."
+    )
+
+
+@functools.lru_cache(maxsize=1)
+def _load_morisawa_fonts() -> dict[str, dict[str, Any]]:
+    """Load Morisawa font mapping on first access (lazy loading with caching).
+
+    Returns 4,042 Morisawa font entries.
+
+    Returns:
+        Dictionary mapping PostScript names to font metadata.
+        Returns empty dict if loading fails (graceful degradation).
+    """
+    return _load_font_json(
+        "morisawa_fonts.json", "Morisawa fonts", "Continuing without Morisawa support."
+    )
+
+
+@functools.lru_cache(maxsize=1)
+def _get_hiragino_mapping() -> dict[str, dict[str, Any]]:
+    """Generate Hiragino font weight variants (W0-W9 pattern).
+
+    This preserves the existing pattern-based generation logic.
+    Generated once per process and cached.
+
+    Returns:
+        Dictionary of ~370 Hiragino font variants.
+    """
+    from psd2svg.core._font_mapping_data import (
+        _HIRAGINO_BASE_FONTS,
+        _JAPANESE_WEIGHTS,
+        _generate_weight_variants,
+    )
+
+    return _generate_weight_variants(_HIRAGINO_BASE_FONTS, _JAPANESE_WEIGHTS)
+
+
+@functools.lru_cache(maxsize=1)
+def get_all_font_mappings() -> dict[str, dict[str, Any]]:
+    """Get combined font mapping from all sources.
+
+    This is primarily for backward compatibility and testing.
+    Most code should use find_in_mapping() directly.
+
+    Priority order (later sources override earlier ones):
+    1. Morisawa (lowest priority, added first)
+    2. Hiragino generated (overrides Morisawa)
+    3. Default static (highest priority, overrides all)
+
+    Returns:
+        Combined dict with all font mappings (Morisawa + Hiragino + default).
+    """
+    combined = {}
+    # Add in reverse priority order (lowest to highest)
+    combined.update(_load_morisawa_fonts())  # Lowest priority
+    combined.update(_get_hiragino_mapping())  # Medium priority
+    combined.update(_load_default_fonts())  # Highest priority
+    logger.debug(f"Combined font mapping contains {len(combined)} fonts")
+    return combined
 
 
 def find_in_mapping(
     postscript_name: str, custom_mapping: dict[str, dict[str, Any]] | None = None
 ) -> dict[str, Any] | None:
     """Find font information in mapping dictionaries.
+
+    Resolution order:
+    1. Custom mapping (if provided by user)
+    2. Default static mapping (539 fonts, lazy loaded)
+    3. Hiragino generated mapping (370 fonts, generated on first call)
+    4. Morisawa mapping (4,042 fonts, lazy loaded)
 
     Args:
         postscript_name: PostScript name of the font (e.g., "ArialMT", "Arial-BoldMT").
@@ -38,16 +150,31 @@ def find_in_mapping(
         >>> find_in_mapping("UnknownFont", mapping)
         None
     """
-    # Check custom mapping first (if provided)
+    # 1. Check custom mapping first (highest priority)
     if custom_mapping and postscript_name in custom_mapping:
         font_data = custom_mapping[postscript_name]
         logger.debug(f"Found '{postscript_name}' in custom font mapping")
         return _validate_font_data(font_data, postscript_name)
 
-    # Fall back to default mapping
-    if postscript_name in DEFAULT_FONT_MAPPING:
-        font_data = DEFAULT_FONT_MAPPING[postscript_name]
+    # 2. Check default mapping (lazy loaded)
+    default_mapping = _load_default_fonts()
+    if postscript_name in default_mapping:
+        font_data = default_mapping[postscript_name]
         logger.debug(f"Found '{postscript_name}' in default font mapping")
+        return _validate_font_data(font_data, postscript_name)
+
+    # 3. Check Hiragino generated mapping (generated once, cached)
+    hiragino_mapping = _get_hiragino_mapping()
+    if postscript_name in hiragino_mapping:
+        font_data = hiragino_mapping[postscript_name]
+        logger.debug(f"Found '{postscript_name}' in Hiragino font mapping")
+        return _validate_font_data(font_data, postscript_name)
+
+    # 4. Check Morisawa mapping (lazy loaded, lowest priority)
+    morisawa_mapping = _load_morisawa_fonts()
+    if postscript_name in morisawa_mapping:
+        font_data = morisawa_mapping[postscript_name]
+        logger.debug(f"Found '{postscript_name}' in Morisawa font mapping")
         return _validate_font_data(font_data, postscript_name)
 
     logger.debug(f"Font '{postscript_name}' not found in any mapping")
@@ -195,15 +322,6 @@ def _validate_font_data(
     }
 
 
-# Try to load default mapping from _font_mapping_data.py
-try:
-    from psd2svg.core._font_mapping_data import FONT_MAPPING
-
-    DEFAULT_FONT_MAPPING = FONT_MAPPING
-    logger.debug(f"Loaded {len(DEFAULT_FONT_MAPPING)} default font mappings")
-except ImportError:
-    logger.debug(
-        "Default font mapping data not found. "
-        "Run scripts/generate_font_mapping.py to generate it."
-    )
-    DEFAULT_FONT_MAPPING = {}
+# For backward compatibility: expose combined mapping as DEFAULT_FONT_MAPPING
+# This will trigger lazy loading on first access
+DEFAULT_FONT_MAPPING = get_all_font_mappings()
