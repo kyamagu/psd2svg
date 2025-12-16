@@ -101,6 +101,69 @@ class AdjustmentConverter(ConverterProtocol):
                 )
         return use
 
+    def add_threshold_adjustment(
+        self, layer: adjustments.Threshold, **attrib: str
+    ) -> ET.Element | None:
+        """Add a threshold adjustment layer to the svg document.
+
+        Threshold converts the image to high-contrast black and white by comparing
+        each pixel's luminance against a threshold value. Pixels below the threshold
+        become black (0), and pixels at or above become white (255).
+
+        Args:
+            layer: The Threshold adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if invalid.
+        """
+        # Extract threshold value (0-255)
+        threshold = layer.threshold
+
+        # Log for debugging
+        logger.debug(f"Threshold adjustment '{layer.name}': threshold={threshold}")
+
+        # Validate threshold value (warn but don't clamp except for > 255)
+        if threshold < 1:
+            logger.warning(
+                f"Threshold value {threshold} is below minimum (1), "
+                f"resulting in all-white output"
+            )
+        elif threshold > 255:
+            logger.warning(
+                f"Threshold value {threshold} exceeds maximum (255), clamping to 255"
+            )
+            threshold = 255
+
+        # Generate lookup table: 256 values where LUT[i] = 0 if i < threshold else 1
+        table_values = [0.0 if i < threshold else 1.0 for i in range(256)]
+        table_values_str = svg_utils.seq2str(table_values, sep=" ")
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="threshold", **attrib)
+        with self.set_current(filter):
+            # Step 1: Convert to grayscale using luminance formula
+            # ITU-R BT.601: L = 0.299*R + 0.587*G + 0.114*B
+            # This desaturates the image to grayscale
+            self.create_node(
+                "feColorMatrix",
+                type="saturate",
+                values=0,
+                color_interpolation_filters="sRGB",
+            )
+
+            # Step 2: Apply threshold to the grayscale result
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                # Apply threshold to all RGB channels (they're identical after desaturation)
+                self.create_node("feFuncR", type="table", tableValues=table_values_str)
+                self.create_node("feFuncG", type="table", tableValues=table_values_str)
+                self.create_node("feFuncB", type="table", tableValues=table_values_str)
+
+        return use
+
     def add_huesaturation_adjustment(
         self, layer: adjustments.HueSaturation, **attrib: str
     ) -> ET.Element | None:

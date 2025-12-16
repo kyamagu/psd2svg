@@ -131,6 +131,9 @@ class ConverterProtocol(Protocol):
     def add_brightnesscontrast_adjustment(
         self, layer: adjustments.BrightnessContrast, **attrib: str
     ) -> ET.Element | None: ...
+    def add_threshold_adjustment(
+        self, layer: adjustments.Threshold, **attrib: str
+    ) -> ET.Element | None: ...
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...

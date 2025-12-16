@@ -56,7 +56,7 @@ class LayerConverter(ConverterProtocol):
             adjustments.Posterize: self.add_posterize_adjustment,
             adjustments.SelectiveColor: self.add_adjustment,
             adjustments.SolidColorFill: self.add_fill,
-            adjustments.Threshold: self.add_adjustment,
+            adjustments.Threshold: self.add_threshold_adjustment,
             adjustments.Vibrance: self.add_adjustment,
         }
         # Default layer_fn is a plain pixel layer.
