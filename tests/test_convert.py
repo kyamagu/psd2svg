@@ -626,6 +626,9 @@ def test_adjustment_threshold(psd_file: str) -> None:
         ("adjustments/colorbalance-s+50_0_-50-m0_0_0-h0_0_0.psd", 0.03),
         ("adjustments/colorbalance-s0_0_0-m-50_0_+50-h0_0_0.psd", 0.02),
         ("adjustments/colorbalance-s0_0_0-m0_0_0-h0_-50_-50.psd", 0.03),
+        # Note: This file demonstrates neutral color preservation limitation
+        # White pixels become tinted (RGB(255,127,127)) vs Photoshop keeping them white
+        ("adjustments/colorbalance-s0_0_0-m0_0_0-h0_-50_-50-nolum.psd", 0.04),
         (
             "adjustments/colorbalance-s+100_+100_+100-m+100_+100_+100-h+100_+100_+100.psd",
             0.08,
