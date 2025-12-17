@@ -33,9 +33,6 @@ class ConverterProtocol(Protocol):
     def add_shape(
         self, layer: layers.ShapeLayer, **attrib: str
     ) -> ET.Element | None: ...
-    def add_adjustment(
-        self, layer: layers.AdjustmentLayer, **attrib: str
-    ) -> ET.Element | None: ...
     def add_text(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None: ...
     def add_fill(
         self,
@@ -122,20 +119,47 @@ class ConverterProtocol(Protocol):
     def add_posterize_adjustment(
         self, layer: adjustments.Posterize, **attrib: str
     ) -> ET.Element | None: ...
-    def add_huesaturation_adjustment(
+    def add_hue_saturation_adjustment(
         self, layer: adjustments.HueSaturation, **attrib: str
     ) -> ET.Element | None: ...
     def add_exposure_adjustment(
         self, layer: adjustments.Exposure, **attrib: str
     ) -> ET.Element | None: ...
-    def add_brightnesscontrast_adjustment(
+    def add_brightness_contrast_adjustment(
         self, layer: adjustments.BrightnessContrast, **attrib: str
     ) -> ET.Element | None: ...
     def add_threshold_adjustment(
         self, layer: adjustments.Threshold, **attrib: str
     ) -> ET.Element | None: ...
-    def add_colorbalance_adjustment(
+    def add_color_balance_adjustment(
         self, layer: adjustments.ColorBalance, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_black_and_white_adjustment(
+        self, layer: adjustments.BlackAndWhite, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_channel_mixer_adjustment(
+        self, layer: adjustments.ChannelMixer, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_color_lookup_adjustment(
+        self, layer: adjustments.ColorLookup, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_curves_adjustment(
+        self, layer: adjustments.Curves, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_gradient_map_adjustment(
+        self, layer: adjustments.GradientMap, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_levels_adjustment(
+        self, layer: adjustments.Levels, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_photo_filter_adjustment(
+        self, layer: adjustments.PhotoFilter, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_selective_color_adjustment(
+        self, layer: adjustments.SelectiveColor, **attrib: str
+    ) -> ET.Element | None: ...
+    def add_vibrance_adjustment(
+        self, layer: adjustments.Vibrance, **attrib: str
     ) -> ET.Element | None: ...
 
     # Utilities

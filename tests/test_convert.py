@@ -694,8 +694,8 @@ def test_adjustment_colorbalance_noop() -> None:
     # Create converter and test the method directly
     converter = Converter(psd)
 
-    # Call add_colorbalance_adjustment directly
-    result = converter.add_colorbalance_adjustment(colorbalance_layer)
+    # Call add_color_balance_adjustment directly
+    result = converter.add_color_balance_adjustment(colorbalance_layer)
 
     # Should return None for no-op case
     assert result is None, (
