@@ -134,6 +134,9 @@ class ConverterProtocol(Protocol):
     def add_threshold_adjustment(
         self, layer: adjustments.Threshold, **attrib: str
     ) -> ET.Element | None: ...
+    def add_colorbalance_adjustment(
+        self, layer: adjustments.ColorBalance, **attrib: str
+    ) -> ET.Element | None: ...
 
     # Utilities
     def auto_id(self, prefix: str = "") -> str: ...

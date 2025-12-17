@@ -620,6 +620,41 @@ def test_adjustment_threshold(psd_file: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "psd_file,threshold",
+    [
+        ("adjustments/colorbalance-s0_0_0-m0_0_0-h0_0_0.psd", 0.01),
+        ("adjustments/colorbalance-s+50_0_-50-m0_0_0-h0_0_0.psd", 0.03),
+        ("adjustments/colorbalance-s0_0_0-m-50_0_+50-h0_0_0.psd", 0.02),
+        ("adjustments/colorbalance-s0_0_0-m0_0_0-h0_-50_-50.psd", 0.03),
+        (
+            "adjustments/colorbalance-s+100_+100_+100-m+100_+100_+100-h+100_+100_+100.psd",
+            0.08,
+        ),
+        (
+            "adjustments/colorbalance-s-100_-100_-100-m-100_-100_-100-h-100_-100_-100.psd",
+            0.36,
+        ),
+        # Note: -nolum suffix files have luminosity=0 (preserve luminosity DISABLED)
+        (
+            "adjustments/colorbalance-s+100_+100_+100-m+100_+100_+100-h+100_+100_+100-nolum.psd",
+            0.02,
+        ),
+        (
+            "adjustments/colorbalance-s-100_-100_-100-m-100_-100_-100-h-100_-100_-100-nolum.psd",
+            0.30,
+        ),
+    ],
+)
+def test_adjustment_colorbalance(psd_file: str, threshold: float) -> None:
+    """Test conversion quality of color balance adjustment layer.
+
+    Note: Extreme negative adjustments (-100) have higher error due to
+    color clipping and the grayscale approximation used for luminance.
+    """
+    evaluate_quality(psd_file, threshold)
+
+
+@pytest.mark.parametrize(
     "psd_file",
     [
         "texts/paragraph-shapetype0-justification0.psd",
