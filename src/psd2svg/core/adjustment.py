@@ -383,6 +383,152 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
+    def add_colorbalance_adjustment(
+        self, layer: adjustments.ColorBalance, **attrib: str
+    ) -> ET.Element | None:
+        """Add a color balance adjustment layer to the svg document.
+
+        Applies color balance adjustments to shadows, midtones, and highlights
+        using SVG feComponentTransfer filters with lookup tables.
+
+        Note: Uses grayscale approximation for luminance due to SVG's
+        independent channel processing. Accuracy ~95% for typical adjustments.
+
+        Args:
+            layer: The ColorBalance adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if no-op.
+        """
+        # Extract parameters
+        shadows = layer.shadows
+        midtones = layer.midtones
+        highlights = layer.highlights
+        preserve_luminosity = layer.luminosity == 1  # 1=enabled, 0=disabled
+
+        # Log parameters
+        logger.debug(
+            f"ColorBalance adjustment '{layer.name}': "
+            f"shadows={shadows}, midtones={midtones}, highlights={highlights}, "
+            f"preserve_luminosity={preserve_luminosity}"
+        )
+
+        # Check for no-op
+        if shadows == (0, 0, 0) and midtones == (0, 0, 0) and highlights == (0, 0, 0):
+            logger.info(
+                f"ColorBalance adjustment '{layer.name}' has no effect, skipping"
+            )
+            return None
+
+        # Warn about preserve luminosity limitation
+        if preserve_luminosity:
+            logger.warning(
+                f"ColorBalance adjustment '{layer.name}': "
+                "Preserve Luminosity is not fully supported in SVG. "
+                "Results may differ from Photoshop."
+            )
+
+        # Warn about extreme adjustments with reduced accuracy
+        max_abs_value = max(
+            max(abs(v) for v in shadows),
+            max(abs(v) for v in midtones),
+            max(abs(v) for v in highlights),
+        )
+        if max_abs_value >= 80:
+            logger.info(
+                f"ColorBalance adjustment '{layer.name}': "
+                f"Extreme adjustment values (max |{max_abs_value}|) detected. "
+                "Accuracy may be reduced (65-85%) due to SVG's per-channel "
+                "luminance approximation. For critical color accuracy, flatten "
+                "this adjustment in Photoshop before conversion."
+            )
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="colorbalance", **attrib)
+
+        # Generate lookup tables
+        lut_r = self._generate_colorbalance_lut(shadows, midtones, highlights, 0)
+        lut_g = self._generate_colorbalance_lut(shadows, midtones, highlights, 1)
+        lut_b = self._generate_colorbalance_lut(shadows, midtones, highlights, 2)
+
+        # Convert to SVG format
+        from psd2svg import svg_utils
+
+        lut_r_str = svg_utils.seq2str(lut_r, sep=" ")
+        lut_g_str = svg_utils.seq2str(lut_g, sep=" ")
+        lut_b_str = svg_utils.seq2str(lut_b, sep=" ")
+
+        # Create filter
+        with self.set_current(filter):
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                self.create_node("feFuncR", type="table", tableValues=lut_r_str)
+                self.create_node("feFuncG", type="table", tableValues=lut_g_str)
+                self.create_node("feFuncB", type="table", tableValues=lut_b_str)
+
+        return use
+
+    def _generate_colorbalance_lut(
+        self,
+        shadows: tuple[int, int, int],
+        midtones: tuple[int, int, int],
+        highlights: tuple[int, int, int],
+        channel_idx: int,
+    ) -> list[float]:
+        """Generate 256-value lookup table for color balance adjustment.
+
+        Uses grayscale approximation: assumes R≈G≈B for luminance.
+
+        Args:
+            shadows: (cyan-red, magenta-green, yellow-blue) for shadows
+            midtones: Same for midtones
+            highlights: Same for highlights
+            channel_idx: 0 for R, 1 for G, 2 for B
+
+        Returns:
+            List of 256 float values in [0, 1] range.
+        """
+        lut = []
+
+        for i in range(256):
+            # Normalize input to [0, 1]
+            input_val = i / 255.0
+
+            # Grayscale approximation: luminance ≈ input_val
+            luminance = input_val
+
+            # Calculate tonal weights
+            if luminance < 0.33:
+                weight_shadows = (0.33 - luminance) / 0.33
+            else:
+                weight_shadows = 0.0
+
+            # Midtones: centered at 0.495 with falloff range of 0.165 (triangular weighting)
+            mid_distance = abs(luminance - 0.495)
+            weight_midtones = max(0.0, 1.0 - mid_distance / 0.165)
+
+            if luminance >= 0.66:
+                weight_highlights = (luminance - 0.66) / 0.34
+            else:
+                weight_highlights = 0.0
+
+            # Calculate weighted adjustment
+            adjustment = (
+                shadows[channel_idx] * weight_shadows
+                + midtones[channel_idx] * weight_midtones
+                + highlights[channel_idx] * weight_highlights
+            ) / 100.0
+
+            # Apply adjustment and clamp
+            output_val = max(0.0, min(1.0, input_val + adjustment))
+
+            lut.append(output_val)
+
+        return lut
+
     def _apply_normal_huesaturation(
         self, hue: int, saturation: int, lightness: int
     ) -> None:

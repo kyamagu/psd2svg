@@ -42,7 +42,7 @@ class LayerConverter(ConverterProtocol):
             adjustments.BlackAndWhite: self.add_adjustment,
             adjustments.BrightnessContrast: self.add_brightnesscontrast_adjustment,
             adjustments.ChannelMixer: self.add_adjustment,
-            adjustments.ColorBalance: self.add_adjustment,
+            adjustments.ColorBalance: self.add_colorbalance_adjustment,
             adjustments.ColorLookup: self.add_adjustment,
             adjustments.Curves: self.add_adjustment,
             adjustments.Exposure: self.add_exposure_adjustment,
