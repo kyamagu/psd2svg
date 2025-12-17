@@ -26,6 +26,7 @@ stacked use elements may not produce the intended visual result.
 
 import logging
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 
 import numpy as np
 from psd_tools.api import adjustments, layers
@@ -718,8 +719,6 @@ class AdjustmentConverter(ConverterProtocol):
         # Deduplicate points: keep last point for each x value
         # This handles cases like [(0, 0), (255, 4), (255, 255)] which after
         # swapping becomes [(0, 0), (4, 255), (255, 255)]
-        from collections import OrderedDict
-
         deduplicated_points = list(
             OrderedDict((p[0], p) for p in swapped_points).values()
         )
@@ -732,6 +731,13 @@ class AdjustmentConverter(ConverterProtocol):
             points = deduplicated_points
         else:
             points = swapped_points
+
+        # Validate we still have enough points after deduplication
+        if len(points) < 2:
+            logger.warning(
+                "Curve has fewer than 2 points after deduplication, using identity"
+            )
+            return list(np.linspace(0, 1, 256))
 
         # Extract x and y coordinates (now in input, output order)
         x_points = np.array([p[0] for p in points], dtype=float)
@@ -775,8 +781,12 @@ class AdjustmentConverter(ConverterProtocol):
             x_start = int(p1_x)
             x_end = int(p2_x)
 
-            if x_start >= x_end:
-                # Handle duplicate x values (discontinuity): use the target y value
+            if x_start > x_end:
+                # Skip segments going backwards (shouldn't happen after deduplication)
+                continue
+
+            if x_start == x_end:
+                # Single point segment: set the value directly
                 if x_start < 256:
                     lut[x_start] = p2_y
                 continue
@@ -816,7 +826,7 @@ class AdjustmentConverter(ConverterProtocol):
         """
         # Parse curves by channel ID
         curves_by_channel: dict[int, list[tuple[int, int]]] = {}
-        for item in layer.extra:  # type: ignore[attr-defined]
+        for item in layer.data.extra:  # type: ignore[attr-defined]
             if 0 <= item.channel_id <= 3:
                 curves_by_channel[item.channel_id] = item.points
             else:
