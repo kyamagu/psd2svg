@@ -144,20 +144,22 @@ Adjustment Layers
 * **Invert** - Color inversion
 * **Posterize** - Reduces color levels
 * **Threshold** - Converts to black and white based on luminance threshold
-* **HueSaturation** - Adjusts hue, saturation, and lightness (supports colorize mode)
+* **Hue/Saturation** - Adjusts hue, saturation, and lightness (supports colorize mode)
 * **Exposure** - Applies exposure, offset, and gamma correction
-* **BrightnessContrast** - Adjusts brightness and contrast
-* **ColorBalance** - Adjusts color balance for shadows, midtones, and highlights (with limitations, see below)
+* **Brightness/Contrast** - Adjusts brightness and contrast
+* **Color Balance** - Adjusts color balance for shadows, midtones, and highlights (with limitations, see below)
 
 **Not Yet Implemented:**
 
-* Curves
-* Levels
-* Channel Mixer
-* Photo Filter
-* Selective Color
-* Vibrance
-* And others
+* **Black & White** - Converts to grayscale with channel-specific controls
+* **Channel Mixer** - Remixes color channels with custom ratios
+* **Color Lookup** - Applies 3D LUT color grading
+* **Curves** - Applies tonal curve adjustments
+* **Gradient Map** - Maps grayscale to gradient colors
+* **Levels** - Adjusts input/output levels and midpoint gamma
+* **Photo Filter** - Applies warming/cooling color filters
+* **Selective Color** - Adjusts specific color ranges (CMYK-based)
+* **Vibrance** - Adjusts saturation with skin tone protection
 
 **Technical Limitations:**
 

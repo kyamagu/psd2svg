@@ -38,15 +38,6 @@ logger = logging.getLogger(__name__)
 class AdjustmentConverter(ConverterProtocol):
     """Mixin for adjustment layers."""
 
-    def add_adjustment(
-        self, layer: layers.AdjustmentLayer, **attrib: str
-    ) -> ET.Element | None:
-        """Add an adjustment layer to the svg document."""
-        logger.warning(
-            f"Adjustment layer is unsupported yet: '{layer.name}' ({layer.kind})"
-        )
-        return None
-
     def add_invert_adjustment(
         self, layer: adjustments.Invert, **attrib: str
     ) -> ET.Element | None:
@@ -164,7 +155,7 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
-    def add_huesaturation_adjustment(
+    def add_hue_saturation_adjustment(
         self, layer: adjustments.HueSaturation, **attrib: str
     ) -> ET.Element | None:
         """Add a hue/saturation adjustment layer to the svg document.
@@ -287,7 +278,7 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
-    def add_brightnesscontrast_adjustment(
+    def add_brightness_contrast_adjustment(
         self, layer: adjustments.BrightnessContrast, **attrib: str
     ) -> ET.Element | None:
         """Add a brightness/contrast adjustment layer to the svg document.
@@ -383,7 +374,7 @@ class AdjustmentConverter(ConverterProtocol):
 
         return use
 
-    def add_colorbalance_adjustment(
+    def add_color_balance_adjustment(
         self, layer: adjustments.ColorBalance, **attrib: str
     ) -> ET.Element | None:
         """Add a color balance adjustment layer to the svg document.
@@ -470,6 +461,123 @@ class AdjustmentConverter(ConverterProtocol):
                 self.create_node("feFuncB", type="table", tableValues=lut_b_str)
 
         return use
+
+    def add_black_and_white_adjustment(
+        self, layer: adjustments.BlackAndWhite, **attrib: str
+    ) -> ET.Element | None:
+        """Add a black and white adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Black and White adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_channel_mixer_adjustment(
+        self, layer: adjustments.ChannelMixer, **attrib: str
+    ) -> ET.Element | None:
+        """Add a channel mixer adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Channel Mixer adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_color_lookup_adjustment(
+        self, layer: adjustments.ColorLookup, **attrib: str
+    ) -> ET.Element | None:
+        """Add a color lookup adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Color Lookup adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_curves_adjustment(
+        self, layer: adjustments.Curves, **attrib: str
+    ) -> ET.Element | None:
+        """Add a curves adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Curves adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_gradient_map_adjustment(
+        self, layer: adjustments.GradientMap, **attrib: str
+    ) -> ET.Element | None:
+        """Add a gradient map adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Gradient Map adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_levels_adjustment(
+        self, layer: adjustments.Levels, **attrib: str
+    ) -> ET.Element | None:
+        """Add a levels adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Levels adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_photo_filter_adjustment(
+        self, layer: adjustments.PhotoFilter, **attrib: str
+    ) -> ET.Element | None:
+        """Add a photo filter adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Photo Filter adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_selective_color_adjustment(
+        self, layer: adjustments.SelectiveColor, **attrib: str
+    ) -> ET.Element | None:
+        """Add a selective color adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Selective Color adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
+
+    def add_vibrance_adjustment(
+        self, layer: adjustments.Vibrance, **attrib: str
+    ) -> ET.Element | None:
+        """Add a vibrance adjustment layer to the svg document.
+
+        Note: This adjustment layer type is not yet implemented.
+        """
+        logger.warning(
+            f"Vibrance adjustment layer is not yet implemented: "
+            f"'{layer.name}' ({layer.kind})"
+        )
+        return None
 
     def _generate_colorbalance_lut(
         self,
