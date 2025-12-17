@@ -27,10 +27,10 @@ stacked use elements may not produce the intended visual result.
 import logging
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from typing import Any
 
 import numpy as np
 from psd_tools.api import adjustments, layers
+from psd_tools.psd.adjustments import LevelRecord
 
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -1009,7 +1009,7 @@ class AdjustmentConverter(ConverterProtocol):
         return r_lut.tolist(), g_lut.tolist(), b_lut.tolist()
 
     def _apply_levels_to_lut(
-        self, input_lut: np.ndarray, record: Any, channel_name: str = "RGB"
+        self, input_lut: np.ndarray, record: LevelRecord, channel_name: str = "RGB"
     ) -> np.ndarray:
         """Apply levels transformation to a lookup table.
 
