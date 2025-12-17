@@ -506,7 +506,7 @@ class AdjustmentConverter(ConverterProtocol):
             else:
                 weight_shadows = 0.0
 
-            # Midtones peaked at 0.495
+            # Midtones: centered at 0.495 with falloff range of 0.165 (triangular weighting)
             mid_distance = abs(luminance - 0.495)
             weight_midtones = max(0.0, 1.0 - mid_distance / 0.165)
 

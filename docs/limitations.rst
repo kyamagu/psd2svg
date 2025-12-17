@@ -192,7 +192,8 @@ The **ColorBalance** adjustment layer is implemented using SVG ``feComponentTran
 
 **Expected Accuracy:**
 
-* **Excellent (95-99%)**: No-op and moderate adjustments (±30 to ±70 range)
+* **Perfect (100%)**: No-op adjustments (all parameters zero)
+* **Excellent (95-99%)**: Moderate adjustments (±30 to ±70 range)
 * **Good (85-95%)**: Extreme positive adjustments (+100 on all axes)
 * **Moderate (65-75%)**: Extreme negative adjustments (-100 on all axes)
 * **Best results**: Balanced images with relatively similar RGB values
