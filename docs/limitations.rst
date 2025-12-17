@@ -200,6 +200,7 @@ The **ColorBalance** adjustment layer is implemented using SVG ``feComponentTran
 **Known Limitations:**
 
 * **Global luminance**: Cannot calculate true RGB luminance (0.299R + 0.587G + 0.114B) due to SVG's per-channel processing
+* **Neutral color preservation**: Photoshop preserves pure neutral colors (white, gray, black) to avoid introducing unwanted color casts. The SVG implementation applies adjustments literally, which can tint neutral colors. For example, white (255, 255, 255) may become slightly tinted when Photoshop would keep it pure white.
 * **Preserve Luminosity mode**: Not fully supported - logs warning when enabled (luminosity=1)
 * **Highly saturated colors**: May have ~10-15% higher error for pure/saturated colors
 * **Extreme negative adjustments**: Severe color clipping when subtracting from low RGB values
