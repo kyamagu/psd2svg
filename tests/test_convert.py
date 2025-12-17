@@ -723,7 +723,7 @@ def test_adjustment_curves(psd_file: str, threshold: float) -> None:
 @pytest.mark.parametrize(
     ("psd_file", "threshold"),
     [
-        ("adjustments/levels-identitiy.psd", 0.01),
+        ("adjustments/levels-identity.psd", 0.01),
         ("adjustments/levels-rgb-1.psd", 0.01),
         ("adjustments/levels-rgb-2.psd", 0.01),
         ("adjustments/levels-r-g-b.psd", 0.01),
@@ -745,7 +745,7 @@ def test_adjustment_levels(psd_file: str, threshold: float) -> None:
 def test_adjustment_levels_noop() -> None:
     """Test that Levels with identity adjustments returns None (no filter created)."""
     # Load the identity test fixture
-    psd = PSDImage.open(get_fixture("adjustments/levels-identitiy.psd"))
+    psd = PSDImage.open(get_fixture("adjustments/levels-identity.psd"))
 
     # Find the Levels layer
     levels_layer = None
