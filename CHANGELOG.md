@@ -11,56 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Comprehensive adjustment layer support** (#189, #191, #192, #194, #196, #198, #203, #204)
-  - Posterize adjustment layer support
-  - HueSaturation adjustment layer support
-  - Exposure adjustment layer support
-  - BrightnessContrast adjustment layer support
-  - Threshold adjustment layer support
-  - ColorBalance adjustment layer support with accuracy warnings
-  - Curves adjustment layer support
-  - Levels adjustment layer support
+- **Adjustment layer support** (#189, #191, #192, #194, #196, #198, #203, #204)
+  - Posterize, HueSaturation, Exposure, BrightnessContrast, Threshold, ColorBalance, Curves, Levels
 - **Morisawa font mappings** (#180)
-  - Added 4,042 Morisawa fonts for enhanced Japanese typography support
-  - Migrated font mappings to JSON resource files with lazy loading
-  - Total static mapping: 539 default + 370 Hiragino + 4,042 Morisawa fonts
+  - 4,042 Morisawa fonts for Japanese typography
+  - JSON resource files with lazy loading
+  - Total: 539 default + 370 Hiragino + 4,042 Morisawa fonts
 
 ### Fixed
 
-- **Clipping mask and layer mask rendering** (#178)
-  - Fixed browser compatibility when both masks exist on same layer
-  - Transfers mask attributes to content elements instead of nested mask references
-- **Font weight consistency** (#183)
-  - Use numeric "700" instead of "bold" for consistent CSS output (#179)
+- **Clipping mask and layer mask combination** (#178)
+  - Browser compatibility when both masks exist on same layer
+- **Font weight values** (#183)
+  - Use numeric "700" instead of "bold" for consistency
 - **Browser optional dependency** (#177)
-  - Fixed browser dependency group configuration
-- **Documentation updates** (#186, #187, #197)
-  - Fixed 'browser group' references to 'browser extra' throughout docs
-  - Fixed multiple outdated references in development.rst
-  - Updated adjustment layer documentation for clarity
-- **Font logging** (#184)
-  - Added quotes around file paths in log messages
+- **Documentation references** (#186, #187, #197)
 
 ### Changed
 
 - **Font mapping architecture** (#180)
-  - Consolidated duplicate font loading logic
   - Corrected Hiragino W1-W3 weight mappings
   - Resolution order: Custom → Default → Hiragino → Morisawa
-- **Adjustment layer architecture** (#200, #201)
-  - Refactored adjustment layer methods with stubs for unimplemented types
-  - Refactored `AdjustmentConverter._create_filter` to use svg_utils helpers
+- **Adjustment layer refactoring** (#200, #201)
 
 ### Internal
 
-- Documentation improvements (#182, #190, #193, #202)
-  - Streamlined CLAUDE.md and improved documentation structure
-  - Added PSD file debugging tips and low-level inspection examples
-  - Added `uv run python` command to quick reference
-  - Consolidated changelog to use CHANGELOG.md as single source
-- Refactored lightness adjustment into shared helper method (#191)
-- Updated release workflow to include `uv sync` and `uv.lock` (#176)
-- Updated uv.lock for v0.9.0 (#176)
+- Documentation improvements and debugging tips (#182, #190, #193, #202)
+- Updated release workflow (#176)
 
 ## [0.9.0] - 2025-12-15
 
