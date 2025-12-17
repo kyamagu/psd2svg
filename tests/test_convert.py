@@ -704,6 +704,23 @@ def test_adjustment_colorbalance_noop() -> None:
 
 
 @pytest.mark.parametrize(
+    ("psd_file", "threshold"),
+    [
+        ("adjustments/curves-rgb.psd", 0.02),
+        ("adjustments/curves-r.psd", 0.02),
+        ("adjustments/curves-g.psd", 0.02),
+        ("adjustments/curves-b.psd", 0.01),
+        ("adjustments/curves-r-g-b.psd", 0.01),
+        ("adjustments/curves-rgb-r.psd", 0.02),
+        ("adjustments/curves-rgb-extreme.psd", 0.01),
+    ],
+)
+def test_adjustment_curves(psd_file: str, threshold: float) -> None:
+    """Test conversion quality of curves adjustment layer."""
+    evaluate_quality(psd_file, threshold)
+
+
+@pytest.mark.parametrize(
     "psd_file",
     [
         "texts/paragraph-shapetype0-justification0.psd",

@@ -26,7 +26,9 @@ stacked use elements may not produce the intended visual result.
 
 import logging
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 
+import numpy as np
 from psd_tools.api import adjustments, layers
 
 from psd2svg import svg_utils
@@ -506,13 +508,64 @@ class AdjustmentConverter(ConverterProtocol):
     ) -> ET.Element | None:
         """Add a curves adjustment layer to the svg document.
 
-        Note: This adjustment layer type is not yet implemented.
+        Applies tonal curve adjustments using SVG feComponentTransfer filters
+        with lookup tables generated from control points. Supports both composite
+        (RGB) curves and per-channel (R/G/B) curves, matching Photoshop's curve
+        application order.
+
+        Args:
+            layer: The Curves adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if identity.
         """
-        logger.warning(
-            f"Curves adjustment layer is not yet implemented: "
-            f"'{layer.name}' ({layer.kind})"
+        # Validate curve data
+        if not hasattr(layer.data, "extra") or not layer.data.extra:
+            logger.warning(
+                f"Curves adjustment '{layer.name}' has no curve data, skipping"
+            )
+            return None
+
+        # Check for identity curves (optimization)
+        is_identity = True
+        for item in layer.data.extra:  # type: ignore[attr-defined]
+            if len(item.points) != 2 or item.points != [(0, 0), (255, 255)]:
+                is_identity = False
+                break
+
+        if is_identity:
+            logger.info(f"Curves adjustment '{layer.name}' is identity curve, skipping")
+            return None
+
+        # Log curve info for debugging
+        logger.debug(
+            f"Curves adjustment '{layer.name}': "
+            f"Processing {len(layer.data.extra)} curve(s)"  # type: ignore[arg-type]
         )
-        return None
+
+        # Generate lookup tables
+        lut_r, lut_g, lut_b = self._generate_curves_luts(layer)
+
+        # Convert to SVG format
+        lut_r_str = svg_utils.seq2str(lut_r, sep=" ")
+        lut_g_str = svg_utils.seq2str(lut_g, sep=" ")
+        lut_b_str = svg_utils.seq2str(lut_b, sep=" ")
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="curves", **attrib)
+
+        # Build SVG filter primitives
+        with self.set_current(filter):
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                self.create_node("feFuncR", type="table", tableValues=lut_r_str)
+                self.create_node("feFuncG", type="table", tableValues=lut_g_str)
+                self.create_node("feFuncB", type="table", tableValues=lut_b_str)
+
+        return use
 
     def add_gradient_map_adjustment(
         self, layer: adjustments.GradientMap, **attrib: str
@@ -636,6 +689,201 @@ class AdjustmentConverter(ConverterProtocol):
             lut.append(output_val)
 
         return lut
+
+    def _interpolate_curve(self, points: list[tuple[int, int]]) -> list[float]:
+        """Interpolate curve control points to 256-value LUT using Catmull-Rom spline.
+
+        Uses Catmull-Rom spline interpolation for smooth C1 continuous curves
+        with local control. For curves with only 2 points, uses linear interpolation.
+
+        Args:
+            points: List of (input, output) tuples in 0-255 range.
+                    Always includes endpoints (0, 0) and (255, 255).
+
+        Returns:
+            List of 256 float values in [0, 1] range for SVG.
+        """
+        if len(points) < 2:
+            # Edge case: invalid curve, return identity
+            logger.warning("Curve has fewer than 2 points, using identity")
+            return list(np.linspace(0, 1, 256))
+
+        # IMPORTANT: Photoshop curve points are (output, input), not (input, output)!
+        # We need to swap them to get (input, output) for interpolation
+        # Example: [(0, 0), (160, 95), (255, 255)] means:
+        #   input 0 → output 0
+        #   input 95 → output 160 (brightening)
+        #   input 255 → output 255
+        swapped_points = [(p[1], p[0]) for p in points]
+
+        # Deduplicate points: keep last point for each x value
+        # This handles cases like [(0, 0), (255, 4), (255, 255)] which after
+        # swapping becomes [(0, 0), (4, 255), (255, 255)]
+        deduplicated_points = list(
+            OrderedDict((p[0], p) for p in swapped_points).values()
+        )
+
+        if len(deduplicated_points) != len(swapped_points):
+            logger.debug(
+                f"Deduplicated curve points from {len(swapped_points)} to "
+                f"{len(deduplicated_points)} (removed duplicate x values)"
+            )
+            points = deduplicated_points
+        else:
+            points = swapped_points
+
+        # Validate we still have enough points after deduplication
+        if len(points) < 2:
+            logger.warning(
+                "Curve has fewer than 2 points after deduplication, using identity"
+            )
+            return list(np.linspace(0, 1, 256))
+
+        # Extract x and y coordinates (now in input, output order)
+        x_points = np.array([p[0] for p in points], dtype=float)
+        y_points = np.array([p[1] for p in points], dtype=float)
+
+        # Handle 2-point case (identity or linear)
+        if len(points) == 2:
+            # Simple linear interpolation
+            lut = np.interp(np.arange(256), x_points, y_points)
+            # Clamp and normalize
+            lut = np.clip(lut, 0, 255) / 255.0
+            return lut.tolist()
+
+        # Catmull-Rom spline for 3+ points
+        # Duplicate first and last points for boundary tangent calculation
+        x_extended = np.concatenate([[x_points[0]], x_points, [x_points[-1]]])
+        y_extended = np.concatenate([[y_points[0]], y_points, [y_points[-1]]])
+
+        # Catmull-Rom basis matrix
+        cr_matrix = np.array(
+            [
+                [-0.5, 1.5, -1.5, 0.5],
+                [1.0, -2.5, 2.0, -0.5],
+                [-0.5, 0.0, 0.5, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
+        # Generate interpolated curve
+        lut = np.zeros(256)
+
+        for i in range(len(points) - 1):
+            # Get four control points for this segment (p0, p1, p2, p3)
+            # We interpolate between p1 and p2
+            p0_y = y_extended[i]
+            p1_x, p1_y = x_extended[i + 1], y_extended[i + 1]
+            p2_x, p2_y = x_extended[i + 2], y_extended[i + 2]
+            p3_y = y_extended[i + 3]
+
+            # Determine which output indices correspond to this segment
+            x_start = int(p1_x)
+            x_end = int(p2_x)
+
+            if x_start > x_end:
+                # Skip segments going backwards (shouldn't happen after deduplication)
+                continue
+
+            if x_start == x_end:
+                # Single point segment: set the value directly
+                if x_start < 256:
+                    lut[x_start] = p2_y
+                continue
+
+            # Generate samples for this segment
+            for x in range(x_start, min(x_end + 1, 256)):
+                # Parametric position t in [0, 1] within this segment
+                t = (x - p1_x) / (p2_x - p1_x) if p2_x > p1_x else 0
+                t = np.clip(t, 0, 1)
+
+                # Catmull-Rom interpolation
+                t_vec = np.array([t**3, t**2, t, 1])
+                p_vec = np.array([p0_y, p1_y, p2_y, p3_y])
+                y = t_vec @ cr_matrix @ p_vec
+
+                lut[x] = y
+
+        # Clamp and normalize to [0, 1]
+        lut = np.clip(lut, 0, 255) / 255.0
+        return lut.tolist()
+
+    def _generate_curves_luts(
+        self, layer: adjustments.Curves
+    ) -> tuple[list[float], list[float], list[float]]:
+        """Generate RGB lookup tables from Curves layer.
+
+        Handles both composite (RGB) curves and per-channel curves with
+        correct composition order matching Photoshop behavior: composite
+        curve is applied first to all channels, then individual channel
+        curves are applied on top.
+
+        Args:
+            layer: The Curves adjustment layer.
+
+        Returns:
+            Tuple of (lut_r, lut_g, lut_b) with 256 float values each in [0, 1].
+        """
+        # Parse curves by channel ID
+        curves_by_channel: dict[int, list[tuple[int, int]]] = {}
+        for item in layer.data.extra:  # type: ignore[attr-defined]
+            if 0 <= item.channel_id <= 3:
+                curves_by_channel[item.channel_id] = item.points
+            else:
+                logger.warning(
+                    f"Curves adjustment '{layer.name}': "
+                    f"Unknown channel ID {item.channel_id}, skipping"
+                )
+
+        # Start with identity LUTs (0-255 in pixel space)
+        identity = np.arange(256, dtype=float)
+        r_vals = identity.copy()
+        g_vals = identity.copy()
+        b_vals = identity.copy()
+
+        # Apply composite curve (channel_id=0) to all channels first
+        if 0 in curves_by_channel:
+            logger.debug(
+                f"Curves adjustment '{layer.name}': "
+                f"Applying composite curve with {len(curves_by_channel[0])} points"
+            )
+            composite_lut_normalized = self._interpolate_curve(curves_by_channel[0])
+            # Convert back to 0-255 space for composition
+            composite_lut = np.array(composite_lut_normalized) * 255.0
+
+            # Apply composite to all channels
+            r_vals = np.interp(r_vals, identity, composite_lut)
+            g_vals = np.interp(g_vals, identity, composite_lut)
+            b_vals = np.interp(b_vals, identity, composite_lut)
+
+        # Apply per-channel curves on top of composite
+        for channel_id, channel_name in [(1, "Red"), (2, "Green"), (3, "Blue")]:
+            if channel_id in curves_by_channel:
+                logger.debug(
+                    f"Curves adjustment '{layer.name}': "
+                    f"Applying {channel_name} curve with "
+                    f"{len(curves_by_channel[channel_id])} points"
+                )
+                channel_lut_normalized = self._interpolate_curve(
+                    curves_by_channel[channel_id]
+                )
+                # Convert back to 0-255 space
+                channel_lut = np.array(channel_lut_normalized) * 255.0
+
+                # Apply to the corresponding channel
+                if channel_id == 1:
+                    r_vals = np.interp(r_vals, identity, channel_lut)
+                elif channel_id == 2:
+                    g_vals = np.interp(g_vals, identity, channel_lut)
+                elif channel_id == 3:
+                    b_vals = np.interp(b_vals, identity, channel_lut)
+
+        # Clamp and normalize to [0, 1] for SVG
+        r_lut = np.clip(r_vals, 0, 255) / 255.0
+        g_lut = np.clip(g_vals, 0, 255) / 255.0
+        b_lut = np.clip(b_vals, 0, 255) / 255.0
+
+        return r_lut.tolist(), g_lut.tolist(), b_lut.tolist()
 
     def _apply_normal_huesaturation(
         self, hue: int, saturation: int, lightness: int
