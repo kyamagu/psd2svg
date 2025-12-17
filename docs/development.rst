@@ -36,6 +36,13 @@ The project uses ``uv`` for dependency management:
    uv sync --extra browser                # Playwright rasterizer
    uv run playwright install chromium     # Install Chromium browser for Playwright
 
+Quick Reference
+~~~~~~~~~~~~~~~
+
+For a quick command reference, git workflow, and development philosophy,
+see the ``CLAUDE.md`` file in the repository root. This file provides
+essential guidance for AI-assisted development with Claude Code.
+
 Development Commands
 --------------------
 
