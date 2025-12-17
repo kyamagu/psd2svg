@@ -734,13 +734,13 @@ class AdjustmentConverter(ConverterProtocol):
         # Backdrop use.
         self.create_node(
             "use",
-            href=f"#{wrapper.get('id')}",
+            href=svg_utils.get_uri(wrapper),
         )
         # Apply filter to the use.
         use = self.create_node(
             "use",
-            href=f"#{wrapper.get('id')}",
-            filter=f"url(#{filter.get('id')})",
+            href=svg_utils.get_uri(wrapper),
+            filter=svg_utils.get_funciri(filter),
             class_=name,
             **attrib,  # type: ignore[arg-type]  # Clipping context etc.
         )
