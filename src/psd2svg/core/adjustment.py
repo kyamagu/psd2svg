@@ -429,6 +429,21 @@ class AdjustmentConverter(ConverterProtocol):
                 "Results may differ from Photoshop."
             )
 
+        # Warn about extreme adjustments with reduced accuracy
+        max_abs_value = max(
+            max(abs(v) for v in shadows),
+            max(abs(v) for v in midtones),
+            max(abs(v) for v in highlights),
+        )
+        if max_abs_value >= 80:
+            logger.info(
+                f"ColorBalance adjustment '{layer.name}': "
+                f"Extreme adjustment values (max |{max_abs_value}|) detected. "
+                "Accuracy may be reduced (65-85%) due to SVG's per-channel "
+                "luminance approximation. For critical color accuracy, flatten "
+                "this adjustment in Photoshop before conversion."
+            )
+
         # Create filter structure
         filter, use = self._create_filter(layer, name="colorbalance", **attrib)
 

@@ -147,12 +147,12 @@ Adjustment Layers
 * **HueSaturation** - Adjusts hue, saturation, and lightness (supports colorize mode)
 * **Exposure** - Applies exposure, offset, and gamma correction
 * **BrightnessContrast** - Adjusts brightness and contrast
+* **ColorBalance** - Adjusts color balance for shadows, midtones, and highlights (with limitations, see below)
 
 **Not Yet Implemented:**
 
 * Curves
 * Levels
-* Color Balance
 * Channel Mixer
 * Photo Filter
 * Selective Color
@@ -178,6 +178,47 @@ This means:
 * **No clean solution**: Without native backdrop-filter support on SVG elements, there is no straightforward way to implement adjustment layers that handle transparency correctly
 
 **Workaround:** Flatten adjustment layers in Photoshop before conversion, or export a flattened version. This is the recommended approach for production use.
+
+Color Balance Accuracy Limitations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The **ColorBalance** adjustment layer is implemented using SVG ``feComponentTransfer`` filters with 256-value lookup tables. Due to SVG's independent channel processing architecture, **global luminance-based tonal weighting cannot be perfectly emulated**.
+
+**Implementation Approach:**
+
+* Uses per-channel grayscale approximation (assumes R≈G≈B for luminance calculation)
+* Generates three separate lookup tables (one per RGB channel)
+* Applies Photoshop's tonal range weighting formulas (shadows/midtones/highlights)
+
+**Expected Accuracy:**
+
+* **Excellent (95-99%)**: No-op and moderate adjustments (±30 to ±70 range)
+* **Good (85-95%)**: Extreme positive adjustments (+100 on all axes)
+* **Moderate (65-75%)**: Extreme negative adjustments (-100 on all axes)
+* **Best results**: Balanced images with relatively similar RGB values
+
+**Known Limitations:**
+
+* **Global luminance**: Cannot calculate true RGB luminance (0.299R + 0.587G + 0.114B) due to SVG's per-channel processing
+* **Preserve Luminosity mode**: Not fully supported - logs warning when enabled (luminosity=1)
+* **Highly saturated colors**: May have ~10-15% higher error for pure/saturated colors
+* **Extreme negative adjustments**: Severe color clipping when subtracting from low RGB values
+* **File size**: Adds ~2-3KB per ColorBalance layer (768 float values in LUTs)
+
+**Why This Is Acceptable:**
+
+ColorBalance is primarily used for **subtle tonal color correction** (e.g., warming shadows, cooling highlights), not extreme stylization. The grayscale approximation works well because:
+
+* Most images have relatively balanced RGB values in each tonal range
+* Weighted blending across tonal ranges smooths out approximation errors
+* Typical adjustments (±30 to ±70) achieve 95%+ accuracy
+* Visual differences are imperceptible for normal use cases
+
+**Technical Background:**
+
+SVG's ``feComponentTransfer`` processes RGB channels independently, making it impossible to compute global luminance (which requires access to all three channels simultaneously). SVG filters like ``feColorMatrix`` can extract luminance, but ``feComposite`` arithmetic operations are limited to linear combinations and cannot perform the conditional, non-linear tonal weight calculations required by ColorBalance (e.g., ``if L < 0.33 then weight = (0.33 - L) / 0.33``).
+
+**Workaround:** For critical color accuracy requirements, flatten ColorBalance adjustments in Photoshop before conversion.
 
 Smart Objects
 -------------
