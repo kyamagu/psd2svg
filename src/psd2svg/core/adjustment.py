@@ -30,6 +30,7 @@ from collections import OrderedDict
 
 import numpy as np
 from psd_tools.api import adjustments, layers
+from psd_tools.psd.adjustments import LevelRecord
 
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
@@ -585,13 +586,70 @@ class AdjustmentConverter(ConverterProtocol):
     ) -> ET.Element | None:
         """Add a levels adjustment layer to the svg document.
 
-        Note: This adjustment layer type is not yet implemented.
+        Applies tonal adjustments using input/output ranges and gamma correction.
+        Supports both composite (RGB) and per-channel (R/G/B) adjustments,
+        matching Photoshop's application order.
+
+        Args:
+            layer: The Levels adjustment layer to convert.
+            attrib: Additional attributes for the SVG element.
+
+        Returns:
+            The SVG use element with the filter applied, or None if identity.
         """
-        logger.warning(
-            f"Levels adjustment layer is not yet implemented: "
-            f"'{layer.name}' ({layer.kind})"
+        # Validate data structure
+        if not hasattr(layer, "data") or len(layer.data) < 4:
+            logger.warning(
+                f"Levels adjustment '{layer.name}' has insufficient data, skipping"
+            )
+            return None
+
+        # Check for identity (optimization)
+        is_identity = True
+        for i in range(4):
+            record = layer.data[i]
+            if not (
+                record.input_floor == 0
+                and record.input_ceiling == 255
+                and record.output_floor == 0
+                and record.output_ceiling == 255
+                and record.gamma == 100
+            ):
+                is_identity = False
+                break
+
+        if is_identity:
+            logger.info(f"Levels adjustment '{layer.name}' is identity, skipping")
+            return None
+
+        # Log for debugging
+        logger.debug(
+            f"Levels adjustment '{layer.name}': "
+            f"Processing composite RGB and per-channel adjustments"
         )
-        return None
+
+        # Generate lookup tables
+        lut_r, lut_g, lut_b = self._generate_levels_luts(layer)
+
+        # Convert to SVG format
+        lut_r_str = svg_utils.seq2str(lut_r, sep=" ")
+        lut_g_str = svg_utils.seq2str(lut_g, sep=" ")
+        lut_b_str = svg_utils.seq2str(lut_b, sep=" ")
+
+        # Create filter structure
+        filter, use = self._create_filter(layer, name="levels", **attrib)
+
+        # Build SVG filter primitives
+        with self.set_current(filter):
+            fe_component = self.create_node(
+                "feComponentTransfer", color_interpolation_filters="sRGB"
+            )
+            with self.set_current(fe_component):
+                self.create_node("feFuncR", type="table", tableValues=lut_r_str)
+                self.create_node("feFuncG", type="table", tableValues=lut_g_str)
+                self.create_node("feFuncB", type="table", tableValues=lut_b_str)
+
+        return use
 
     def add_photo_filter_adjustment(
         self, layer: adjustments.PhotoFilter, **attrib: str
@@ -884,6 +942,135 @@ class AdjustmentConverter(ConverterProtocol):
         b_lut = np.clip(b_vals, 0, 255) / 255.0
 
         return r_lut.tolist(), g_lut.tolist(), b_lut.tolist()
+
+    def _generate_levels_luts(
+        self, layer: adjustments.Levels
+    ) -> tuple[list[float], list[float], list[float]]:
+        """Generate RGB lookup tables from Levels layer.
+
+        Handles both composite (RGB) and per-channel adjustments with
+        correct composition order matching Photoshop behavior: composite
+        adjustment is applied first to all channels, then individual channel
+        adjustments are applied on top.
+
+        Args:
+            layer: The Levels adjustment layer.
+
+        Returns:
+            Tuple of (lut_r, lut_g, lut_b) with 256 float values each in [0, 1].
+        """
+        # Start with identity LUTs (0-255 in pixel space)
+        identity = np.arange(256, dtype=float)
+        r_vals = identity.copy()
+        g_vals = identity.copy()
+        b_vals = identity.copy()
+
+        # Apply composite RGB adjustment (record 0) to all channels first
+        composite_record = layer.data[0]
+        composite_lut = self._apply_levels_to_lut(
+            identity, composite_record, channel_name="RGB"
+        )
+
+        # Apply composite to all channels
+        r_vals = composite_lut.copy()
+        g_vals = composite_lut.copy()
+        b_vals = composite_lut.copy()
+
+        # Apply per-channel adjustments on top
+        for channel_id, channel_name in [(1, "Red"), (2, "Green"), (3, "Blue")]:
+            record = layer.data[channel_id]
+
+            # Check if this channel has non-identity adjustment
+            if (
+                record.input_floor != 0
+                or record.input_ceiling != 255
+                or record.output_floor != 0
+                or record.output_ceiling != 255
+                or record.gamma != 100
+            ):
+                logger.debug(
+                    f"Levels adjustment '{layer.name}': "
+                    f"Applying {channel_name} channel adjustment"
+                )
+
+                # Apply levels adjustment to this channel
+                if channel_id == 1:
+                    r_vals = self._apply_levels_to_lut(r_vals, record, channel_name)
+                elif channel_id == 2:
+                    g_vals = self._apply_levels_to_lut(g_vals, record, channel_name)
+                elif channel_id == 3:
+                    b_vals = self._apply_levels_to_lut(b_vals, record, channel_name)
+
+        # Clamp and normalize to [0, 1] for SVG
+        r_lut = np.clip(r_vals, 0, 255) / 255.0
+        g_lut = np.clip(g_vals, 0, 255) / 255.0
+        b_lut = np.clip(b_vals, 0, 255) / 255.0
+
+        return r_lut.tolist(), g_lut.tolist(), b_lut.tolist()
+
+    def _apply_levels_to_lut(
+        self, input_lut: np.ndarray, record: LevelRecord, channel_name: str = "RGB"
+    ) -> np.ndarray:
+        """Apply levels transformation to a lookup table.
+
+        Applies the Photoshop Levels algorithm:
+        1. Normalize input: (value - input_floor) / (input_ceiling - input_floor)
+        2. Apply gamma: normalized ^ (100/gamma)
+        3. Scale to output: result * (output_ceiling - output_floor) + output_floor
+        4. Clamp to [0, 255]
+
+        Args:
+            input_lut: Input LUT values in 0-255 range (256 float values).
+            record: LevelRecord with adjustment parameters.
+            channel_name: Channel name for logging (e.g., "RGB", "Red").
+
+        Returns:
+            Output LUT values in 0-255 range (256 float values).
+        """
+        # Extract parameters
+        input_floor = float(record.input_floor)
+        input_ceiling = float(record.input_ceiling)
+        output_floor = float(record.output_floor)
+        output_ceiling = float(record.output_ceiling)
+        gamma = float(record.gamma)
+
+        # Handle edge case: input_ceiling == input_floor (division by zero)
+        if abs(input_ceiling - input_floor) < 1e-6:
+            logger.warning(
+                f"Levels adjustment: {channel_name} channel has "
+                f"input_ceiling == input_floor ({input_ceiling}), "
+                f"using extreme mapping"
+            )
+            # All values below input_floor -> output_floor
+            # All values at or above input_floor -> output_ceiling
+            output_lut = np.where(input_lut < input_floor, output_floor, output_ceiling)
+            return output_lut
+
+        # Handle edge case: gamma <= 0 (invalid)
+        if gamma <= 0:
+            logger.warning(
+                f"Levels adjustment: {channel_name} channel has "
+                f"invalid gamma ({gamma}), using gamma=100"
+            )
+            gamma = 100.0
+
+        # Step 1: Normalize input to [0, 1] range
+        normalized = (input_lut - input_floor) / (input_ceiling - input_floor)
+
+        # Clamp normalized values to [0, 1] before gamma
+        normalized = np.clip(normalized, 0.0, 1.0)
+
+        # Step 2: Apply gamma correction
+        gamma_exponent = 100.0 / gamma
+        gamma_corrected = np.power(normalized, gamma_exponent)
+
+        # Step 3: Scale to output range
+        output_lut = gamma_corrected * (output_ceiling - output_floor) + output_floor
+
+        # Step 4: Clamp to valid range [0, 255]
+        output_lut = np.clip(output_lut, 0.0, 255.0)
+
+        return output_lut
 
     def _apply_normal_huesaturation(
         self, hue: int, saturation: int, lightness: int

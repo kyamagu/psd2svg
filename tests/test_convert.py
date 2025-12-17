@@ -721,6 +721,61 @@ def test_adjustment_curves(psd_file: str, threshold: float) -> None:
 
 
 @pytest.mark.parametrize(
+    ("psd_file", "threshold"),
+    [
+        ("adjustments/levels-identity.psd", 0.01),
+        ("adjustments/levels-rgb-1.psd", 0.01),
+        ("adjustments/levels-rgb-2.psd", 0.01),
+        ("adjustments/levels-r-g-b.psd", 0.01),
+        ("adjustments/levels-rgb-extreme-1.psd", 0.02),
+        (
+            "adjustments/levels-rgb-extreme-2.psd",
+            0.04,
+        ),  # Higher threshold for extreme darkening
+        ("adjustments/levels-rgb-extreme-3.psd", 0.01),
+        ("adjustments/levels-rgb-extreme-4.psd", 0.01),
+        ("adjustments/levels-rgb-invert.psd", 0.01),
+    ],
+)
+def test_adjustment_levels(psd_file: str, threshold: float) -> None:
+    """Test conversion quality of levels adjustment layer."""
+    evaluate_quality(psd_file, threshold)
+
+
+def test_adjustment_levels_noop() -> None:
+    """Test that Levels with identity adjustments returns None (no filter created)."""
+    # Load the identity test fixture
+    psd = PSDImage.open(get_fixture("adjustments/levels-identity.psd"))
+
+    # Find the Levels layer
+    levels_layer = None
+    for layer in psd.descendants():
+        if layer.kind == "levels":
+            levels_layer = layer
+            break
+
+    assert levels_layer is not None, "Levels layer not found in fixture"
+
+    # Verify parameters are identity
+    for i in range(4):
+        record = levels_layer.data[i]
+        assert record.input_floor == 0
+        assert record.input_ceiling == 255
+        assert record.output_floor == 0
+        assert record.output_ceiling == 255
+        assert record.gamma == 100
+
+    # Create converter and test the method directly
+    converter = Converter(psd)
+
+    # Call add_levels_adjustment directly
+    result = converter.add_levels_adjustment(levels_layer)
+
+    # Should return None for identity case
+    assert result is None, "Expected None for identity Levels, but filter was created"
+
+
+@pytest.mark.parametrize(
     "psd_file",
     [
         "texts/paragraph-shapetype0-justification0.psd",
