@@ -2,7 +2,9 @@ import logging
 from typing import Iterator
 
 from psd_tools.psd.descriptor import Descriptor
-from psd_tools.terminology import Key, Klass
+from psd_tools.terminology import Enum, Key, Klass
+
+from psd2svg.core import color_utils
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +93,6 @@ class GradientInterpolation:
 
                 # Normalize colors to RGB tuples to handle mixed formats
                 # (e.g., one stop with b'Rd  ' keys, another with 'redFloat' keys)
-                from psd2svg.core import color_utils
-
                 try:
                     rgb0 = color_utils.descriptor2rgb(color0)
                     rgb1 = color_utils.descriptor2rgb(color1)
@@ -115,8 +115,6 @@ class GradientInterpolation:
                 b = rgb0[2] + t * (rgb1[2] - rgb0[2])
 
                 # Create descriptor with integer format (b'Rd  ', b'Grn ', b'Bl  ')
-                from psd_tools.terminology import Enum
-
                 desc = Descriptor(classID=color0.classID)
                 desc[Enum.Red] = r
                 desc[Enum.Green] = g

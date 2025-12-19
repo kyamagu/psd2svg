@@ -12,6 +12,7 @@ from psd_tools.terminology import Enum, Key, Klass, Unit
 from psd2svg import svg_utils
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
+from psd2svg.core.gradient import GradientInterpolation
 
 logger = logging.getLogger(__name__)
 
@@ -873,8 +874,6 @@ class EffectConverter(ConverterProtocol):
                 "Gradient-based inner glow is approximated using first color stop"
             )
             try:
-                from psd2svg.core.gradient import GradientInterpolation
-
                 grad_interp = GradientInterpolation(effect.gradient)
                 if grad_interp.color_stops:
                     first_color = grad_interp.color_stops[0][1]
