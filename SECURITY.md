@@ -43,128 +43,22 @@ When reporting a vulnerability, please include:
 - **Fix Timeline**: We aim to release a fix within 30 days for critical vulnerabilities
 - **Disclosure**: We will coordinate with you on the disclosure timeline
 
-## Security Best Practices for Users
+## Security Features and Best Practices
 
-When using psd2svg, especially with untrusted input files, follow these best practices:
+psd2svg includes built-in security features to protect against common vulnerabilities when processing untrusted PSD files:
 
-### 1. Input Validation
+- **Resource Limits**: Automatic DoS prevention with configurable limits (file size, timeout, layer depth, image dimensions)
+- **Path Traversal Protection**: Built-in validation for `image_prefix` parameter
+- **Font File Validation**: Automatic validation of font file extensions and paths
 
-```python
-import os
-from psd_tools import PSDImage
-from psd2svg import SVGDocument
+For comprehensive security documentation including:
 
-# Check file size before processing
-# Note: Professional PSD files are often 1-5GB; adjust based on your use case
-max_size = 2 * 1024 * 1024 * 1024  # 2GB for trusted users
-# For untrusted sources, use more restrictive limits:
-# max_size = 500 * 1024 * 1024  # 500MB for untrusted input
+- Detailed configuration examples
+- Best practices for processing untrusted files
+- Sandboxing and container isolation
+- Production deployment checklist
 
-if os.path.getsize(psd_path) > max_size:
-    raise ValueError(f"File too large: {os.path.getsize(psd_path)} bytes")
-
-# Important: Check layer dimensions to prevent WebP encoding errors
-psdimage = PSDImage.open(psd_path)
-for layer in psdimage.descendants():
-    if hasattr(layer, 'width') and hasattr(layer, 'height'):
-        # WebP has a hard limit of 16383 pixels per dimension
-        if layer.width > 16383 or layer.height > 16383:
-            raise ValueError(
-                f"Layer '{layer.name}' exceeds WebP dimension limit: "
-                f"{layer.width}x{layer.height} (max: 16383x16383)"
-            )
-
-document = SVGDocument.from_psd(psdimage)
-```
-
-### 2. Sandboxing
-
-When processing untrusted PSD files, consider running the conversion in a sandboxed environment:
-
-- Use containers (Docker) with resource limits
-- Run in a separate process with timeout
-- Limit file system access
-
-```python
-import subprocess
-import signal
-
-def convert_with_timeout(psd_path, svg_path, timeout=60):
-    """Convert PSD to SVG with timeout."""
-    try:
-        proc = subprocess.run(
-            ["python", "-m", "psd2svg", psd_path, svg_path],
-            timeout=timeout,
-            capture_output=True,
-        )
-        return proc.returncode == 0
-    except subprocess.TimeoutExpired:
-        print(f"Conversion timed out after {timeout} seconds")
-        return False
-```
-
-### 3. File Path Validation
-
-Always validate file paths when using the `image_prefix` parameter:
-
-```python
-import os
-
-# Use relative paths only
-image_prefix = "images/output"
-
-# Avoid user-controlled absolute paths
-# Bad: image_prefix = user_input  # Could be "/etc/passwd"
-
-# Validate paths
-if ".." in image_prefix or os.path.isabs(image_prefix):
-    raise ValueError("Invalid image_prefix")
-```
-
-### 4. Font File Security
-
-When embedding fonts, ensure font files come from trusted sources:
-
-```python
-# Only use fonts from trusted directories
-trusted_font_dirs = ["/usr/share/fonts", "/System/Library/Fonts"]
-
-# Validate font paths
-from pathlib import Path
-font_path = Path(font_file).resolve()
-if not any(str(font_path).startswith(d) for d in trusted_font_dirs):
-    raise ValueError("Untrusted font file")
-```
-
-## Known Security Considerations
-
-### Resource Consumption
-
-PSD files can be very large and complex. Processing untrusted PSD files may lead to:
-
-- **Memory exhaustion**: Large embedded images or many layers
-- **CPU exhaustion**: Complex layer effects or deeply nested layers
-- **Disk exhaustion**: Large output SVG files with embedded images
-
-**Mitigation**: Implement file size limits, timeouts, and run in resource-constrained environments.
-
-### Path Traversal
-
-The `image_prefix` parameter in `save()` and `tostring()` methods has protections against path traversal:
-
-- Prevents `..` in paths (since version TBD)
-- Validates absolute paths (since version TBD)
-
-**Mitigation**: Always validate user-provided paths before use.
-
-### Font File Access
-
-When rasterizing with custom fonts, the library may access font files on the system:
-
-- ResvgRasterizer validates font file extensions (since version TBD)
-- PlaywrightRasterizer accesses fonts via Chromium
-
-**Mitigation**: Ensure font files come from trusted sources.
+**See the [Security Considerations](https://psd2svg.readthedocs.io/en/latest/security.html) documentation.**
 
 ## Automated Security Scanning
 
