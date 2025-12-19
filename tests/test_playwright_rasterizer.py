@@ -21,13 +21,17 @@ def test_is_available() -> None:
 
     # Try to actually import playwright to verify is_available() is correct
     try:
-        import playwright.sync_api  # noqa: F401
+        import playwright.sync_api  # noqa: F401, PLC0415
 
         # If import succeeded, is_available() should return True
-        assert has_pw is True, "is_available() returned False but playwright is installed"
+        assert has_pw is True, (
+            "is_available() returned False but playwright is installed"
+        )
     except ImportError:
         # If import failed, is_available() should return False
-        assert has_pw is False, "is_available() returned True but playwright is not installed"
+        assert has_pw is False, (
+            "is_available() returned True but playwright is not installed"
+        )
 
 
 @pytest.fixture
