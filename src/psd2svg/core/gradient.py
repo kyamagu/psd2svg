@@ -88,11 +88,39 @@ class GradientInterpolation:
                 t = (location - loc0) / (loc1 - loc0)
                 # Simple linear interpolation for color channels.
                 # TODO: Midpoint support.
+
+                # Normalize colors to RGB tuples to handle mixed formats
+                # (e.g., one stop with b'Rd  ' keys, another with 'redFloat' keys)
+                from psd2svg.core import color_utils
+
+                try:
+                    rgb0 = color_utils.descriptor2rgb(color0)
+                    rgb1 = color_utils.descriptor2rgb(color1)
+                except ValueError as e:
+                    # If color conversion fails, fall back to direct key interpolation
+                    logger.warning(f"Color interpolation fallback due to: {e}")
+                    desc = Descriptor(classID=color0.classID)
+                    for key in color0.keys():
+                        if key in color1:
+                            desc[key] = float(color0[key]) + t * (
+                                float(color1[key]) - float(color0[key])
+                            )
+                        else:
+                            desc[key] = float(color0[key])
+                    return desc
+
+                # Interpolate RGB values
+                r = rgb0[0] + t * (rgb1[0] - rgb0[0])
+                g = rgb0[1] + t * (rgb1[1] - rgb0[1])
+                b = rgb0[2] + t * (rgb1[2] - rgb0[2])
+
+                # Create descriptor with integer format (b'Rd  ', b'Grn ', b'Bl  ')
+                from psd_tools.terminology import Enum
+
                 desc = Descriptor(classID=color0.classID)
-                for key in color0.keys():
-                    desc[key] = float(color0[key]) + t * (
-                        float(color1[key]) - float(color0[key])
-                    )
+                desc[Enum.Red] = r
+                desc[Enum.Green] = g
+                desc[Enum.Blue] = b
                 return desc
         return self.color_stops[-1][1]
 
