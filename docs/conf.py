@@ -24,8 +24,8 @@ with open(_pyproject_path, "rb") as f:
     _pyproject = tomllib.load(f)
 
 project = "psd2svg"
-copyright = "2025, Kota Yamaguchi"
-author = "Kota Yamaguchi"
+copyright = "2025, CyberAgent, Inc."
+author = "CyberAgent, Inc."
 release = _pyproject["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
