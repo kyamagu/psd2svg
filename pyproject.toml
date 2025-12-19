@@ -110,5 +110,3 @@ select = [
     "PLC",    # pylint conventions
 ]
 ignore = []
-
-[tool.ruff.lint.extend-per-file-ignores]
