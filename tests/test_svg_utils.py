@@ -1578,3 +1578,186 @@ def test_strip_text_element_whitespace_with_xml_space() -> None:
     assert tspans[0].tail is None or tspans[0].tail.strip() == "", (
         "Whitespace-only tail should be stripped"
     )
+
+
+class TestSafeUtf8:
+    """Tests for safe_utf8 utility function.
+
+    The safe_utf8 function removes illegal and problematic XML characters
+    by replacing them with spaces. This is critical for XML sanitization
+    and addresses CodeQL security alert for overly permissive regex.
+    """
+
+    def test_filters_nel_character(self) -> None:
+        """Test that U+0085 (NEL - Next Line) is filtered.
+
+        This is the specific character that was excluded due to the gap
+        in the regex pattern (\x7f-\x84\x86-\x9f). This test ensures
+        the security fix properly filters U+0085.
+        """
+        text = "Hello\x85World"
+        result = svg_utils.safe_utf8(text)
+        assert result == "Hello World"
+        assert "\x85" not in result
+
+    def test_preserves_legal_xml_whitespace(self) -> None:
+        """Test that legal XML whitespace characters (TAB, LF) are preserved.
+
+        TAB (0x09) and LF (0x0A) are explicitly allowed in XML 1.0.
+        Note: CR (0x0D) is also technically legal in XML 1.0, but the
+        regex pattern intentionally filters it (part of \x0b-\x1f range).
+        This is a conservative design choice for XML sanitization.
+        """
+        text = "Hello\tWorld\nTest"
+        result = svg_utils.safe_utf8(text)
+        assert "\t" in result  # TAB (0x09) preserved
+        assert "\n" in result  # LF (0x0A) preserved
+        assert result == "Hello\tWorld\nTest"
+
+    def test_filters_cr_character(self) -> None:
+        """Test that CR (0x0D) is filtered.
+
+        While CR is technically legal in XML 1.0, the regex pattern
+        intentionally filters it as part of the \x0b-\x1f range.
+        This is a conservative sanitization choice.
+        """
+        text = "Hello\rWorld"
+        result = svg_utils.safe_utf8(text)
+        assert "\r" not in result
+        assert result == "Hello World"
+
+    def test_filters_all_c1_controls(self) -> None:
+        """Test that all C1 control characters (0x7F-0x9F) are filtered.
+
+        The regex should now properly filter the entire C1 control block
+        including 0x85 (NEL) which was previously excluded.
+        """
+        # Test boundary and middle characters from C1 range
+        for code in [0x7F, 0x80, 0x84, 0x85, 0x86, 0x90, 0x9F]:
+            text = f"Before{chr(code)}After"
+            result = svg_utils.safe_utf8(text)
+            assert chr(code) not in result, f"Character 0x{code:02X} should be filtered"
+            assert result == "Before After"
+
+    def test_filters_c0_controls(self) -> None:
+        """Test that C0 control characters are filtered (except TAB, LF, CR)."""
+        # Test NULL and other C0 controls (excluding TAB, LF, CR)
+        for code in [0x00, 0x01, 0x02, 0x08, 0x0B, 0x0C, 0x0E, 0x1F]:
+            text = f"Before{chr(code)}After"
+            result = svg_utils.safe_utf8(text)
+            assert chr(code) not in result, f"Character 0x{code:02X} should be filtered"
+            assert result == "Before After"
+
+    def test_filters_surrogates(self) -> None:
+        """Test that UTF-16 surrogate pairs (0xD800-0xDFFF) are filtered.
+
+        Surrogate pairs are illegal in XML documents.
+        """
+        # Test surrogate range boundaries
+        text = "Before\ud800After"  # High surrogate
+        result = svg_utils.safe_utf8(text)
+        assert "\ud800" not in result
+
+        text = "Before\udfff After"  # Low surrogate
+        result = svg_utils.safe_utf8(text)
+        assert "\udfff" not in result
+
+    def test_filters_non_characters(self) -> None:
+        """Test that non-characters (0xFDD0-0xFDDF, 0xFFFE-0xFFFF) are filtered."""
+        # Test non-character range
+        text = "Before\ufdd0After"  # Start of non-character range
+        result = svg_utils.safe_utf8(text)
+        assert "\ufdd0" not in result
+
+        text = "Before\ufffe After"  # U+FFFE
+        result = svg_utils.safe_utf8(text)
+        assert "\ufffe" not in result
+
+        text = "Before\uffff After"  # U+FFFF
+        result = svg_utils.safe_utf8(text)
+        assert "\uffff" not in result
+
+    def test_preserves_normal_text(self) -> None:
+        """Test that normal text is preserved unchanged."""
+        text = "Hello World! This is normal text."
+        result = svg_utils.safe_utf8(text)
+        assert result == text
+
+    def test_preserves_unicode_text(self) -> None:
+        """Test that normal Unicode characters are preserved."""
+        # Various Unicode scripts
+        text = "Hello 世界 مرحبا שלום Здравствуй"
+        result = svg_utils.safe_utf8(text)
+        assert result == text
+
+    def test_preserves_special_characters(self) -> None:
+        """Test that symbols and punctuation are preserved."""
+        text = "©®™«»×÷±≠≤≥"
+        result = svg_utils.safe_utf8(text)
+        assert result == text
+
+    def test_multiple_illegal_characters(self) -> None:
+        """Test filtering multiple illegal characters in one string."""
+        text = "Start\x00Middle\x85End\ud800Final"
+        result = svg_utils.safe_utf8(text)
+        assert "\x00" not in result
+        assert "\x85" not in result
+        assert "\ud800" not in result
+        assert "Start" in result
+        assert "Middle" in result
+        assert "End" in result
+        assert "Final" in result
+
+    def test_empty_string(self) -> None:
+        """Test that empty strings are handled correctly."""
+        text = ""
+        result = svg_utils.safe_utf8(text)
+        assert result == ""
+
+    def test_only_illegal_characters(self) -> None:
+        """Test string containing only illegal characters."""
+        text = "\x00\x85\ud800"
+        result = svg_utils.safe_utf8(text)
+        # All illegal characters replaced with spaces
+        assert result == "   "
+        assert len(result) == 3
+
+    def test_real_world_xml_text(self) -> None:
+        """Test real-world SVG text scenario."""
+        # Simulate text that might come from a PSD file
+        text = "Hello World\x85Copyright © 2024\ufffe"
+        result = svg_utils.safe_utf8(text)
+        # NEL and non-character should be replaced
+        assert "\x85" not in result
+        assert "\ufffe" not in result
+        # Normal text and copyright symbol should be preserved
+        assert "Hello World" in result
+        assert "Copyright © 2024" in result
+
+    def test_preserves_space_character(self) -> None:
+        """Test that normal space character (0x20) is preserved."""
+        text = "Hello World"
+        result = svg_utils.safe_utf8(text)
+        assert result == "Hello World"
+        assert " " in result
+
+    def test_regex_pattern_consistency(self) -> None:
+        """Test that the regex pattern is applied consistently.
+
+        This test verifies that the fix for CodeQL alert properly
+        includes U+0085 without breaking other character ranges.
+        """
+        # Before fix: 0x85 was excluded (gap in \x7f-\x84\x86-\x9f)
+        # After fix: 0x85 is included (continuous range \x7f-\x9f)
+
+        # Test characters around the gap
+        assert "\x84" not in svg_utils.safe_utf8("Test\x84")  # Should be filtered
+        assert "\x85" not in svg_utils.safe_utf8(
+            "Test\x85"
+        )  # Should NOW be filtered (was the gap)
+        assert "\x86" not in svg_utils.safe_utf8("Test\x86")  # Should be filtered
+
+        # Verify legal characters around the range are preserved
+        assert "\x09" in svg_utils.safe_utf8("Test\x09")  # TAB
+        assert "\x0a" in svg_utils.safe_utf8("Test\x0a")  # LF
+        assert "\x20" in svg_utils.safe_utf8("Test\x20")  # Space

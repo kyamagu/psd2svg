@@ -11,14 +11,52 @@ NAMESPACE = "http://www.w3.org/2000/svg"
 XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml"
 
 ILLEGAL_XML_RE: Pattern[str] = re.compile(
-    "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
+    "[\x00-\x08\x0b-\x1f\x7f-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
 )
 
 DEFAULT_NUMBER_DIGITS = 2
 
 
 def safe_utf8(text: str) -> str:
-    """Remove illegal XML characters from text."""
+    """Remove illegal and problematic XML characters from text.
+
+    This function filters out characters that are illegal or problematic in XML
+    documents by replacing them with spaces. The filtering is intentionally
+    conservative, removing more characters than strictly required by the XML 1.0
+    specification.
+
+    Characters filtered (replaced with space):
+        - C0 controls (0x00-0x08, 0x0B-0x1F): NULL, control characters
+          Exception: TAB (0x09), LF (0x0A) are preserved
+        - C1 controls (0x7F-0x9F): DEL and C1 control block including NEL (0x85)
+        - UTF-16 surrogates (0xD800-0xDFFF): Illegal in UTF-8/XML
+        - Non-characters (0xFDD0-0xFDDF, 0xFFFE-0xFFFF): Illegal in XML
+
+    Characters preserved:
+        - TAB (0x09): Horizontal spacing
+        - LF (0x0A): Line breaks
+        - Normal printable characters (0x20 and above, excluding filtered ranges)
+
+    Note on CR (0x0D):
+        CR (Carriage Return) is filtered despite being technically legal in XML 1.0.
+        This is an intentional conservative design choice because:
+        1. XML processors normalize CR to LF per XML 1.0 spec (section 2.11)
+        2. Filtering CR prevents line-ending confusion attacks
+        3. TAB and LF are sufficient for all whitespace needs in SVG
+        4. Historical issues with CR in PSD text conversion (see commit d81e4b5)
+
+    Args:
+        text: Input string that may contain illegal XML characters.
+
+    Returns:
+        Sanitized string with illegal characters replaced by spaces.
+
+    Example:
+        >>> safe_utf8("Hello\\x00World\\x85Test")
+        'Hello World Test'
+        >>> safe_utf8("Tab\\there\\nNewline")
+        'Tab\there\nNewline'
+    """
     return ILLEGAL_XML_RE.sub(" ", text)
 
 
