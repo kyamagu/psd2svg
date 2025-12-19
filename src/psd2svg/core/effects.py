@@ -12,6 +12,7 @@ from psd_tools.terminology import Enum, Key, Klass, Unit
 from psd2svg import svg_utils
 from psd2svg.core import color_utils
 from psd2svg.core.base import ConverterProtocol
+from psd2svg.core.gradient import GradientInterpolation
 
 logger = logging.getLogger(__name__)
 
@@ -860,6 +861,27 @@ class EffectConverter(ConverterProtocol):
             logger.warning(f"Only softer inner glow is supported: {glow_type_str}")
         choke = float(effect.choke)
         size = float(effect.size)
+
+        # Determine glow color: either solid color or gradient
+        glow_color = "none"
+        if effect.color is not None:
+            # Solid color glow
+            glow_color = color_utils.descriptor2hex(effect.color)
+        elif effect.gradient is not None:
+            # Gradient-based glow: use first color stop as approximation
+            # TODO: Support full gradient rendering for inner glow
+            logger.warning(
+                "Gradient-based inner glow is approximated using first color stop"
+            )
+            try:
+                grad_interp = GradientInterpolation(effect.gradient)
+                if grad_interp.color_stops:
+                    first_color = grad_interp.color_stops[0][1]
+                    glow_color = color_utils.descriptor2hex(first_color)
+            except Exception as e:
+                logger.warning(f"Failed to extract gradient color for inner glow: {e}")
+                glow_color = "none"
+
         # TODO: Adjust the width and height based on size.
         filter = self.create_node(
             "filter",
@@ -880,7 +902,7 @@ class EffectConverter(ConverterProtocol):
             )
             self.create_node(
                 "feFlood",
-                flood_color=color_utils.descriptor2hex(effect.color),
+                flood_color=glow_color,
             )
             self.create_node(
                 "feComposite",

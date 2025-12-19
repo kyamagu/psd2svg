@@ -2,7 +2,7 @@ import logging
 from typing import Sequence
 
 from psd_tools.psd.descriptor import Descriptor
-from psd_tools.terminology import Klass, Enum
+from psd_tools.terminology import Enum, Klass
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,63 @@ def cmyk2rgb(values: Sequence[float]) -> tuple[int, int, int]:
     )
 
 
-def descriptor2hex(desc: Descriptor, fallback: str = "none") -> str:
-    """Convert a color descriptor to an RGB hex string."""
+def descriptor2rgb(desc: Descriptor) -> tuple[float, float, float]:
+    """Convert a color descriptor to RGB float tuple (0.0-255.0).
+
+    Args:
+        desc: Color descriptor.
+
+    Returns:
+        Tuple of (r, g, b) as floats in range 0.0-255.0.
+
+    Raises:
+        ValueError: If color format is unsupported.
+    """
+    if desc.classID == Klass.RGBColor:
+        if Enum.Red in desc:
+            # Integer format: b'Rd  ', b'Grn ', b'Bl  '
+            r = float(desc.get(Enum.Red, 0))
+            g = float(desc.get(Enum.Green, 0))
+            b = float(desc.get(Enum.Blue, 0))
+            return (r, g, b)
+        elif "redFloat" in desc:
+            # Float format: 'redFloat', 'greenFloat', 'blueFloat'
+            r = float(desc.get("redFloat", 0)) * 255.0
+            g = float(desc.get("greenFloat", 0)) * 255.0
+            b = float(desc.get("blueFloat", 0)) * 255.0
+            return (r, g, b)
+        else:
+            raise ValueError(f"Unsupported RGB color format: {desc}")
+
+    if desc.classID == Klass.CMYKColor:
+        c = desc.get(Enum.Cyan, 0)
+        m = desc.get(Enum.Magenta, 0)
+        y = desc.get(Enum.Yellow, 0)
+        k = desc.get(Enum.Black, 0)
+        r, g, b = cmyk2rgb((c / 100, m / 100, y / 100, k / 100))
+        return (float(r), float(g), float(b))
+
+    if desc.classID == Klass.Grayscale:
+        gray = desc.get(Enum.Gray, 0)
+        assert isinstance(gray, float)
+        gray_val = float(gray * 255.0)
+        return (gray_val, gray_val, gray_val)
+
+    raise ValueError(f"Unsupported color mode: {desc.classID!r}")
+
+
+def descriptor2hex(desc: Descriptor | None, fallback: str = "none") -> str:
+    """Convert a color descriptor to an RGB hex string.
+
+    Args:
+        desc: Color descriptor, or None.
+        fallback: Fallback color string when desc is None or unsupported.
+
+    Returns:
+        RGB hex string like "#rrggbb", or fallback value.
+    """
+    if desc is None:
+        return fallback
 
     if desc.classID == Klass.RGBColor:
         if Enum.Red in desc:
