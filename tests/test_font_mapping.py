@@ -414,10 +414,10 @@ class TestDefaultFontMapping:
 
 
 class TestFontMappingIntegration:
-    """Integration tests for font_mapping parameter in conversion."""
+    """Integration tests for font_mapping parameter with lookup_static()."""
 
-    def test_custom_mapping_in_find(self) -> None:
-        """Test that FontInfo.find respects custom font mapping."""
+    def test_custom_mapping_in_lookup_static(self) -> None:
+        """Test that FontInfo.lookup_static() respects custom font mapping."""
         custom_mapping: dict[str, dict[str, str | float]] = {
             "CustomFont-Test": {
                 "family": "My Custom Font",
@@ -427,7 +427,9 @@ class TestFontMappingIntegration:
         }
 
         # Font not in default mapping, but in custom mapping
-        font_info = FontInfo.find("CustomFont-Test", font_mapping=custom_mapping)
+        font_info = FontInfo.lookup_static(
+            "CustomFont-Test", font_mapping=custom_mapping
+        )
 
         assert font_info is not None
         assert font_info.family == "My Custom Font"
@@ -441,7 +443,7 @@ class TestFontMappingIntegration:
             "ArialMT": {"family": "My Custom Arial", "style": "Custom", "weight": 999.0}
         }
 
-        font_info = FontInfo.find("ArialMT", font_mapping=custom_mapping)
+        font_info = FontInfo.lookup_static("ArialMT", font_mapping=custom_mapping)
 
         assert font_info is not None
         assert font_info.family == "My Custom Arial"  # Custom, not "Arial"
@@ -450,7 +452,7 @@ class TestFontMappingIntegration:
 
     def test_font_mapping_with_none(self) -> None:
         """Test that None custom mapping works (uses default only)."""
-        font_info = FontInfo.find("ArialMT", font_mapping=None)
+        font_info = FontInfo.lookup_static("ArialMT", font_mapping=None)
 
         assert font_info is not None
         assert font_info.family == "Arial"  # From default mapping

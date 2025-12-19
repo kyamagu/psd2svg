@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import urllib.parse
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -512,10 +513,14 @@ class FontInfo:
     ) -> Self | None:
         """Find font information by PostScript name (backward-compatible wrapper).
 
-        This method is kept for backward compatibility. New code should use the more
-        explicit methods:
-        - lookup_static() for CSS family names (embed_fonts=False scenarios)
-        - resolve() for font embedding (embed_fonts=True scenarios)
+        .. deprecated:: 0.7.0
+            FontInfo.find() is deprecated due to its confusing API.
+            Use explicit methods instead:
+
+            - For CSS family names (embed_fonts=False): Use ``lookup_static()``
+            - For font embedding (embed_fonts=True): Use ``resolve()``
+
+            This method will be removed in version 1.0.0.
 
         This wrapper delegates to the appropriate method based on
         disable_static_mapping:
@@ -547,9 +552,25 @@ class FontInfo:
             >>> # Is equivalent to:
             >>> font = FontInfo.resolve('ArialMT')
         """
+        # Emit deprecation warning
         if disable_static_mapping:
+            warnings.warn(
+                "FontInfo.find(disable_static_mapping=True) is deprecated. "
+                "Use FontInfo.resolve() instead for explicit platform font resolution. "
+                "This method will be removed in version 1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             return FontInfo.resolve(postscriptname, font_mapping, charset_codepoints)
         else:
+            warnings.warn(
+                "FontInfo.find() is deprecated. "
+                "Use FontInfo.lookup_static() instead for explicit "
+                "static font mapping. "
+                "This method will be removed in version 1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             return FontInfo.lookup_static(postscriptname, font_mapping)
 
     @staticmethod
