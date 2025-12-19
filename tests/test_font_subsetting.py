@@ -40,11 +40,11 @@ class TestUnicodeExtraction:
         """Test extraction from nested tspan elements."""
 
         svg = ET.fromstring(
-            """<svg xmlns="http://www.w3.org/2000/svg">
-                <text style="font-family: Arial">Hello
-                    <tspan style="font-family: Courier">World</tspan>
-                </text>
-            </svg>"""
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text style="font-family: Arial">Hello'
+            '<tspan style="font-family: Courier">World</tspan>'
+            "</text>"
+            "</svg>"
         )
 
         result = extract_used_unicode(svg)
