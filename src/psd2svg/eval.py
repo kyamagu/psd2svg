@@ -6,6 +6,11 @@ from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
 
+try:
+    from skimage.metrics import structural_similarity
+except ImportError:
+    structural_similarity = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,10 +80,11 @@ def compare_raster_images(
         psnr = 20 * np.log10(1.0 / np.sqrt(mse))
         return psnr
     elif metric == "SSIM":
-        try:
-            from skimage.metrics import structural_similarity
-        except ImportError:
-            raise ImportError("SSIM metric requires scikit-image package")
+        if structural_similarity is None:
+            raise ImportError(
+                "SSIM metric requires scikit-image package. "
+                "Install with: uv sync --extra eval"
+            )
 
         ssim, _ = structural_similarity(
             input1,

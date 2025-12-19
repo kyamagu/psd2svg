@@ -127,3 +127,20 @@ requires_playwright = pytest.mark.skipif(
     not has_playwright(),
     reason="Playwright not installed",
 )
+
+
+# Check if scikit-image is available
+def has_skimage() -> bool:
+    """Check if scikit-image is installed."""
+    try:
+        import skimage  # noqa: F401, PLC0415
+
+        return True
+    except ImportError:
+        return False
+
+
+requires_skimage = pytest.mark.skipif(
+    not has_skimage(),
+    reason="scikit-image not installed",
+)

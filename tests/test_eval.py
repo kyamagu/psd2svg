@@ -3,13 +3,7 @@ import pytest
 from psd_tools import PSDImage
 
 from psd2svg.eval import compare_raster_images, create_diff_image
-
-try:
-    import skimage  # noqa: F401
-
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
+from tests.conftest import requires_skimage
 
 
 @pytest.mark.parametrize(
@@ -17,13 +11,7 @@ except ImportError:
     [
         ("MSE", 0.0),
         ("PSNR", float("inf")),
-        pytest.param(
-            "SSIM",
-            1.0,
-            marks=pytest.mark.skipif(
-                not HAS_SKIMAGE, reason="scikit-image not installed"
-            ),
-        ),
+        pytest.param("SSIM", 1.0, marks=requires_skimage),
     ],
 )
 def test_compare_raster_images_identical(metric: str, expected: float) -> None:
