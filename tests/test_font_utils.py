@@ -306,6 +306,7 @@ class TestFontInfoLookupStatic:
         assert font is not None
         assert font.family == "Arial"  # From default mapping
 
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_lookup_static_does_not_call_fontconfig(
         self, mock_match: MagicMock
