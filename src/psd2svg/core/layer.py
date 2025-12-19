@@ -129,8 +129,10 @@ class LayerConverter(ConverterProtocol):
         ):
             if depth >= self.resource_limits.max_layer_depth:
                 raise ValueError(
-                    f"Layer depth {depth} exceeds limit "
-                    f"{self.resource_limits.max_layer_depth}"
+                    f"Layer depth {depth} exceeds limit {self.resource_limits.max_layer_depth}. "  # noqa: E501
+                    f"PSD has deeply nested layer groups. "
+                    f"To process: set PSD2SVG_MAX_LAYER_DEPTH={depth + 50} environment variable, "  # noqa: E501
+                    f"or use ResourceLimits(max_layer_depth={depth + 50}) in Python API."  # noqa: E501
                 )
 
         for layer in group:
@@ -164,8 +166,10 @@ class LayerConverter(ConverterProtocol):
             max_dim = self.resource_limits.max_image_dimension
             if layer.width > max_dim or layer.height > max_dim:
                 raise ValueError(
-                    f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} "
-                    f"exceed limit {max_dim}x{max_dim}"
+                    f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} exceed limit {max_dim}x{max_dim}. "  # noqa: E501
+                    f"WebP has a 16383px hard limit. "
+                    f"To process: use image_format='png' for larger images, "
+                    f"or set PSD2SVG_MAX_IMAGE_DIMENSION={max(layer.width, layer.height) + 1000} environment variable."  # noqa: E501
                 )
 
         # We will later fill in the href attribute when embedding images.
