@@ -221,16 +221,21 @@ class TestSVGDocumentImageHandling:
             images={"image": Image.new("RGB", (10, 10), color="blue")},
         )
 
-        # Use image_prefix to save files
-        prefix = str(tmp_path / "img")
-        result = document.tostring(image_prefix=prefix)
+        # Change to tmp_path directory to use relative path
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            # Use relative image_prefix
+            result = document.tostring(image_prefix="img")
 
-        # Should contain filename reference, not data URI
-        assert "data:image/" not in result
-        assert "img01.webp" in result
+            # Should contain filename reference, not data URI
+            assert "data:image/" not in result
+            assert "img01.webp" in result
 
-        # File should be created
-        assert (tmp_path / "img01.webp").exists()
+            # File should be created
+            assert (tmp_path / "img01.webp").exists()
+        finally:
+            os.chdir(old_cwd)
 
     def test_handle_images_empty_document(self) -> None:
         """Test _handle_images() returns early when no images present."""
@@ -696,6 +701,106 @@ class TestSVGDocumentRasterizeWithFonts:
             # SVG should still be valid and render
             assert isinstance(svg_arg, str)
             assert "<svg" in svg_arg
+
+
+class TestPathTraversalProtection:
+    """Tests for path traversal protection in image_prefix parameter."""
+
+    def test_image_prefix_rejects_parent_directory_traversal(self) -> None:
+        """Test that image_prefix with '..' raises ValueError."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image", id="image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="red")},
+        )
+
+        # Should raise ValueError for path traversal attempt
+        with pytest.raises(
+            ValueError,
+            match=(
+                "image_prefix cannot contain '\\.\\.' \\(path traversal not allowed\\)"
+            ),
+        ):
+            document.tostring(image_prefix="../../../tmp/malicious")
+
+    def test_image_prefix_rejects_absolute_path_without_svg_filepath(self) -> None:
+        """Test that absolute image_prefix without svg_filepath raises ValueError."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image", id="image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="red")},
+        )
+
+        # Should raise ValueError for absolute path in tostring case
+        with pytest.raises(
+            ValueError,
+            match="image_prefix must be relative when svg_filepath is not provided",
+        ):
+            document.tostring(image_prefix="/tmp/absolute_path")
+
+    def test_image_prefix_allows_absolute_path_with_svg_filepath(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that absolute image_prefix is allowed when svg_filepath is provided."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image", id="image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="red")},
+        )
+
+        svg_file = tmp_path / "output.svg"
+        image_dir = tmp_path / "images"
+        image_dir.mkdir()
+
+        # Should work with absolute path when svg_filepath is provided
+        document.save(str(svg_file), image_prefix=str(image_dir / "img"))
+
+        # Verify image was saved
+        assert (image_dir / "img01.webp").exists()
+
+    def test_image_prefix_allows_valid_relative_path(self, tmp_path: Path) -> None:
+        """Test that valid relative paths work correctly."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image", id="image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="blue")},
+        )
+
+        svg_file = tmp_path / "output.svg"
+
+        # Valid relative path should work
+        document.save(str(svg_file), image_prefix="images/img")
+
+        # Should save file successfully
+        content = svg_file.read_text()
+        assert "images/img01.webp" in content
+        assert (tmp_path / "images" / "img01.webp").exists()
+
+    def test_image_prefix_special_dot_case(self, tmp_path: Path) -> None:
+        """Test that special '.' prefix still works."""
+        svg_elem = ET.Element("svg")
+        ET.SubElement(svg_elem, "image", id="image")
+
+        document = SVGDocument(
+            svg=svg_elem,
+            images={"image": Image.new("RGB", (10, 10), color="green")},
+        )
+
+        svg_file = tmp_path / "output.svg"
+
+        # Special '.' case should work
+        document.save(str(svg_file), image_prefix=".")
+
+        # Should save image with just counter, no prefix
+        assert (tmp_path / "01.webp").exists()
 
 
 class TestAppendCss:

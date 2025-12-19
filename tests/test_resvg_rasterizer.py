@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -416,3 +417,165 @@ def test_rasterizer_ignores_foreign_object() -> None:
         "resvg should ignore foreignObject elements, "
         "but some pixels are not transparent (foreignObject may have been rendered)"
     )
+
+
+class TestFontFilePathValidation:
+    """Tests for font file path validation in ResvgRasterizer."""
+
+    def test_extract_font_file_paths_valid(self, tmp_path: Path) -> None:
+        """Test extraction of valid font file paths."""
+        # Create a dummy font file
+        font_file = tmp_path / "test.ttf"
+        font_file.write_bytes(b"FAKE_FONT_DATA")
+
+        svg_content = f"""
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <style>
+            @font-face {{
+                font-family: 'TestFont';
+                src: url("file://{font_file}");
+            }}
+            </style>
+        </svg>
+        """
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        assert len(paths) == 1
+        assert paths[0] == str(font_file)
+
+    def test_extract_font_file_paths_invalid_extension(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that invalid font extensions are rejected."""
+        # Create a non-font file
+        non_font_file = tmp_path / "passwd"
+        non_font_file.write_text("root:x:0:0:root:/root:/bin/bash")
+
+        svg_content = f"""
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <style>
+            @font-face {{
+                font-family: 'Evil';
+                src: url("file://{non_font_file}");
+            }}
+            </style>
+        </svg>
+        """
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        assert len(paths) == 0
+        assert "Skipping invalid font file extension" in caplog.text
+
+    def test_extract_font_file_paths_nonexistent_file(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that non-existent font files are rejected."""
+        svg_content = """
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <style>
+            @font-face {
+                font-family: 'Missing';
+                src: url("file:///nonexistent/path/font.ttf");
+            }
+            </style>
+        </svg>
+        """
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        assert len(paths) == 0
+        assert "Skipping non-existent font file" in caplog.text
+
+    def test_extract_font_file_paths_multiple_fonts(self, tmp_path: Path) -> None:
+        """Test extraction of multiple valid font files."""
+        # Create multiple font files
+        font1 = tmp_path / "font1.ttf"
+        font1.write_bytes(b"FAKE_FONT_1")
+        font2 = tmp_path / "font2.otf"
+        font2.write_bytes(b"FAKE_FONT_2")
+        font3 = tmp_path / "font3.woff"
+        font3.write_bytes(b"FAKE_FONT_3")
+
+        svg_content = f"""
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <style>
+            @font-face {{
+                font-family: 'Font1';
+                src: url("file://{font1}");
+            }}
+            @font-face {{
+                font-family: 'Font2';
+                src: url("file://{font2}");
+            }}
+            @font-face {{
+                font-family: 'Font3';
+                src: url("file://{font3}");
+            }}
+            </style>
+        </svg>
+        """
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        assert len(paths) == 3
+        assert str(font1) in paths
+        assert str(font2) in paths
+        assert str(font3) in paths
+
+    def test_extract_font_file_paths_mixed_valid_invalid(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test extraction with mix of valid and invalid paths."""
+        # Create one valid font and one invalid file
+        valid_font = tmp_path / "valid.ttf"
+        valid_font.write_bytes(b"FAKE_FONT")
+        invalid_file = tmp_path / "invalid.txt"
+        invalid_file.write_text("not a font")
+
+        svg_content = f"""
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <style>
+            @font-face {{
+                font-family: 'ValidFont';
+                src: url("file://{valid_font}");
+            }}
+            @font-face {{
+                font-family: 'InvalidFont';
+                src: url("file://{invalid_file}");
+            }}
+            @font-face {{
+                font-family: 'MissingFont';
+                src: url("file:///nonexistent/font.otf");
+            }}
+            </style>
+        </svg>
+        """
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        # Only valid font should be extracted
+        assert len(paths) == 1
+        assert paths[0] == str(valid_font)
+        assert "Skipping invalid font file extension" in caplog.text
+        assert "Skipping non-existent font file" in caplog.text
+
+    def test_extract_font_file_paths_all_extensions(self, tmp_path: Path) -> None:
+        """Test that all valid font extensions are accepted."""
+        valid_extensions = [".ttf", ".otf", ".woff", ".woff2", ".ttc"]
+        font_files = []
+
+        svg_parts = ['<svg xmlns="http://www.w3.org/2000/svg"><style>']
+
+        for ext in valid_extensions:
+            font_file = tmp_path / f"font{ext}"
+            font_file.write_bytes(b"FAKE_FONT")
+            font_files.append(font_file)
+            svg_parts.append(
+                f'@font-face {{ font-family: "Font{ext}"; '
+                f'src: url("file://{font_file}"); }}'
+            )
+
+        svg_parts.append("</style></svg>")
+        svg_content = "\n".join(svg_parts)
+
+        paths = ResvgRasterizer._extract_font_file_paths(svg_content)
+        assert len(paths) == len(valid_extensions)
+        for font_file in font_files:
+            assert str(font_file) in paths
