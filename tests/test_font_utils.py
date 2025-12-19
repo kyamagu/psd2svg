@@ -240,6 +240,322 @@ class TestFontInfoCSSWeight:
             )
 
 
+class TestFontInfoLookupStatic:
+    """Tests for FontInfo.lookup_static() method (static mapping only)."""
+
+    def test_lookup_static_from_default_mapping(self) -> None:
+        """Test lookup_static with font in default static mapping."""
+        font = FontInfo.lookup_static("ArialMT")
+
+        assert font is not None
+        assert font.postscript_name == "ArialMT"
+        assert font.family == "Arial"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+        assert font.file == ""  # No file path from static mapping
+
+    def test_lookup_static_with_custom_mapping(self) -> None:
+        """Test lookup_static with custom font mapping."""
+        custom_mapping: dict[str, dict[str, str | float]] = {
+            "CustomFont-Test": {
+                "family": "My Custom Font",
+                "style": "Test",
+                "weight": 150.0,
+            }
+        }
+
+        font = FontInfo.lookup_static("CustomFont-Test", font_mapping=custom_mapping)
+
+        assert font is not None
+        assert font.postscript_name == "CustomFont-Test"
+        assert font.family == "My Custom Font"
+        assert font.style == "Test"
+        assert font.weight == 150.0
+        assert font.file == ""  # No file path from static mapping
+
+    def test_lookup_static_custom_overrides_default(self) -> None:
+        """Test that custom mapping overrides default for same PostScript name."""
+        custom_mapping: dict[str, dict[str, str | float]] = {
+            "ArialMT": {"family": "My Custom Arial", "style": "Custom", "weight": 999.0}
+        }
+
+        font = FontInfo.lookup_static("ArialMT", font_mapping=custom_mapping)
+
+        assert font is not None
+        assert font.family == "My Custom Arial"  # Custom, not "Arial"
+        assert font.style == "Custom"
+        assert font.weight == 999.0
+
+    def test_lookup_static_with_suffix_parsing(self) -> None:
+        """Test lookup_static uses suffix parsing as fallback when not in mapping."""
+        # NonExistentFont-Regular is not in mapping, but the method
+        # falls back to parsing the PostScript name structure
+        font = FontInfo.lookup_static("NonExistentFont-Regular")
+
+        assert font is not None
+        assert font.postscript_name == "NonExistentFont-Regular"
+        assert font.family == "Non Existent Font"  # CamelCase parsed
+        assert font.style == "Regular"  # Suffix parsed
+        assert font.weight == 80.0
+        assert font.file == ""  # No file path from static mapping
+
+    def test_lookup_static_with_none_mapping(self) -> None:
+        """Test that None custom mapping works (uses default only)."""
+        font = FontInfo.lookup_static("ArialMT", font_mapping=None)
+
+        assert font is not None
+        assert font.family == "Arial"  # From default mapping
+
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_lookup_static_does_not_call_fontconfig(
+        self, mock_match: MagicMock
+    ) -> None:
+        """Test that lookup_static never calls fontconfig (static mapping only)."""
+        # ArialMT is in the static mapping
+        font = FontInfo.lookup_static("ArialMT")
+
+        assert font is not None
+        assert font.family == "Arial"
+
+        # Fontconfig should NEVER be called for static lookup
+        mock_match.assert_not_called()
+
+
+class TestFontInfoResolve:
+    """Tests for FontInfo.resolve() method (platform font resolution)."""
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_success(self, mock_match: MagicMock) -> None:
+        """Test resolve method with successful fontconfig resolution."""
+        mock_match.return_value = {
+            "file": "/path/to/custom.ttf",
+            "family": "CustomFont",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.resolve("CustomFont-Regular")
+
+        assert font is not None
+        assert font.postscript_name == "CustomFont-Regular"
+        assert font.file == "/path/to/custom.ttf"
+        assert font.family == "CustomFont"
+        assert font.style == "Regular"
+        assert font.weight == 80.0
+
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=CustomFont-Regular",
+            select=("file", "family", "style", "weight"),
+        )
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_not_found(
+        self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve method when font is not found."""
+        mock_match.return_value = None
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.resolve("NonExistentFont")
+
+        assert font is None
+        assert "Font 'NonExistentFont' not found" in caplog.text
+        assert "Make sure the font is installed on your system" in caplog.text
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_empty_result(
+        self, mock_match: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test resolve method with empty match result."""
+        mock_match.return_value = {}
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.resolve("EmptyFont")
+
+        assert font is None
+        assert "Font 'EmptyFont' not found" in caplog.text
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_bold_font(self, mock_match: MagicMock) -> None:
+        """Test resolve method correctly identifies bold fonts."""
+        mock_match.return_value = {
+            "file": "/path/to/custom-bold.ttf",
+            "family": "CustomFont",
+            "style": "Bold",
+            "weight": 200.0,
+        }
+
+        font = FontInfo.resolve("CustomFont-Bold")
+
+        assert font is not None
+        assert font.bold is True
+        assert font.italic is False
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_italic_font(self, mock_match: MagicMock) -> None:
+        """Test resolve method correctly identifies italic fonts."""
+        mock_match.return_value = {
+            "file": "/path/to/custom-italic.ttf",
+            "family": "CustomFont",
+            "style": "Italic",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.resolve("CustomFont-Italic")
+
+        assert font is not None
+        assert font.bold is False
+        assert font.italic is True
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_bold_italic_font(self, mock_match: MagicMock) -> None:
+        """Test resolve method correctly identifies bold italic fonts."""
+        mock_match.return_value = {
+            "file": "/path/to/custom-bolditalic.ttf",
+            "family": "CustomFont",
+            "style": "Bold Italic",
+            "weight": 200.0,
+        }
+
+        font = FontInfo.resolve("CustomFont-BoldItalic")
+
+        assert font is not None
+        assert font.bold is True
+        assert font.italic is True
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_with_special_characters(self, mock_match: MagicMock) -> None:
+        """Test resolve method handles postscript names with special characters."""
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "Special Font",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.resolve("SpecialFont-Regular_1.0")
+
+        assert font is not None
+        assert font.postscript_name == "SpecialFont-Regular_1.0"
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=SpecialFont-Regular_1.0",
+            select=("file", "family", "style", "weight"),
+        )
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    @patch("psd2svg.core.font_utils.fontconfig.CharSet")
+    def test_resolve_with_charset(
+        self, mock_charset_class: MagicMock, mock_match: MagicMock
+    ) -> None:
+        """Test resolve with charset codepoints for better font matching."""
+        # Mock CharSet creation
+        mock_charset_instance = MagicMock()
+        mock_charset_class.from_codepoints.return_value = mock_charset_instance
+
+        # Mock fontconfig match result
+        mock_match.return_value = {
+            "file": "/path/to/noto-sans-cjk.ttf",
+            "family": "Noto Sans CJK JP",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        # Test with charset codepoints (Japanese hiragana)
+        codepoints = {0x3042, 0x3044, 0x3046}
+        font = FontInfo.resolve(
+            "MyCustomCJKFont-Regular", charset_codepoints=codepoints
+        )
+
+        assert font is not None
+        assert font.postscript_name == "MyCustomCJKFont-Regular"
+        assert font.file == "/path/to/noto-sans-cjk.ttf"
+        assert font.family == "Noto Sans CJK JP"
+
+        # Verify CharSet was created with sorted codepoints
+        mock_charset_class.from_codepoints.assert_called_once_with(sorted(codepoints))
+
+        # Verify fontconfig.match was called with properties dict including charset
+        mock_match.assert_called_once()
+        call_kwargs = mock_match.call_args.kwargs
+        assert "properties" in call_kwargs
+        assert call_kwargs["properties"]["postscriptname"] == "MyCustomCJKFont-Regular"
+        assert call_kwargs["properties"]["charset"] == mock_charset_instance
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    @patch("psd2svg.core.font_utils.fontconfig.CharSet")
+    def test_resolve_charset_fallback_on_error(
+        self,
+        mock_charset_class: MagicMock,
+        mock_match: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test resolve gracefully falls back when charset matching fails."""
+        # Mock CharSet to raise exception
+        mock_charset_class.from_codepoints.side_effect = Exception(
+            "CharSet creation failed"
+        )
+
+        # Fallback call succeeds
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "SomeFont",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        codepoints = {0x3042, 0x3044}
+
+        with caplog.at_level(logging.WARNING):
+            font = FontInfo.resolve("CustomFont", charset_codepoints=codepoints)
+
+        # Should still succeed via fallback
+        assert font is not None
+        assert font.family == "SomeFont"
+
+        # Check warning was logged
+        assert any(
+            "Charset-based matching failed" in record.message
+            and "Falling back to name-only matching" in record.message
+            for record in caplog.records
+        )
+
+        # Verify fallback to name-only matching was attempted
+        assert mock_match.call_count == 1
+        call_kwargs = mock_match.call_args.kwargs
+        assert "pattern" in call_kwargs
+        assert call_kwargs["pattern"] == ":postscriptname=CustomFont"
+
+    @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
+    @patch("psd2svg.core.font_utils.fontconfig.match")
+    def test_resolve_without_charset_uses_name_only(
+        self, mock_match: MagicMock
+    ) -> None:
+        """Test resolve uses name-only matching when charset is not provided."""
+        mock_match.return_value = {
+            "file": "/path/to/font.ttf",
+            "family": "TestFont",
+            "style": "Regular",
+            "weight": 80.0,
+        }
+
+        font = FontInfo.resolve("TestFont-Regular")
+
+        assert font is not None
+        mock_match.assert_called_once_with(
+            pattern=":postscriptname=TestFont-Regular",
+            select=("file", "family", "style", "weight"),
+        )
+
+
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 class TestFontInfoFind:
     """Tests for deprecated FontInfo.find() method.
