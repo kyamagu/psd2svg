@@ -75,17 +75,6 @@ Basic Usage
    document = SVGDocument.from_psd(psdimage)
    document.save("output.svg", embed_images=True)
 
-Platform Support
-~~~~~~~~~~~~~~~~
-
-* **Linux/macOS**: Full support including text layer conversion and font embedding
-* **Windows**: Full support including text layer conversion and font embedding
-
-Text layer conversion uses hybrid font resolution:
-
-* **Static mapping**: ~4,950 fonts (works on all platforms without external dependencies)
-* **Platform-specific resolution**: fontconfig (Linux/macOS) or Windows registry (Windows) for font file discovery when embedding fonts
-
 Next Steps
 ~~~~~~~~~~
 
