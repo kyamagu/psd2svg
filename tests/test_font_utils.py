@@ -240,8 +240,13 @@ class TestFontInfoCSSWeight:
             )
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 class TestFontInfoFind:
-    """Tests for FontInfo.find static method."""
+    """Tests for deprecated FontInfo.find() method.
+
+    Note: FontInfo.find() is deprecated. These tests verify backward compatibility
+    while the method remains available. Deprecation warnings are suppressed.
+    """
 
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
@@ -633,6 +638,7 @@ class TestFontInfoIsResolved:
     @patch("psd2svg.core.font_utils.HAS_FONTCONFIG", False)
     @patch("psd2svg.core.font_utils.HAS_WINDOWS_FONTS", False)
     @patch("os.path.exists")
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_is_resolved_from_static_mapping(self, mock_exists: MagicMock) -> None:
         """Test is_resolved() returns False for font from static mapping (no file)."""
         # Static mapping doesn't provide file paths
@@ -709,8 +715,13 @@ class TestCreateFileUrl:
         assert "\\" not in url  # No backslashes
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 class TestFontInfoFindWithCharset:
-    """Tests for FontInfo.find() with charset_codepoints parameter."""
+    """Tests for deprecated FontInfo.find() with charset_codepoints parameter.
+
+    Note: FontInfo.find() is deprecated. These tests verify backward compatibility
+    while the method remains available. Deprecation warnings are suppressed.
+    """
 
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")

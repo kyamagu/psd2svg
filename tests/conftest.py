@@ -40,28 +40,6 @@ def has_font(family: str) -> bool:
         return False
 
 
-def has_postscript_font(postscript_name: str) -> bool:
-    """Check if a font with the given PostScript name is available.
-
-    This function is intended for future rendering tests where the exact font
-    matters (e.g., comparing rendered output against reference images). For
-    tests that validate SVG attribute generation, font checks are typically
-    unnecessary as font substitution happens automatically via fontconfig.
-
-    Args:
-        postscript_name: PostScript name of the font.
-
-    Returns:
-        True if the font is available, False otherwise.
-    """
-    try:
-        font_info = FontInfo.find(postscript_name)
-        return font_info is not None
-    except Exception as e:
-        logger.debug(f"Error checking font availability: {e}")
-        return False
-
-
 # Pytest markers for font-dependent tests
 requires_noto_sans = pytest.mark.skipif(
     not has_font("Noto Sans"),

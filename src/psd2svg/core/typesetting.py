@@ -910,7 +910,7 @@ class TypeSetting:
         postscriptname = self.get_postscript_name(font_index)
         if postscriptname is None:
             return None
-        return font_utils.FontInfo.find(postscriptname, font_mapping)
+        return font_utils.FontInfo.lookup_static(postscriptname, font_mapping)
 
     def get_paragraph_sheet(self, sheet: ParagraphSheet) -> ParagraphSheet:
         """Get the merged paragraph sheet."""

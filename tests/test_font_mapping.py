@@ -413,8 +413,13 @@ class TestDefaultFontMapping:
         )
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 class TestFontMappingIntegration:
-    """Integration tests for font_mapping parameter in conversion."""
+    """Integration tests for font_mapping parameter in conversion.
+
+    Note: These tests use deprecated FontInfo.find() for backward compatibility testing.
+    Deprecation warnings are suppressed.
+    """
 
     def test_custom_mapping_in_find(self) -> None:
         """Test that FontInfo.find respects custom font mapping."""
