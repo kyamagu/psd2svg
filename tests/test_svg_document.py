@@ -738,11 +738,10 @@ class TestPathTraversalProtection:
         # Use platform-appropriate absolute path
         # On Windows: C:\tmp\absolute_path
         # On Unix: /tmp/absolute_path
-        import sys
-
-        absolute_path = (
-            "C:\\tmp\\absolute_path" if sys.platform == "win32" else "/tmp/absolute_path"
-        )
+        if sys.platform == "win32":
+            absolute_path = "C:\\tmp\\absolute_path"
+        else:
+            absolute_path = "/tmp/absolute_path"
 
         # Should raise ValueError for absolute path in tostring case
         with pytest.raises(
