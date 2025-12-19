@@ -735,12 +735,21 @@ class TestPathTraversalProtection:
             images={"image": Image.new("RGB", (10, 10), color="red")},
         )
 
+        # Use platform-appropriate absolute path
+        # On Windows: C:\tmp\absolute_path
+        # On Unix: /tmp/absolute_path
+        import sys
+
+        absolute_path = (
+            "C:\\tmp\\absolute_path" if sys.platform == "win32" else "/tmp/absolute_path"
+        )
+
         # Should raise ValueError for absolute path in tostring case
         with pytest.raises(
             ValueError,
             match="image_prefix must be relative when svg_filepath is not provided",
         ):
-            document.tostring(image_prefix="/tmp/absolute_path")
+            document.tostring(image_prefix=absolute_path)
 
     def test_image_prefix_allows_absolute_path_with_svg_filepath(
         self, tmp_path: Path
