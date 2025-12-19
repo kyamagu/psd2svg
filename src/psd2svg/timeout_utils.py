@@ -36,7 +36,12 @@ def with_timeout(
     if hasattr(signal, "SIGALRM"):
 
         def timeout_handler(signum: int, frame: Any) -> None:
-            raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds")
+            raise TimeoutError(
+                f"PSD conversion timed out after {timeout_seconds} seconds. "
+                f"File may be complex. "
+                f"To process: set PSD2SVG_TIMEOUT={timeout_seconds * 2} environment variable, "  # noqa: E501
+                f"or use ResourceLimits(timeout={timeout_seconds * 2}) in Python API."
+            )
 
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(timeout_seconds)
@@ -61,7 +66,12 @@ def with_timeout(
         thread.join(timeout=timeout_seconds)
 
         if thread.is_alive():
-            raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds")
+            raise TimeoutError(
+                f"PSD conversion timed out after {timeout_seconds} seconds. "
+                f"File may be complex. "
+                f"To process: set PSD2SVG_TIMEOUT={timeout_seconds * 2} environment variable, "  # noqa: E501
+                f"or use ResourceLimits(timeout={timeout_seconds * 2}) in Python API."
+            )
         if exception[0]:
             raise exception[0]
         # After successful thread completion, result[0] contains the return value

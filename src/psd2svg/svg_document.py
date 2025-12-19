@@ -1023,8 +1023,9 @@ def convert(
         file_size = os.path.getsize(input_path)
         if file_size > resource_limits.max_file_size:
             raise ValueError(
-                f"File size {file_size} bytes exceeds limit "
-                f"{resource_limits.max_file_size} bytes"
+                f"File size {file_size} bytes exceeds limit {resource_limits.max_file_size} bytes. "  # noqa: E501
+                f"To process: set PSD2SVG_MAX_FILE_SIZE={file_size + 1024 * 1024 * 100} environment variable, "  # noqa: E501
+                f"or use ResourceLimits(max_file_size={file_size + 1024 * 1024 * 100}) in Python API."  # noqa: E501
             )
 
     psdimage = PSDImage.open(input_path)

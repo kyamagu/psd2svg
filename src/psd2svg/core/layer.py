@@ -10,6 +10,7 @@ from psd_tools.constants import BlendMode, Tag
 from psd2svg import svg_utils
 from psd2svg.core.base import ConverterProtocol
 from psd2svg.core.constants import BLEND_MODE, INACCURATE_BLEND_MODES
+from psd2svg.resource_limits import WEBP_MAX_DIMENSION
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +130,10 @@ class LayerConverter(ConverterProtocol):
         ):
             if depth >= self.resource_limits.max_layer_depth:
                 raise ValueError(
-                    f"Layer depth {depth} exceeds limit "
-                    f"{self.resource_limits.max_layer_depth}"
+                    f"Layer depth {depth} exceeds limit {self.resource_limits.max_layer_depth}. "  # noqa: E501
+                    f"PSD has deeply nested layer groups. "
+                    f"To process: set PSD2SVG_MAX_LAYER_DEPTH={depth + 50} environment variable, "  # noqa: E501
+                    f"or use ResourceLimits(max_layer_depth={depth + 50}) in Python API."  # noqa: E501
                 )
 
         for layer in group:
@@ -163,10 +166,20 @@ class LayerConverter(ConverterProtocol):
         ):
             max_dim = self.resource_limits.max_image_dimension
             if layer.width > max_dim or layer.height > max_dim:
-                raise ValueError(
-                    f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} "
-                    f"exceed limit {max_dim}x{max_dim}"
-                )
+                # Check if this is the WebP hard limit
+                if max_dim == WEBP_MAX_DIMENSION:
+                    raise ValueError(
+                        f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} exceed limit {max_dim}x{max_dim}. "  # noqa: E501
+                        f"WebP has a {WEBP_MAX_DIMENSION}px hard limit. "
+                        f"To process images larger than this, use image_format='png' and, if necessary, "  # noqa: E501
+                        f"increase PSD2SVG_MAX_IMAGE_DIMENSION (for example, to {max(layer.width, layer.height) + 1000})."  # noqa: E501
+                    )
+                else:
+                    raise ValueError(
+                        f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} exceed limit {max_dim}x{max_dim}. "  # noqa: E501
+                        f"To process: set PSD2SVG_MAX_IMAGE_DIMENSION={max(layer.width, layer.height) + 1000} environment variable, "  # noqa: E501
+                        f"or use ResourceLimits(max_image_dimension={max(layer.width, layer.height) + 1000}) in Python API."  # noqa: E501
+                    )
 
         # We will later fill in the href attribute when embedding images.
         image = layer.topil()

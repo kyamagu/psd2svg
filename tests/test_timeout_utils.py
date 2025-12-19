@@ -76,7 +76,9 @@ class TestWithTimeoutTimeoutBehavior:
         def slow_function() -> None:
             time.sleep(2)
 
-        with pytest.raises(TimeoutError, match="Operation timed out after 1 seconds"):
+        with pytest.raises(
+            TimeoutError, match="PSD conversion timed out after 1 seconds"
+        ):
             with_timeout(slow_function, 1)
 
     def test_with_timeout_error_message_includes_timeout(self) -> None:
