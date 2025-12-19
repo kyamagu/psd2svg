@@ -5,6 +5,8 @@ Playwright, offering accurate rendering of SVG 2.0 features and vertical text
 that may not be supported by other rasterizers.
 """
 
+import asyncio
+import concurrent.futures
 import logging
 import xml.etree.ElementTree as ET
 from io import BytesIO
@@ -91,7 +93,8 @@ class PlaywrightRasterizer(BaseRasterizer):
             return
 
         try:
-            from playwright.sync_api import sync_playwright  # noqa: F401
+            # Optional dependency - only available when installed
+            from playwright.sync_api import sync_playwright  # noqa: F401, PLC0415
         except ImportError as e:
             raise ImportError(
                 "Playwright is required for PlaywrightRasterizer. "
@@ -100,13 +103,9 @@ class PlaywrightRasterizer(BaseRasterizer):
             ) from e
 
         # Check if we're in an asyncio event loop (e.g., Jupyter notebook)
-        import asyncio
-
         try:
             asyncio.get_running_loop()
             # We're inside an event loop - need to run sync code in a dedicated thread
-            import concurrent.futures
-
             logger.debug(
                 f"Starting Playwright with {self.browser_type} browser "
                 "(running in dedicated thread due to existing event loop)"
@@ -122,7 +121,8 @@ class PlaywrightRasterizer(BaseRasterizer):
 
     def _start_browser_sync(self) -> None:
         """Start the browser using sync API (helper for thread execution)."""
-        from playwright.sync_api import sync_playwright
+        # Optional dependency - only available when installed
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
         self._playwright = sync_playwright().start()
         browser_launcher = getattr(self._playwright, self.browser_type)

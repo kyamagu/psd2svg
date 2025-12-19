@@ -18,13 +18,8 @@ from PIL import Image
 
 from psd2svg import SVGDocument
 from psd2svg.core.font_utils import FontInfo, create_file_url, encode_font_data_uri
-from psd2svg.rasterizer import ResvgRasterizer
+from psd2svg.rasterizer import PlaywrightRasterizer, ResvgRasterizer
 from tests.conftest import requires_playwright
-
-try:
-    from psd2svg.rasterizer import PlaywrightRasterizer
-except ImportError:
-    PlaywrightRasterizer = None  # type: ignore
 
 
 class TestEncodeFontDataUri:

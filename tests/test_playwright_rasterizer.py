@@ -7,18 +7,7 @@ import tempfile
 import pytest
 from PIL import Image
 
-# Check if playwright is available
-try:
-    import playwright  # noqa: F401
-
-    HAS_PLAYWRIGHT = True
-    from psd2svg.rasterizer import PlaywrightRasterizer
-except ImportError:
-    HAS_PLAYWRIGHT = False
-    PlaywrightRasterizer = None  # type: ignore[assignment,misc]
-
-# Skip all tests if playwright is not available
-pytestmark = pytest.mark.skipif(not HAS_PLAYWRIGHT, reason="Playwright not installed")
+from psd2svg.rasterizer import PlaywrightRasterizer
 
 
 @pytest.fixture
@@ -255,17 +244,3 @@ def test_rasterizer_in_async_context(simple_svg: str) -> None:
 
     # Run inside asyncio event loop (simulates Jupyter environment)
     asyncio.run(test_async())
-
-
-def test_import_without_playwright() -> None:
-    """Test that importing without Playwright installed fails gracefully."""
-    # This test runs even if Playwright is installed
-    # It tests the import behavior, not actual functionality
-    try:
-        from psd2svg.rasterizer import PlaywrightRasterizer  # noqa: F401, PLC0415
-
-        # If we get here, Playwright is installed
-        assert HAS_PLAYWRIGHT
-    except ImportError:
-        # If we get here, Playwright is not installed
-        assert not HAS_PLAYWRIGHT
