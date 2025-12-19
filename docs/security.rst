@@ -175,11 +175,15 @@ When limits are exceeded, specific errors are raised:
         convert("large.psd", "output.svg")
     except ValueError as e:
         # File size limit exceeded:
-        # "File size 3221225472 bytes exceeds limit 2147483648 bytes"
+        # "File size 3221225472 bytes exceeds limit 2147483648 bytes.
+        #  To process: set PSD2SVG_MAX_FILE_SIZE=3326459872 environment variable,
+        #  or use ResourceLimits(max_file_size=3326459872) in Python API."
         print(f"Limit exceeded: {e}")
     except TimeoutError as e:
         # Timeout exceeded:
-        # "Operation timed out after 180 seconds"
+        # "PSD conversion timed out after 180 seconds. File may be complex.
+        #  To process: set PSD2SVG_TIMEOUT=360 environment variable,
+        #  or use ResourceLimits(timeout=360) in Python API."
         print(f"Conversion took too long: {e}")
 
 **Note on Timeout**: Cross-platform timeout is supported:
