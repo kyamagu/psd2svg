@@ -157,7 +157,8 @@ For fully trusted input where you need to process very large files:
 
     convert("huge_trusted_file.psd", "output.svg", resource_limits=limits)
 
-**Environment Variable Configuration:**
+Environment Variable Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Resource limits can be configured via environment variables. See :doc:`configuration` for details on available environment variables and their usage.
 

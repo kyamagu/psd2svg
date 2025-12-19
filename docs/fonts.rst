@@ -111,8 +111,12 @@ The generated SVG will use the substituted font:
 
 .. code-block:: xml
 
+   <!-- Text element uses substituted font -->
    <text font-family="DejaVu Sans">Hello World</text>
 
+.. code-block:: css
+
+   /* Font embedded in <style> or <defs> section */
    @font-face {
      font-family: 'DejaVu Sans';
      src: url(data:font/ttf;base64,...);
