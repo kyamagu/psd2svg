@@ -160,22 +160,7 @@ For fully trusted input where you need to process very large files:
 Environment Variable Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Resource limits can be configured via environment variables:
-
-.. code-block:: bash
-
-    # Set custom default limits via environment variables
-    export PSD2SVG_MAX_FILE_SIZE=1073741824  # 1GB
-    export PSD2SVG_TIMEOUT=120               # 2 minutes
-    export PSD2SVG_MAX_LAYER_DEPTH=75        # 75 levels
-    export PSD2SVG_MAX_IMAGE_DIMENSION=12000 # 12K pixels
-
-.. code-block:: python
-
-    from psd2svg import ResourceLimits
-
-    # Uses environment variables if set, otherwise hardcoded defaults
-    limits = ResourceLimits.default()
+Resource limits can be configured via environment variables. See :doc:`configuration` for details on available environment variables and their usage.
 
 Resource Limit Errors
 ^^^^^^^^^^^^^^^^^^^^^

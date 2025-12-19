@@ -8,12 +8,14 @@ PSD to SVG converter based on [psd-tools](https://github.com/psd-tools/psd-tools
 ## Features
 
 - Convert PSD files to clean, editable SVG
-- Preserve layers, groups, and artboards
+- Preserve layers and artboards with smart group optimization
 - Convert text layers to native SVG text elements (experimental)
-- Smart font matching with Unicode codepoint-based selection
-- Support for blending modes, effects, and vector shapes
-- Adjustment layers support (Invert, Posterize, Threshold, HueSaturation, Exposure, BrightnessContrast)
-- Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
+  - Arc warp support with SVG textPath
+  - Smart font matching with Unicode codepoint-based selection
+- Support for most Photoshop blending modes (with approximations for unsupported modes)
+- Adjustment layers support (experimental)
+- Optional font subsetting and embedding for web optimization (typically 90-95% size reduction)
+- Built-in resource limits for security (file size, timeout, layer depth, dimensions)
 - Command-line tool and Python API
 
 ## Installation
@@ -143,13 +145,16 @@ See [CLAUDE.md](CLAUDE.md) for detailed development instructions.
 
 ## Known Limitations
 
-- SVG 1.1 does not support all Photoshop blending modes
-- Filter effects are approximations
-- Some adjustment layers not yet implemented (Curves, Levels, etc.)
-- Smart object filters not implemented
-- APIs are not thread-safe
+- **Text rendering**: Requires matching system fonts; rendering may differ from Photoshop if fonts are unavailable or substituted
+- **Text wrapping**: Not supported due to SVG spec limitations (foreignObject has limited compatibility)
+- **Blending modes**: Some advanced modes approximated due to CSS spec limitations (Dissolve, Linear Burn/Dodge, Darker/Lighter Color, Vivid/Linear/Pin Light, Hard Mix, Subtract, Divide)
+- **Gradients**: Advanced types not supported (Angle, Reflected, Diamond)
+- **Filter effects**: Bevels, embossing, and satin effects not supported; other effects are approximations
+- **Adjustment layers**: Some not yet implemented (Black & White, Channel Mixer, Color Lookup, Gradient Map, Photo Filter, Selective Color, Vibrance)
+- **Smart objects**: Smart object filters not implemented
+- **Thread safety**: APIs are not thread-safe
 
-See the [full documentation](https://psd2svg.readthedocs.io/) for complete details and workarounds.
+See the [full documentation](https://psd2svg.readthedocs.io/en/latest/limitations.html) for complete details and workarounds.
 
 ## License
 
