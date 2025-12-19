@@ -254,3 +254,46 @@ Error Handling
    logging.basicConfig(level=logging.DEBUG)
 
 Prints detailed info: layer processing, font resolution, rasterization decisions
+
+Environment Variables
+----------------------
+
+Resource Limits Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Resource limits can be configured via environment variables to set custom defaults:
+
+.. code-block:: bash
+
+   # Set custom default limits via environment variables
+   export PSD2SVG_MAX_FILE_SIZE=1073741824  # 1GB (default: 2GB)
+   export PSD2SVG_TIMEOUT=120               # 2 minutes (default: 3 minutes)
+   export PSD2SVG_MAX_LAYER_DEPTH=75        # 75 levels (default: 100)
+   export PSD2SVG_MAX_IMAGE_DIMENSION=12000 # 12K pixels (default: 16K)
+
+.. code-block:: python
+
+   from psd2svg import ResourceLimits, convert
+
+   # Uses environment variables if set, otherwise hardcoded defaults
+   limits = ResourceLimits.default()
+
+   # Or use with convert()
+   convert("input.psd", "output.svg")  # Automatically uses ResourceLimits.default()
+
+**When to use environment variables:**
+
+* **Shared hosting**: Set lower limits to prevent resource exhaustion
+* **High-performance systems**: Increase limits for large files
+* **CI/CD pipelines**: Configure limits per environment
+* **Docker containers**: Set via Dockerfile ENV or docker-compose
+
+**Validation:**
+
+Environment variables are validated:
+
+* Negative values trigger warnings and use hardcoded defaults
+* Invalid values (non-numeric) are ignored with warnings
+* Zero or missing values use hardcoded defaults
+
+See :doc:`security` for more information about resource limits and DoS prevention.
