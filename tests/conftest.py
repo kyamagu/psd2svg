@@ -28,21 +28,13 @@ def has_font(family: str) -> bool:
         True if the font is available, False otherwise.
     """
     try:
-        # Optional dependency - only available on Linux/macOS
-        import fontconfig  # noqa: PLC0415
-
-        match = fontconfig.match(
-            pattern=f":family={family}",
-            select=("family",),
-        )
-        # Fontconfig returns a fallback font if the requested one isn't found
-        # We need to check if the returned family matches what we requested
-        if not match or not match.get("family"):
+        # Try platform font resolution (works on all platforms)
+        font_info = FontInfo.resolve(family)
+        if font_info is None:
             return False
-        # Check if the returned family name matches (case-insensitive)
-        returned_family = match.get("family", "").lower()
-        requested_family = family.lower()
-        return returned_family == requested_family
+        # Check if the resolved font family matches what we requested
+        # (case-insensitive comparison to handle different naming conventions)
+        return font_info.family.lower() == family.lower()
     except Exception as e:
         logger.debug(f"Error checking font availability: {e}")
         return False
@@ -107,8 +99,8 @@ requires_noto_sans_hebrew = pytest.mark.skipif(
 )
 
 requires_arial = pytest.mark.skipif(
-    not has_postscript_font("ArialMT"),
-    reason="Arial font not installed (from MS Core Fonts)",
+    not has_font("Arial"),
+    reason="Arial font not installed",
 )
 
 

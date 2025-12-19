@@ -16,7 +16,7 @@ from psd2svg.font_subsetting import (
     extract_used_unicode,
     subset_font,
 )
-from tests.conftest import get_fixture
+from tests.conftest import get_fixture, requires_arial, requires_noto_sans_jp
 
 
 class TestUnicodeExtraction:
@@ -148,14 +148,13 @@ class TestUnicodeExtraction:
 class TestFontSubsetting:
     """Tests for subset_font function."""
 
-    @pytest.mark.requires_arial
+    @requires_arial
     def test_subset_font_basic(self) -> None:
         """Test basic font subsetting with ASCII characters."""
 
         # Find Arial font
-        font_info = FontInfo.find("ArialMT")
-        if not font_info:
-            pytest.skip("Arial font not available")
+        font_info = FontInfo.resolve("Arial")
+        assert font_info is not None, "Arial font should be available"
 
         # Subset with just a few characters (as codepoints)
         codepoints = {0x41, 0x42, 0x43}  # A, B, C
@@ -170,13 +169,12 @@ class TestFontSubsetting:
         # TTF files should start with specific magic bytes
         assert font_bytes[:4] in (b"\x00\x01\x00\x00", b"OTTO", b"true")
 
-    @pytest.mark.requires_arial
+    @requires_arial
     def test_subset_font_woff2_conversion(self) -> None:
         """Test font subsetting with WOFF2 format conversion."""
 
-        font_info = FontInfo.find("ArialMT")
-        if not font_info:
-            pytest.skip("Arial font not available")
+        font_info = FontInfo.resolve("Arial")
+        assert font_info is not None, "Arial font should be available"
 
         codepoints = {0x48, 0x65, 0x6C, 0x6F, 0x57, 0x72, 0x64}  # H, e, l, o, W, r, d
         try:
@@ -189,13 +187,12 @@ class TestFontSubsetting:
         # WOFF2 files start with 'wOF2' signature
         assert font_bytes[:4] == b"wOF2"
 
-    @pytest.mark.requires_arial
+    @requires_arial
     def test_subset_font_reduces_size(self) -> None:
         """Test that subsetting significantly reduces font file size."""
 
-        font_info = FontInfo.find("ArialMT")
-        if not font_info:
-            pytest.skip("Arial font not available")
+        font_info = FontInfo.resolve("Arial")
+        assert font_info is not None, "Arial font should be available"
 
         # Small subset (3 chars)
         try:
@@ -226,15 +223,14 @@ class TestFontSubsetting:
         """Test error with unsupported font format."""
 
         with pytest.raises(ValueError, match="Unsupported font format"):
-            subset_font("/fake/path.ttf", "invalid", {0x41})  # A
+            subset_font("", "invalid", {0x41})  # A
 
-    @pytest.mark.requires_noto_sans_jp
+    @requires_noto_sans_jp
     def test_subset_font_unicode_chars(self) -> None:
         """Test subsetting with non-ASCII Unicode characters."""
 
-        font_info = FontInfo.find("NotoSansJP-Regular")
-        if not font_info:
-            pytest.skip("Noto Sans JP font not available")
+        font_info = FontInfo.resolve("Noto Sans JP")
+        assert font_info is not None, "Noto Sans JP font should be available"
 
         # Subset with Japanese characters (as codepoints)
         codepoints = {0x3053, 0x3093, 0x306B, 0x3061, 0x306F}  # こ, ん, に, ち, は
