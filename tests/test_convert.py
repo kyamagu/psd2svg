@@ -8,8 +8,7 @@ from psd_tools import PSDImage
 from psd2svg import convert
 from psd2svg.core.converter import Converter
 from psd2svg.eval import compute_conversion_quality
-
-from .conftest import get_fixture
+from tests.conftest import get_fixture
 
 
 @pytest.mark.parametrize(
