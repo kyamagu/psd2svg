@@ -2,7 +2,7 @@ import logging
 from typing import Sequence
 
 from psd_tools.psd.descriptor import Descriptor
-from psd_tools.terminology import Klass, Enum
+from psd_tools.terminology import Enum, Klass
 
 logger = logging.getLogger(__name__)
 
