@@ -10,6 +10,9 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+# WebP hard limit for image dimensions (16383 pixels)
+WEBP_MAX_DIMENSION = 16383
+
 
 @dataclass
 class ResourceLimits:
@@ -50,7 +53,7 @@ class ResourceLimits:
     max_file_size: int = 2147483648  # 2GB default (typical for professional PSD files)
     timeout: int = 180  # 180 seconds (3 minutes) default
     max_layer_depth: int = 100  # 100 levels default
-    max_image_dimension: int = 16383  # 16383 pixels default (WebP hard limit)
+    max_image_dimension: int = WEBP_MAX_DIMENSION  # WebP hard limit
 
     @classmethod
     def default(cls) -> "ResourceLimits":
@@ -110,7 +113,7 @@ class ResourceLimits:
             max_layer_depth=parse_env_int("PSD2SVG_MAX_LAYER_DEPTH", 100),
             max_image_dimension=parse_env_int(
                 "PSD2SVG_MAX_IMAGE_DIMENSION",
-                16383,  # WebP limit
+                WEBP_MAX_DIMENSION,
             ),
         )
 

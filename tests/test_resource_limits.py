@@ -18,6 +18,7 @@ import pytest
 from psd_tools import PSDImage
 
 from psd2svg import ResourceLimits, SVGDocument, convert
+from psd2svg.resource_limits import WEBP_MAX_DIMENSION
 from psd2svg.timeout_utils import with_timeout
 from tests.conftest import get_fixture
 
@@ -31,7 +32,7 @@ class TestResourceLimitsDefaults:
         assert limits.max_file_size == 2147483648  # 2GB
         assert limits.timeout == 180  # 3 minutes
         assert limits.max_layer_depth == 100
-        assert limits.max_image_dimension == 16383  # WebP limit
+        assert limits.max_image_dimension == WEBP_MAX_DIMENSION
 
     def test_unlimited_limits(self) -> None:
         """Test ResourceLimits.unlimited() disables all limits."""
