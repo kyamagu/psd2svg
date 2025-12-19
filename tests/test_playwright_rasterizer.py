@@ -11,6 +11,7 @@ from psd2svg.rasterizer import PlaywrightRasterizer
 from tests.conftest import requires_playwright
 
 
+@requires_playwright
 def test_is_available() -> None:
     """Test that is_available() returns True when playwright is installed."""
     # Since these tests only run when playwright is installed,
