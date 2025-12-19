@@ -56,21 +56,23 @@ class Converter(
         enable_class: Enable insertion of class attributes on SVG elements for debugging
             purposes. When False (default), elements will not have class attributes,
             producing cleaner SVG output. Set to True to add class attributes for layer
-            types, effects, and semantic roles (e.g., "shape-layer", "drop-shadow-effect",
-            "fill") for debugging or styling.
-        text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
-            values. This can be used to compensate for differences between Photoshop's
-            text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
-            Default is 0.0 (no offset).
-        text_wrapping_mode: Text wrapping mode for bounding box text. Use 0 for no wrapping
-            (default, native SVG <text>), or 1 for <foreignObject> with XHTML wrapping.
-            Import TextWrappingMode from psd2svg.core.text for enum values. Only affects
-            bounding box text (ShapeType=1); point text always uses native SVG <text> elements.
-        font_mapping: Optional custom font mapping dictionary. Takes priority over built-in
-            static mapping. Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
-            When not provided, uses built-in mapping for ~4,950 fonts (539 default + 370 Hiragino +
-            4,042 Morisawa) with automatic fallback to system font resolution (fontconfig/Windows
-            registry) if needed.
+            types, effects, and semantic roles (e.g., "shape-layer",
+            "drop-shadow-effect", "fill") for debugging or styling.
+        text_letter_spacing_offset: Global offset (in pixels) to add to all
+            letter-spacing values. This can be used to compensate for differences
+            between Photoshop's text rendering and SVG's text rendering. Typical values
+            range from -0.02 to 0.02. Default is 0.0 (no offset).
+        text_wrapping_mode: Text wrapping mode for bounding box text.
+            Use 0 for no wrapping (default, native SVG <text>), or 1 for <foreignObject>
+            with XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for enum
+            values. Only affects bounding box text (ShapeType=1); point text always uses
+            native SVG <text> elements.
+        font_mapping: Optional custom font mapping dictionary. Takes priority over
+            built-in static mapping.
+            Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
+            When not provided, uses built-in mapping for ~4,950 fonts
+            (539 default + 370 Hiragino + 4,042 Morisawa) with automatic fallback to
+            system font resolution (fontconfig/Windows registry) if needed.
     """
 
     _id_counter: AutoCounter | None = None
@@ -109,7 +111,8 @@ class Converter(
             viewBox=svg_utils.seq2str([0, 0, psdimage.width, psdimage.height], sep=" "),
         )
         self.images: dict[str, Image.Image] = {}  # Store PIL images keyed by image ID.
-        # Note: Font tracking removed - PostScript names are stored directly in SVG font-family attributes
+        # Note: Font tracking removed - PostScript names are stored directly
+        # in SVG font-family attributes
 
         # Initialize the current node pointer.
         self.current = self.svg

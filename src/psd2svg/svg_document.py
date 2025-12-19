@@ -45,7 +45,8 @@ class SVGDocument:
 
     svg: ET.Element
     images: dict[str, Image.Image] = dataclasses.field(default_factory=dict)
-    # Note: fonts property removed - PostScript names stored directly in SVG font-family attributes
+    # Note: fonts property removed - PostScript names stored directly in SVG
+    # font-family attributes
     _font_data_cache: dict[str, str] = dataclasses.field(
         default_factory=dict, init=False, repr=False
     )
@@ -89,11 +90,12 @@ class SVGDocument:
                 XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
                 enum values. Only affects bounding box text (ShapeType=1); point text
                 always uses native SVG <text> elements.
-            font_mapping: Optional custom font mapping dictionary for resolving PostScript
-                font names to font families. Takes priority over built-in static mapping.
-                Useful for providing custom fonts or overriding default mappings.
-                Format: {"PostScriptName": {"family": str, "style": str, "weight": float}}.
-                Example: {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}.
+            font_mapping: Optional custom font mapping dictionary for resolving
+                PostScript font names to font families. Takes priority over built-in
+                static mapping. Useful for providing custom fonts or overriding default
+                mappings. Format: {"PostScriptName": {"family": str, "style": str,
+                "weight": float}}. Example: {"ArialMT": {"family": "Arial",
+                "style": "Regular", "weight": 80.0}}.
                 When not provided, uses built-in mapping for ~4,950 fonts (539 default +
                 370 Hiragino + 4,042 Morisawa), with automatic fallback to system font
                 resolution (fontconfig/Windows registry) if needed.
@@ -139,7 +141,9 @@ class SVGDocument:
             >>> svg_doc = SVGDocument.from_psd(psdimage)
             >>>
             >>> # Add custom CSS for Japanese text
-            >>> svg_doc.append_css("text { font-variant-east-asian: proportional-width; }")
+            >>> svg_doc.append_css(
+            ...     "text { font-variant-east-asian: proportional-width; }"
+            ... )
             >>>
             >>> # Add more custom CSS
             >>> svg_doc.append_css("@media print { .no-print { display: none; } }")
@@ -174,8 +178,10 @@ class SVGDocument:
             image_prefix: If provided, save images to files with this prefix.
             image_format: Image format to use when embedding or saving images.
             optimize: If True, apply SVG optimizations (consolidate defs, etc.).
-            svg_filepath: Path to the output SVG file (for save()), or None (for tostring()).
-            use_data_uri_for_fonts: If True, embed fonts as data URIs. If False, use file:// URLs.
+            svg_filepath: Path to the output SVG file (for save()), or None (for
+                tostring()).
+            use_data_uri_for_fonts: If True, embed fonts as data URIs. If False, use
+                file:// URLs.
                 Only applies when embed_fonts=True. Default is True.
 
         Returns:
@@ -190,7 +196,8 @@ class SVGDocument:
 
         # Early split: different font resolution strategies for embed_fonts
         if embed_fonts:
-            # Single-pass resolution: platform queries + charset extraction + SVG updates
+            # Single-pass resolution: platform queries + charset extraction +
+            # SVG updates
             resolved_fonts_map = self._resolve_and_collect_fonts(svg)
             self._insert_css_fontface(
                 svg,
@@ -230,10 +237,11 @@ class SVGDocument:
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
-            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
-                Requires embed_fonts=True. This significantly reduces file size (typically
-                90%+ reduction). Default is True.
-            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+            subset_fonts: If True, subset fonts to only include glyphs used in
+                the SVG. Requires embed_fonts=True. This significantly reduces file
+                size (typically 90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff",
+                "ttf", or "otf".
                 WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix.
                 When specified, embed_images is ignored.
@@ -276,10 +284,11 @@ class SVGDocument:
                 WARNING: Font embedding may be subject to licensing restrictions.
                 Ensure you have appropriate rights before distributing SVG files
                 with embedded fonts.
-            subset_fonts: If True, subset fonts to only include glyphs used in the SVG.
-                Requires embed_fonts=True. This significantly reduces file size (typically
-                90%+ reduction). Default is True.
-            font_format: Font format for embedding: "woff2" (default), "woff", "ttf", or "otf".
+            subset_fonts: If True, subset fonts to only include glyphs used in
+                the SVG. Requires embed_fonts=True. This significantly reduces file
+                size (typically 90%+ reduction). Default is True.
+            font_format: Font format for embedding: "woff2" (default), "woff",
+                "ttf", or "otf".
                 WOFF2 provides best compression and is recommended for web use.
             image_prefix: If provided, save images to files with this prefix
                 relative to the output SVG file's directory.
@@ -516,7 +525,8 @@ class SVGDocument:
             # Save image (with JPEG conversion if needed)
             image_utils.save_image(image, filepath, image_format)
 
-            # Set href: if svg_filepath provided, use relative path; otherwise use filename
+            # Set href: if svg_filepath provided, use relative path; otherwise
+            # use filename
             if svg_filepath:
                 svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
                 href = os.path.relpath(filepath, svg_dir)
@@ -701,9 +711,10 @@ class SVGDocument:
                 and weight/style attributes.
 
         Returns:
-            Dictionary mapping font file paths to FontInfo instances with charset populated.
-            This can be used for font embedding without re-resolving fonts.
-            Multiple PostScript names may map to the same file (e.g., TTC collections).
+            Dictionary mapping font file paths to FontInfo instances with
+            charset populated. This can be used for font embedding without
+            re-resolving fonts. Multiple PostScript names may map to the same
+            file (e.g., TTC collections).
 
         Note:
             - Always uses platform-specific resolution (fontconfig/Windows registry)
@@ -769,7 +780,8 @@ class SVGDocument:
             # Step 4: Store resolved font for embedding
             # Use file path as key to deduplicate fonts by file
             # (multiple PostScript names can map to the same file)
-            # Note: resolved_font.file is guaranteed to be non-empty by find_with_files()
+            # Note: resolved_font.file is guaranteed to be non-empty by
+            # find_with_files()
             file_key = resolved_font.file
             if file_key not in resolved_fonts_map:
                 # Store font with charset (may already be populated from find())
@@ -838,7 +850,8 @@ class SVGDocument:
 
             except (FileNotFoundError, IOError) as e:
                 logger.warning(
-                    f"Failed to create {source_desc} for font '{resolved_font.file}': {e}. "
+                    f"Failed to create {source_desc} for font "
+                    f"'{resolved_font.file}': {e}. "
                     "Font will not be embedded."
                 )
                 continue
@@ -913,42 +926,46 @@ def convert(
     Args:
         input_path: Path to the input PSD file.
         output_path: Path to the output SVG file.
-        image_prefix: Optional path prefix to save extracted images. If None, images will be embedded.
-        enable_text: Enable text layer conversion. If False, text layers are rasterized as images.
-            Default is True.
-        enable_live_shapes: Enable live shape conversion when possible. Disabling live shapes
-            results in <path> elements instead of shape primitives like <rect> or <circle>.
-            This may be more accurate, but less editable. Default is True.
+        image_prefix: Optional path prefix to save extracted images. If None,
+            images will be embedded.
+        enable_text: Enable text layer conversion. If False, text layers are
+            rasterized as images. Default is True.
+        enable_live_shapes: Enable live shape conversion when possible.
+            Disabling live shapes results in <path> elements instead of shape
+            primitives like <rect> or <circle>. This may be more accurate, but
+            less editable. Default is True.
         enable_title: Enable insertion of <title> elements with layer names.
             When False (default), title elements are omitted to reduce file size.
             Set to True to include <title> elements containing the Photoshop layer
             name for accessibility and debugging.
-        enable_class: Enable insertion of class attributes on SVG elements for debugging
-            purposes. When False (default), elements will not have class attributes,
-            producing cleaner SVG output. Set to True to add class attributes for layer
-            types, effects, and semantic roles (e.g., "shape-layer", "drop-shadow-effect",
-            "fill") for debugging or styling.
+        enable_class: Enable insertion of class attributes on SVG elements for
+            debugging purposes. When False (default), elements will not have class
+            attributes, producing cleaner SVG output. Set to True to add class
+            attributes for layer types, effects, and semantic roles (e.g.,
+            "shape-layer", "drop-shadow-effect", "fill") for debugging or styling.
         image_format: Image format to use when embedding or saving images.
             Supported formats: 'webp', 'png', 'jpeg'. Default is 'webp'.
-        text_letter_spacing_offset: Global offset (in pixels) to add to all letter-spacing
-            values. This can be used to compensate for differences between Photoshop's
-            text rendering and SVG's text rendering. Typical values range from -0.02 to 0.02.
-            Default is 0.0 (no offset).
+        text_letter_spacing_offset: Global offset (in pixels) to add to all
+            letter-spacing values. This can be used to compensate for differences
+            between Photoshop's text rendering and SVG's text rendering. Typical
+            values range from -0.02 to 0.02. Default is 0.0 (no offset).
         text_wrapping_mode: Text wrapping mode for bounding box text. Use 0 for no
             wrapping (default, native SVG <text>), or 1 for <foreignObject> with
             XHTML wrapping. Import TextWrappingMode from psd2svg.core.text for
             enum values. Only affects bounding box text (ShapeType=1); point text
             always uses native SVG <text> elements.
-        font_mapping: Optional custom font mapping dictionary for resolving PostScript
-            font names to font families without fontconfig. Useful on Windows or when
-            fonts are not installed. Format:
-            {"PostScriptName": {"family": str, "style": str, "weight": float}}.
-            When not provided, uses built-in mapping for common fonts.
-        embed_fonts: Enable font embedding in SVG. When True, fonts used in text layers
-            are embedded as base64-encoded data URIs in @font-face rules. Default is False.
-            Requires fontconfig on Linux/macOS for font file discovery.
-        font_format: Font format for embedding. Supported formats: 'woff2' (best compression,
-            default), 'woff', 'ttf', 'otf'. Only used when embed_fonts=True. WOFF2 provides
+        font_mapping: Optional custom font mapping dictionary for resolving
+            PostScript font names to font families without fontconfig. Useful on
+            Windows or when fonts are not installed. Format: {"PostScriptName":
+            {"family": str, "style": str, "weight": float}}. When not provided,
+            uses built-in mapping for common fonts.
+        embed_fonts: Enable font embedding in SVG. When True, fonts used in text
+            layers are embedded as base64-encoded data URIs in @font-face rules.
+            Default is False. Requires fontconfig on Linux/macOS for font file
+            discovery.
+        font_format: Font format for embedding. Supported formats: 'woff2' (best
+            compression, default), 'woff', 'ttf', 'otf'. Only used when
+            embed_fonts=True. WOFF2 provides
             90%+ size reduction through automatic font subsetting.
     """
     psdimage = PSDImage.open(input_path)

@@ -10,7 +10,8 @@ Photoshop supports the following paint types:
 This module handles paint application for:
 - Shape layer fills (VECTOR_STROKE_CONTENT_DATA)
 - Shape layer strokes
-- Fill adjustment layers (SOLID_COLOR_SHEET_SETTING, GRADIENT_FILL_SETTING, PATTERN_FILL_SETTING)
+- Fill adjustment layers
+  (SOLID_COLOR_SHEET_SETTING, GRADIENT_FILL_SETTING, PATTERN_FILL_SETTING)
 
 Note layer effects also support similar paint types, but the data
 structures and descriptors are different.
@@ -262,13 +263,11 @@ class PaintConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(
-                        f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)"
-                    )
+                    scale_x = svg_utils.num2str(layer.height / layer.width, digit=4)
+                    transforms.append(f"scale({scale_x} 1)")
                 else:
-                    transforms.append(
-                        f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})"
-                    )
+                    scale_y = svg_utils.num2str(layer.width / layer.height, digit=4)
+                    transforms.append(f"scale(1 {scale_y})")
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -387,7 +386,8 @@ class PaintConverter(ConverterProtocol):
         2. Scale
         3. Rotation
 
-        Note: For patterns, the reference point is a simple translate, not a pivot point.
+        Note: For patterns, the reference point is a simple translate,
+              not a pivot point.
         """
         # Reference point is prepended as a translate (not a pivot)
         reference = tuple(layer.tagged_blocks.get_data(Tag.REFERENCE_POINT, (0.0, 0.0)))

@@ -450,8 +450,6 @@ class TestFontMappingIntegration:
 
     def test_font_mapping_with_none(self) -> None:
         """Test that None custom mapping works (uses default only)."""
-        from psd2svg.core.font_utils import FontInfo
-
         font_info = FontInfo.find("ArialMT", font_mapping=None)
 
         assert font_info is not None
@@ -729,7 +727,10 @@ class TestSuffixParsing:
         assert font.get_css_weight() == 700  # Bold = 700 in CSS
 
     def test_parse_abbreviated_suffixes(self) -> None:
-        """Test suffix parsing for abbreviated suffixes (B, DB, EB, UB, DeBold, ExBold, ExLight)."""
+        """Test suffix parsing for abbreviated suffixes.
+
+        Tests: B, DB, EB, UB, DeBold, ExBold, ExLight.
+        """
         test_cases = [
             ("RodinCattleyaPro-B", "Bold", 200.0),
             ("RodinCattleyaPro-DB", "SemiBold", 180.0),  # DemiBold (short)

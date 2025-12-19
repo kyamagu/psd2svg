@@ -139,7 +139,8 @@ class LayerConverter(ConverterProtocol):
         # Raster layers can have both fill opacity and overall opacity.
         fill_opacity = layer.tagged_blocks.get_data(Tag.BLEND_FILL_OPACITY, 255)
 
-        # When the layer has effects, we need to create a separate <image> to handle fill opacity.
+        # When the layer has effects, we need to create a separate <image>
+        # to handle fill opacity.
         if layer.has_effects():
             defs = self.create_node("defs")
             node = self.create_node(
@@ -322,8 +323,8 @@ class LayerConverter(ConverterProtocol):
             self.set_opacity(layer.opacity / 255.0, target)
             self.apply_mask(layer, target)
 
-        # NOTE: We actually need to apply the mask to the <clipPath> node to combine effects,
-        # but SVG viewers have poor support for that.
+        # NOTE: We actually need to apply the mask to the <clipPath> node
+        # to combine effects, but SVG viewers have poor support for that.
 
         self.apply_background_effects(layer, target, insert_before_target=False)
         self.apply_vector_fill(layer, target)  # main filled shape.
@@ -374,7 +375,8 @@ class LayerConverter(ConverterProtocol):
             target.set("id", self.auto_id("clippingbase"))
 
         self.apply_background_effects(layer, target, insert_before_target=False)
-        # Create a <use> element to reference the target object in the current context (outside the mask).
+        # Create a <use> element to reference the target object
+        # in the current context (outside the mask).
         self.create_node("use", href=svg_utils.get_uri(target))
         self.apply_overlay_effects(layer, target)
         # Yield to the context block.
@@ -498,10 +500,13 @@ class LayerConverter(ConverterProtocol):
         """Add isolation to a group.
 
         NOTE:
-          1. The default blending mode of a PSD group is passthrough, which corresponds to SVG isolation: auto (default)
-          2. When the group has blending mode normal, it corresponds to SVG isolation: isolate.
-          3. Other blending modes also isolate the group,
-             and in SVG setting mix-blend-mode on a <g> to a value other than normal isolates the group by default.
+          1. The default blending mode of a PSD group is passthrough,
+             which corresponds to SVG isolation: auto (default)
+          2. When the group has blending mode normal,
+             it corresponds to SVG isolation: isolate.
+          3. Other blending modes also isolate the group, and in SVG setting
+             mix-blend-mode on a <g> to a value other than normal isolates
+             the group by default.
         """
         if (
             isinstance(layer, layers.Group)
@@ -521,10 +526,13 @@ class LayerConverter(ConverterProtocol):
             return target
         logger.debug(f"Adding mask: '{layer.name}' ({layer.kind})")
 
-        # If the target already has a mask or a clip-path, we need to transfer them to the content.
-        # NOTE: Nested mask references like <mask mask="url(#id)"> don't work reliably in browsers.
-        # Instead, we apply the existing mask/clip-path to the mask content elements themselves,
-        # creating a proper composition hierarchy where masking operations combine at the content level.
+        # If the target already has a mask or a clip-path,
+        # we need to transfer them to the content.
+        # NOTE: Nested mask references like <mask mask="url(#id)">
+        # don't work reliably in browsers.
+        # Instead, we apply the existing mask/clip-path to the mask content
+        # elements themselves, creating a proper composition hierarchy
+        # where masking operations combine at the content level.
         context: dict[str, str] = {}
         if "mask" in target.attrib:
             context["mask"] = target.attrib.pop("mask")

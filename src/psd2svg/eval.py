@@ -1,10 +1,15 @@
 import logging
 
 import numpy as np
-from psd_tools import PSDImage
 from PIL import Image
+from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
+
+try:
+    from skimage.metrics import structural_similarity
+except ImportError:
+    structural_similarity = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +31,14 @@ def compute_conversion_quality(psdimage: PSDImage, metric: str) -> float:
 
 
 def create_diff_image(psdimage: PSDImage, amplify: float = 1.0) -> Image.Image:
-    """Create a diff image between the original and rasterized images for debugging purposes.
+    """Create a diff image between the original and rasterized images.
+
+    For debugging purposes.
 
     Args:
         psdimage: The PSD image to compare.
-        amplify: Multiplier to amplify differences for better visibility. Default is 1.0.
+        amplify: Multiplier to amplify differences for better visibility.
+            Default is 1.0.
 
     Returns:
         A PIL Image showing the differences between original and rasterized images.
@@ -72,10 +80,11 @@ def compare_raster_images(
         psnr = 20 * np.log10(1.0 / np.sqrt(mse))
         return psnr
     elif metric == "SSIM":
-        try:
-            from skimage.metrics import structural_similarity
-        except ImportError:
-            raise ImportError("SSIM metric requires scikit-image package")
+        if structural_similarity is None:
+            raise ImportError(
+                "SSIM metric requires scikit-image package. "
+                "Install with: uv sync --extra eval"
+            )
 
         ssim, _ = structural_similarity(
             input1,

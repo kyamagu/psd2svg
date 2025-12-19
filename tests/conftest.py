@@ -28,8 +28,8 @@ def has_font(family: str) -> bool:
         True if the font is available, False otherwise.
     """
     try:
-        # Try to find the font using fontconfig
-        import fontconfig
+        # Optional dependency - only available on Linux/macOS
+        import fontconfig  # noqa: PLC0415
 
         match = fontconfig.match(
             pattern=f":family={family}",
@@ -116,7 +116,7 @@ requires_arial = pytest.mark.skipif(
 def has_playwright() -> bool:
     """Check if playwright is installed."""
     try:
-        import playwright  # noqa: F401
+        import playwright  # noqa: F401, PLC0415
 
         return True
     except ImportError:
@@ -126,4 +126,21 @@ def has_playwright() -> bool:
 requires_playwright = pytest.mark.skipif(
     not has_playwright(),
     reason="Playwright not installed",
+)
+
+
+# Check if scikit-image is available
+def has_skimage() -> bool:
+    """Check if scikit-image is installed."""
+    try:
+        import skimage  # noqa: F401, PLC0415
+
+        return True
+    except ImportError:
+        return False
+
+
+requires_skimage = pytest.mark.skipif(
+    not has_skimage(),
+    reason="scikit-image not installed",
 )

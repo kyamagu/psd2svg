@@ -90,7 +90,8 @@ def _get_hiragino_mapping() -> dict[str, dict[str, Any]]:
     Returns:
         Dictionary of ~370 Hiragino font variants.
     """
-    from psd2svg.core._font_mapping_data import (
+    # Lazy import for performance - only load when Hiragino fonts are needed
+    from psd2svg.core._font_mapping_data import (  # noqa: PLC0415
         _HIRAGINO_BASE_FONTS,
         _JAPANESE_WEIGHTS,
         _generate_weight_variants,
@@ -144,7 +145,8 @@ def find_in_mapping(
         Returns None if font not found in any mapping.
 
     Example:
-        >>> mapping = {"ArialMT": {"family": "Arial", "style": "Regular", "weight": 80.0}}
+        >>> mapping = {"ArialMT": {"family": "Arial", "style": "Regular",
+        ...                        "weight": 80.0}}
         >>> find_in_mapping("ArialMT", mapping)
         {'family': 'Arial', 'style': 'Regular', 'weight': 80.0}
         >>> find_in_mapping("UnknownFont", mapping)
@@ -234,7 +236,8 @@ def load_font_mapping_from_json(file_path: str | Path) -> dict[str, dict[str, An
     for postscript_name, font_data in mapping.items():
         if not isinstance(postscript_name, str):
             raise ValueError(
-                f"PostScript name must be a string, got {type(postscript_name).__name__}"
+                f"PostScript name must be a string, "
+                f"got {type(postscript_name).__name__}"
             )
         _validate_font_data(font_data, postscript_name, raise_on_error=True)
 

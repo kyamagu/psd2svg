@@ -110,10 +110,3 @@ select = [
     "PLC",    # pylint conventions
 ]
 ignore = []
-
-[tool.ruff.lint.extend-per-file-ignores]
-# Allow unused imports in __init__.py files
-"__init__.py" = ["F401"]
-# Allow lazy imports for optional dependencies
-"src/psd2svg/eval.py" = ["PLC0415"]  # scikit-image is optional
-"src/psd2svg/rasterizer/playwright_rasterizer.py" = ["PLC0415"]  # playwright is optional

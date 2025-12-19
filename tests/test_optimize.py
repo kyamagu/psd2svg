@@ -343,7 +343,10 @@ class TestConsolidateDefs:
         assert get_local_tag(innermost_g[0]) == "rect"
 
     def test_consolidate_does_not_move_masks(self) -> None:
-        """Test that <mask> elements are NOT moved (they can contain rendered content)."""
+        """Test that <mask> elements are NOT moved.
+
+        They can contain rendered content.
+        """
         svg_str = """
         <svg xmlns="http://www.w3.org/2000/svg">
             <rect mask="url(#m1)"/>

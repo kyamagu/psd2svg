@@ -67,7 +67,8 @@ class WindowsFontResolver:
             postscript_name: PostScript name of the font (e.g., "ArialMT").
 
         Returns:
-            Dictionary with keys: "postscript_name", "file", "family", "style", "weight".
+            Dictionary with keys: "postscript_name", "file", "family",
+            "style", "weight".
             Returns None if font not found.
 
         Example:
@@ -150,7 +151,8 @@ class WindowsFontResolver:
             List of absolute font file paths.
 
         Note:
-            - Queries HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts
+            - Queries HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT
+              \\CurrentVersion\\Fonts
             - Converts relative paths to absolute (C:\\Windows\\Fonts)
             - Silently skips fonts that can't be accessed
         """
@@ -191,8 +193,10 @@ class WindowsFontResolver:
             List of absolute font file paths.
 
         Note:
-            - Queries HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts
-            - Converts relative paths to absolute (AppData\\Local\\Microsoft\\Windows\\Fonts)
+            - Queries HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows NT
+              \\CurrentVersion\\Fonts
+            - Converts relative paths to absolute (AppData\\Local\\Microsoft
+              \\Windows\\Fonts)
             - Silently skips fonts that can't be accessed
         """
         fonts = []
@@ -233,7 +237,8 @@ class WindowsFontResolver:
             font_path: Absolute path to font file (TTF/OTF).
 
         Returns:
-            Dictionary with keys: "postscript_name", "file", "family", "style", "weight".
+            Dictionary with keys: "postscript_name", "file", "family",
+            "style", "weight".
             Returns None if parsing fails or file is not a valid font.
 
         Note:
@@ -251,14 +256,16 @@ class WindowsFontResolver:
             if not postscript_name:
                 return None
 
-            # Extract family name (prefer ID 16 "Typographic Family", fallback to ID 1)
+            # Extract family name (prefer ID 16 "Typographic Family",
+            # fallback to ID 1)
             family = self._get_name_table_entry(font, 16) or self._get_name_table_entry(
                 font, 1
             )
             if not family:
                 family = "Unknown"
 
-            # Extract style name (prefer ID 17 "Typographic Subfamily", fallback to ID 2)
+            # Extract style name (prefer ID 17 "Typographic Subfamily",
+            # fallback to ID 2)
             style = self._get_name_table_entry(font, 17) or self._get_name_table_entry(
                 font, 2
             )
@@ -476,8 +483,6 @@ class WindowsFontResolver:
             >>> coverage
             1.0  # 100% coverage
         """
-        from fontTools.ttLib import TTFont
-
         if not os.path.exists(font_path):
             raise FileNotFoundError(f"Font file not found: {font_path}")
 

@@ -40,9 +40,11 @@ class TestUnicodeExtraction:
         """Test extraction from nested tspan elements."""
 
         svg = ET.fromstring(
-            """<svg xmlns="http://www.w3.org/2000/svg">
-                <text style="font-family: Arial">Hello<tspan style="font-family: Courier">World</tspan></text>
-            </svg>"""
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text style="font-family: Arial">Hello'
+            '<tspan style="font-family: Courier">World</tspan>'
+            "</text>"
+            "</svg>"
         )
 
         result = extract_used_unicode(svg)
@@ -261,7 +263,10 @@ class TestSVGDocumentIntegration:
         assert "@font-face" not in svg_string  # No fonts embedded
 
     def test_save_subset_ignored_without_embed(self, tmp_path: Path) -> None:
-        """Test that subset_fonts is silently ignored when embed_fonts=False in save()."""
+        """Test that subset_fonts is silently ignored.
+
+        When embed_fonts=False in save().
+        """
 
         psd = PSDImage.open(get_fixture("texts/style-tracking.psd"))
         doc = SVGDocument.from_psd(psd)

@@ -7,18 +7,31 @@ import tempfile
 import pytest
 from PIL import Image
 
-# Check if playwright is available
-try:
-    import playwright  # noqa: F401
+from psd2svg.rasterizer import PlaywrightRasterizer
+from tests.conftest import requires_playwright
 
-    HAS_PLAYWRIGHT = True
-    from psd2svg.rasterizer import PlaywrightRasterizer
-except ImportError:
-    HAS_PLAYWRIGHT = False
-    PlaywrightRasterizer = None  # type: ignore[assignment,misc]
 
-# Skip all tests if playwright is not available
-pytestmark = pytest.mark.skipif(not HAS_PLAYWRIGHT, reason="Playwright not installed")
+def test_is_available() -> None:
+    """Test that is_available() correctly detects playwright availability.
+
+    This test runs in all environments to verify that is_available()
+    returns the correct value based on whether playwright is installed.
+    """
+    has_pw = PlaywrightRasterizer.is_available()
+
+    # Try to actually import playwright to verify is_available() is correct
+    try:
+        import playwright.sync_api  # noqa: F401, PLC0415
+
+        # If import succeeded, is_available() should return True
+        assert has_pw is True, (
+            "is_available() returned False but playwright is installed"
+        )
+    except ImportError:
+        # If import failed, is_available() should return False
+        assert has_pw is False, (
+            "is_available() returned True but playwright is not installed"
+        )
 
 
 @pytest.fixture
@@ -51,7 +64,7 @@ def svg_with_viewbox_only() -> str:
 </svg>"""
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_basic(simple_svg: str) -> None:
     """Test basic rasterization functionality."""
     rasterizer = PlaywrightRasterizer(dpi=96)
@@ -68,7 +81,7 @@ def test_rasterizer_basic(simple_svg: str) -> None:
         rasterizer.close()
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_from_file(simple_svg: str) -> None:
     """Test rasterization from file."""
     with tempfile.NamedTemporaryFile(
@@ -92,7 +105,7 @@ def test_rasterizer_from_file(simple_svg: str) -> None:
         os.unlink(svg_path)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_context_manager(simple_svg: str) -> None:
     """Test rasterizer as context manager."""
     with PlaywrightRasterizer(dpi=96) as rasterizer:
@@ -102,7 +115,7 @@ def test_rasterizer_context_manager(simple_svg: str) -> None:
         assert image.mode == "RGBA"
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_dpi_scaling(simple_svg: str) -> None:
     """Test DPI scaling produces different resolutions."""
     with PlaywrightRasterizer(dpi=96) as rasterizer_96:
@@ -116,7 +129,7 @@ def test_rasterizer_dpi_scaling(simple_svg: str) -> None:
     assert image_192.size == (200, 200)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_vertical_text(vertical_text_svg: str) -> None:
     """Test rendering of vertical text with SVG 2.0 features.
 
@@ -131,7 +144,7 @@ def test_rasterizer_vertical_text(vertical_text_svg: str) -> None:
         assert image.size == (200, 200)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_viewbox_only(svg_with_viewbox_only: str) -> None:
     """Test SVG with only viewBox (no width/height attributes)."""
     with PlaywrightRasterizer(dpi=96) as rasterizer:
@@ -143,7 +156,7 @@ def test_rasterizer_viewbox_only(svg_with_viewbox_only: str) -> None:
         assert image.size == (200, 150)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 @pytest.mark.parametrize(
     "browser_type",
     ["chromium", "firefox", "webkit"],
@@ -168,7 +181,7 @@ def test_rasterizer_browser_types(
         pytest.skip(f"{browser_type} not installed: {e}")
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_transparency(simple_svg: str) -> None:
     """Test that transparency is preserved."""
     with PlaywrightRasterizer(dpi=96) as rasterizer:
@@ -185,7 +198,7 @@ def test_rasterizer_transparency(simple_svg: str) -> None:
         assert pixel[3] == 0  # Alpha should be 0 (transparent)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_bytes_input(simple_svg: str) -> None:
     """Test rasterization with bytes input."""
     svg_bytes = simple_svg.encode("utf-8")
@@ -198,11 +211,17 @@ def test_rasterizer_bytes_input(simple_svg: str) -> None:
         assert image.size == (100, 100)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_reuse() -> None:
     """Test that rasterizer can be reused for multiple renders."""
-    svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="red"/></svg>'
-    svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    svg1 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50">'
+        '<rect width="50" height="50" fill="red"/></svg>'
+    )
+    svg2 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+        '<circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    )
 
     with PlaywrightRasterizer(dpi=96) as rasterizer:
         image1 = rasterizer.from_string(svg1)
@@ -212,7 +231,7 @@ def test_rasterizer_reuse() -> None:
         assert image2.size == (100, 100)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_invalid_svg() -> None:
     """Test handling of invalid SVG content."""
     invalid_svg = "<svg>invalid</not-svg>"
@@ -222,7 +241,7 @@ def test_rasterizer_invalid_svg() -> None:
             rasterizer.from_string(invalid_svg)
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_missing_file() -> None:
     """Test handling of missing file."""
     with PlaywrightRasterizer(dpi=96) as rasterizer:
@@ -230,7 +249,7 @@ def test_rasterizer_missing_file() -> None:
             rasterizer.from_file("/nonexistent/file.svg")
 
 
-@pytest.mark.requires_playwright
+@requires_playwright
 def test_rasterizer_in_async_context(simple_svg: str) -> None:
     """Test that PlaywrightRasterizer works inside an asyncio event loop.
 
@@ -249,17 +268,3 @@ def test_rasterizer_in_async_context(simple_svg: str) -> None:
 
     # Run inside asyncio event loop (simulates Jupyter environment)
     asyncio.run(test_async())
-
-
-def test_import_without_playwright() -> None:
-    """Test that importing without Playwright installed fails gracefully."""
-    # This test runs even if Playwright is installed
-    # It tests the import behavior, not actual functionality
-    try:
-        from psd2svg.rasterizer import PlaywrightRasterizer  # noqa: F401
-
-        # If we get here, Playwright is installed
-        assert HAS_PLAYWRIGHT
-    except ImportError:
-        # If we get here, Playwright is not installed
-        assert not HAS_PLAYWRIGHT

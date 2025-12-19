@@ -13,7 +13,10 @@ class TestFontCollection:
     """Tests for font storage in SVG during conversion."""
 
     def test_font_postscript_names_in_svg(self) -> None:
-        """Test that PostScript font names are embedded in SVG font-family attributes."""
+        """Test that PostScript font names are embedded in SVG.
+
+        Checks font-family attributes.
+        """
         # Use a PSD file with text layers
         psd_path = get_fixture("layer-types/type-layer.psd")
         psdimage = PSDImage.open(psd_path)

@@ -170,7 +170,8 @@ class TestWindowsFontResolverParsing:
 
         mock_font = MagicMock()
 
-        # PostScript name exists (ID 6), family IDs return None (16, 1), style IDs return None (17, 2)
+        # PostScript name exists (ID 6), family IDs return None (16, 1),
+        # style IDs return None (17, 2)
         mock_get_name = MagicMock(side_effect=["TestFont", None, None, None, None])
         mock_get_weight = MagicMock(return_value=80.0)
 

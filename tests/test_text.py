@@ -1,8 +1,8 @@
 import logging
 import math
+import xml.etree.ElementTree as ET
 
 import pytest
-import xml.etree.ElementTree as ET
 from psd_tools import PSDImage
 from psd_tools.api.layers import TypeLayer
 
@@ -192,7 +192,8 @@ def test_text_paragraph_native_positioning_no_x_override() -> None:
         # Should not have y (using dy instead for relative positioning)
         y_attr = tspan.attrib.get("y")
         assert y_attr is None, (
-            f"Paragraph {i + 1} tspan should not have y attribute (should use dy instead)"
+            f"Paragraph {i + 1} tspan should not have y attribute "
+            "(should use dy instead)"
         )
 
 
@@ -217,7 +218,8 @@ def test_text_writing_direction() -> None:
     text_node = svg.find(".//text")
     assert text_node is not None
     assert text_node.attrib.get("writing-mode") == "vertical-rl"
-    # Style may contain font-variant-ligatures (default), so we just check it doesn't have text-orientation
+    # Style may contain font-variant-ligatures (default), so we just check
+    # it doesn't have text-orientation
     style = text_node.attrib.get("style", "")
     assert "text-orientation" not in style
 
@@ -257,7 +259,8 @@ def test_text_style_italic() -> None:
         "Italic" in f or "italic" in f or "Oblique" in f for f in font_families if f
     )
     assert has_italic, (
-        f"Expected to find a PostScript name with 'Italic' or 'Oblique', got: {font_families}"
+        f"Expected to find a PostScript name with 'Italic' or 'Oblique', "
+        f"got: {font_families}"
     )
 
 
@@ -435,7 +438,8 @@ def test_text_style_tsume() -> None:
         spacing_values.append(spacing)
 
     # First paragraph: tracking=50, tsume=0 -> spacing = 50/1000 * 32 = 1.6
-    # Second paragraph: tracking=50, tsume=0.5 -> spacing = 50/1000 * 32 - 0.5/10 * 32 = 1.6 - 1.6 = 0.0
+    # Second paragraph: tracking=50, tsume=0.5 -> spacing =
+    # 50/1000 * 32 - 0.5/10 * 32 = 1.6 - 1.6 = 0.0
     assert abs(spacing_values[0] - 1.6) < 1e-6, (
         f"Expected first paragraph letter-spacing to be 1.6, got {spacing_values[0]}"
     )
@@ -511,7 +515,8 @@ def test_text_style_ligatures() -> None:
     has_none = any("font-variant-ligatures: none" in s for s in ligature_styles)
     assert has_none, "Expected font-variant-ligatures: none in first paragraph"
 
-    # Second paragraph should have no font-variant-ligatures attribute (default CSS behavior)
+    # Second paragraph should have no font-variant-ligatures attribute
+    # (default CSS behavior)
     # This represents ligatures=True, discretionary=False (the default)
     assert len(nodes_without_ligature_style) > 0, (
         "Expected at least one tspan without font-variant-ligatures (default behavior)"
@@ -536,8 +541,9 @@ def test_text_style_discretionary_ligatures() -> None:
 
     assert len(ligature_styles) > 0, "Expected font-variant-ligatures styles"
 
-    # First paragraph should have "none" (ligatures=False, discretionary=False)
-    # Second paragraph should have "discretionary-ligatures" (ligatures=False, discretionary=True)
+    # First paragraph should have "none" (ligatures=False,
+    # discretionary=False). Second paragraph should have
+    # "discretionary-ligatures" (ligatures=False, discretionary=True)
     has_none = any("font-variant-ligatures: none" in s for s in ligature_styles)
     has_discretionary = any("discretionary-ligatures" in s for s in ligature_styles)
 
@@ -683,7 +689,10 @@ def test_text_native_positioning_bounding_box_left() -> None:
 
 
 def test_text_native_positioning_bounding_box_right() -> None:
-    """Test that bounding box with right alignment correctly combines transform and bounds on text node."""
+    """Test bounding box with right alignment.
+
+    Correctly combines transform and bounds on text node.
+    """
     svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification1.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
@@ -702,7 +711,10 @@ def test_text_native_positioning_bounding_box_right() -> None:
 
 
 def test_text_native_positioning_bounding_box_center() -> None:
-    """Test that bounding box with center alignment correctly combines transform and bounds on text node."""
+    """Test bounding box with center alignment.
+
+    Correctly combines transform and bounds on text node.
+    """
     svg = convert_psd_to_svg("texts/paragraph-shapetype1-justification2.psd")
     text_node = svg.find(".//text")
     assert text_node is not None
@@ -716,15 +728,17 @@ def test_text_native_positioning_bounding_box_center() -> None:
     # Should have text-anchor for center alignment
     assert text_node.attrib.get("text-anchor") == "middle"
     # x should be greater than just the transform tx (includes midpoint)
-    # For this test file, transform.tx is about 23, but with bounds midpoint it should be ~120
+    # For this test file, transform.tx is about 23, but with bounds midpoint
+    # it should be ~120
     assert text_x > 50
 
 
 def test_text_multiple_paragraphs_different_alignments() -> None:
-    """Test that multiple paragraphs with different text anchors are handled correctly.
+    """Test multiple paragraphs with different text anchors.
 
-    Each paragraph has its own tspan with explicit positioning and text-anchor,
-    regardless of whether the alignments differ or not. This provides consistent structure.
+    Each paragraph has its own tspan with explicit positioning and
+    text-anchor, regardless of whether the alignments differ or not. This
+    provides consistent structure.
     """
     svg = convert_psd_to_svg("texts/paragraph-shapetype1-multiple.psd")
     text_node = svg.find(".//text")
@@ -875,7 +889,8 @@ def test_text_wrapping_foreign_object_basic() -> None:
         get_fixture("texts/paragraph-shapetype1-justification0.psd")
     )
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     # Should have foreignObject instead of text
@@ -898,7 +913,8 @@ def test_text_wrapping_foreign_object_multiple_paragraphs() -> None:
     """Test foreignObject with multiple paragraphs."""
     psdimage = PSDImage.open(get_fixture("texts/paragraph-shapetype1-multiple.psd"))
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     foreign_obj = doc.svg.find(".//foreignObject")
@@ -917,7 +933,8 @@ def test_text_wrapping_foreign_object_text_content() -> None:
         get_fixture("texts/paragraph-shapetype1-justification0.psd")
     )
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     # Extract all text from XHTML elements
@@ -932,12 +949,16 @@ def test_text_wrapping_foreign_object_text_content() -> None:
 
 
 def test_text_wrapping_point_text_unchanged() -> None:
-    """Test that point text (ShapeType=0) uses native SVG even with foreignObject mode."""
+    """Test that point text (ShapeType=0) uses native SVG.
+
+    Even with foreignObject mode.
+    """
     psdimage = PSDImage.open(
         get_fixture("texts/paragraph-shapetype0-justification0.psd")
     )
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     # Point text should still use native <text> element
@@ -957,7 +978,8 @@ def test_text_wrapping_foreign_object_vertical() -> None:
         )
     )
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     foreign_obj = doc.svg.find(".//foreignObject")
@@ -1026,7 +1048,8 @@ def test_text_whitespace_preservation_foreign_object() -> None:
     """
     psdimage = PSDImage.open(get_fixture("texts/whitespaces-shapetype1.psd"))
     doc = SVGDocument.from_psd(
-        psdimage, text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
     )
 
     # Find foreignObject and container div
@@ -1042,9 +1065,11 @@ def test_text_whitespace_preservation_foreign_object() -> None:
     for i, p in enumerate(paragraphs):
         xml_space = p.attrib.get("{http://www.w3.org/XML/1998/namespace}space")
         if i < 2:  # First two paragraphs have whitespace
-            assert xml_space == "preserve", (
-                f"Paragraph {i} should have xml:space='preserve', got: {repr(xml_space)}"
+            expected_msg = (
+                f"Paragraph {i} should have xml:space='preserve', "
+                f"got: {repr(xml_space)}"
             )
+            assert xml_space == "preserve", expected_msg
         else:  # Last paragraph is empty (\r only), no xml:space needed
             assert xml_space is None, (
                 f"Paragraph {i} should not have xml:space, got: {repr(xml_space)}"

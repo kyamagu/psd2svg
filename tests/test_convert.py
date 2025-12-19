@@ -243,7 +243,8 @@ def test_blend_mode_quality(psd_file: str, quality: float) -> None:
         "shapes/multi-1.psd",  # Union + Subtract
         "shapes/multi-2.psd",  # Union + Subtract + Intersect
         "shapes/multi-3.psd",  # Union + Subtract + Union
-        "shapes/multi-4.psd",  # Union + XOR with composite subpaths, this one requires 0.02 threshold
+        # Union + XOR with composite subpaths, requires 0.02 threshold
+        "shapes/multi-4.psd",
         "shapes/multi-5-mask.psd",  # Multi-shape with mask
         "shapes/multi-5-mask-disabled.psd",  # Multi-shape with disabled mask
     ],
@@ -639,8 +640,11 @@ def test_adjustment_threshold(psd_file: str) -> None:
             "adjustments/colorbalance-s-100_-100_-100-m-100_-100_-100-h-100_-100_-100.psd",
             0.36,
             marks=pytest.mark.xfail(
-                reason="Extreme negative adjustment with preserve luminosity has high error (MSE ~0.35) "
-                "due to color clipping and neutral color preservation limitation",
+                reason=(
+                    "Extreme negative adjustment with preserve luminosity has "
+                    "high error (MSE ~0.35) due to color clipping and neutral "
+                    "color preservation limitation"
+                ),
                 strict=False,
             ),
         ),

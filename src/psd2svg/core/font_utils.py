@@ -284,7 +284,8 @@ class FontInfo:
         """Generate @font-face CSS rule for this font.
 
         Args:
-            data_uri: Base64 data URI for the font file (e.g., 'data:font/ttf;base64,...').
+            data_uri: Base64 data URI for the font file
+                (e.g., 'data:font/ttf;base64,...').
 
         Returns:
             CSS @font-face rule string.
@@ -330,7 +331,8 @@ class FontInfo:
             None if no match found.
 
         Raises:
-            Exception: If fontconfig matching fails and charset_codepoints is None or empty.
+            Exception: If fontconfig matching fails and charset_codepoints is None
+                or empty.
         """
         try:
             if charset_codepoints:
@@ -385,11 +387,12 @@ class FontInfo:
                                Empty sets are treated as None (no charset matching).
 
         Returns:
-            Windows font resolver match result dict with keys: file, family, style, weight.
-            None if no match found.
+            Windows font resolver match result dict with keys:
+                file, family, style, weight. None if no match found.
 
         Raises:
-            Exception: If Windows matching fails and charset_codepoints is None or empty.
+            Exception: If Windows matching fails and charset_codepoints is None
+                or empty.
         """
         resolver = _windows_fonts.get_windows_font_resolver()  # type: ignore[attr-defined]
 
@@ -431,7 +434,8 @@ class FontInfo:
 
         Returns:
             FontInfo object if found, None otherwise. If charset_codepoints is provided
-            and non-empty, the returned FontInfo will have charset populated for later resolution.
+            and non-empty, the returned FontInfo will have charset populated for
+            later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying fontconfig..."
@@ -471,7 +475,8 @@ class FontInfo:
 
         Returns:
             FontInfo object if found, None otherwise. If charset_codepoints is provided
-            and non-empty, the returned FontInfo will have charset populated for later resolution.
+            and non-empty, the returned FontInfo will have charset populated for
+            later resolution.
         """
         logger.debug(
             f"Font '{postscriptname}' not in static mapping, trying Windows registry..."
@@ -512,20 +517,21 @@ class FontInfo:
         - lookup_static() for CSS family names (embed_fonts=False scenarios)
         - resolve() for font embedding (embed_fonts=True scenarios)
 
-        This wrapper delegates to the appropriate method based on disable_static_mapping:
+        This wrapper delegates to the appropriate method based on
+        disable_static_mapping:
         - If disable_static_mapping=False: Uses lookup_static() (name resolution only)
         - If disable_static_mapping=True: Uses resolve() (with file paths)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
             font_mapping: Optional custom font mapping dictionary. Format:
-                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+                {"PostScriptName": {"family": str, "style": str, "weight": float}}
             charset_codepoints: Optional set of Unicode codepoints for charset-based
                                font matching. Only used when disable_static_mapping=True
                                (platform resolution). Empty sets are treated as None
                                (no charset matching). Default: None.
-            disable_static_mapping: If True, use find_with_files(); if False, use find_static().
-                                   Default: False.
+            disable_static_mapping: If True, use find_with_files(); if False,
+                use find_static(). Default: False.
 
         Returns:
             FontInfo object with font metadata, or None if font not found.
@@ -706,7 +712,8 @@ class FontInfo:
         postscriptname: str,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
     ) -> Self | None:
-        """Lookup font metadata using custom and static mappings only (no platform resolution).
+        """Lookup font metadata using custom and static mappings only
+        (no platform resolution).
 
         This method resolves PostScript names to CSS font families without accessing
         system fonts. It is suitable for SVG generation when embed_fonts=False, where
@@ -715,19 +722,21 @@ class FontInfo:
 
         Resolution order:
         1. Custom font mapping (if provided)
-        2. Static font mapping (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa)
+        2. Static font mapping
+           (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa)
         3. Suffix parsing fallback (infer from common PostScript patterns)
         4. Return None if not found (preserves PostScript name in SVG)
 
         Args:
             postscriptname: PostScript name of the font (e.g., "ArialMT").
             font_mapping: Optional custom font mapping dictionary. Takes priority
-                         over static mapping. Format:
-                         {"PostScriptName": {"family": str, "style": str, "weight": float}}
+                over static mapping. Format:
+                {"PostScriptName": {"family": str, "style": str, "weight": float}}
 
         Returns:
-            FontInfo object with family/style/weight (no file path), or None if not found.
-            When None is returned, the PostScript name will be preserved in the SVG output.
+            FontInfo object with family/style/weight (no file path),
+            or None if not found. When None is returned, the PostScript name
+            will be preserved in the SVG output.
 
         Example:
             >>> # Resolve common font (found in static mapping)
@@ -830,10 +839,11 @@ class FontInfo:
             and "file" in custom_data
             and custom_data["file"]  # Must be non-empty
         ):
-            # Custom mapping found but missing file path - fall back to platform resolution
+            # Custom mapping found but missing file path
+            # - fall back to platform resolution
             logger.debug(
-                f"Custom mapping for '{postscriptname}' found but missing 'file' field. "
-                "Falling back to platform resolution."
+                f"Custom mapping for '{postscriptname}' found "
+                f"but missing 'file' field. Falling back to platform resolution."
             )
             return None
 
@@ -918,7 +928,8 @@ class FontInfo:
             logger.warning(
                 f"Font '{postscriptname}' not found: "
                 "platform-specific font resolution not available. "
-                "Consider providing a custom font mapping via the font_mapping parameter."
+                "Consider providing a custom font mapping "
+                "via the font_mapping parameter."
             )
         else:
             platform_name = "fontconfig" if HAS_FONTCONFIG else "Windows registry"
@@ -1025,8 +1036,8 @@ def encode_font_with_options(
     Args:
         font_path: Path to the font file.
         cache: Dictionary to use for caching encoded data URIs.
-        subset_codepoints: Optional set of Unicode codepoints (integers) to subset the font to.
-            If None, the full font is encoded.
+        subset_codepoints: Optional set of Unicode codepoints (integers)
+            to subset the font to. If None, the full font is encoded.
         font_format: Font format for output: "ttf", "otf", or "woff2".
 
     Returns:
