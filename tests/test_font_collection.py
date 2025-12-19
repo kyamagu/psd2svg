@@ -5,7 +5,6 @@ from typing import cast
 from psd_tools import PSDImage
 
 from psd2svg import SVGDocument, svg_utils
-
 from tests.conftest import get_fixture
 
 

@@ -10,7 +10,6 @@ from psd2svg import SVGDocument
 from psd2svg.core.converter import Converter
 from psd2svg.core.text import TextWrappingMode
 from psd2svg.core.typesetting import TypeSetting
-
 from tests.conftest import get_fixture
 
 
