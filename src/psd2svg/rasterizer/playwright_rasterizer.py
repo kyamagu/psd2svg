@@ -55,6 +55,26 @@ class PlaywrightRasterizer(BaseRasterizer):
         ...     image.save('output.png')
     """
 
+    @classmethod
+    def is_available(cls) -> bool:
+        """Check if Playwright is available.
+
+        Returns:
+            True if Playwright is installed and can be used, False otherwise.
+
+        Example:
+            >>> if PlaywrightRasterizer.is_available():
+            ...     rasterizer = PlaywrightRasterizer()
+            ... else:
+            ...     print("Playwright not available")
+        """
+        try:
+            import playwright.sync_api  # noqa: F401, PLC0415
+
+            return True
+        except ImportError:
+            return False
+
     def __init__(
         self,
         dpi: int = 96,

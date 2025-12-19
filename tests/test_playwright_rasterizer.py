@@ -10,6 +10,13 @@ from PIL import Image
 from psd2svg.rasterizer import PlaywrightRasterizer
 
 
+def test_is_available() -> None:
+    """Test that is_available() returns True when playwright is installed."""
+    # Since these tests only run when playwright is installed,
+    # is_available() should return True
+    assert PlaywrightRasterizer.is_available()
+
+
 @pytest.fixture
 def simple_svg() -> str:
     """Simple SVG for basic testing."""
