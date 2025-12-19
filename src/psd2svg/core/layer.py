@@ -17,11 +17,14 @@ logger = logging.getLogger(__name__)
 class LayerConverter(ConverterProtocol):
     """Main layer converter mixin."""
 
-    def add_layer(self, layer: layers.Layer, **attrib: str) -> ET.Element | None:
+    def add_layer(
+        self, layer: layers.Layer, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add a layer to the svg document.
 
         Args:
             layer: The PSD layer to add.
+            depth: Current nesting depth (for resource limit checking).
             attrib: Additional attributes to set on the created node.
         """
         if not layer.is_visible():
@@ -61,9 +64,11 @@ class LayerConverter(ConverterProtocol):
         }
         # Default layer_fn is a plain pixel layer.
         layer_fn = registry.get(type(layer), self.add_pixel)
-        return layer_fn(layer, **attrib)  # type: ignore[call-arg]
+        return layer_fn(layer, depth=depth, **attrib)  # type: ignore[call-arg]
 
-    def add_artboard(self, layer: layers.Artboard, **attrib: str) -> ET.Element | None:
+    def add_artboard(
+        self, layer: layers.Artboard, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add an artboard layer to the svg document."""
         node = self.create_node(
             "svg",
@@ -80,10 +85,12 @@ class LayerConverter(ConverterProtocol):
             **attrib,  # type: ignore[arg-type]
         )
         with self.set_current(node):
-            self.add_children(layer)
+            self.add_children(layer, depth=depth + 1)
         return node
 
-    def add_group(self, layer: layers.Group, **attrib: str) -> ET.Element | None:
+    def add_group(
+        self, layer: layers.Group, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add a group layer to the svg document."""
         node = self.create_node(
             "g",
@@ -93,7 +100,7 @@ class LayerConverter(ConverterProtocol):
             **attrib,  # type: ignore[arg-type]
         )
         with self.set_current(node):
-            self.add_children(layer)
+            self.add_children(layer, depth=depth + 1)
 
         self.apply_background_effects(layer, node, insert_before_target=True)
         self.apply_overlay_effects(layer, node)
@@ -102,8 +109,30 @@ class LayerConverter(ConverterProtocol):
         node = self.apply_mask(layer, node)
         return node
 
-    def add_children(self, group: layers.Group | layers.Artboard | PSDImage) -> None:
-        """Add child layers to the current node."""
+    def add_children(
+        self, group: layers.Group | layers.Artboard | PSDImage, depth: int = 0
+    ) -> None:
+        """Add child layers to the current node.
+
+        Args:
+            group: Group/Artboard/PSDImage to process.
+            depth: Current nesting depth (for resource limit checking).
+
+        Raises:
+            ValueError: If depth exceeds resource_limits.max_layer_depth.
+        """
+        # Check depth limit
+        if (
+            hasattr(self, "resource_limits")
+            and self.resource_limits
+            and self.resource_limits.is_layer_depth_limited()
+        ):
+            if depth >= self.resource_limits.max_layer_depth:
+                raise ValueError(
+                    f"Layer depth {depth} exceeds limit "
+                    f"{self.resource_limits.max_layer_depth}"
+                )
+
         for layer in group:
             if layer.clipping or not layer.is_visible():
                 continue
@@ -111,18 +140,33 @@ class LayerConverter(ConverterProtocol):
             if layer.has_clip_layers(visible=True):
                 with self.add_clipping_target(layer) as attrib:
                     for clip_layer in layer.clip_layers:
-                        self.add_layer(clip_layer, **attrib)
+                        self.add_layer(clip_layer, depth=depth, **attrib)
             else:
                 # Regular layer.
-                self.add_layer(layer)
+                self.add_layer(layer, depth=depth)
 
-    def add_pixel(self, layer: layers.Layer, **attrib: str) -> ET.Element | None:
+    def add_pixel(
+        self, layer: layers.Layer, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add a general pixel-based layer to the svg document."""
         if not layer.has_pixels():
             logger.warning(
                 f"Layer has no pixels, skipping: '{layer.name}' ({layer.kind})."
             )
             return None
+
+        # Validate image dimensions
+        if (
+            hasattr(self, "resource_limits")
+            and self.resource_limits
+            and self.resource_limits.is_image_dimension_limited()
+        ):
+            max_dim = self.resource_limits.max_image_dimension
+            if layer.width > max_dim or layer.height > max_dim:
+                raise ValueError(
+                    f"Layer '{layer.name}' dimensions {layer.width}x{layer.height} "
+                    f"exceed limit {max_dim}x{max_dim}"
+                )
 
         # We will later fill in the href attribute when embedding images.
         image = layer.topil()
@@ -180,7 +224,9 @@ class LayerConverter(ConverterProtocol):
             node = self.apply_mask(layer, node)
         return node
 
-    def add_shape(self, layer: layers.ShapeLayer, **attrib: str) -> ET.Element | None:
+    def add_shape(
+        self, layer: layers.ShapeLayer, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add a shape layer to the svg document."""
         if (
             layer.has_effects()
@@ -229,10 +275,12 @@ class LayerConverter(ConverterProtocol):
             node = self.apply_mask(layer, node)
         return node
 
-    def add_text(self, layer: layers.TypeLayer, **attrib: str) -> ET.Element | None:
+    def add_text(
+        self, layer: layers.TypeLayer, depth: int = 0, **attrib: str
+    ) -> ET.Element | None:
         """Add a text layer to the svg document."""
         if not self.enable_text:
-            return self.add_pixel(layer, **attrib)
+            return self.add_pixel(layer, depth=depth, **attrib)
 
         # Check if layer has effects
         if layer.has_effects():

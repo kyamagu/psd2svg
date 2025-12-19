@@ -23,7 +23,7 @@ class ResourceLimits:
 
     Environment variables:
         PSD2SVG_MAX_FILE_SIZE: Maximum file size in bytes (default: 2147483648 = 2GB)
-        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 300 = 5 minutes)
+        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 180 = 3 minutes)
         PSD2SVG_MAX_LAYER_DEPTH: Maximum layer nesting depth (default: 100)
         PSD2SVG_MAX_IMAGE_DIMENSION: Maximum image dimension in pixels
             (default: 16383 = WebP limit)
@@ -45,7 +45,7 @@ class ResourceLimits:
     """
 
     max_file_size: int = 2147483648  # 2GB default (typical for professional PSD files)
-    timeout: int = 300  # 300 seconds (5 minutes) default
+    timeout: int = 180  # 180 seconds (3 minutes) default
     max_layer_depth: int = 100  # 100 levels default
     max_image_dimension: int = 16383  # 16383 pixels default (WebP hard limit)
 
@@ -61,7 +61,7 @@ class ResourceLimits:
             max_file_size=int(
                 os.environ.get("PSD2SVG_MAX_FILE_SIZE", 2147483648)  # 2GB
             ),
-            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 300)),  # 5 minutes
+            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 180)),  # 3 minutes
             max_layer_depth=int(os.environ.get("PSD2SVG_MAX_LAYER_DEPTH", 100)),
             max_image_dimension=int(
                 os.environ.get("PSD2SVG_MAX_IMAGE_DIMENSION", 16383)  # WebP limit

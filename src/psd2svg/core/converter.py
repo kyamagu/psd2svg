@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import xml.etree.ElementTree as ET
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
 from PIL import Image
 from psd_tools import PSDImage
@@ -14,6 +14,9 @@ from psd2svg.core.layer import LayerConverter
 from psd2svg.core.paint import PaintConverter
 from psd2svg.core.shape import ShapeConverter
 from psd2svg.core.text import TextConverter
+
+if TYPE_CHECKING:
+    from psd2svg.resource_limits import ResourceLimits
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +90,9 @@ class Converter(
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        resource_limits: "ResourceLimits | None" = None,
     ) -> None:
         """Initialize the converter internal state."""
-
         # Source PSD image.
         if not isinstance(psdimage, PSDImage):
             raise TypeError("psdimage must be an instance of PSDImage")
@@ -101,6 +104,7 @@ class Converter(
         self.text_letter_spacing_offset = text_letter_spacing_offset
         self.text_wrapping_mode = text_wrapping_mode
         self.font_mapping = font_mapping
+        self.resource_limits = resource_limits
 
         # Initialize the SVG root element.
         self.svg = svg_utils.create_node(
