@@ -56,15 +56,52 @@ class ResourceLimits:
         Returns:
             ResourceLimits instance with values from environment variables,
             falling back to hardcoded defaults if not set.
+
+        Raises:
+            ValueError: If environment variable contains invalid integer value.
+
+        Note:
+            Negative values are treated as 0 (disabled limit). Non-integer values
+            raise ValueError.
         """
+
+        def parse_env_int(key: str, default: int) -> int:
+            """Parse integer from environment variable with validation.
+
+            Args:
+                key: Environment variable name.
+                default: Default value if not set.
+
+            Returns:
+                Parsed integer value, or 0 if negative.
+
+            Raises:
+                ValueError: If value is not a valid integer.
+            """
+            value_str = os.environ.get(key)
+            if value_str is None:
+                return default
+
+            try:
+                value = int(value_str)
+            except ValueError as e:
+                raise ValueError(
+                    f"Environment variable {key}={value_str!r} is not a valid integer"
+                ) from e
+
+            # Treat negative values as 0 (disabled limit)
+            if value < 0:
+                return 0
+
+            return value
+
         return cls(
-            max_file_size=int(
-                os.environ.get("PSD2SVG_MAX_FILE_SIZE", 2147483648)  # 2GB
-            ),
-            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 180)),  # 3 minutes
-            max_layer_depth=int(os.environ.get("PSD2SVG_MAX_LAYER_DEPTH", 100)),
-            max_image_dimension=int(
-                os.environ.get("PSD2SVG_MAX_IMAGE_DIMENSION", 16383)  # WebP limit
+            max_file_size=parse_env_int("PSD2SVG_MAX_FILE_SIZE", 2147483648),  # 2GB
+            timeout=parse_env_int("PSD2SVG_TIMEOUT", 180),  # 3 minutes
+            max_layer_depth=parse_env_int("PSD2SVG_MAX_LAYER_DEPTH", 100),
+            max_image_dimension=parse_env_int(
+                "PSD2SVG_MAX_IMAGE_DIMENSION",
+                16383,  # WebP limit
             ),
         )
 

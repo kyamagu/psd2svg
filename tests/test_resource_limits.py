@@ -91,6 +91,49 @@ class TestResourceLimitsDefaults:
             assert limits.max_layer_depth == 50
             assert limits.max_image_dimension == 4096
 
+    def test_environment_variable_negative_values(self) -> None:
+        """Test ResourceLimits.default() treats negative values as 0 (disabled)."""
+        with patch.dict(
+            os.environ,
+            {
+                "PSD2SVG_MAX_FILE_SIZE": "-100",
+                "PSD2SVG_TIMEOUT": "-5",
+                "PSD2SVG_MAX_LAYER_DEPTH": "-10",
+                "PSD2SVG_MAX_IMAGE_DIMENSION": "-1000",
+            },
+        ):
+            limits = ResourceLimits.default()
+            assert limits.max_file_size == 0
+            assert limits.timeout == 0
+            assert limits.max_layer_depth == 0
+            assert limits.max_image_dimension == 0
+
+    def test_environment_variable_invalid_integer(self) -> None:
+        """Test ResourceLimits.default() raises ValueError for invalid integers."""
+        with patch.dict(
+            os.environ,
+            {"PSD2SVG_MAX_FILE_SIZE": "not_a_number"},
+        ):
+            with pytest.raises(
+                ValueError,
+                match="Environment variable PSD2SVG_MAX_FILE_SIZE='not_a_number' "
+                "is not a valid integer",
+            ):
+                ResourceLimits.default()
+
+    def test_environment_variable_invalid_float(self) -> None:
+        """Test ResourceLimits.default() raises ValueError for float values."""
+        with patch.dict(
+            os.environ,
+            {"PSD2SVG_TIMEOUT": "3.14"},
+        ):
+            with pytest.raises(
+                ValueError,
+                match="Environment variable PSD2SVG_TIMEOUT='3.14' "
+                "is not a valid integer",
+            ):
+                ResourceLimits.default()
+
 
 class TestFileSizeValidation:
     """Tests for file size limit enforcement."""

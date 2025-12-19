@@ -47,7 +47,7 @@ def with_timeout(
             signal.signal(signal.SIGALRM, old_handler)
     else:
         # Fallback for Windows: use threading
-        result: list[T | None] = [None]
+        result: list[Any] = [None]
         exception: list[Exception | None] = [None]
 
         def target() -> None:
@@ -64,4 +64,7 @@ def with_timeout(
             raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds")
         if exception[0]:
             raise exception[0]
+        # After successful thread completion, result[0] contains the return value
+        # (which could be None if func returns None). This is correct and matches
+        # the return type T, but mypy can't prove this without runtime guarantees.
         return result[0]  # type: ignore[return-value]

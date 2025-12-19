@@ -140,7 +140,7 @@ class LayerConverter(ConverterProtocol):
             if layer.has_clip_layers(visible=True):
                 with self.add_clipping_target(layer) as attrib:
                     for clip_layer in layer.clip_layers:
-                        self.add_layer(clip_layer, depth=depth, **attrib)
+                        self.add_layer(clip_layer, depth=depth + 1, **attrib)
             else:
                 # Regular layer.
                 self.add_layer(layer, depth=depth)
