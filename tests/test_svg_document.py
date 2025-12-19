@@ -781,7 +781,8 @@ class TestPathTraversalProtection:
 
         # Should save file successfully
         content = svg_file.read_text()
-        assert "images/img01.webp" in content
+        # On Windows, paths use backslashes; on Unix, forward slashes
+        assert "img01.webp" in content
         assert (tmp_path / "images" / "img01.webp").exists()
 
     def test_image_prefix_special_dot_case(self, tmp_path: Path) -> None:
