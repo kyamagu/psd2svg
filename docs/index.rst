@@ -13,12 +13,16 @@ Features
 --------
 
 * Convert PSD files to clean, editable SVG
-* Preserve layers, groups, and artboards
+* Preserve layers and artboards with smart group optimization
 * Convert text layers to native SVG text elements (experimental)
-* Smart font matching with Unicode codepoint-based selection
-* Support for blending modes, effects, and vector shapes
-* Adjustment layers support (Invert, Posterize, Threshold, HueSaturation, Exposure, BrightnessContrast)
-* Optional font subsetting for web optimization (90%+ size reduction with WOFF2)
+
+  * Arc warp support with SVG textPath
+  * Smart font matching with Unicode codepoint-based selection
+
+* Support for most Photoshop blending modes (with approximations for unsupported modes)
+* Adjustment layers support (experimental)
+* Optional font subsetting and embedding for web optimization (typically 90-95% size reduction)
+* Built-in resource limits for security (file size, timeout, layer depth, dimensions)
 * Command-line tool and Python API
 
 Quick Start
