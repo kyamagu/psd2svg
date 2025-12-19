@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2025-12-19
+
+### Security
+
+- **CVE-2025-66034 fix** (#243)
+  - Updated fonttools to 4.61.1 to address security vulnerability
+- **Security improvements** (#224, #206)
+  - Fixed multiple security issues (#219-223)
+  - Fixed CodeQL alert for overly permissive regex range
+
+### Added
+
+- **ResourceLimits integration** (#231)
+  - Complete DoS prevention with resource limits (Issue #221)
+
+### Fixed
+
+- **Gradient and effect rendering** (#211)
+  - Fixed gradient color format issues
+  - Fixed inner glow crashes (#209, #210)
+- **Font handling** (#183, #184)
+  - Fixed inconsistent font-weight values (Issue #179)
+  - Added quotes around file paths in font resolution logs
+- **Build and dependencies** (#207)
+  - Updated uv.lock to version 0.10.0
+
+### Changed
+
+- **Error messages** (#241)
+  - Improved resource limit error messages with actionable guidance
+- **Code quality** (#213, #214, #215, #217, #218)
+  - Fixed code quality violations (E501, PLC0415)
+  - Converted relative imports to absolute imports in test files
+  - Fixed font subsetting tests to use platform font resolution
+  - Deprecated FontInfo.find() and removed unused has_postscript_font()
+  - Removed unnecessary mypy overrides
+- **Project structure** (#232, #208)
+  - Removed unnecessary scripts directory
+  - Updated copyright to CyberAgent, Inc.
+
+### Documentation
+
+- **Font resolution documentation** (#234)
+  - Fixed font resolution documentation
+  - Improved features/limitations documentation
+- **Security documentation** (#233)
+  - Refactored SECURITY.md to eliminate redundancy with docs/security.rst
+
+### Internal
+
+- **CI/CD updates**
+  - Updated GitHub Actions dependencies (#225-229)
+  - Bumped astral-sh/setup-uv from 3 to 7
+  - Bumped actions/checkout from 4 to 6
+  - Bumped github/codeql-action from 3 to 4
+  - Bumped actions/upload-artifact from 4 to 6
+  - Bumped actions/setup-python from 5 to 6
+
 ## [0.10.0] - 2025-12-17
 
 ### Added
@@ -152,6 +210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Previous releases - see git history for details.
 
+[0.10.1]: https://github.com/kyamagu/psd2svg/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/kyamagu/psd2svg/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/kyamagu/psd2svg/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/kyamagu/psd2svg/compare/v0.7.1...v0.8.0
