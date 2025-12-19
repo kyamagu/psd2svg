@@ -148,15 +148,15 @@ Adjustment Layers
 * **Exposure** - Applies exposure, offset, and gamma correction
 * **Brightness/Contrast** - Adjusts brightness and contrast
 * **Color Balance** - Adjusts color balance for shadows, midtones, and highlights (with limitations, see below)
+* **Curves** - Applies tonal curve adjustments using SVG lookup tables
+* **Levels** - Adjusts input/output levels and midpoint gamma correction
 
 **Not Yet Implemented:**
 
 * **Black & White** - Converts to grayscale with channel-specific controls
 * **Channel Mixer** - Remixes color channels with custom ratios
 * **Color Lookup** - Applies 3D LUT color grading
-* **Curves** - Applies tonal curve adjustments
 * **Gradient Map** - Maps grayscale to gradient colors
-* **Levels** - Adjusts input/output levels and midpoint gamma
 * **Photo Filter** - Applies warming/cooling color filters
 * **Selective Color** - Adjusts specific color ranges (CMYK-based)
 * **Vibrance** - Adjusts saturation with skin tone protection
