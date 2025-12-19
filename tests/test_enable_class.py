@@ -9,7 +9,7 @@ from psd_tools import PSDImage
 from psd2svg import SVGDocument, convert
 from psd2svg.core.converter import Converter
 
-from .conftest import get_fixture
+from tests.conftest import get_fixture
 
 # Use a PSD file that definitely has layers with class attributes
 TEST_PSD = "layer-types/invert.psd"

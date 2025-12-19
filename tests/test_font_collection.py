@@ -6,7 +6,7 @@ from psd_tools import PSDImage
 
 from psd2svg import SVGDocument, svg_utils
 
-from .conftest import get_fixture
+from tests.conftest import get_fixture
 
 
 class TestFontCollection:
