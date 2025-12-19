@@ -4,8 +4,11 @@ This module provides configurable resource limits to prevent denial-of-service
 attacks from malicious or malformed input files.
 """
 
+import logging
 import os
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,7 +26,7 @@ class ResourceLimits:
 
     Environment variables:
         PSD2SVG_MAX_FILE_SIZE: Maximum file size in bytes (default: 2147483648 = 2GB)
-        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 300 = 5 minutes)
+        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 180 = 3 minutes)
         PSD2SVG_MAX_LAYER_DEPTH: Maximum layer nesting depth (default: 100)
         PSD2SVG_MAX_IMAGE_DIMENSION: Maximum image dimension in pixels
             (default: 16383 = WebP limit)
@@ -45,7 +48,7 @@ class ResourceLimits:
     """
 
     max_file_size: int = 2147483648  # 2GB default (typical for professional PSD files)
-    timeout: int = 300  # 300 seconds (5 minutes) default
+    timeout: int = 180  # 180 seconds (3 minutes) default
     max_layer_depth: int = 100  # 100 levels default
     max_image_dimension: int = 16383  # 16383 pixels default (WebP hard limit)
 
@@ -56,15 +59,58 @@ class ResourceLimits:
         Returns:
             ResourceLimits instance with values from environment variables,
             falling back to hardcoded defaults if not set.
+
+        Raises:
+            ValueError: If environment variable contains invalid integer value.
+
+        Note:
+            Negative values are treated as 0 (disabled limit) with a warning logged.
+            Non-integer values raise ValueError. For intentionally disabling all
+            limits, use ResourceLimits.unlimited() instead of negative values.
         """
+
+        def parse_env_int(key: str, default: int) -> int:
+            """Parse integer from environment variable with validation.
+
+            Args:
+                key: Environment variable name.
+                default: Default value if not set.
+
+            Returns:
+                Parsed integer value, or 0 if negative.
+
+            Raises:
+                ValueError: If value is not a valid integer.
+            """
+            value_str = os.environ.get(key)
+            if value_str is None:
+                return default
+
+            try:
+                value = int(value_str)
+            except ValueError as e:
+                raise ValueError(
+                    f"Environment variable {key}={value_str!r} is not a valid integer"
+                ) from e
+
+            # Treat negative values as 0 (disabled limit)
+            if value < 0:
+                logger.warning(
+                    f"Environment variable {key}={value} is negative, "
+                    f"treating as 0 (disabled limit). "
+                    f"Consider using ResourceLimits.unlimited() instead."
+                )
+                return 0
+
+            return value
+
         return cls(
-            max_file_size=int(
-                os.environ.get("PSD2SVG_MAX_FILE_SIZE", 2147483648)  # 2GB
-            ),
-            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 300)),  # 5 minutes
-            max_layer_depth=int(os.environ.get("PSD2SVG_MAX_LAYER_DEPTH", 100)),
-            max_image_dimension=int(
-                os.environ.get("PSD2SVG_MAX_IMAGE_DIMENSION", 16383)  # WebP limit
+            max_file_size=parse_env_int("PSD2SVG_MAX_FILE_SIZE", 2147483648),  # 2GB
+            timeout=parse_env_int("PSD2SVG_TIMEOUT", 180),  # 3 minutes
+            max_layer_depth=parse_env_int("PSD2SVG_MAX_LAYER_DEPTH", 100),
+            max_image_dimension=parse_env_int(
+                "PSD2SVG_MAX_IMAGE_DIMENSION",
+                16383,  # WebP limit
             ),
         )
 

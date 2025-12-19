@@ -12,6 +12,8 @@ from psd2svg.core import font_utils
 from psd2svg.core.converter import Converter
 from psd2svg.core.font_utils import FontInfo
 from psd2svg.rasterizer import BaseRasterizer, ResvgRasterizer
+from psd2svg.resource_limits import ResourceLimits
+from psd2svg.timeout_utils import with_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,7 @@ class SVGDocument:
         text_letter_spacing_offset: float = 0.0,
         text_wrapping_mode: int = 0,
         font_mapping: dict[str, dict[str, float | str]] | None = None,
+        resource_limits: ResourceLimits | None = None,
     ) -> "SVGDocument":
         """Create a new SVGDocument from a PSDImage.
 
@@ -99,9 +102,22 @@ class SVGDocument:
                 When not provided, uses built-in mapping for ~4,950 fonts (539 default +
                 370 Hiragino + 4,042 Morisawa), with automatic fallback to system font
                 resolution (fontconfig/Windows registry) if needed.
+            resource_limits: Optional resource limits for DoS prevention. If None,
+                uses ResourceLimits.default() which enables limits (2GB file size,
+                3 minute timeout, 100 layer depth, 16K image dimension). Use
+                ResourceLimits.unlimited() to disable all limits for trusted input.
+
         Returns:
             SVGDocument object containing the converted SVG and images.
+
+        Raises:
+            ValueError: If layer depth or image dimensions exceed limits.
+            TimeoutError: If conversion exceeds timeout limit.
         """
+        # Default to ResourceLimits.default() if not specified
+        if resource_limits is None:
+            resource_limits = ResourceLimits.default()
+
         # Build SVG tree with original font names
         converter = Converter(
             psdimage,
@@ -112,8 +128,14 @@ class SVGDocument:
             text_letter_spacing_offset=text_letter_spacing_offset,
             text_wrapping_mode=text_wrapping_mode,
             font_mapping=font_mapping,
+            resource_limits=resource_limits,
         )
-        converter.build()
+
+        # Build with timeout protection
+        if resource_limits.is_timeout_enabled():
+            with_timeout(converter.build, resource_limits.timeout)
+        else:
+            converter.build()
 
         document = SVGDocument(
             svg=converter.svg,
@@ -935,6 +957,7 @@ def convert(
     font_mapping: dict[str, dict[str, float | str]] | None = None,
     embed_fonts: bool = False,
     font_format: str = "woff2",
+    resource_limits: ResourceLimits | None = None,
 ) -> None:
     """Convenience method to convert a PSD file to an SVG file.
 
@@ -982,7 +1005,28 @@ def convert(
             compression, default), 'woff', 'ttf', 'otf'. Only used when
             embed_fonts=True. WOFF2 provides
             90%+ size reduction through automatic font subsetting.
+        resource_limits: Optional resource limits for DoS prevention. If None,
+            uses ResourceLimits.default() which enables limits (2GB file size,
+            3 minute timeout, 100 layer depth, 16K image dimension). Use
+            ResourceLimits.unlimited() to disable all limits for trusted input.
+
+    Raises:
+        ValueError: If file size, layer depth, or image dimensions exceed limits.
+        TimeoutError: If conversion exceeds timeout limit.
     """
+    # Default to ResourceLimits.default() if not specified
+    if resource_limits is None:
+        resource_limits = ResourceLimits.default()
+
+    # Validate file size before loading
+    if resource_limits.is_file_size_limited():
+        file_size = os.path.getsize(input_path)
+        if file_size > resource_limits.max_file_size:
+            raise ValueError(
+                f"File size {file_size} bytes exceeds limit "
+                f"{resource_limits.max_file_size} bytes"
+            )
+
     psdimage = PSDImage.open(input_path)
     document = SVGDocument.from_psd(
         psdimage,
@@ -993,6 +1037,7 @@ def convert(
         text_letter_spacing_offset=text_letter_spacing_offset,
         text_wrapping_mode=text_wrapping_mode,
         font_mapping=font_mapping,
+        resource_limits=resource_limits,
     )
     document.save(
         output_path,
