@@ -5,6 +5,7 @@ offering fast and accurate rendering with no external dependencies.
 """
 
 import logging
+import os
 import re
 from io import BytesIO
 from typing import Union
@@ -59,8 +60,19 @@ class ResvgRasterizer(BaseRasterizer):
             svg_content: SVG content as string.
 
         Returns:
-            List of font file paths found in src: url("file://...") declarations.
+            List of valid font file paths found in src: url("file://...") declarations.
+            Invalid paths (non-existent files or non-font extensions) are filtered out
+            with a warning.
+
+        Note:
+            This method validates extracted paths to prevent:
+            - Access to non-existent files
+            - Access to non-font files (security mitigation)
+            - Log pollution from invalid paths
         """
+        # Valid font file extensions
+        VALID_FONT_EXTENSIONS = {".ttf", ".otf", ".woff", ".woff2", ".ttc"}
+
         font_files = []
         # Pattern to match: src: url("file:///path/to/font.ttf")
         pattern = re.compile(r'src:\s*url\(["\']?(file://[^"\')]+)["\']?\)')
@@ -69,6 +81,21 @@ class ResvgRasterizer(BaseRasterizer):
         for match in matches:
             # Remove file:// prefix to get the actual path
             font_path = match.replace("file://", "")
+
+            # Validate file extension
+            _, ext = os.path.splitext(font_path.lower())
+            if ext not in VALID_FONT_EXTENSIONS:
+                logger.warning(
+                    f"Skipping invalid font file extension: {font_path} "
+                    f"(expected one of {VALID_FONT_EXTENSIONS})"
+                )
+                continue
+
+            # Validate file existence
+            if not os.path.isfile(font_path):
+                logger.warning(f"Skipping non-existent font file: {font_path}")
+                continue
+
             font_files.append(font_path)
 
         return font_files

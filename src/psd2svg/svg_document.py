@@ -546,9 +546,24 @@ class SVGDocument:
         Returns:
             Tuple of (base_dir, filename_prefix).
 
+        Raises:
+            ValueError: If image_prefix contains path traversal sequences or
+                is an absolute path when svg_filepath is not provided.
+
         Note:
             Special handling for "." prefix - treats it as "no prefix, just counter".
         """
+        # Validate image_prefix to prevent path traversal attacks
+        if ".." in image_prefix:
+            raise ValueError(
+                "image_prefix cannot contain '..' (path traversal not allowed)"
+            )
+
+        # Prevent absolute paths when svg_filepath is not provided (tostring case)
+        if os.path.isabs(image_prefix) and svg_filepath is None:
+            raise ValueError(
+                "image_prefix must be relative when svg_filepath is not provided"
+            )
         if svg_filepath:
             svg_dir = os.path.dirname(os.path.abspath(svg_filepath))
             # Special handling for "." - treat as "no prefix, just counter"

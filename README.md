@@ -89,6 +89,23 @@ Text layer conversion uses a hybrid approach:
 
 For fonts not in the default mapping, you can provide custom font mappings. See the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html#custom-font-mapping) for details.
 
+## Security
+
+When processing untrusted PSD files, follow security best practices:
+
+- **File size limits**: Validate file size before processing to prevent memory exhaustion
+- **Timeout protection**: Implement conversion timeouts to prevent CPU exhaustion
+- **Path validation**: Validate all file paths, especially when using `image_prefix`
+- **Sandboxing**: Run conversions in isolated environments for untrusted input
+
+psd2svg includes security features:
+
+- Path traversal protection in `image_prefix` parameter
+- Font file validation in rasterizers
+- Automated dependency vulnerability scanning
+
+See [Security Documentation](https://psd2svg.readthedocs.io/en/latest/security.html) for detailed guidance and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+
 ## Documentation
 
 Full documentation is available at **[psd2svg.readthedocs.io](https://psd2svg.readthedocs.io/)**

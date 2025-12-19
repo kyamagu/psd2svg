@@ -92,6 +92,7 @@ Next Steps
 * Fine-tune with :doc:`configuration` options
 * Check the :doc:`api-reference` for complete API documentation
 * Review :doc:`limitations` to understand current constraints
+* Read :doc:`security` for security best practices when processing untrusted files
 
 Documentation Contents
 ----------------------
@@ -106,6 +107,7 @@ Documentation Contents
    fonts
    rasterizers
    configuration
+   security
    limitations
 
 .. toctree::
