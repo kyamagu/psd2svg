@@ -82,15 +82,7 @@ check_untyped_defs = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "psd_tools.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "skimage.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "fontconfig"
+module = "fontTools.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -98,7 +90,7 @@ module = "playwright.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "fontTools.*"
+module = "skimage.*"
 ignore_missing_imports = true
 
 [tool.ruff.lint]
