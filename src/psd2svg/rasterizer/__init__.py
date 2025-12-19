@@ -6,14 +6,7 @@ PlaywrightRasterizer for browser-based rendering with full SVG 2.0 support.
 """
 
 from .base_rasterizer import BaseRasterizer
+from .playwright_rasterizer import PlaywrightRasterizer
 from .resvg_rasterizer import ResvgRasterizer
 
-__all__ = ["BaseRasterizer", "ResvgRasterizer"]
-
-# Optional browser-based rasterizer (requires playwright)
-try:
-    from .playwright_rasterizer import PlaywrightRasterizer  # noqa: F401
-
-    __all__.append("PlaywrightRasterizer")
-except ImportError:
-    pass
+__all__ = ["BaseRasterizer", "PlaywrightRasterizer", "ResvgRasterizer"]
