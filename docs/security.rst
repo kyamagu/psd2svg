@@ -77,89 +77,132 @@ Security Best Practices
 Processing Untrusted Files
 --------------------------
 
-When processing PSD files from untrusted sources, implement multiple layers of defense:
+When processing PSD files from untrusted sources, psd2svg provides built-in resource limits to prevent denial-of-service attacks.
 
-1. File Size Limits
-^^^^^^^^^^^^^^^^^^^
+Built-in Resource Limits
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Limit input file size to prevent memory exhaustion:
+**New in version 0.4.0**: psd2svg includes automatic DoS prevention via the ``ResourceLimits`` class.
+
+By default, resource limits are **automatically enabled** with sensible defaults:
 
 .. code-block:: python
 
-    import os
     from psd_tools import PSDImage
-    from psd2svg import SVGDocument
+    from psd2svg import SVGDocument, convert
 
-    # Note: Professional PSD files are typically 1-5GB
-    # Adjust limits based on your use case:
-    MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB for trusted users
-    # For untrusted sources:
-    # MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+    # Option 1: Using convert() - limits applied automatically
+    convert("input.psd", "output.svg")
+    # Applies default limits: 2GB file size, 3 minute timeout,
+    # 100 layer depth, 16K image dimension
 
-    def safe_convert(psd_path: str) -> SVGDocument:
-        # Check file size before loading
-        file_size = os.path.getsize(psd_path)
-        if file_size > MAX_FILE_SIZE:
-            raise ValueError(
-                f"File too large: {file_size} bytes (max: {MAX_FILE_SIZE})"
-            )
+    # Option 2: Using from_psd() - limits applied automatically
+    psdimage = PSDImage.open("input.psd")
+    document = SVGDocument.from_psd(psdimage)
+    # Same default limits applied
 
-        psdimage = PSDImage.open(psd_path)
+**Important**: This is a breaking change from previous versions where no limits were enforced.
 
-        # Important: Validate layer dimensions to prevent WebP encoding errors
-        # WebP has a hard limit of 16383 pixels per dimension
-        for layer in psdimage.descendants():
-            if hasattr(layer, 'width') and hasattr(layer, 'height'):
-                if layer.width > 16383 or layer.height > 16383:
-                    raise ValueError(
-                        f"Layer '{layer.name}' exceeds WebP dimension limit: "
-                        f"{layer.width}x{layer.height} (max: 16383x16383)"
-                    )
+Customizing Resource Limits
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-        return SVGDocument.from_psd(psdimage)
+For untrusted input, use stricter limits:
 
-2. Timeout Protection
+.. code-block:: python
+
+    from psd2svg import ResourceLimits, convert
+
+    # Define stricter limits for untrusted input
+    limits = ResourceLimits(
+        max_file_size=500 * 1024 * 1024,  # 500MB (vs 2GB default)
+        timeout=60,                        # 1 minute (vs 3 minutes default)
+        max_layer_depth=50,                # 50 levels (vs 100 default)
+        max_image_dimension=8192           # 8K (vs 16K default)
+    )
+
+    # Use with convert()
+    convert("untrusted.psd", "output.svg", resource_limits=limits)
+
+    # Or with from_psd()
+    psdimage = PSDImage.open("untrusted.psd")
+    document = SVGDocument.from_psd(psdimage, resource_limits=limits)
+
+Default Limits (Trusted Input)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The default limits are designed for professional PSD files from trusted sources:
+
+.. code-block:: python
+
+    from psd2svg import ResourceLimits
+
+    # Explicitly use default limits (same as passing None)
+    limits = ResourceLimits.default()
+    # - max_file_size: 2GB (typical for professional PSDs)
+    # - timeout: 180 seconds (3 minutes)
+    # - max_layer_depth: 100 layers deep
+    # - max_image_dimension: 16383 pixels (WebP hard limit)
+
+Disabling Limits (Use with Caution)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For fully trusted input where you need to process very large files:
+
+.. code-block:: python
+
+    from psd2svg import ResourceLimits, convert
+
+    # WARNING: Only use for trusted input in controlled environments!
+    limits = ResourceLimits.unlimited()
+
+    convert("huge_trusted_file.psd", "output.svg", resource_limits=limits)
+
+Environment Variable Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Resource limits can be configured via environment variables:
+
+.. code-block:: bash
+
+    # Set custom default limits via environment variables
+    export PSD2SVG_MAX_FILE_SIZE=1073741824  # 1GB
+    export PSD2SVG_TIMEOUT=120               # 2 minutes
+    export PSD2SVG_MAX_LAYER_DEPTH=75        # 75 levels
+    export PSD2SVG_MAX_IMAGE_DIMENSION=12000 # 12K pixels
+
+.. code-block:: python
+
+    from psd2svg import ResourceLimits
+
+    # Uses environment variables if set, otherwise hardcoded defaults
+    limits = ResourceLimits.default()
+
+Resource Limit Errors
 ^^^^^^^^^^^^^^^^^^^^^
 
-Implement timeout to prevent CPU exhaustion. Large PSD files can take several minutes to process:
+When limits are exceeded, specific errors are raised:
 
 .. code-block:: python
 
-    import signal
-    from contextlib import contextmanager
+    from psd2svg import convert, ResourceLimits
 
-    @contextmanager
-    def timeout(seconds: int):
-        """Context manager for timeout protection."""
-        def timeout_handler(signum, frame):
-            raise TimeoutError(f"Operation timed out after {seconds} seconds")
+    try:
+        convert("large.psd", "output.svg")
+    except ValueError as e:
+        # File size limit exceeded:
+        # "File size 3221225472 bytes exceeds limit 2147483648 bytes"
+        print(f"Limit exceeded: {e}")
+    except TimeoutError as e:
+        # Timeout exceeded:
+        # "Operation timed out after 180 seconds"
+        print(f"Conversion took too long: {e}")
 
-        # Set the signal handler and alarm
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(seconds)
-        try:
-            yield
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
+**Note on Timeout**: Cross-platform timeout is supported:
 
-    def safe_convert_with_timeout(psd_path: str, timeout_seconds: int = 300):
-        """Convert PSD with timeout protection.
+- **Unix/macOS**: Uses ``signal.SIGALRM`` for reliable timeout
+- **Windows**: Uses threading-based timeout (may not interrupt native C code)
 
-        Note: 5 minutes (300s) is reasonable for professional PSD files.
-        For untrusted input, use shorter timeouts (60-120s).
-        """
-        try:
-            with timeout(timeout_seconds):
-                psdimage = PSDImage.open(psd_path)
-                return SVGDocument.from_psd(psdimage)
-        except TimeoutError as e:
-            print(f"Conversion timed out: {e}")
-            return None
-
-**Note**: ``signal.alarm()`` is not available on Windows. For cross-platform timeout support, use ``subprocess`` or ``threading.Timer``.
-
-3. Sandboxing with Subprocess
+Sandboxing with Subprocess
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Run conversion in a separate process with resource limits:
@@ -208,7 +251,7 @@ Run conversion in a separate process with resource limits:
             print(f"Conversion error: {e}")
             return False
 
-4. Container Isolation
+Container Isolation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 For maximum isolation, run conversions in Docker containers:
@@ -299,12 +342,22 @@ PSD processing can be resource-intensive:
 
 **Impact**: Can lead to denial of service if not properly limited.
 
-**Mitigation**:
+**Mitigation** (New in version 0.4.0):
 
-- Implement file size limits before processing (2GB for trusted, 500MB for untrusted)
-- Use timeouts for conversion operations (5 minutes for trusted, 1-2 minutes for untrusted)
-- Run in resource-constrained environments
+psd2svg now includes **built-in DoS prevention** via automatic resource limits:
+
+- **File size limits**: 2GB default (customizable via ``ResourceLimits``)
+- **Timeout protection**: 3 minutes default with cross-platform support
+- **Layer depth limits**: 100 levels default to prevent stack overflow
+- **Image dimension limits**: 16K pixels default (WebP hard limit)
+
+See "Processing Untrusted Files" section above for configuration details.
+
+For additional protection:
+
+- Run in resource-constrained environments (containers, VMs)
 - Monitor resource usage in production
+- Use stricter limits for untrusted input (500MB, 60 seconds)
 
 WebP Dimension Limits
 ---------------------
@@ -320,24 +373,46 @@ This is a common issue with professional Photoshop files that contain:
 
 **Impact**: Conversion will fail with a WebP encoding error when encountering oversized layers.
 
-**Error Example**::
+**Automatic Validation** (New in version 0.4.0):
 
-    PIL.Image.DecompressionBombError: Image size exceeds limit
-    # or
-    OSError: cannot write mode RGBA as WEBP
+psd2svg now **automatically validates** image dimensions before conversion:
 
-**Recommended Mitigations**:
+.. code-block:: python
 
-1. **Pre-validate layer dimensions** (see File Size Limits example above)
-2. **Use alternative image formats** for large layers:
+    from psd2svg import convert
+
+    # Automatically rejects layers exceeding 16K dimension limit
+    try:
+        convert("large.psd", "output.svg")
+    except ValueError as e:
+        print(e)
+        # "Layer 'Background' dimensions 20000x15000 exceed limit 16383x16383"
+
+To customize the dimension limit or disable it:
+
+.. code-block:: python
+
+    from psd2svg import ResourceLimits, convert
+
+    # Use a smaller limit (e.g., for untrusted input)
+    limits = ResourceLimits(max_image_dimension=8192)
+    convert("file.psd", "output.svg", resource_limits=limits)
+
+    # Or disable validation (not recommended)
+    limits = ResourceLimits(max_image_dimension=0)
+    convert("file.psd", "output.svg", resource_limits=limits)
+
+**Additional Mitigations**:
+
+1. **Use alternative image formats** for large layers:
 
    .. code-block:: python
 
        # Save with PNG format for layers that might exceed WebP limits
        document.save("output.svg", image_format="PNG")
 
-3. **Downscale large layers** before conversion (if quality loss is acceptable)
-4. **Rasterize the entire PSD** instead of per-layer conversion for very large files
+2. **Downscale large layers** before conversion (if quality loss is acceptable)
+3. **Rasterize the entire PSD** instead of per-layer conversion for very large files
 
 **Note**: This is a fundamental WebP format limitation, not a psd2svg limitation. PNG format supports up to 2^31-1 pixels per dimension and can be used as an alternative.
 
