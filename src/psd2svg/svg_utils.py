@@ -11,7 +11,7 @@ NAMESPACE = "http://www.w3.org/2000/svg"
 XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml"
 
 ILLEGAL_XML_RE: Pattern[str] = re.compile(
-    "[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
+    "[\x00-\x08\x0b-\x1f\x7f-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]"
 )
 
 DEFAULT_NUMBER_DIGITS = 2
