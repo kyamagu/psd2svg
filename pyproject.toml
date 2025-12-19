@@ -112,5 +112,3 @@ select = [
 ignore = []
 
 [tool.ruff.lint.extend-per-file-ignores]
-# Allow unused imports in __init__.py files
-"__init__.py" = ["F401"]
