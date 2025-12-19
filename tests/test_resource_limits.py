@@ -91,7 +91,9 @@ class TestResourceLimitsDefaults:
             assert limits.max_layer_depth == 50
             assert limits.max_image_dimension == 4096
 
-    def test_environment_variable_negative_values(self) -> None:
+    def test_environment_variable_negative_values(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test ResourceLimits.default() treats negative values as 0 (disabled)."""
         with patch.dict(
             os.environ,
@@ -107,6 +109,13 @@ class TestResourceLimitsDefaults:
             assert limits.timeout == 0
             assert limits.max_layer_depth == 0
             assert limits.max_image_dimension == 0
+
+            # Verify warnings were logged for each negative value
+            assert "PSD2SVG_MAX_FILE_SIZE=-100 is negative" in caplog.text
+            assert "PSD2SVG_TIMEOUT=-5 is negative" in caplog.text
+            assert "PSD2SVG_MAX_LAYER_DEPTH=-10 is negative" in caplog.text
+            assert "PSD2SVG_MAX_IMAGE_DIMENSION=-1000 is negative" in caplog.text
+            assert caplog.text.count("Consider using ResourceLimits.unlimited()") == 4
 
     def test_environment_variable_invalid_integer(self) -> None:
         """Test ResourceLimits.default() raises ValueError for invalid integers."""

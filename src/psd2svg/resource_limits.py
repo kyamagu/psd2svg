@@ -4,8 +4,11 @@ This module provides configurable resource limits to prevent denial-of-service
 attacks from malicious or malformed input files.
 """
 
+import logging
 import os
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -61,8 +64,9 @@ class ResourceLimits:
             ValueError: If environment variable contains invalid integer value.
 
         Note:
-            Negative values are treated as 0 (disabled limit). Non-integer values
-            raise ValueError.
+            Negative values are treated as 0 (disabled limit) with a warning logged.
+            Non-integer values raise ValueError. For intentionally disabling all
+            limits, use ResourceLimits.unlimited() instead of negative values.
         """
 
         def parse_env_int(key: str, default: int) -> int:
@@ -91,6 +95,11 @@ class ResourceLimits:
 
             # Treat negative values as 0 (disabled limit)
             if value < 0:
+                logger.warning(
+                    f"Environment variable {key}={value} is negative, "
+                    f"treating as 0 (disabled limit). "
+                    f"Consider using ResourceLimits.unlimited() instead."
+                )
                 return 0
 
             return value
