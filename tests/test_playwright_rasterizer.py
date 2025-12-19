@@ -11,12 +11,23 @@ from psd2svg.rasterizer import PlaywrightRasterizer
 from tests.conftest import requires_playwright
 
 
-@requires_playwright
 def test_is_available() -> None:
-    """Test that is_available() returns True when playwright is installed."""
-    # Since these tests only run when playwright is installed,
-    # is_available() should return True
-    assert PlaywrightRasterizer.is_available()
+    """Test that is_available() correctly detects playwright availability.
+
+    This test runs in all environments to verify that is_available()
+    returns the correct value based on whether playwright is installed.
+    """
+    has_pw = PlaywrightRasterizer.is_available()
+
+    # Try to actually import playwright to verify is_available() is correct
+    try:
+        import playwright.sync_api  # noqa: F401
+
+        # If import succeeded, is_available() should return True
+        assert has_pw is True, "is_available() returned False but playwright is installed"
+    except ImportError:
+        # If import failed, is_available() should return False
+        assert has_pw is False, "is_available() returned True but playwright is not installed"
 
 
 @pytest.fixture
