@@ -3,7 +3,8 @@
 This module contains the TextConverter mixin class that converts Photoshop text layers
 (TypeLayer) to SVG text elements. It supports two rendering modes:
 
-1. Native SVG <text> elements (default) - Uses SVG text/tspan for accurate text rendering
+1. Native SVG <text> elements (default) - Uses SVG text/tspan for accurate
+   text rendering
 2. Foreign object mode - Uses <foreignObject> with XHTML for text wrapping support
 
 The TextConverter works with TypeSetting and related data structures from the
@@ -17,8 +18,9 @@ Key features:
 - Letter spacing, tracking, and kerning
 - Font effects (superscript, subscript, small caps)
 
-Note: This module re-exports TypeSetting and TextWrappingMode for backward compatibility.
-New code should import these directly from psd2svg.core.typesetting.
+Note: This module re-exports TypeSetting and TextWrappingMode for backward
+      compatibility. New code should import these directly from
+      psd2svg.core.typesetting.
 """
 
 import logging
@@ -232,7 +234,8 @@ class TextConverter(ConverterProtocol):
         Note:
             - Requires XHTML namespace for proper rendering
             - Supported by modern browsers (Chrome, Firefox, Safari, Edge)
-            - Not supported by resvg/resvg-py or many other SVG renderers (PDF converters, design tools)
+            - Not supported by resvg/resvg-py or many other SVG renderers
+              (PDF converters, design tools)
         """
         bounds = text_setting.box_bounds
         transform = text_setting.transform
@@ -304,7 +307,8 @@ class TextConverter(ConverterProtocol):
         text_setting: TypeSetting,
         text_anchor: str | None,
     ) -> tuple[float, float, str | None]:
-        """Compute paragraph position based on justification, shape type, and writing direction.
+        """Compute paragraph position based on justification, shape type,
+        and writing direction.
 
         Args:
             text_setting: Type setting object containing bounds and writing direction.
@@ -326,7 +330,8 @@ class TextConverter(ConverterProtocol):
                     x = (text_setting.bounds.left + text_setting.bounds.right) / 2
             elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
                 logger.debug(
-                    "Dominant baseline may not be supported by SVG renderers for vertical text."
+                    "Dominant baseline may not be supported by SVG renderers "
+                    "for vertical text."
                 )
                 x = text_setting.bounds.right
                 if text_anchor == "end":
@@ -349,7 +354,8 @@ class TextConverter(ConverterProtocol):
     ) -> ET.Element:
         """Create paragraph node with positioning attributes.
 
-        All paragraphs use consistent structure: each tspan has explicit x/y or dy positioning.
+        All paragraphs use consistent structure: each tspan has explicit
+        x/y or dy positioning.
 
         Args:
             text_setting: Type setting object containing transform information.
@@ -431,7 +437,8 @@ class TextConverter(ConverterProtocol):
             style.vertical_scale,
         )
 
-        # Determine font weight - only set for faux bold (PostScript name encodes actual weight)
+        # Determine font weight - only set for faux bold
+        # (PostScript name encodes actual weight)
         font_weight: int | str | None = None
         if style.faux_bold:
             font_weight = "700"
@@ -455,7 +462,8 @@ class TextConverter(ConverterProtocol):
         if style.font_caps == FontCaps.ALL_CAPS:
             svg_utils.add_style(tspan, "text-transform", "uppercase")
         elif style.font_caps == FontCaps.SMALL_CAPS:
-            # NOTE: Using text_settings.small_caps_size with text-transform may be more accurate.
+            # NOTE: Using text_settings.small_caps_size with text-transform
+            # may be more accurate.
             svg_utils.set_attribute(tspan, "font-variant", "small-caps")
 
         if style.underline:
@@ -510,8 +518,10 @@ class TextConverter(ConverterProtocol):
 
         # Apply letter spacing from tracking, tsume, and optional global offset
         # NOTE: Tracking is in 1/1000 em units.
-        # NOTE: Tsume is a percentage (0-1) that reduces spacing by that amount of font size.
-        # NOTE: It seems Photoshop applies 1/10 of the tsume value to letter spacing.
+        # NOTE: Tsume is a percentage (0-1) that reduces spacing
+        # by that amount of font size.
+        # NOTE: It seems Photoshop applies 1/10 of the tsume value
+        # to letter spacing.
         # NOTE: There is a slight offset difference for the first charactor because
         # letter-spacing applies after the character.
         letter_spacing = style.tracking / 1000 * scaled_font_size
@@ -528,9 +538,12 @@ class TextConverter(ConverterProtocol):
             )
 
         # Apply kerning adjustment (manual kerning in 1/1000 em units)
-        # Kerning adjusts the spacing BEFORE the current character (between previous and current).
-        # We use dx/dy to shift the character position, which effectively adjusts the space before it.
-        # NOTE: letter-spacing adds space AFTER characters, so we can't use it for kerning.
+        # Kerning adjusts the spacing BEFORE the current character
+        # (between previous and current).
+        # We use dx/dy to shift the character position, which effectively
+        # adjusts the space before it.
+        # NOTE: letter-spacing adds space AFTER characters,
+        # so we can't use it for kerning.
         if style.kerning != 0:
             kerning_offset = style.kerning / 1000 * scaled_font_size
             # Use dx for horizontal text, dy for vertical text
@@ -557,7 +570,8 @@ class TextConverter(ConverterProtocol):
                 ),
             )
 
-            # Set transform-origin to the paragraph's position to prevent scale from shifting the text
+            # Set transform-origin to the paragraph's position
+            # to prevent scale from shifting the text
             # Get x and y from parent paragraph node
             parent_x = paragraph_node.attrib.get("x")
             parent_y = paragraph_node.attrib.get("y")
@@ -572,12 +586,15 @@ class TextConverter(ConverterProtocol):
             text_setting.writing_direction == WritingDirection.VERTICAL_RL
             and style.baseline_direction == 1
         ):
-            # NOTE: Only Chromium-based browsers support 'text-orientation: upright' for SVG.
+            # NOTE: Only Chromium-based browsers support
+            # 'text-orientation: upright' for SVG.
             logger.debug(
-                "Applying text-orientation: upright, but may not be supported in SVG renderers."
+                "Applying text-orientation: upright, but may not be supported "
+                "in SVG renderers."
             )
             svg_utils.add_style(tspan, "text-orientation", "upright")
-            # NOTE: glyph-orientation-vertical is deprecated but may help with compatibility.
+            # NOTE: glyph-orientation-vertical is deprecated but may help
+            # with compatibility.
             # svg_utils.set_attribute(tspan, "glyph-orientation-vertical", "90")
         return tspan
 
@@ -589,9 +606,10 @@ class TextConverter(ConverterProtocol):
     ) -> tuple[float, tuple[float, float] | None]:
         """Calculate font-size scaling for text spans.
 
-        Handles uniform and non-uniform text scaling with browser compatibility workarounds.
-        For uniform scaling, scales font-size directly (browser-compatible).
-        For non-uniform scaling, uses transform (still broken in browsers, but more consistent).
+        Handles uniform and non-uniform text scaling with browser compatibility
+        workarounds. For uniform scaling, scales font-size directly
+        (browser-compatible). For non-uniform scaling, uses transform
+        (still broken in browsers, but more consistent).
 
         Args:
             font_size: Base font size in pixels
@@ -601,7 +619,8 @@ class TextConverter(ConverterProtocol):
         Returns:
             Tuple of (scaled_font_size, transform_scale):
             - scaled_font_size: Font size after applying scaling
-            - transform_scale: (sx, sy) tuple for transform attribute, or None if not needed
+            - transform_scale: (sx, sy) tuple for transform attribute,
+              or None if not needed
         """
         SCALE_TOLERANCE = 1e-6  # Consistent with Transform.is_translation_only()
         has_scaling = vertical_scale != 1.0 or horizontal_scale != 1.0

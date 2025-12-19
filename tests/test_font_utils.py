@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from psd2svg.core.font_utils import FontInfo, HAS_FONTCONFIG, create_file_url
+from psd2svg.core.font_utils import HAS_FONTCONFIG, FontInfo, create_file_url
 
 
 class TestFontInfo:
@@ -758,10 +758,14 @@ class TestFontInfoFindWithCharset:
     @pytest.mark.skipif(not HAS_FONTCONFIG, reason="Requires fontconfig (Linux/macOS)")
     @patch("psd2svg.core.font_utils.fontconfig.match")
     def test_find_with_charset_in_static_mapping(self, mock_match: MagicMock) -> None:
-        """Test find with charset for font in static mapping (charset ignored)."""
+        """Test find with charset for font in static mapping.
+
+        Charset is ignored for static mapping fonts.
+        """
         codepoints = {0x3042, 0x3044, 0x3046}
 
-        # ArialMT is in static mapping, should return immediately without charset matching
+        # ArialMT is in static mapping, should return immediately without
+        # charset matching
         font = FontInfo.find("ArialMT", charset_codepoints=codepoints)
 
         assert font is not None

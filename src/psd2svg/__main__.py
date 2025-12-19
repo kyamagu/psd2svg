@@ -68,7 +68,10 @@ def parse_args() -> argparse.Namespace:
         "--embed-fonts",
         dest="embed_fonts",
         action="store_true",
-        help="Embed fonts in SVG using @font-face rules. Requires fontconfig on Linux/macOS.",
+        help=(
+            "Embed fonts in SVG using @font-face rules. "
+            "Requires fontconfig on Linux/macOS."
+        ),
     )
     parser.add_argument(
         "--font-format",

@@ -1,9 +1,11 @@
+import copy
+import html
 import logging
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 from re import Pattern
 from typing import Any, Optional, Sequence
-
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,10 @@ def seq2str(
     sep: str = ",",
     digit: int = DEFAULT_NUMBER_DIGITS,
 ) -> str:
-    """Convert a sequence of numbers to a string, using the specified format for floats."""
+    """Convert a sequence of numbers to a string.
+
+    Uses the specified format for floats.
+    """
     return sep.join(num2str(n, digit) for n in seq)
 
 
@@ -320,27 +325,30 @@ def set_transform_with_origin(
 
     Args:
         element: SVG element to modify (e.g., linearGradient, pattern)
-        transform_attr: Name of the transform attribute (e.g., "gradientTransform", "patternTransform")
+        transform_attr: Name of the transform attribute (e.g., "gradientTransform",
+            "patternTransform")
         transforms: List of transform functions (e.g., ['rotate(45)', 'scale(2)'])
-        origin: Transform origin point (x, y). If provided, sets transform-origin attribute.
-                Default SVG transform-origin is (0, 0).
+        origin: Transform origin point (x, y). If provided, sets transform-origin
+            attribute. Default SVG transform-origin is (0, 0).
 
     Example:
-        Instead of: gradientTransform="translate(50,50) rotate(45) translate(-50,-50)"
+        Instead of: gradientTransform="translate(50,50) rotate(45)
+                    translate(-50,-50)"
         Produces:   gradientTransform="rotate(45)" transform-origin="50 50"
 
     Note:
-        SVG 2.0 feature. Supported by modern browsers and resvg-py.
-        When origin is provided but no transforms, uses translate() instead.
-        When the attribute already exists (from append_attribute), appends to it instead.
+        SVG 2.0 feature. Supported by modern browsers and resvg-py. When origin
+        is provided but no transforms, uses translate() instead. When the
+        attribute already exists (from append_attribute), appends to it instead.
     """
     if transforms:
         # Check if there's already a transform attribute (e.g., from offset)
         has_existing = transform_attr in element.attrib
 
         if has_existing and origin is not None and origin != (0.0, 0.0):
-            # If there's an existing transform (e.g., offset), we can't use transform-origin
-            # because it would apply to all transforms. Use the old translate pattern instead.
+            # If there's an existing transform (e.g., offset), we can't use
+            # transform-origin because it would apply to all transforms. Use
+            # the old translate pattern instead.
             append_attribute(
                 element,
                 transform_attr,
@@ -561,14 +569,17 @@ def merge_common_child_attributes(
                  Common excludes for text elements: {"x", "y", "dx", "dy", "transform"}
 
     Example:
-        Before: <text><tspan fill="red">A</tspan><tspan fill="red">B</tspan></text>
+        Before: <text><tspan fill="red">A</tspan><tspan fill="red">B</tspan>
+                </text>
 
         After:  <text fill="red"><tspan>A</tspan><tspan>B</tspan></text>
 
         Before (with excludes={"x"}):
-                <text><tspan x="10" fill="red">A</tspan><tspan x="20" fill="red">B</tspan></text>
+                <text><tspan x="10" fill="red">A</tspan><tspan x="20"
+                      fill="red">B</tspan></text>
 
-        After:  <text fill="red"><tspan x="10">A</tspan><tspan x="20">B</tspan></text>
+        After:  <text fill="red"><tspan x="10">A</tspan><tspan x="20">B
+                </tspan></text>
     """
     if excludes is None:
         excludes = set()
@@ -590,8 +601,8 @@ def merge_common_child_attributes(
     # Check if remaining children all have the same values
     for child in children[1:]:
         keys_to_remove = []
-        for key in common_attribs:
-            if key not in child.attrib or child.attrib[key] != common_attribs[key]:
+        for key, value in common_attribs.items():
+            if key not in child.attrib or child.attrib[key] != value:
                 keys_to_remove.append(key)
         for key in keys_to_remove:
             del common_attribs[key]
@@ -621,17 +632,20 @@ def merge_consecutive_siblings(element: ET.Element) -> None:
                 </text>
 
         After:  <text>
-                    <tspan font-size="18" letter-spacing="0.72">すだけ</tspan>
+                    <tspan font-size="18" letter-spacing="0.72">すだけ
+                    </tspan>
                 </text>
 
         Before: <text>
-                    <tspan font-size="18" baseline-shift="-0.36" letter-spacing="0.72">さ</tspan>
+                    <tspan font-size="18" baseline-shift="-0.36"
+                           letter-spacing="0.72">さ</tspan>
                     <tspan font-size="18" letter-spacing="0.72">す</tspan>
                     <tspan font-size="18" letter-spacing="0.72">だ</tspan>
                 </text>
 
         After:  <text>
-                    <tspan font-size="18" baseline-shift="-0.36" letter-spacing="0.72">さ</tspan>
+                    <tspan font-size="18" baseline-shift="-0.36"
+                           letter-spacing="0.72">さ</tspan>
                     <tspan font-size="18" letter-spacing="0.72">すだ</tspan>
                 </text>
 
@@ -732,7 +746,8 @@ def merge_singleton_children(element: ET.Element) -> None:
 
         Not merged (child has children):
         Before: <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
-        After:  <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>  (unchanged)
+        After:  <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
+                (unchanged)
     """
     # First, recursively process all children
     for child in list(element):
@@ -742,10 +757,12 @@ def merge_singleton_children(element: ET.Element) -> None:
     if len(element) == 1:
         child = element[0]
 
-        # If the child has its own children, we can still optimize by "unwrapping" it:
-        # move the grandchildren up to be direct children of element, removing the wrapper
+        # If the child has its own children, we can still optimize by
+        # "unwrapping" it: move the grandchildren up to be direct children of
+        # element, removing the wrapper
         if len(child) > 0:
-            # Only unwrap if there are no attribute conflicts and no text content to preserve
+            # Only unwrap if there are no attribute conflicts and no text
+            # content to preserve
             has_conflict = (
                 len(set(element.attrib.keys()) & set(child.attrib.keys())) > 0
             )
@@ -894,16 +911,19 @@ def consolidate_defs(svg: ET.Element) -> None:
             tag = child.tag
             local_name = tag.split("}")[-1] if "}" in tag else tag
 
-            # If it's a <defs> element (not the global one), collect its children
+            # If it's a <defs> element (not the global one), collect its
+            # children
             if local_name == "defs" and child is not global_defs:
                 for def_child in list(child):
                     definitions_to_move.append((def_child, child))
-                # Continue recursing into defs (in case of nested structures)
+                # Continue recursing into defs (in case of nested
+                # structures)
                 collect_definitions(child)
             # If it's a definition element (not inside global defs), collect it
             elif local_name in definition_tags and element is not global_defs:
                 definitions_to_move.append((child, element))
-                # Still recurse into the element (e.g., filters can contain other elements)
+                # Still recurse into the element (e.g., filters can contain
+                # other elements)
                 collect_definitions(child)
             else:
                 # Recurse into other elements
@@ -977,8 +997,6 @@ def _normalize_element_for_comparison(element: ET.Element) -> str:
     Returns:
         Canonical string representation suitable for deduplication.
     """
-    import copy
-
     # Deep copy to avoid modifying original
     temp = copy.deepcopy(element)
 
@@ -1323,7 +1341,9 @@ def extract_font_families(svg: ET.Element) -> set[str]:
         - Searches both font-family attributes and CSS style attributes
 
     Example:
-        >>> svg = fromstring('<svg><text font-family="Arial, sans-serif">Hi</text></svg>')
+        >>> svg = fromstring(
+        ...     '<svg><text font-family="Arial, sans-serif">Hi</text></svg>'
+        ... )
         >>> families = extract_font_families(svg)
         >>> "Arial" in families
         True
@@ -1371,25 +1391,31 @@ def find_elements_with_font_family(
     Args:
         svg: SVG element tree to search.
         font_family: Font family name to search for (case-insensitive).
-        include_inherited: If True, include elements that inherit the font from parents.
-                          If False, only include elements with direct font-family declarations.
-                          Default is True for backward compatibility.
+        include_inherited: If True, include elements that inherit the font from
+            parents.
+            If False, only include elements with direct font-family
+            declarations. Default is True for backward compatibility.
 
     Returns:
         List of text/tspan elements that use the specified font family.
 
     Note:
         - Searches both font-family attributes and style attributes
-        - Supports CSS inheritance (walks up parent chain) when include_inherited=True
+        - Supports CSS inheritance (walks up parent chain) when
+          include_inherited=True
         - Case-insensitive font family matching
         - Only returns text and tspan elements (not their parents)
 
     Example:
-        >>> svg = svg_utils.fromstring('<svg><text font-family="Arial">Hi</text></svg>')
+        >>> svg = svg_utils.fromstring(
+        ...     '<svg><text font-family="Arial">Hi</text></svg>'
+        ... )
         >>> elements = find_elements_with_font_family(svg, "Arial")
         >>> len(elements)
         1
-        >>> elements = find_elements_with_font_family(svg, "Arial", include_inherited=False)
+        >>> elements = find_elements_with_font_family(
+        ...     svg, "Arial", include_inherited=False
+        ... )
         >>> len(elements)
         1
     """
@@ -1424,16 +1450,18 @@ def _element_uses_font_family(
     target_font: str,
     include_inherited: bool = True,
 ) -> bool:
-    """Check if element uses the target font (directly or through inheritance).
+    """Check if element uses the target font (direct or inherited).
 
-    Helper function for find_elements_with_font_family that walks up the parent
+    Helper function for find_elements_with_font_family that walks up the
+    parent
     chain to check for font-family declarations.
 
     Args:
         element: Element to check.
         parent_map: Dictionary mapping children to parents.
         target_font: Target font family name (lowercase).
-        include_inherited: If True, walk up parent chain. If False, check only this element.
+        include_inherited: If True, walk up parent chain. If False, check only
+            this element.
 
     Returns:
         True if element uses the target font, False otherwise.
@@ -1511,20 +1539,19 @@ def extract_text_characters(element: ET.Element) -> str:
 
         >>> root = ET.fromstring('<text><tspan>A</tspan>B</text>')
         >>> tspan = root[0]
-        >>> extract_text_characters(tspan)  # Returns 'AB' (text + tail)
+        >>> extract_text_characters(tspan)  # Returns 'AB' (text +
+        ...                                  # tail)
         'AB'
 
         >>> elem = ET.fromstring('<text>Hello\\nWorld</text>')
         >>> extract_text_characters(elem)  # Newline filtered
         'HelloWorld'
 
-        >>> elem = ET.fromstring('<text>©\\uFE0E</text>')  # Copyright + variation selector
+        >>> elem = ET.fromstring('<text>©\\uFE0E</text>')
+        >>> # Copyright + variation selector
         >>> extract_text_characters(elem)  # Variation selector filtered
         '©'
     """
-    import html
-    import unicodedata
-
     result = ""
     if element.text:
         result += html.unescape(element.text)

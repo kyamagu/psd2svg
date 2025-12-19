@@ -1,8 +1,8 @@
 import logging
 
 import numpy as np
-from psd_tools import PSDImage
 from PIL import Image
+from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
 
@@ -26,11 +26,14 @@ def compute_conversion_quality(psdimage: PSDImage, metric: str) -> float:
 
 
 def create_diff_image(psdimage: PSDImage, amplify: float = 1.0) -> Image.Image:
-    """Create a diff image between the original and rasterized images for debugging purposes.
+    """Create a diff image between the original and rasterized images.
+
+    For debugging purposes.
 
     Args:
         psdimage: The PSD image to compare.
-        amplify: Multiplier to amplify differences for better visibility. Default is 1.0.
+        amplify: Multiplier to amplify differences for better visibility.
+            Default is 1.0.
 
     Returns:
         A PIL Image showing the differences between original and rasterized images.

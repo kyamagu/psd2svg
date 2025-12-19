@@ -11,7 +11,10 @@ class TestFontWeightResolution:
     def test_bold_font_weight_set_after_resolution(self) -> None:
         """Test that font-weight is set when resolving bold PostScript names."""
         # Create SVG with bold PostScript name
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="Arial-BoldMT">Bold Text</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="Arial-BoldMT">Bold Text</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -29,7 +32,10 @@ class TestFontWeightResolution:
 
     def test_italic_font_style_set_after_resolution(self) -> None:
         """Test that font-style is set when resolving italic PostScript names."""
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="Arial-ItalicMT">Italic Text</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="Arial-ItalicMT">Italic Text</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -43,7 +49,10 @@ class TestFontWeightResolution:
 
     def test_bold_italic_both_set_after_resolution(self) -> None:
         """Test that both font-weight and font-style are set."""
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="Arial-BoldItalicMT">Bold Italic</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="Arial-BoldItalicMT">Bold Italic</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -58,7 +67,10 @@ class TestFontWeightResolution:
 
     def test_regular_font_no_weight_style(self) -> None:
         """Test that regular fonts don't get unnecessary attributes."""
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="ArialMT">Regular Text</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="ArialMT">Regular Text</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -73,7 +85,10 @@ class TestFontWeightResolution:
 
     def test_preserve_existing_faux_bold(self) -> None:
         """Test that existing font-weight (faux bold) is preserved."""
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="ArialMT" font-weight="bold">Text</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="ArialMT" font-weight="bold">Text</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -87,7 +102,10 @@ class TestFontWeightResolution:
 
     def test_preserve_existing_faux_italic(self) -> None:
         """Test that existing font-style (faux italic) is preserved."""
-        svg_str = '<svg xmlns="http://www.w3.org/2000/svg"><text font-family="ArialMT" font-style="italic">Text</text></svg>'
+        svg_str = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<text font-family="ArialMT" font-style="italic">Text</text></svg>'
+        )
         svg = ET.fromstring(svg_str)
         doc = SVGDocument(svg=svg, images={})
 
@@ -112,7 +130,10 @@ class TestFontWeightResolution:
         ]
 
         for ps_name, expected_family, expected_weight in test_cases:
-            svg_str = f'<svg xmlns="http://www.w3.org/2000/svg"><text font-family="{ps_name}">Text</text></svg>'
+            svg_str = (
+                f'<svg xmlns="http://www.w3.org/2000/svg">'
+                f'<text font-family="{ps_name}">Text</text></svg>'
+            )
             svg = ET.fromstring(svg_str)
             doc = SVGDocument(svg=svg, images={})
 

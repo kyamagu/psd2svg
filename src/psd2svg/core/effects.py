@@ -103,8 +103,8 @@ class EffectConverter(ConverterProtocol):
             assert isinstance(effect, effects.Stroke)
 
             if not isinstance(layer, layers.ShapeLayer) or "stroke" in target.attrib:
-                # NOTE: If there is already a stroke, we need to stroke around the stroke.
-                # This case happens when there is a stroke-only shape layer.
+                # NOTE: If there is already a stroke, we need to stroke around
+                # the stroke. This case happens when there is a stroke-only shape layer.
                 use = self.add_raster_stroke_effect(layer, effect, target)
                 if effect.opacity != 100.0:
                     self.set_opacity(effect.opacity / 100.0, use)
@@ -215,7 +215,8 @@ class EffectConverter(ConverterProtocol):
                     gradient = self.add_radial_gradient(effect.gradient)
                 else:
                     logger.warning(
-                        f"Only linear and radial gradient strokes are supported: {effect}"
+                        "Only linear and radial gradient strokes are supported: "
+                        f"{effect}"
                     )
                     # Fallback to simple color.
                     flood_color = (
@@ -471,7 +472,8 @@ class EffectConverter(ConverterProtocol):
     def add_raster_gradient_overlay_effect(
         self, gradient: ET.Element, target: ET.Element, effect: effects.GradientOverlay
     ) -> ET.Element:
-        # feFlood does not support fill with gradient, so we use feImage and feComposite.
+        # feFlood does not support fill with gradient,
+        # so we use feImage and feComposite.
         defs = self.create_node("defs")
         # Rect here should have the target size.
         with self.set_current(defs):
@@ -490,7 +492,8 @@ class EffectConverter(ConverterProtocol):
         filter_attrs = {"id": self.auto_id("gradientoverlay")}
 
         if aligned:
-            # Use objectBoundingBox coordinates (filter positioned relative to target element)
+            # Use objectBoundingBox coordinates
+            # (filter positioned relative to target element)
             filter_attrs["x"] = "0%"
             filter_attrs["y"] = "0%"
             filter_attrs["width"] = "100%"
@@ -558,13 +561,11 @@ class EffectConverter(ConverterProtocol):
             # Adjust the object coordinates.
             if layer.width != layer.height:
                 if landscape:
-                    transforms.append(
-                        f"scale({svg_utils.num2str(layer.height / layer.width, digit=4)} 1)"
-                    )
+                    scale_x = svg_utils.num2str(layer.height / layer.width, digit=4)
+                    transforms.append(f"scale({scale_x} 1)")
                 else:
-                    transforms.append(
-                        f"scale(1 {svg_utils.num2str(layer.width / layer.height, digit=4)})"
-                    )
+                    scale_y = svg_utils.num2str(layer.width / layer.height, digit=4)
+                    transforms.append(f"scale(1 {scale_y})")
             reference = (0.5, 0.5)
         else:
             # Gradient defined in user space (canvas).
@@ -591,7 +592,8 @@ class EffectConverter(ConverterProtocol):
             )
             if not aligned:
                 offset = (offset[0] * self.psd.width, offset[1] * self.psd.height)
-            # Only add translate if offset is non-zero (with tolerance for floating point)
+            # Only add translate if offset is non-zero
+            # (with tolerance for floating point)
             if abs(offset[0]) > 1e-6 or abs(offset[1]) > 1e-6:
                 svg_utils.append_attribute(
                     gradient,
@@ -937,7 +939,8 @@ class EffectConverter(ConverterProtocol):
         for effect in reversed(effect_list):
             assert isinstance(effect, effects.BevelEmboss)
             logger.warning(
-                f"Bevel emboss effect is not supported yet: '{layer.name}' ({layer.kind})"
+                f"Bevel emboss effect is not supported yet: "
+                f"'{layer.name}' ({layer.kind})"
             )
 
 

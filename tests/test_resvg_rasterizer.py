@@ -57,12 +57,16 @@ def svg_with_gradient() -> str:
 @pytest.fixture
 def svg_with_embedded_image() -> str:
     """SVG with embedded image (data URI)."""
-    # 1x1 red pixel PNG as data URI
-    return """<?xml version="1.0" encoding="UTF-8"?>
+    # 1x1 red pixel PNG as base64 data URI
+    base64_data = (
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8Dw"
+        "HwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+    )
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="100" height="100" viewBox="0 0 100 100">
     <image x="10" y="10" width="80" height="80"
-           xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==" />
+           xlink:href="data:image/png;base64,{base64_data}" />
 </svg>"""
 
 
@@ -241,8 +245,14 @@ def test_rasterizer_string_input(simple_svg: str) -> None:
 
 def test_rasterizer_reuse() -> None:
     """Test that rasterizer can be reused for multiple renders."""
-    svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="red"/></svg>'
-    svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    svg1 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50">'
+        '<rect width="50" height="50" fill="red"/></svg>'
+    )
+    svg2 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+        '<circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    )
 
     rasterizer = ResvgRasterizer(dpi=96)
     image1 = rasterizer.from_string(svg1)
@@ -268,14 +278,15 @@ def test_rasterizer_with_font_files(simple_svg: str) -> None:
 
 
 # Note: Tests for malformed SVG, missing files, and empty SVG are omitted
-# because resvg-py may crash (SIGABRT) instead of raising Python exceptions
-# for these edge cases. This is a limitation of the underlying resvg library.
+# because resvg-py may crash (SIGABRT) instead of raising Python exceptions for
+# these edge cases. This is a limitation of the underlying resvg library.
 
 
 def test_rasterizer_large_svg() -> None:
     """Test rendering of large SVG dimensions."""
     large_svg = """<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000"
+     viewBox="0 0 1000 1000">
     <rect x="100" y="100" width="800" height="800" fill="green"/>
 </svg>"""
 
@@ -353,8 +364,14 @@ def test_rasterizer_composite_background() -> None:
 
 
 def test_rasterizer_from_string_optimized() -> None:
-    """Test that from_string uses optimized implementation (not via temp file)."""
-    simple_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="blue"/></svg>'
+    """Test that from_string uses optimized implementation.
+
+    Not via temp file.
+    """
+    simple_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+        '<rect width="100" height="100" fill="blue"/></svg>'
+    )
 
     rasterizer = ResvgRasterizer(dpi=96)
 

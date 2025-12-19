@@ -264,7 +264,8 @@ class ShapeConverter(ConverterProtocol):
     def create_single_shape(
         self, layer: layers.ShapeLayer, path: Subpath, **attrib: Any
     ) -> ET.Element:
-        """Create a single shape element from the layer's vector mask or origination data."""
+        """Create a single shape element from the layer's vector mask
+        or origination data."""
         if not layer.has_vector_mask() or layer.vector_mask is None:
             raise ValueError("Layer has no vector mask: %s", layer.name)
 

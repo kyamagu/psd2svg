@@ -382,7 +382,8 @@ class TestMergeAttributeLessChildren:
     def test_complex_real_world_scenario(self) -> None:
         """Test a complex real-world SVG text structure."""
 
-        # Simulate: <text>First <tspan font-weight="700">bold</tspan> then <tspan>normal</tspan> end</text>
+        # Simulate: <text>First <tspan font-weight="700">bold</tspan> then
+        # <tspan>normal</tspan> end</text>
         text = ET.Element("text")
         text.text = "First "
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -409,7 +410,8 @@ class TestMergeAttributeLessChildren:
 
         Now it unwraps them: moves the nested children up to the parent level.
         """
-        # Create: <text><tspan><tspan font-size="18">A</tspan><tspan font-size="20">B</tspan></tspan></text>
+        # Create: <text><tspan><tspan font-size="18">A</tspan><tspan
+        # font-size="20">B</tspan></tspan></text>
         text = ET.Element("text")
         outer_tspan = ET.SubElement(text, "tspan")  # No attributes
 
@@ -429,8 +431,9 @@ class TestMergeAttributeLessChildren:
         assert text[1].text == "B"
 
     def test_mixed_attribute_less_with_nested(self) -> None:
-        """Test mixed scenario with attribute-less children, some with nested elements."""
-        # <text><tspan font-weight="700">Bold</tspan><tspan><tspan font-size="18">Nested</tspan></tspan></text>
+        """Test mixed scenario: attribute-less children with nested elements."""
+        # <text><tspan font-weight="700">Bold</tspan><tspan><tspan
+        # font-size="18">Nested</tspan></tspan></text>
         text = ET.Element("text")
 
         tspan1 = ET.SubElement(text, "tspan", attrib={"font-weight": "700"})
@@ -910,12 +913,15 @@ class TestMergeSingletonChildren:
         assert text.text is None
         assert text.attrib.get("font-weight") == "700"
 
-    def test_multi_child_parent_with_nested_singletons(self) -> None:
-        """Test that parent with multiple children is not merged even when nested children are singletons.
+    def test_multi_child_parent_with_nested_singletons(
+        self,
+    ) -> None:
+        """Test parent with multiple children is not merged.
 
-        This is a regression test for a bug where recursive processing would merge
-        nested singletons first, reducing the parent's child count and causing it
-        to be incorrectly merged.
+        Even when nested children are singletons. This is a regression test for
+        a bug where recursive processing would merge nested singletons first,
+        reducing the parent's child count and causing it to be incorrectly
+        merged.
         """
         # Create structure: <text><tspan><tspan>A</tspan><tspan>B</tspan></tspan></text>
         # The outer tspan has 2 children initially, so it shouldn't be merged
@@ -982,7 +988,8 @@ class TestMergeSingletonChildren:
 
         svg_utils.merge_singleton_children(text)
 
-        # The outer tspan wrapper should be unwrapped, moving its children directly under text
+        # The outer tspan wrapper should be unwrapped, moving its children
+        # directly under text
         assert len(text) == 6  # Now has 6 direct children (the inner tspans)
 
         # The inner tspans should be direct children of text now
@@ -995,7 +1002,8 @@ class TestMergeSingletonChildren:
 
     def test_unwrap_singleton_with_nested_children(self) -> None:
         """Test that singleton wrappers without attributes are unwrapped."""
-        # <text><tspan><tspan baseline-shift="-0.36">A</tspan><tspan letter-spacing="0.72">B</tspan></tspan></text>
+        # <text><tspan><tspan baseline-shift="-0.36">A</tspan><tspan
+        # letter-spacing="0.72">B</tspan></tspan></text>
         text = ET.Element("text")
         outer_tspan = ET.SubElement(text, "tspan")  # No attributes, no text
         inner1 = ET.SubElement(outer_tspan, "tspan", attrib={"baseline-shift": "-0.36"})
@@ -1013,7 +1021,10 @@ class TestMergeSingletonChildren:
         assert text[1].text == "B"
 
     def test_unwrap_singleton_with_attributes(self) -> None:
-        """Test that singleton wrappers with attributes are unwrapped and attributes moved to parent."""
+        """Test that singleton wrappers with attributes are unwrapped.
+
+        Attributes should be moved to parent.
+        """
         # <text><tspan fill="red"><tspan>A</tspan><tspan>B</tspan></tspan></text>
         text = ET.Element("text")
         outer_tspan = ET.SubElement(text, "tspan", attrib={"fill": "red"})
@@ -1133,7 +1144,8 @@ class TestAddFontFamily:
     def test_idempotent_style_does_not_add_duplicate(self) -> None:
         """Test idempotent behavior in style attribute."""
         text = ET.Element(
-            "text", attrib={"style": "font-family: 'Arial', 'Helvetica'; color: red"}
+            "text",
+            attrib={"style": "font-family: 'Arial', 'Helvetica'; color: red"},
         )
         text.text = "Hello"
 
@@ -1146,7 +1158,10 @@ class TestAddFontFamily:
         assert style.count("Helvetica") == 1
 
     def test_add_fallback_with_font_family_at_end_of_style(self) -> None:
-        """Test adding fallback when font-family is at the end of style (no semicolon)."""
+        """Test adding fallback when font-family is at the end of style.
+
+        No semicolon case.
+        """
         text = ET.Element("text", attrib={"style": "color: red; font-family: Arial"})
         text.text = "Hello"
 
@@ -1194,8 +1209,10 @@ class TestAddFontFamily:
         assert "Helvetica" not in style
 
     # Test case: no font-family exists
-    def test_create_font_family_attribute_when_none_exists(self) -> None:
-        """Test creating font-family attribute when element has no font specification."""
+    def test_create_font_family_attribute_when_none_exists(
+        self,
+    ) -> None:
+        """Test creating font-family when element has no font."""
         text = ET.Element("text", attrib={"font-size": "12px"})
         text.text = "Hello"
 
@@ -1206,7 +1223,10 @@ class TestAddFontFamily:
         assert text.attrib.get("font-size") == "12px"
 
     def test_create_font_family_when_style_has_no_font(self) -> None:
-        """Test creating font-family attribute when style exists but has no font-family."""
+        """Test creating font-family attribute when style exists.
+
+        But has no font-family.
+        """
         text = ET.Element("text", attrib={"style": "color: red; font-size: 12px"})
         text.text = "Hello"
 
@@ -1271,15 +1291,22 @@ class TestAddFontFamily:
         svg_utils.add_font_family(text, "DejaVu Sans")
 
         # Should trim whitespace and add new font
-        assert text.attrib.get("font-family") == "Arial, Helvetica, DejaVu Sans"
+        font_family = text.attrib.get("font-family")
+        assert font_family == "Arial, Helvetica, DejaVu Sans"
 
     # Test preservation of other properties
     def test_preserve_other_style_properties(self) -> None:
-        """Test that other style properties are preserved when updating font-family."""
+        """Test that other style properties are preserved.
+
+        When updating font-family.
+        """
         text = ET.Element(
             "text",
             attrib={
-                "style": "font-family: Arial; font-size: 16px; font-weight: bold; color: blue"
+                "style": (
+                    "font-family: Arial; font-size: 16px; "
+                    "font-weight: bold; color: blue"
+                )
             },
         )
         text.text = "Hello"
@@ -1418,7 +1445,8 @@ class TestExtractTextCharacters:
         # U+FE0E is VARIATION SELECTOR-15 (text presentation)
         # U+FE0F is VARIATION SELECTOR-16 (emoji presentation)
         elem = ET.Element("text")
-        elem.text = "©\ufe0e®\ufe0f"  # Copyright with text selector, registered with emoji selector
+        # Copyright with text selector, registered with emoji selector
+        elem.text = "©\ufe0e®\ufe0f"
         result = svg_utils.extract_text_characters(elem)
         assert result == "©®"
         assert "\ufe0e" not in result

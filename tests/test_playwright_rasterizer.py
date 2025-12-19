@@ -201,8 +201,14 @@ def test_rasterizer_bytes_input(simple_svg: str) -> None:
 @pytest.mark.requires_playwright
 def test_rasterizer_reuse() -> None:
     """Test that rasterizer can be reused for multiple renders."""
-    svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="red"/></svg>'
-    svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    svg1 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50">'
+        '<rect width="50" height="50" fill="red"/></svg>'
+    )
+    svg2 = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+        '<circle cx="50" cy="50" r="40" fill="blue"/></svg>'
+    )
 
     with PlaywrightRasterizer(dpi=96) as rasterizer:
         image1 = rasterizer.from_string(svg1)
@@ -256,7 +262,7 @@ def test_import_without_playwright() -> None:
     # This test runs even if Playwright is installed
     # It tests the import behavior, not actual functionality
     try:
-        from psd2svg.rasterizer import PlaywrightRasterizer  # noqa: F401
+        from psd2svg.rasterizer import PlaywrightRasterizer  # noqa: F401, PLC0415
 
         # If we get here, Playwright is installed
         assert HAS_PLAYWRIGHT

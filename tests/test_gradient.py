@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 from psd_tools.psd import descriptor
-from psd_tools.terminology import Klass, Key, Unit
+from psd_tools.terminology import Key, Klass, Unit
 
 from psd2svg.core.gradient import GradientInterpolation
 
@@ -79,7 +79,10 @@ def test_iterator(gradient_descriptor: Any) -> None:
 
 
 def test_duplicate_color_stops() -> None:
-    """Test that duplicate color stops at the same location don't cause division by zero."""
+    """Test that duplicate color stops don't cause division by zero.
+
+    Duplicate stops at the same location.
+    """
     gradient = descriptor.Descriptor(classID=Klass.Gradient)
     # Create two color stops at the same location (0.5)
     color1 = descriptor.Descriptor(classID=Klass.ColorStop)
@@ -114,7 +117,10 @@ def test_duplicate_color_stops() -> None:
 
 
 def test_duplicate_opacity_stops() -> None:
-    """Test that duplicate opacity stops at the same location don't cause division by zero."""
+    """Test that duplicate opacity stops don't cause division by zero.
+
+    Duplicate stops at the same location.
+    """
     gradient = descriptor.Descriptor(classID=Klass.Gradient)
     # Set color stops (valid ones)
     color1 = descriptor.Descriptor(classID=Klass.ColorStop)

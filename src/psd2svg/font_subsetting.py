@@ -79,7 +79,8 @@ def subset_font(
     Args:
         input_path: Path to input font file (TTF/OTF).
         output_format: Output format - "ttf", "otf", or "woff2".
-        unicode_codepoints: Set of Unicode codepoints (integers) to include in the subset.
+        unicode_codepoints: Set of Unicode codepoints (integers) to include in
+            the subset.
 
     Returns:
         Subset font file as bytes.
@@ -196,7 +197,9 @@ def _extract_font_family(element: ET.Element) -> str | None:
         Font family name (last in chain), or None if not found.
 
     Example:
-        >>> _extract_font_family(<text style="font-family: 'Arial', 'DejaVu Sans'; ...">)
+        >>> _extract_font_family(
+        ...     <text style="font-family: 'Arial', 'DejaVu Sans'; ...">
+        ... )
         "DejaVu Sans"
         >>> _extract_font_family(<text font-family="'Helvetica', 'Arial'">)
         "Arial"

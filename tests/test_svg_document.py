@@ -19,6 +19,12 @@ from PIL import Image
 from psd2svg import SVGDocument
 from psd2svg.core.font_utils import FontInfo, create_file_url, encode_font_data_uri
 from psd2svg.rasterizer import ResvgRasterizer
+from tests.conftest import requires_playwright
+
+try:
+    from psd2svg.rasterizer import PlaywrightRasterizer
+except ImportError:
+    PlaywrightRasterizer = None  # type: ignore
 
 
 class TestEncodeFontDataUri:
@@ -263,7 +269,10 @@ class TestSVGDocumentEmbedFonts:
         assert "@font-face" not in result
 
     def test_tostring_with_embed_fonts_true_no_fonts(self) -> None:
-        """Test tostring with embed_fonts=True but no fonts doesn't add style element."""
+        """Test tostring with embed_fonts=True but no fonts.
+
+        Should not add style element.
+        """
         svg_elem = ET.Element("svg")
         ET.SubElement(svg_elem, "rect")
 
@@ -566,7 +575,8 @@ class TestSVGDocumentRasterizeWithFonts:
         embedded using local file:// URLs instead of data URIs for better performance.
         """
         try:
-            from psd2svg.rasterizer import PlaywrightRasterizer
+            # Optional dependency - Playwright may not be installed
+            from psd2svg.rasterizer import PlaywrightRasterizer  # noqa: PLC0415
         except ImportError:
             pytest.skip("PlaywrightRasterizer not available")
 
@@ -606,15 +616,12 @@ class TestSVGDocumentRasterizeWithFonts:
             assert "file://" in svg_arg
             assert str(font_file) in svg_arg or font_file.as_posix() in svg_arg
 
+    @requires_playwright
     @patch("psd2svg.core.font_utils.FontInfo.resolve")
     def test_rasterize_with_playwright_uses_file_urls(
         self, mock_resolve: MagicMock, tmp_path: Path
     ) -> None:
         """Test that PlaywrightRasterizer gets fonts embedded with file:// URLs."""
-        try:
-            from psd2svg.rasterizer import PlaywrightRasterizer
-        except ImportError:
-            pytest.skip("PlaywrightRasterizer not available")
 
         # Create fake font file
         font_file = tmp_path / "arial.ttf"
@@ -662,12 +669,9 @@ class TestSVGDocumentRasterizeWithFonts:
             assert "data:font" not in svg_arg
             assert "base64" not in svg_arg
 
+    @requires_playwright
     def test_rasterize_with_playwright_file_url_fallback(self, tmp_path: Path) -> None:
         """Test graceful fallback when font file is missing."""
-        try:
-            from psd2svg.rasterizer import PlaywrightRasterizer
-        except ImportError:
-            pytest.skip("PlaywrightRasterizer not available")
 
         # Create SVG with text
         svg_elem = ET.Element("svg", width="100", height="100")

@@ -70,7 +70,8 @@ class FontCaps(IntEnum):
 class FontBaseline(IntEnum):
     """Font baseline values from Photoshop.
 
-    In Photoshop, script scale is 0.583 and position is +/- 0.333 for superscript and subscript.
+    In Photoshop, script scale is 0.583 and position is +/- 0.333 for
+    superscript and subscript.
     """
 
     ROMAN = 0
@@ -137,7 +138,8 @@ class Transform:
 
     def to_svg_matrix(self) -> str | None:
         """Convert to SVG matrix string."""
-        from psd2svg import svg_utils
+        # Avoid circular import: typesetting -> svg_utils -> typesetting
+        from psd2svg import svg_utils  # noqa: PLC0415
 
         if (self.xx, self.yx, self.xy, self.yy) == (1.0, 0.0, 0.0, 1.0):
             if (self.tx, self.ty) == (0.0, 0.0):
@@ -155,7 +157,8 @@ class Transform:
                        Defaults to 1e-6 to account for floating-point precision.
 
         Returns:
-            True if the transform is a translation (rotation/scale components form identity matrix).
+            True if the transform is a translation (rotation/scale components
+            form identity matrix).
         """
         return (
             abs(self.xx - 1.0) < tolerance
@@ -437,9 +440,10 @@ class StyleSheet:
 
     @property
     def tsume(self) -> float:
-        """Get tsume (character tightening) value with values between 0 (no tightening) and 1 (maximum tightening).
+        """Get tsume (character tightening) value.
 
-        This is an East-Asian typography feature.
+        Values between 0 (no tightening) and 1 (maximum tightening). This is
+        an East-Asian typography feature.
         """
         return float(self.style_sheet_data.get("Tsume", 0.0))
 
@@ -944,7 +948,8 @@ class TypeSetting:
             return ""
         if self.warp_rotate != "Hrzn":
             logger.debug(
-                "Warp rotate only supported for horizontal orientation, falling back to straight line."
+                "Warp rotate only supported for horizontal orientation, "
+                "falling back to straight line."
             )
             return "M%s L%s" % (
                 svg_utils.seq2str((self.bounding_box.left, self.bounding_box.bottom)),
@@ -979,7 +984,8 @@ class TypeSetting:
             )
         else:
             # Negative warp, arc bulging downwards.
-            # TODO: Height adjustment should be the baseline height, not the half box height.
+            # TODO: Height adjustment should be the baseline height, not the
+            # half box height.
             x1 = self.bounding_box.left - self.bounding_box.height / 2
             y1 = self.bounding_box.top + self.bounding_box.height / 2
             commands.append("M%s" % svg_utils.seq2str((x1, y1)))

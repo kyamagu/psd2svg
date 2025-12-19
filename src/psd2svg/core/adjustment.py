@@ -151,7 +151,8 @@ class AdjustmentConverter(ConverterProtocol):
                 "feComponentTransfer", color_interpolation_filters="sRGB"
             )
             with self.set_current(fe_component):
-                # Apply threshold to all RGB channels (they're identical after desaturation)
+                # Apply threshold to all RGB channels
+                # (they're identical after desaturation)
                 self.create_node("feFuncR", type="table", tableValues=table_values_str)
                 self.create_node("feFuncG", type="table", tableValues=table_values_str)
                 self.create_node("feFuncB", type="table", tableValues=table_values_str)
@@ -447,8 +448,6 @@ class AdjustmentConverter(ConverterProtocol):
         lut_b = self._generate_colorbalance_lut(shadows, midtones, highlights, 2)
 
         # Convert to SVG format
-        from psd2svg import svg_utils
-
         lut_r_str = svg_utils.seq2str(lut_r, sep=" ")
         lut_g_str = svg_utils.seq2str(lut_g, sep=" ")
         lut_b_str = svg_utils.seq2str(lut_b, sep=" ")
@@ -725,7 +724,8 @@ class AdjustmentConverter(ConverterProtocol):
             else:
                 weight_shadows = 0.0
 
-            # Midtones: centered at 0.495 with falloff range of 0.165 (triangular weighting)
+            # Midtones: centered at 0.495 with falloff range of 0.165
+            # (triangular weighting)
             mid_distance = abs(luminance - 0.495)
             weight_midtones = max(0.0, 1.0 - mid_distance / 0.165)
 
@@ -1185,7 +1185,8 @@ class AdjustmentConverter(ConverterProtocol):
 
     def _wrap_backdrop(self, tag: str = "symbol", **attrib: str) -> ET.Element:
         """Wrap previous nodes into a container node for adjustment application."""
-        # TODO: Find the appropriate container in the clipping context, as the parent is mask or clipPath.
+        # TODO: Find the appropriate container in the clipping context,
+        # as the parent is mask or clipPath.
         if self.current.tag == "clipPath" or self.current.tag == "mask":
             logger.warning(
                 "Wrapping backdrop inside clipping/mask context is not supported yet."

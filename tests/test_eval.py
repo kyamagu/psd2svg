@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from psd_tools import PSDImage
 
 from psd2svg.eval import compare_raster_images, create_diff_image
