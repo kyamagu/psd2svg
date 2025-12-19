@@ -7,7 +7,7 @@ name = "psd2svg"
 version = "0.10.0"
 description = "Convert PSD file to SVG file"
 authors = [
-    { name = "Kota Yamaguchi", email = "yamaguchi_kota@cyberagent.co.jp" },
+    { name = "CyberAgent, Inc.", email = "yamaguchi_kota@cyberagent.co.jp" },
 ]
 license = "MIT"
 readme = "README.md"
