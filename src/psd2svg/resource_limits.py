@@ -22,10 +22,11 @@ class ResourceLimits:
     Constructor parameters take precedence over environment variables.
 
     Environment variables:
-        PSD2SVG_MAX_FILE_SIZE: Maximum file size in bytes (default: 104857600 = 100MB)
-        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 60)
+        PSD2SVG_MAX_FILE_SIZE: Maximum file size in bytes (default: 2147483648 = 2GB)
+        PSD2SVG_TIMEOUT: Conversion timeout in seconds (default: 300 = 5 minutes)
         PSD2SVG_MAX_LAYER_DEPTH: Maximum layer nesting depth (default: 100)
-        PSD2SVG_MAX_IMAGE_DIMENSION: Maximum image dimension in pixels (default: 16384)
+        PSD2SVG_MAX_IMAGE_DIMENSION: Maximum image dimension in pixels
+            (default: 16383 = WebP limit)
 
     Example:
         >>> # Use default limits
@@ -43,10 +44,10 @@ class ResourceLimits:
         >>> limits = ResourceLimits(max_file_size=0)  # No file size limit
     """
 
-    max_file_size: int = 104857600  # 100MB default
-    timeout: int = 60  # 60 seconds default
+    max_file_size: int = 2147483648  # 2GB default (typical for professional PSD files)
+    timeout: int = 300  # 300 seconds (5 minutes) default
     max_layer_depth: int = 100  # 100 levels default
-    max_image_dimension: int = 16384  # 16K pixels default
+    max_image_dimension: int = 16383  # 16383 pixels default (WebP hard limit)
 
     @classmethod
     def default(cls) -> "ResourceLimits":
@@ -58,12 +59,12 @@ class ResourceLimits:
         """
         return cls(
             max_file_size=int(
-                os.environ.get("PSD2SVG_MAX_FILE_SIZE", 104857600)  # 100MB
+                os.environ.get("PSD2SVG_MAX_FILE_SIZE", 2147483648)  # 2GB
             ),
-            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 60)),  # 60 seconds
+            timeout=int(os.environ.get("PSD2SVG_TIMEOUT", 300)),  # 5 minutes
             max_layer_depth=int(os.environ.get("PSD2SVG_MAX_LAYER_DEPTH", 100)),
             max_image_dimension=int(
-                os.environ.get("PSD2SVG_MAX_IMAGE_DIMENSION", 16384)  # 16K
+                os.environ.get("PSD2SVG_MAX_IMAGE_DIMENSION", 16383)  # WebP limit
             ),
         )
 

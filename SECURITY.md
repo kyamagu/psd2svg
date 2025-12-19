@@ -55,11 +55,25 @@ from psd_tools import PSDImage
 from psd2svg import SVGDocument
 
 # Check file size before processing
-max_size = 100 * 1024 * 1024  # 100MB
+# Note: Professional PSD files are often 1-5GB; adjust based on your use case
+max_size = 2 * 1024 * 1024 * 1024  # 2GB for trusted users
+# For untrusted sources, use more restrictive limits:
+# max_size = 500 * 1024 * 1024  # 500MB for untrusted input
+
 if os.path.getsize(psd_path) > max_size:
     raise ValueError(f"File too large: {os.path.getsize(psd_path)} bytes")
 
-# Use resource limits (coming in future release)
+# Important: Check layer dimensions to prevent WebP encoding errors
+psdimage = PSDImage.open(psd_path)
+for layer in psdimage.descendants():
+    if hasattr(layer, 'width') and hasattr(layer, 'height'):
+        # WebP has a hard limit of 16383 pixels per dimension
+        if layer.width > 16383 or layer.height > 16383:
+            raise ValueError(
+                f"Layer '{layer.name}' exceeds WebP dimension limit: "
+                f"{layer.width}x{layer.height} (max: 16383x16383)"
+            )
+
 document = SVGDocument.from_psd(psdimage)
 ```
 
