@@ -77,50 +77,38 @@ image = document.rasterize()
 image.save('output.png')
 ```
 
-## Platform Support
+## Known Limitations
 
-- **Linux/macOS**: Full support including text layer conversion and font embedding
-- **Windows**: Full support including text layer conversion and font embedding
+- **Text rendering**: Requires matching system fonts; rendering may differ from Photoshop if fonts are unavailable or substituted
+- **Text wrapping**: Not supported due to SVG spec limitations (foreignObject has limited compatibility)
+- **Blending modes**: Some advanced modes approximated due to CSS spec limitations (Dissolve, Linear Burn/Dodge, Darker/Lighter Color, Vivid/Linear/Pin Light, Hard Mix, Subtract, Divide)
+- **Gradients**: Advanced types not supported (Angle, Reflected, Diamond)
+- **Filter effects**: Bevels, embossing, and satin effects not supported; other effects are approximations
+- **Adjustment layers**: Some not yet implemented (Black & White, Channel Mixer, Color Lookup, Gradient Map, Photo Filter, Selective Color, Vibrance)
+- **Smart objects**: Smart object filters not implemented
+- **Thread safety**: APIs are not thread-safe
 
-Text layer conversion uses a hybrid approach:
-
-1. **Static font mapping** (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa) - works on all platforms
-2. **Platform-specific font resolution** for font file discovery when embedding fonts:
-   - **Linux/macOS**: fontconfig
-   - **Windows**: Windows registry + fontTools parsing
-
-For fonts not in the default mapping, you can provide custom font mappings. See the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html#custom-font-mapping) for details.
-
-## Security
-
-When processing untrusted PSD files, follow security best practices:
-
-- **File size limits**: Validate file size before processing to prevent memory exhaustion
-- **Timeout protection**: Implement conversion timeouts to prevent CPU exhaustion
-- **Path validation**: Validate all file paths, especially when using `image_prefix`
-- **Sandboxing**: Run conversions in isolated environments for untrusted input
-
-psd2svg includes security features:
-
-- Path traversal protection in `image_prefix` parameter
-- Font file validation in rasterizers
-- Automated dependency vulnerability scanning
-
-See [Security Documentation](https://psd2svg.readthedocs.io/en/latest/security.html) for detailed guidance and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+See the [full documentation](https://psd2svg.readthedocs.io/en/latest/limitations.html) for complete details and workarounds.
 
 ## Documentation
 
 Full documentation is available at **[psd2svg.readthedocs.io](https://psd2svg.readthedocs.io/)**
 
-Topics covered:
+## Platform Support
 
-- [Getting Started Guide](https://psd2svg.readthedocs.io/)
-- [Command Line Options](https://psd2svg.readthedocs.io/)
-- [Python API Reference](https://psd2svg.readthedocs.io/)
-- [Font Subsetting & Web Optimization](https://psd2svg.readthedocs.io/)
-- [Rasterization Options](https://psd2svg.readthedocs.io/)
-- [Text Layer Support](https://psd2svg.readthedocs.io/)
-- [Known Limitations](https://psd2svg.readthedocs.io/)
+All platforms (Linux, macOS, Windows) are fully supported for text conversion and font embedding. Text layer conversion uses a hybrid approach with built-in font mappings (~4,950 fonts) plus platform-specific font resolution.
+
+For detailed font resolution architecture, platform-specific implementation details, and custom font mapping, see the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html) and [Technical Notes](https://psd2svg.readthedocs.io/en/latest/technical-notes.html#font-resolution-architecture).
+
+## Security
+
+psd2svg includes built-in security features for processing untrusted PSD files:
+
+- Resource limits (file size, timeout, layer depth, dimensions)
+- Path traversal protection
+- Font file validation
+
+For comprehensive security guidance, sandboxing strategies, and production deployment best practices, see the [Security Documentation](https://psd2svg.readthedocs.io/en/latest/security.html). To report vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
@@ -142,19 +130,6 @@ uv run ruff format src/ tests/
 ```
 
 See [CLAUDE.md](CLAUDE.md) for detailed development instructions.
-
-## Known Limitations
-
-- **Text rendering**: Requires matching system fonts; rendering may differ from Photoshop if fonts are unavailable or substituted
-- **Text wrapping**: Not supported due to SVG spec limitations (foreignObject has limited compatibility)
-- **Blending modes**: Some advanced modes approximated due to CSS spec limitations (Dissolve, Linear Burn/Dodge, Darker/Lighter Color, Vivid/Linear/Pin Light, Hard Mix, Subtract, Divide)
-- **Gradients**: Advanced types not supported (Angle, Reflected, Diamond)
-- **Filter effects**: Bevels, embossing, and satin effects not supported; other effects are approximations
-- **Adjustment layers**: Some not yet implemented (Black & White, Channel Mixer, Color Lookup, Gradient Map, Photo Filter, Selective Color, Vibrance)
-- **Smart objects**: Smart object filters not implemented
-- **Thread safety**: APIs are not thread-safe
-
-See the [full documentation](https://psd2svg.readthedocs.io/en/latest/limitations.html) for complete details and workarounds.
 
 ## License
 
