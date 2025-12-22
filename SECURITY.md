@@ -77,4 +77,4 @@ We appreciate security researchers who responsibly disclose vulnerabilities. Con
 
 ## Questions?
 
-If you have questions about this security policy, please open a discussion in the [Discussions tab](https://github.com/kyamagu/psd2svg/discussions).
+If you have questions about this security policy, please open an issue in the [Issues tab](https://github.com/kyamagu/psd2svg/issues) with the "question" label.
