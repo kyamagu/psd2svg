@@ -97,16 +97,6 @@ For comprehensive security guidance, sandboxing strategies, and production deplo
 
 Full documentation is available at **[psd2svg.readthedocs.io](https://psd2svg.readthedocs.io/)**
 
-Topics covered:
-
-- [Getting Started Guide](https://psd2svg.readthedocs.io/)
-- [Command Line Options](https://psd2svg.readthedocs.io/)
-- [Python API Reference](https://psd2svg.readthedocs.io/)
-- [Font Subsetting & Web Optimization](https://psd2svg.readthedocs.io/)
-- [Rasterization Options](https://psd2svg.readthedocs.io/)
-- [Text Layer Support](https://psd2svg.readthedocs.io/)
-- [Known Limitations](https://psd2svg.readthedocs.io/)
-
 ## Development
 
 ```bash
