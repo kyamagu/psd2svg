@@ -1,0 +1,104 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have searched the [existing issues](https://github.com/kyamagu/psd2svg/issues) and this feature has not been requested
+          required: true
+        - label: I have reviewed the [documentation](https://psd2svg.readthedocs.io/) and this feature doesn't already exist
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: |
+        Describe the problem you're trying to solve or the use case for this feature.
+        Why is this feature valuable? Who would benefit from it?
+      placeholder: |
+        I'm working on... and I need to... but currently I can't because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe the solution you'd like to see.
+        What should the feature do? How should it work?
+      placeholder: |
+        Add a new option/feature that allows...
+        It would work by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: |
+        Have you considered any alternative solutions or workarounds?
+        What other approaches might solve this problem?
+      placeholder: |
+        I've tried... but it doesn't work because...
+        Another option might be... but...
+
+  - type: dropdown
+    id: related-ps-feature
+    attributes:
+      label: Related Photoshop Feature
+      description: Is this related to a specific Photoshop feature?
+      options:
+        - "Yes - please describe below"
+        - "No - this is a general enhancement"
+        - "Not sure"
+
+  - type: textarea
+    id: ps-feature-details
+    attributes:
+      label: Photoshop Feature Details
+      description: If related to a Photoshop feature, please describe which feature and how it works in Photoshop
+      placeholder: |
+        This relates to Photoshop's [feature name]...
+        In Photoshop, this works by...
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or Mockups
+      description: |
+        Any code examples, mockups, or visual examples that help illustrate the feature.
+        You can drag and drop images into this text area.
+      placeholder: |
+        Example usage:
+        ```python
+        from psd2svg import convert
+        convert('input.psd', 'output.svg', new_option=True)
+        ```
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you willing to contribute to implementing this feature?
+      options:
+        - label: I would be willing to contribute a pull request for this feature
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or information about the feature request
+      placeholder: This would be especially useful for...
