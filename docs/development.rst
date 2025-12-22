@@ -498,6 +498,6 @@ Manual publishing is not necessary as the release workflow handles this automati
 Getting Help
 ------------
 
-* **Issues**: Report bugs on `GitHub Issues <https://github.com/kyamagu/psd2svg/issues>`_
-* **Discussions**: Ask questions in GitHub Discussions
-* **Email**: Contact maintainers for security issues
+* **Issues**: Report bugs and ask questions on `GitHub Issues <https://github.com/kyamagu/psd2svg/issues>`_
+* **Documentation**: Refer to `psd2svg.readthedocs.io <https://psd2svg.readthedocs.io/>`_
+* **Security**: Report vulnerabilities privately following `SECURITY.md <https://github.com/kyamagu/psd2svg/blob/main/SECURITY.md>`_
