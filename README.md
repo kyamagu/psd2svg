@@ -79,17 +79,9 @@ image.save('output.png')
 
 ## Platform Support
 
-- **Linux/macOS**: Full support including text layer conversion and font embedding
-- **Windows**: Full support including text layer conversion and font embedding
+All platforms (Linux, macOS, Windows) are fully supported for text conversion and font embedding. Text layer conversion uses a hybrid approach with built-in font mappings (~4,950 fonts) plus platform-specific font resolution.
 
-Text layer conversion uses a hybrid approach:
-
-1. **Static font mapping** (~4,950 fonts: 539 default + 370 Hiragino + 4,042 Morisawa) - works on all platforms
-2. **Platform-specific font resolution** for font file discovery when embedding fonts:
-   - **Linux/macOS**: fontconfig
-   - **Windows**: Windows registry + fontTools parsing
-
-For fonts not in the default mapping, you can provide custom font mappings. See the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html#custom-font-mapping) for details.
+For detailed font resolution architecture, platform-specific implementation details, and custom font mapping, see the [Font Handling documentation](https://psd2svg.readthedocs.io/en/latest/fonts.html) and [Technical Notes](https://psd2svg.readthedocs.io/en/latest/technical-notes.html#font-resolution-architecture).
 
 ## Security
 
