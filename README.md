@@ -85,20 +85,13 @@ For detailed font resolution architecture, platform-specific implementation deta
 
 ## Security
 
-When processing untrusted PSD files, follow security best practices:
+psd2svg includes built-in security features for processing untrusted PSD files:
 
-- **File size limits**: Validate file size before processing to prevent memory exhaustion
-- **Timeout protection**: Implement conversion timeouts to prevent CPU exhaustion
-- **Path validation**: Validate all file paths, especially when using `image_prefix`
-- **Sandboxing**: Run conversions in isolated environments for untrusted input
+- Resource limits (file size, timeout, layer depth, dimensions)
+- Path traversal protection
+- Font file validation
 
-psd2svg includes security features:
-
-- Path traversal protection in `image_prefix` parameter
-- Font file validation in rasterizers
-- Automated dependency vulnerability scanning
-
-See [Security Documentation](https://psd2svg.readthedocs.io/en/latest/security.html) for detailed guidance and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+For comprehensive security guidance, sandboxing strategies, and production deployment best practices, see the [Security Documentation](https://psd2svg.readthedocs.io/en/latest/security.html). To report vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
