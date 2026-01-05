@@ -77,49 +77,15 @@ class ResourceLimits:
             Non-integer values raise ValueError. For intentionally disabling all
             limits, use ResourceLimits.unlimited() instead of negative values.
         """
-
-        def parse_env_int(key: str, default: int) -> int:
-            """Parse integer from environment variable with validation.
-
-            Args:
-                key: Environment variable name.
-                default: Default value if not set.
-
-            Returns:
-                Parsed integer value, or 0 if negative.
-
-            Raises:
-                ValueError: If value is not a valid integer.
-            """
-            value_str = os.environ.get(key)
-            if value_str is None:
-                return default
-
-            try:
-                value = int(value_str)
-            except ValueError as e:
-                raise ValueError(
-                    f"Environment variable {key}={value_str!r} is not a valid integer"
-                ) from e
-
-            # Treat negative values as 0 (disabled limit)
-            if value < 0:
-                logger.warning(
-                    f"Environment variable {key}={value} is negative, "
-                    f"treating as 0 (disabled limit). "
-                    f"Consider using ResourceLimits.unlimited() instead."
-                )
-                return 0
-
-            return value
-
         return cls(
-            max_file_size=parse_env_int("PSD2SVG_MAX_FILE_SIZE", DEFAULT_MAX_FILE_SIZE),
-            timeout=parse_env_int("PSD2SVG_TIMEOUT", DEFAULT_TIMEOUT),
-            max_layer_depth=parse_env_int(
+            max_file_size=cls._parse_env_int(
+                "PSD2SVG_MAX_FILE_SIZE", DEFAULT_MAX_FILE_SIZE
+            ),
+            timeout=cls._parse_env_int("PSD2SVG_TIMEOUT", DEFAULT_TIMEOUT),
+            max_layer_depth=cls._parse_env_int(
                 "PSD2SVG_MAX_LAYER_DEPTH", DEFAULT_MAX_LAYER_DEPTH
             ),
-            max_image_dimension=parse_env_int(
+            max_image_dimension=cls._parse_env_int(
                 "PSD2SVG_MAX_IMAGE_DIMENSION", DEFAULT_MAX_IMAGE_DIMENSION
             ),
         )
@@ -195,6 +161,42 @@ class ResourceLimits:
             )
 
         return limits
+
+    @staticmethod
+    def _parse_env_int(key: str, default: int) -> int:
+        """Parse integer from environment variable with validation.
+
+        Args:
+            key: Environment variable name.
+            default: Default value if not set.
+
+        Returns:
+            Parsed integer value, or 0 if negative.
+
+        Raises:
+            ValueError: If value is not a valid integer.
+        """
+        value_str = os.environ.get(key)
+        if value_str is None:
+            return default
+
+        try:
+            value = int(value_str)
+        except ValueError as e:
+            raise ValueError(
+                f"Environment variable {key}={value_str!r} is not a valid integer"
+            ) from e
+
+        # Treat negative values as 0 (disabled limit)
+        if value < 0:
+            logger.warning(
+                f"Environment variable {key}={value} is negative, "
+                f"treating as 0 (disabled limit). "
+                f"Consider using ResourceLimits.unlimited() instead."
+            )
+            return 0
+
+        return value
 
     @staticmethod
     def _validate_cli_limit(value: int, name: str) -> int:
