@@ -278,9 +278,68 @@ def test_rasterizer_with_font_files(simple_svg: str) -> None:
     assert image.size == (100, 100)
 
 
-# Note: Tests for malformed SVG, missing files, and empty SVG are omitted
-# because resvg-py may crash (SIGABRT) instead of raising Python exceptions for
-# these edge cases. This is a limitation of the underlying resvg library.
+# Note: As of resvg-py 0.2.5, malformed SVG, missing files, and empty SVG
+# properly raise Python exceptions (ValueError) instead of crashing with SIGABRT.
+# Tests for these edge cases are included below.
+
+
+def test_rasterizer_malformed_svg() -> None:
+    """Test that malformed SVG raises ValueError instead of crashing.
+
+    Note: This test requires resvg-py >= 0.2.5. Earlier versions would
+    crash (SIGABRT) instead of raising exceptions.
+    """
+    malformed_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+    <rect x="10" y="10" width="80" height=bad_value fill="red"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    with pytest.raises(ValueError, match="Failed to rasterize SVG content"):
+        rasterizer.from_string(malformed_svg)
+
+
+def test_rasterizer_missing_file() -> None:
+    """Test that missing SVG file raises ValueError instead of crashing.
+
+    Note: This test requires resvg-py >= 0.2.5. Earlier versions would
+    crash (SIGABRT) instead of raising exceptions. The library raises
+    ValueError for missing files rather than FileNotFoundError.
+    """
+    rasterizer = ResvgRasterizer(dpi=96)
+    nonexistent_path = "/nonexistent/path/to/file.svg"
+
+    with pytest.raises(ValueError, match="Failed to rasterize SVG file"):
+        rasterizer.from_file(nonexistent_path)
+
+
+def test_rasterizer_empty_svg() -> None:
+    """Test that empty/invalid SVG raises ValueError instead of crashing.
+
+    Note: This test requires resvg-py >= 0.2.5. Earlier versions would
+    crash (SIGABRT) instead of raising exceptions.
+    """
+    empty_svg = ""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    with pytest.raises(ValueError, match="Failed to rasterize SVG content"):
+        rasterizer.from_string(empty_svg)
+
+
+def test_rasterizer_corrupted_svg_structure() -> None:
+    """Test that severely corrupted SVG raises ValueError.
+
+    Tests SVG with mismatched tags and invalid structure.
+    """
+    corrupted_svg = """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+    <rect x="10" y="10" width="80" height="80" fill="red">
+    <circle cx="50" cy="50" r="30"/>
+</svg>"""
+
+    rasterizer = ResvgRasterizer(dpi=96)
+    with pytest.raises(ValueError, match="Failed to rasterize SVG content"):
+        rasterizer.from_string(corrupted_svg)
 
 
 def test_rasterizer_large_svg() -> None:

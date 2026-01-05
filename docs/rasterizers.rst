@@ -221,34 +221,29 @@ Limitations
 * Partial SVG 2.0 support (e.g., ``text-orientation: upright`` not supported)
 * Variable fonts may not render correctly
 
-**Stability Issues:**
+**Error Handling:**
 
-The underlying resvg-py library may crash (SIGABRT) with severely malformed SVG content or missing files. These crashes cannot be caught with Python exception handling.
+As of resvg-py 0.2.5, the library properly raises Python exceptions for edge cases:
 
-**Workaround:**
+* **Malformed SVG**: Raises ``ValueError`` with descriptive error message
+* **Missing files**: Raises ``ValueError`` with error details
+* **Empty/invalid content**: Raises ``ValueError``
 
-Validate SVG before rasterizing:
+These exceptions can be caught with standard Python exception handling:
 
 .. code-block:: python
 
-   import xml.etree.ElementTree as ET
    from psd2svg.rasterizer import ResvgRasterizer
 
    def safe_rasterize(svg_path):
-       # Validate SVG structure
+       rasterizer = ResvgRasterizer()
        try:
-           tree = ET.parse(svg_path)
-           root = tree.getroot()
-           if root.tag != '{http://www.w3.org/2000/svg}svg':
-               return None
-       except ET.ParseError:
+           return rasterizer.from_file(svg_path)
+       except ValueError as e:
+           print(f"Failed to rasterize: {e}")
            return None
 
-       # Safe to rasterize
-       rasterizer = ResvgRasterizer()
-       return rasterizer.from_file(svg_path)
-
-For critical applications, consider using PlaywrightRasterizer which handles errors more gracefully.
+**Note:** Versions prior to resvg-py 0.2.5 would crash (SIGABRT) with malformed SVG.
 
 PlaywrightRasterizer
 --------------------
