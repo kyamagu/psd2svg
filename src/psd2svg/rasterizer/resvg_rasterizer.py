@@ -113,14 +113,16 @@ class ResvgRasterizer(BaseRasterizer):
             PIL Image object in RGBA mode containing the rasterized SVG.
 
         Raises:
-            FileNotFoundError: If the SVG file does not exist.
-            ValueError: If the SVG content is invalid.
+            ValueError: If the SVG file does not exist or the content is invalid.
         """
-        png_bytes = resvg_py.svg_to_bytes(
-            svg_path=filepath, dpi=int(self.dpi), font_files=font_files
-        )
-        image = Image.open(BytesIO(png_bytes))
-        return self._composite_background(image)
+        try:
+            png_bytes = resvg_py.svg_to_bytes(
+                svg_path=filepath, dpi=int(self.dpi), font_files=font_files
+            )
+            image = Image.open(BytesIO(png_bytes))
+            return self._composite_background(image)
+        except ValueError as e:
+            raise ValueError(f"Failed to rasterize SVG file '{filepath}': {e}") from e
 
     def from_string(
         self, svg_content: Union[str, bytes], font_files: list[str] | None = None
@@ -158,8 +160,11 @@ class ResvgRasterizer(BaseRasterizer):
             if font_files:
                 logger.debug(f"Extracted {len(font_files)} font file(s) from SVG")
 
-        png_bytes = resvg_py.svg_to_bytes(
-            svg_string=svg_string, dpi=int(self.dpi), font_files=font_files
-        )
-        image = Image.open(BytesIO(png_bytes))
-        return self._composite_background(image)
+        try:
+            png_bytes = resvg_py.svg_to_bytes(
+                svg_string=svg_string, dpi=int(self.dpi), font_files=font_files
+            )
+            image = Image.open(BytesIO(png_bytes))
+            return self._composite_background(image)
+        except ValueError as e:
+            raise ValueError(f"Failed to rasterize SVG content: {e}") from e

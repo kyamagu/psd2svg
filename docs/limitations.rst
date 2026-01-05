@@ -547,36 +547,33 @@ Thread Safety
 Rasterizer Stability
 ---------------------
 
-resvg-py Edge Cases
-~~~~~~~~~~~~~~~~~~~
+resvg-py Error Handling
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-The bundled resvg rasterizer (via resvg-py) has stability issues with edge cases:
+As of resvg-py 0.2.5 (required by psd2svg), the library properly handles edge cases:
 
-**Crashes (SIGABRT):**
+**Exception Handling:**
 
-The resvg-py library may crash instead of raising Python exceptions when encountering:
+* Malformed/corrupted SVG content → ``ValueError``
+* Missing SVG files → ``ValueError``
+* Empty/invalid SVG documents → ``ValueError``
 
-* Severely malformed or corrupted SVG content
-* Missing SVG files (``from_file()`` with non-existent paths)
-* Empty SVG documents (0x0 dimensions)
+**Error Recovery:**
 
-**Impact:**
+.. code-block:: python
 
-These crashes cannot be caught with Python exception handling, which means:
+   from psd2svg import SVGDocument
 
-* Applications may terminate unexpectedly
-* Error recovery is not possible
-* No proper error messages are available
+   try:
+       document = SVGDocument.from_psd(psd_image)
+       rasterized = document.rasterize()
+   except ValueError as e:
+       print(f"SVG rasterization failed: {e}")
 
-**Workarounds:**
+See the :doc:`rasterizers` documentation for more examples.
 
-1. **Validate input** - Check file existence and parse SVG with XML parser before rasterizing
-2. **Use PlaywrightRasterizer** - The optional browser-based rasterizer handles errors more gracefully
-3. **Sanitize SVG** - Ensure SVG content is well-formed before rasterization
-
-See the :doc:`rasterizers` documentation for detailed workarounds and examples.
-
-**Status:** This is a limitation of the underlying resvg-py library, not psd2svg itself.
+**Legacy Note:** Versions prior to psd2svg 0.11.0 (with resvg-py < 0.2.5) would crash
+(SIGABRT) instead of raising exceptions. Upgrade to the latest version for proper error handling.
 
 Color Management
 ----------------

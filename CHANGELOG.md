@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **resvg-py upgrade** (#XXX)
+  - Updated resvg-py from 0.2.3 to 0.2.5 for improved stability
+  - Malformed/invalid SVG files now raise `ValueError` instead of crashing (SIGABRT)
+  - Missing files now raise `ValueError` with proper error messages
+  - Added error handling to ResvgRasterizer for better error reporting
+
+### Fixed
+
+- **Rasterizer stability** (#XXX)
+  - Fixed process crashes when rasterizing malformed or empty SVG content
+  - Added 4 new edge case tests for error handling validation
+  - Removed crash warnings from documentation (Issue #242)
+
 ## [0.10.1] - 2025-12-19
 
 ### Security
