@@ -118,6 +118,97 @@ class ResourceLimits:
         )
 
     @classmethod
+    def from_cli_args(
+        cls,
+        max_file_size: int | None = None,
+        timeout: int | None = None,
+        max_layer_depth: int | None = None,
+        max_image_dimension: int | None = None,
+        unlimited: bool = False,
+    ) -> "ResourceLimits":
+        """Create ResourceLimits from CLI arguments with proper precedence.
+
+        Precedence: CLI flags > Environment variables > Defaults
+
+        Args:
+            max_file_size: CLI flag value for max file size
+                (None if not provided).
+            timeout: CLI flag value for timeout (None if not provided).
+            max_layer_depth: CLI flag value for max layer depth
+                (None if not provided).
+            max_image_dimension: CLI flag value for max image dimension
+                (None if not provided).
+            unlimited: Whether --unlimited-resources flag was set.
+
+        Returns:
+            ResourceLimits instance with validated values.
+
+        Raises:
+            ValueError: If unlimited=True and any other limit parameter is not None.
+
+        Note:
+            Negative values are treated as 0 (disabled limit) with a warning logged.
+        """
+        # Validate conflict between unlimited and other flags
+        if unlimited:
+            conflicting = []
+            if max_file_size is not None:
+                conflicting.append("--max-file-size")
+            if timeout is not None:
+                conflicting.append("--timeout")
+            if max_layer_depth is not None:
+                conflicting.append("--max-layer-depth")
+            if max_image_dimension is not None:
+                conflicting.append("--max-image-dimension")
+
+            if conflicting:
+                raise ValueError(
+                    f"--unlimited-resources conflicts with: {', '.join(conflicting)}"
+                )
+
+            return cls.unlimited()
+
+        # Start with environment variable defaults
+        limits = cls.default()
+
+        # Override with CLI flags if provided (None means not provided)
+        if max_file_size is not None:
+            limits.max_file_size = cls._validate_cli_limit(
+                max_file_size, "max_file_size"
+            )
+        if timeout is not None:
+            limits.timeout = cls._validate_cli_limit(timeout, "timeout")
+        if max_layer_depth is not None:
+            limits.max_layer_depth = cls._validate_cli_limit(
+                max_layer_depth, "max_layer_depth"
+            )
+        if max_image_dimension is not None:
+            limits.max_image_dimension = cls._validate_cli_limit(
+                max_image_dimension, "max_image_dimension"
+            )
+
+        return limits
+
+    @staticmethod
+    def _validate_cli_limit(value: int, name: str) -> int:
+        """Validate and clamp CLI limit values.
+
+        Args:
+            value: The limit value to validate.
+            name: The name of the limit (for logging).
+
+        Returns:
+            Validated value (clamped to 0 if negative).
+        """
+        if value < 0:
+            logger.warning(
+                f"CLI flag --{name.replace('_', '-')}={value} is negative, "
+                f"treating as 0 (disabled limit)"
+            )
+            return 0
+        return value
+
+    @classmethod
     def unlimited(cls) -> "ResourceLimits":
         """Create ResourceLimits with all limits disabled.
 
