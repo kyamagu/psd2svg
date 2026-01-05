@@ -10,8 +10,14 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# WebP hard limit for image dimensions (16383 pixels)
-WEBP_MAX_DIMENSION = 16383
+# Default resource limits
+DEFAULT_MAX_FILE_SIZE = 2147483648  # 2GB (typical for professional PSD files)
+DEFAULT_TIMEOUT = 180  # 3 minutes
+DEFAULT_MAX_LAYER_DEPTH = 100  # Maximum layer nesting depth
+DEFAULT_MAX_IMAGE_DIMENSION = 16383  # WebP hard limit for image dimensions
+
+# Deprecated: Use DEFAULT_MAX_IMAGE_DIMENSION instead
+WEBP_MAX_DIMENSION = DEFAULT_MAX_IMAGE_DIMENSION
 
 
 @dataclass
@@ -50,10 +56,10 @@ class ResourceLimits:
         >>> limits = ResourceLimits(max_file_size=0)  # No file size limit
     """
 
-    max_file_size: int = 2147483648  # 2GB default (typical for professional PSD files)
-    timeout: int = 180  # 180 seconds (3 minutes) default
-    max_layer_depth: int = 100  # 100 levels default
-    max_image_dimension: int = WEBP_MAX_DIMENSION  # WebP hard limit
+    max_file_size: int = DEFAULT_MAX_FILE_SIZE
+    timeout: int = DEFAULT_TIMEOUT
+    max_layer_depth: int = DEFAULT_MAX_LAYER_DEPTH
+    max_image_dimension: int = DEFAULT_MAX_IMAGE_DIMENSION
 
     @classmethod
     def default(cls) -> "ResourceLimits":
@@ -71,51 +77,145 @@ class ResourceLimits:
             Non-integer values raise ValueError. For intentionally disabling all
             limits, use ResourceLimits.unlimited() instead of negative values.
         """
-
-        def parse_env_int(key: str, default: int) -> int:
-            """Parse integer from environment variable with validation.
-
-            Args:
-                key: Environment variable name.
-                default: Default value if not set.
-
-            Returns:
-                Parsed integer value, or 0 if negative.
-
-            Raises:
-                ValueError: If value is not a valid integer.
-            """
-            value_str = os.environ.get(key)
-            if value_str is None:
-                return default
-
-            try:
-                value = int(value_str)
-            except ValueError as e:
-                raise ValueError(
-                    f"Environment variable {key}={value_str!r} is not a valid integer"
-                ) from e
-
-            # Treat negative values as 0 (disabled limit)
-            if value < 0:
-                logger.warning(
-                    f"Environment variable {key}={value} is negative, "
-                    f"treating as 0 (disabled limit). "
-                    f"Consider using ResourceLimits.unlimited() instead."
-                )
-                return 0
-
-            return value
-
         return cls(
-            max_file_size=parse_env_int("PSD2SVG_MAX_FILE_SIZE", 2147483648),  # 2GB
-            timeout=parse_env_int("PSD2SVG_TIMEOUT", 180),  # 3 minutes
-            max_layer_depth=parse_env_int("PSD2SVG_MAX_LAYER_DEPTH", 100),
-            max_image_dimension=parse_env_int(
-                "PSD2SVG_MAX_IMAGE_DIMENSION",
-                WEBP_MAX_DIMENSION,
+            max_file_size=cls._parse_env_int(
+                "PSD2SVG_MAX_FILE_SIZE", DEFAULT_MAX_FILE_SIZE
+            ),
+            timeout=cls._parse_env_int("PSD2SVG_TIMEOUT", DEFAULT_TIMEOUT),
+            max_layer_depth=cls._parse_env_int(
+                "PSD2SVG_MAX_LAYER_DEPTH", DEFAULT_MAX_LAYER_DEPTH
+            ),
+            max_image_dimension=cls._parse_env_int(
+                "PSD2SVG_MAX_IMAGE_DIMENSION", DEFAULT_MAX_IMAGE_DIMENSION
             ),
         )
+
+    @classmethod
+    def from_cli_args(
+        cls,
+        max_file_size: int | None = None,
+        timeout: int | None = None,
+        max_layer_depth: int | None = None,
+        max_image_dimension: int | None = None,
+        unlimited: bool = False,
+    ) -> "ResourceLimits":
+        """Create ResourceLimits from CLI arguments with proper precedence.
+
+        Precedence: CLI flags > Environment variables > Defaults
+
+        Args:
+            max_file_size: CLI flag value for max file size
+                (None if not provided).
+            timeout: CLI flag value for timeout (None if not provided).
+            max_layer_depth: CLI flag value for max layer depth
+                (None if not provided).
+            max_image_dimension: CLI flag value for max image dimension
+                (None if not provided).
+            unlimited: Whether --unlimited-resources flag was set.
+
+        Returns:
+            ResourceLimits instance with validated values.
+
+        Raises:
+            ValueError: If unlimited=True and any other limit parameter is not None.
+
+        Note:
+            Negative values are treated as 0 (disabled limit) with a warning logged.
+        """
+        # Validate conflict between unlimited and other flags
+        if unlimited:
+            conflicting = []
+            if max_file_size is not None:
+                conflicting.append("--max-file-size")
+            if timeout is not None:
+                conflicting.append("--timeout")
+            if max_layer_depth is not None:
+                conflicting.append("--max-layer-depth")
+            if max_image_dimension is not None:
+                conflicting.append("--max-image-dimension")
+
+            if conflicting:
+                raise ValueError(
+                    f"--unlimited-resources conflicts with: {', '.join(conflicting)}"
+                )
+
+            return cls.unlimited()
+
+        # Start with environment variable defaults
+        limits = cls.default()
+
+        # Override with CLI flags if provided (None means not provided)
+        if max_file_size is not None:
+            limits.max_file_size = cls._validate_cli_limit(
+                max_file_size, "max_file_size"
+            )
+        if timeout is not None:
+            limits.timeout = cls._validate_cli_limit(timeout, "timeout")
+        if max_layer_depth is not None:
+            limits.max_layer_depth = cls._validate_cli_limit(
+                max_layer_depth, "max_layer_depth"
+            )
+        if max_image_dimension is not None:
+            limits.max_image_dimension = cls._validate_cli_limit(
+                max_image_dimension, "max_image_dimension"
+            )
+
+        return limits
+
+    @staticmethod
+    def _parse_env_int(key: str, default: int) -> int:
+        """Parse integer from environment variable with validation.
+
+        Args:
+            key: Environment variable name.
+            default: Default value if not set.
+
+        Returns:
+            Parsed integer value, or 0 if negative.
+
+        Raises:
+            ValueError: If value is not a valid integer.
+        """
+        value_str = os.environ.get(key)
+        if value_str is None:
+            return default
+
+        try:
+            value = int(value_str)
+        except ValueError as e:
+            raise ValueError(
+                f"Environment variable {key}={value_str!r} is not a valid integer"
+            ) from e
+
+        # Treat negative values as 0 (disabled limit)
+        if value < 0:
+            logger.warning(
+                f"Environment variable {key}={value} is negative, "
+                f"treating as 0 (disabled limit). "
+                f"Consider using ResourceLimits.unlimited() instead."
+            )
+            return 0
+
+        return value
+
+    @staticmethod
+    def _validate_cli_limit(value: int, name: str) -> int:
+        """Validate and clamp CLI limit values.
+
+        Args:
+            value: The limit value to validate.
+            name: The name of the limit (for logging).
+
+        Returns:
+            Validated value (clamped to 0 if negative).
+        """
+        if value < 0:
+            logger.warning(
+                f"CLI flag --{name.replace('_', '-')}={value} is negative, "
+                f"treating as 0 (disabled limit)"
+            )
+            return 0
+        return value
 
     @classmethod
     def unlimited(cls) -> "ResourceLimits":

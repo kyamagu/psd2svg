@@ -1001,3 +1001,121 @@ class TestCLIResourceLimitIntegration:
         )
         assert result.returncode == 0
         assert os.path.exists(output_path)
+
+
+class TestFromCLIArgs:
+    """Tests for ResourceLimits.from_cli_args() class method."""
+
+    def test_from_cli_args_with_unlimited(self) -> None:
+        """Test from_cli_args() with unlimited=True."""
+        limits = ResourceLimits.from_cli_args(unlimited=True)
+        assert limits.max_file_size == 0
+        assert limits.timeout == 0
+        assert limits.max_layer_depth == 0
+        assert limits.max_image_dimension == 0
+
+    def test_from_cli_args_all_none_uses_defaults(self) -> None:
+        """Test from_cli_args() with all None values uses defaults."""
+        limits = ResourceLimits.from_cli_args()
+        # Should use environment variable defaults
+        assert limits.max_file_size == 2147483648  # 2GB default
+        assert limits.timeout == 180  # 3 minutes default
+        assert limits.max_layer_depth == 100
+        assert limits.max_image_dimension == 16383  # WebP limit
+
+    def test_from_cli_args_overrides_with_cli_values(self) -> None:
+        """Test from_cli_args() overrides defaults with CLI values."""
+        limits = ResourceLimits.from_cli_args(
+            max_file_size=1000,
+            timeout=30,
+            max_layer_depth=50,
+            max_image_dimension=8192,
+        )
+        assert limits.max_file_size == 1000
+        assert limits.timeout == 30
+        assert limits.max_layer_depth == 50
+        assert limits.max_image_dimension == 8192
+
+    def test_from_cli_args_partial_override(self) -> None:
+        """Test from_cli_args() with partial CLI values."""
+        limits = ResourceLimits.from_cli_args(
+            max_file_size=5000,
+            # Other values should use defaults
+        )
+        assert limits.max_file_size == 5000
+        assert limits.timeout == 180  # Default
+        assert limits.max_layer_depth == 100  # Default
+        assert limits.max_image_dimension == 16383  # Default
+
+    def test_from_cli_args_negative_value_clamped_with_warning(self) -> None:
+        """Test from_cli_args() clamps negative values to 0 with warning."""
+        with patch("psd2svg.resource_limits.logger") as mock_logger:
+            limits = ResourceLimits.from_cli_args(max_file_size=-100)
+            assert limits.max_file_size == 0
+            mock_logger.warning.assert_called_once()
+            assert "--max-file-size=-100" in mock_logger.warning.call_args[0][0]
+            assert "treating as 0" in mock_logger.warning.call_args[0][0]
+
+    def test_from_cli_args_zero_disables_limit(self) -> None:
+        """Test from_cli_args() with 0 disables limit."""
+        limits = ResourceLimits.from_cli_args(max_file_size=0)
+        assert limits.max_file_size == 0
+
+    def test_from_cli_args_with_env_vars(self) -> None:
+        """Test from_cli_args() with environment variables set."""
+        with patch.dict(
+            os.environ,
+            {"PSD2SVG_MAX_FILE_SIZE": "5000", "PSD2SVG_TIMEOUT": "60"},
+        ):
+            # CLI flag should override env var
+            limits = ResourceLimits.from_cli_args(max_file_size=10000)
+            assert limits.max_file_size == 10000  # CLI override
+            assert limits.timeout == 60  # From env var
+
+    def test_from_cli_args_cli_zero_overrides_env_var(self) -> None:
+        """Test from_cli_args() with CLI 0 overrides env var."""
+        with patch.dict(os.environ, {"PSD2SVG_MAX_FILE_SIZE": "5000"}):
+            # CLI 0 should override env var (disable limit)
+            limits = ResourceLimits.from_cli_args(max_file_size=0)
+            assert limits.max_file_size == 0
+
+    def test_from_cli_args_negative_all_limits(self) -> None:
+        """Test from_cli_args() with all negative values."""
+        with patch("psd2svg.resource_limits.logger") as mock_logger:
+            limits = ResourceLimits.from_cli_args(
+                max_file_size=-1,
+                timeout=-2,
+                max_layer_depth=-3,
+                max_image_dimension=-4,
+            )
+            assert limits.max_file_size == 0
+            assert limits.timeout == 0
+            assert limits.max_layer_depth == 0
+            assert limits.max_image_dimension == 0
+            # Should log 4 warnings
+            assert mock_logger.warning.call_count == 4
+
+    def test_from_cli_args_unlimited_conflicts_with_max_file_size(self) -> None:
+        """Test from_cli_args() raises ValueError when unlimited conflicts."""
+        with pytest.raises(ValueError, match="--unlimited-resources conflicts with"):
+            ResourceLimits.from_cli_args(unlimited=True, max_file_size=1000)
+
+    def test_from_cli_args_unlimited_conflicts_with_multiple(self) -> None:
+        """Test from_cli_args() raises ValueError with multiple conflicts."""
+        with pytest.raises(ValueError) as exc_info:
+            ResourceLimits.from_cli_args(
+                unlimited=True,
+                max_file_size=1000,
+                timeout=30,
+            )
+        assert "--unlimited-resources conflicts with" in str(exc_info.value)
+        assert "--max-file-size" in str(exc_info.value)
+        assert "--timeout" in str(exc_info.value)
+
+    def test_from_cli_args_unlimited_without_conflicts(self) -> None:
+        """Test from_cli_args() with unlimited=True and no other args."""
+        limits = ResourceLimits.from_cli_args(unlimited=True)
+        assert limits.max_file_size == 0
+        assert limits.timeout == 0
+        assert limits.max_layer_depth == 0
+        assert limits.max_image_dimension == 0

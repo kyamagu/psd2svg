@@ -147,79 +147,23 @@ def parse_args() -> tuple[argparse.Namespace, argparse.ArgumentParser]:
     return parser.parse_args(), parser
 
 
-def validate_resource_limit_args(
-    args: argparse.Namespace, parser: argparse.ArgumentParser
-) -> None:
-    """Validate resource limit arguments and detect conflicts.
-
-    Args:
-        args: Parsed command-line arguments.
-        parser: ArgumentParser instance for error handling.
-
-    Raises:
-        SystemExit: If --unlimited-resources conflicts with other limit flags.
-    """
-    if args.unlimited_resources:
-        # Check if any explicit limit flags were provided
-        conflicting_flags = []
-        if args.max_file_size is not None:
-            conflicting_flags.append("--max-file-size")
-        if args.timeout is not None:
-            conflicting_flags.append("--timeout")
-        if args.max_layer_depth is not None:
-            conflicting_flags.append("--max-layer-depth")
-        if args.max_image_dimension is not None:
-            conflicting_flags.append("--max-image-dimension")
-
-        if conflicting_flags:
-            # Use parser's error method for consistent error handling
-            parser.error(
-                f"--unlimited-resources conflicts with: {', '.join(conflicting_flags)}"
-            )
-
-
-def create_resource_limits_from_args(args: argparse.Namespace) -> ResourceLimits:
-    """Create ResourceLimits from CLI arguments with proper precedence.
-
-    Precedence: CLI flags > Environment variables > Defaults
-
-    Args:
-        args: Parsed command-line arguments.
-
-    Returns:
-        ResourceLimits instance with values from CLI flags, environment variables,
-        or defaults (in that order of precedence).
-    """
-    if args.unlimited_resources:
-        return ResourceLimits.unlimited()
-
-    # Start with environment variable defaults
-    limits = ResourceLimits.default()
-
-    # Override with CLI flags if provided (None means not provided)
-    # Clamp negative values to 0 (disabled)
-    if args.max_file_size is not None:
-        limits.max_file_size = max(0, args.max_file_size)
-    if args.timeout is not None:
-        limits.timeout = max(0, args.timeout)
-    if args.max_layer_depth is not None:
-        limits.max_layer_depth = max(0, args.max_layer_depth)
-    if args.max_image_dimension is not None:
-        limits.max_image_dimension = max(0, args.max_image_dimension)
-
-    return limits
-
-
 def main() -> None:
     """Main function to convert PSD to SVG or raster image."""
     args, parser = parse_args()
     logging.basicConfig(level=getattr(logging, args.loglevel.upper(), "WARNING"))
 
-    # Validate resource limit arguments
-    validate_resource_limit_args(args, parser)
-
     # Create ResourceLimits from CLI args with proper precedence
-    resource_limits = create_resource_limits_from_args(args)
+    try:
+        resource_limits = ResourceLimits.from_cli_args(
+            max_file_size=args.max_file_size,
+            timeout=args.timeout,
+            max_layer_depth=args.max_layer_depth,
+            max_image_dimension=args.max_image_dimension,
+            unlimited=args.unlimited_resources,
+        )
+    except ValueError as e:
+        # Convert ValueError to CLI error with proper exit code
+        parser.error(str(e))
 
     convert(
         args.input,
