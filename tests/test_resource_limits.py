@@ -957,7 +957,7 @@ class TestCLIResourceLimitIntegration:
         assert "exceeds limit" in result.stderr
 
     def test_cli_error_message_includes_guidance(self, tmp_path: Path) -> None:
-        """Test error messages include helpful guidance (Issue #236)."""
+        """Test error messages include helpful guidance (issue #236)."""
 
         input_path = get_fixture("layer-types/pixel-layer.psd")
         output_path = str(tmp_path / "output.svg")
