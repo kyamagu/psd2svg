@@ -991,6 +991,242 @@ def test_text_wrapping_foreign_object_vertical() -> None:
     assert "writing-mode: vertical-rl" in style or "writing-mode:vertical-rl" in style
 
 
+def _parse_style_string(style: str) -> dict[str, str]:
+    """Parse CSS style string into dictionary.
+
+    Args:
+        style: CSS style string (e.g., "margin: 0; padding: 10px")
+
+    Returns:
+        Dictionary mapping property names to values.
+    """
+    style_dict = {}
+    for item in style.split(";"):
+        item = item.strip()
+        if ":" in item:
+            key, value = item.split(":", 1)
+            style_dict[key.strip()] = value.strip()
+    return style_dict
+
+
+def test_foreignobject_paragraph_first_line_indent() -> None:
+    """Test first-line-indent CSS property for foreignObject paragraphs."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-first-line-indent.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+
+    assert "text-indent" in style_dict
+    indent_value = float(style_dict["text-indent"].rstrip("px"))
+    assert abs(indent_value - 26.67) < 0.01, (
+        f"Expected text-indent ≈ 26.67px, got {indent_value}px"
+    )
+
+
+def test_foreignobject_paragraph_start_indent() -> None:
+    """Test padding-left CSS property for start indent."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-start-indent.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+    assert "padding-left" in style_dict
+    assert style_dict["padding-left"] == "40px"
+
+
+def test_foreignobject_paragraph_end_indent() -> None:
+    """Test padding-right CSS property for end indent."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-end-indent.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+    assert "padding-right" in style_dict
+    assert style_dict["padding-right"] == "40px"
+
+
+def test_foreignobject_paragraph_space_before() -> None:
+    """Test margin-top CSS property for space before paragraph."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-space-before.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    paragraphs = div.findall(".//{http://www.w3.org/1999/xhtml}p")
+
+    assert len(paragraphs) == 2, "Fixture should have 2 paragraphs"
+
+    for p in paragraphs:
+        style_dict = _parse_style_string(p.attrib.get("style", ""))
+        assert "margin-top" in style_dict
+        assert style_dict["margin-top"] == "20px"
+
+
+def test_foreignobject_paragraph_space_after() -> None:
+    """Test margin-bottom CSS property for space after paragraph."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-space-after.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    paragraphs = div.findall(".//{http://www.w3.org/1999/xhtml}p")
+
+    assert len(paragraphs) == 2
+
+    for p in paragraphs:
+        style_dict = _parse_style_string(p.attrib.get("style", ""))
+        assert "margin-bottom" in style_dict
+        assert style_dict["margin-bottom"] == "20px"
+
+
+def test_foreignobject_paragraph_combined_formatting() -> None:
+    """Test multiple paragraph formatting properties combined."""
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-combined-formatting.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+
+    # Verify all properties present
+    assert "text-indent" in style_dict
+    assert "padding-left" in style_dict
+    assert "padding-right" in style_dict
+    assert "margin-bottom" in style_dict
+
+    # Verify values (allow minor floating point differences)
+    indent = float(style_dict["text-indent"].rstrip("px"))
+    assert abs(indent - 26.67) < 0.01
+
+    padding_left = float(style_dict["padding-left"].rstrip("px"))
+    assert abs(padding_left - 13.33) < 0.01
+
+    padding_right = float(style_dict["padding-right"].rstrip("px"))
+    assert abs(padding_right - 13.33) < 0.01
+
+    assert style_dict["margin-bottom"] == "20px"
+
+
+def test_foreignobject_paragraph_hanging_punctuation() -> None:
+    """Test hanging-punctuation CSS property (limited browser support).
+
+    Note: Hanging punctuation has limited browser support (Safari 10+ only).
+    Chrome, Firefox, and Edge do not support this CSS property.
+    """
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-hanging-punctuation.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+
+    # Fixture has Hanging=True, so property should be present
+    assert "hanging-punctuation" in style_dict
+    assert style_dict["hanging-punctuation"] == "first last"
+
+
+def test_foreignobject_paragraph_default_values_skipped() -> None:
+    """Test that zero/false paragraph properties are not included in CSS."""
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype1-justification0.psd")
+    )
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+
+    # Should have base properties
+    assert "margin" in style_dict
+    assert "padding" in style_dict
+
+    # Should NOT have specific properties when values are 0
+    assert "text-indent" not in style_dict
+    assert "padding-left" not in style_dict
+    assert "padding-right" not in style_dict
+    assert "margin-top" not in style_dict
+    assert "margin-bottom" not in style_dict
+    assert "hanging-punctuation" not in style_dict
+
+
 def test_text_whitespace_preservation() -> None:
     """Test that whitespace in text is preserved with xml:space='preserve'.
 

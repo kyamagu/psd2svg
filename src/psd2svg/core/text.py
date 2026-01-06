@@ -713,8 +713,16 @@ class TextConverter(ConverterProtocol):
     ) -> dict[str, str]:
         """Convert paragraph settings to CSS styles.
 
+        Supports paragraph formatting properties:
+        - Text alignment (justification)
+        - Line height (leading)
+        - First line indent
+        - Start/end indent (left/right padding)
+        - Space before/after (top/bottom margins)
+        - Hanging punctuation (limited browser support)
+
         Args:
-            paragraph: Paragraph object containing justification and leading.
+            paragraph: Paragraph object containing style and formatting.
 
         Returns:
             Dictionary of CSS property names to values.
@@ -742,6 +750,42 @@ class TextConverter(ConverterProtocol):
         leading = paragraph.compute_leading()
         if leading > 0:
             styles["line-height"] = f"{leading}px"
+
+        # First line indent
+        if paragraph.style.first_line_indent != 0:
+            styles["text-indent"] = (
+                f"{svg_utils.num2str(paragraph.style.first_line_indent)}px"
+            )
+
+        # Start indent (left padding) - overrides padding: 0
+        if paragraph.style.start_indent != 0:
+            styles["padding-left"] = (
+                f"{svg_utils.num2str(paragraph.style.start_indent)}px"
+            )
+
+        # End indent (right padding) - overrides padding: 0
+        if paragraph.style.end_indent != 0:
+            styles["padding-right"] = (
+                f"{svg_utils.num2str(paragraph.style.end_indent)}px"
+            )
+
+        # Space before paragraph - overrides margin: 0
+        if paragraph.style.space_before != 0:
+            styles["margin-top"] = (
+                f"{svg_utils.num2str(paragraph.style.space_before)}px"
+            )
+
+        # Space after paragraph - overrides margin: 0
+        if paragraph.style.space_after != 0:
+            styles["margin-bottom"] = (
+                f"{svg_utils.num2str(paragraph.style.space_after)}px"
+            )
+
+        # Hanging punctuation (limited browser support - Safari only as of 2025)
+        # Note: Chrome, Firefox, and Edge do not support this CSS property.
+        # We include it for future compatibility and Safari users.
+        if paragraph.style.hanging:
+            styles["hanging-punctuation"] = "first last"
 
         return styles
 
