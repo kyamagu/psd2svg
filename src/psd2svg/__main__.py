@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from psd2svg import convert
+from psd2svg.core.typesetting import TextWrappingMode
 from psd2svg.resource_limits import ResourceLimits
 
 
@@ -177,8 +178,11 @@ def main() -> None:
         # Convert ValueError to CLI error with proper exit code
         parser.error(str(e))
 
-    # Map text wrapping mode to integer value
-    text_wrapping_mode_map = {"none": 0, "foreignobject": 1}
+    # Map text wrapping mode to enum value
+    text_wrapping_mode_map = {
+        "none": TextWrappingMode.NONE,
+        "foreignobject": TextWrappingMode.FOREIGN_OBJECT,
+    }
     text_wrapping_mode = text_wrapping_mode_map[args.text_wrapping_mode]
 
     convert(
