@@ -675,6 +675,8 @@ class TextConverter(ConverterProtocol):
             "margin": "0",
             "padding": "0",
             "overflow": "hidden",  # Match Photoshop clipping behavior
+            # Ensure padding (from paragraph indents) is included in width/height,
+            # not added to it, matching Photoshop's bounding box behavior
             "box-sizing": "border-box",
         }
 
@@ -714,7 +716,7 @@ class TextConverter(ConverterProtocol):
 
         # Add spans
         for span in paragraph:
-            self._add_foreign_object_span(p_elem, span, text_setting)
+            self._add_foreign_object_span(p_elem, span, text_setting, paragraph)
 
     def _get_foreign_object_paragraph_styles(
         self, paragraph: Paragraph
@@ -832,7 +834,11 @@ class TextConverter(ConverterProtocol):
         return styles
 
     def _add_foreign_object_span(
-        self, p_elem: ET.Element, span: Span, text_setting: TypeSetting
+        self,
+        p_elem: ET.Element,
+        span: Span,
+        text_setting: TypeSetting,
+        paragraph: Paragraph,
     ) -> None:
         """Add a text span as XHTML <span> element.
 
@@ -840,9 +846,12 @@ class TextConverter(ConverterProtocol):
             p_elem: Parent XHTML <p> element.
             span: Span object containing text and style.
             text_setting: TypeSetting object for font info lookup.
+            paragraph: Parent paragraph object for accessing line-height.
         """
         # Get span CSS styles
-        span_styles = self._get_foreign_object_span_styles(span, text_setting)
+        span_styles = self._get_foreign_object_span_styles(
+            span, text_setting, paragraph
+        )
 
         # Create <span> element
         # If no styles needed, add text directly to paragraph
@@ -869,13 +878,14 @@ class TextConverter(ConverterProtocol):
             )
 
     def _get_foreign_object_span_styles(
-        self, span: Span, text_setting: TypeSetting
+        self, span: Span, text_setting: TypeSetting, paragraph: Paragraph
     ) -> dict[str, str]:
         """Convert span style settings to CSS styles.
 
         Args:
             span: Span object containing text style information.
             text_setting: TypeSetting object for font info and calculations.
+            paragraph: Parent paragraph object for accessing line-height.
 
         Returns:
             Dictionary of CSS property names to values.
@@ -885,6 +895,15 @@ class TextConverter(ConverterProtocol):
         postscript_name = text_setting.get_postscript_name(style.font)
 
         styles = {}
+
+        # Set display: inline-block and line-height to prevent inline box from
+        # expanding parent line height (CSS inline formatting issue).
+        # This ensures the paragraph's line-height is respected even when
+        # span font-size > line-height. See GitHub issue #273.
+        styles["display"] = "inline-block"
+        leading = paragraph.compute_leading()
+        if leading > 0:
+            styles["line-height"] = svg_utils.num2str_with_unit(leading)
 
         # Font family - use PostScript name directly
         if postscript_name:
@@ -949,9 +968,7 @@ class TextConverter(ConverterProtocol):
                 f"scale({svg_utils.num2str(style.horizontal_scale)}, "
                 f"{svg_utils.num2str(style.vertical_scale)})"
             )
-            styles["display"] = (
-                "inline-block"  # Required for transform on inline elements
-            )
+            # Note: display: inline-block already set above for all spans
             styles["transform-origin"] = "center"
 
         # Stroke (text outline) - CSS supports this with -webkit-text-stroke
