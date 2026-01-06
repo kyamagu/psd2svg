@@ -387,9 +387,25 @@ The following paragraph formatting properties are supported in foreignObject mod
 
 The ``hanging-punctuation`` property is included in SVG output for future compatibility and Safari users, but will have no effect in other browsers.
 
+**Hyphenation Support:**
+
+Auto hyphenation (``hyphens: auto``) is supported in all modern browsers when the ``lang`` attribute is set (automatically set to ``en`` when hyphenation is enabled):
+
+* ✅ Chrome/Edge (supports ``hyphens: auto``)
+* ✅ Firefox (supports ``hyphens: auto`` and ``hyphenate-limit-chars``)
+* ✅ Safari (supports ``hyphens: auto`` and ``hyphenate-limit-chars``)
+
+However, ``hyphenate-limit-chars`` (which controls minimum word length and characters before/after hyphen) has limited support:
+
+* ❌ Chrome/Edge (not supported)
+* ✅ Firefox 43+ (supported)
+* ✅ Safari 17+ (supported)
+
+PSD's ``ConsecutiveHyphens`` and ``Zone`` properties have no CSS equivalents and are not converted.
+
 **Native SVG Limitation:**
 
-These paragraph formatting properties are only available in foreignObject mode. Native SVG ``<text>`` elements do not support paragraph indentation, spacing, or hanging punctuation.
+These paragraph formatting properties are only available in foreignObject mode. Native SVG ``<text>`` elements do not support paragraph indentation, spacing, hanging punctuation, or hyphenation.
 
 **Font Requirements:**
 

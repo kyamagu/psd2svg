@@ -1,5 +1,6 @@
 import logging
 import math
+import re
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -1191,6 +1192,50 @@ def test_foreignobject_paragraph_hanging_punctuation() -> None:
     # Fixture has Hanging=True, so property should be present
     assert "hanging-punctuation" in style_dict
     assert style_dict["hanging-punctuation"] == "first last"
+
+
+def test_foreignobject_paragraph_hyphenation() -> None:
+    """Test auto hyphenation CSS properties in foreignObject mode.
+
+    Note: Hyphenation support varies by browser:
+    - hyphens: auto - All modern browsers (requires lang attribute)
+    - hyphenate-limit-chars - Firefox 43+, Safari 17+, not supported in Chrome
+    """
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-auto-hyphenate.psd"))
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    foreign_obj = doc.svg.find(".//foreignObject")
+    assert foreign_obj is not None
+
+    # Verify lang attribute is set when hyphenation is enabled
+    div = foreign_obj.find(".//{http://www.w3.org/1999/xhtml}div")
+    assert div is not None
+    assert div.attrib.get("lang") == "en", "lang='en' attribute should be set"
+
+    p = div.find(".//{http://www.w3.org/1999/xhtml}p")
+    assert p is not None
+
+    style_dict = _parse_style_string(p.attrib.get("style", ""))
+
+    # Verify hyphens: auto is set
+    assert "hyphens" in style_dict
+    assert style_dict["hyphens"] == "auto"
+
+    # Verify hyphenate-limit-chars is set with correct format and values
+    assert "hyphenate-limit-chars" in style_dict
+    limit_chars = style_dict["hyphenate-limit-chars"]
+
+    # Parse the hyphenate-limit-chars value (format: "word-min char-before char-after")
+    match = re.match(r"(\d+)\s+(\d+)\s+(\d+)", limit_chars)
+    assert match is not None, f"hyphenate-limit-chars format incorrect: {limit_chars}"
+
+    word_min, char_before, char_after = match.groups()
+    assert word_min == "6", "word minimum should be 6"
+    assert char_before == "2", "characters before hyphen should be 2"
+    assert char_after == "2", "characters after hyphen should be 2"
 
 
 def test_foreignobject_paragraph_default_values_skipped() -> None:

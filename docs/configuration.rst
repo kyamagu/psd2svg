@@ -119,6 +119,7 @@ When ``text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT``, paragraph formattin
 * **Space before** → ``margin-top``
 * **Space after** → ``margin-bottom``
 * **Hanging punctuation** → ``hanging-punctuation`` (Safari only)
+* **Auto hyphenation** → ``hyphens: auto`` + ``hyphenate-limit-chars`` (requires lang attribute)
 
 Example output:
 
@@ -127,6 +128,13 @@ Example output:
    <p style="margin: 0; padding: 0; text-indent: 26.67px; padding-left: 13.33px; margin-bottom: 20px;">
      Paragraph with first-line indent, left padding, and bottom spacing.
    </p>
+
+**Browser Support Notes:**
+
+* ``hyphens: auto`` requires the ``lang`` attribute (automatically set to ``en`` when hyphenation is enabled) and works in all modern browsers
+* ``hyphenate-limit-chars`` is supported in Firefox 43+, Safari 17+, but **not** in Chrome/Edge
+* ``hanging-punctuation`` is only supported in Safari 10+
+* PSD's ``ConsecutiveHyphens`` and ``Zone`` properties have no CSS equivalents
 
 Optimization
 ------------

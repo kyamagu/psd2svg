@@ -253,6 +253,11 @@ class TextConverter(ConverterProtocol):
         if not transform.is_translation_only():
             svg_utils.set_attribute(foreign_obj, "transform", transform.to_svg_matrix())
 
+        # Check if any paragraph has auto hyphenation enabled
+        # If so, add lang attribute for CSS hyphens to work
+        paragraphs = list(text_setting)
+        has_hyphenation = any(p.style.auto_hyphenate for p in paragraphs)
+
         # Create XHTML div container with proper namespace
         container_styles = self._get_foreign_object_container_styles(
             text_setting, bounds
@@ -261,10 +266,11 @@ class TextConverter(ConverterProtocol):
             "div",
             parent=foreign_obj,
             style=svg_utils.styles_to_string(container_styles),
+            lang="en" if has_hyphenation else None,
         )
 
         # Add paragraphs
-        for paragraph in text_setting:
+        for paragraph in paragraphs:
             self._add_foreign_object_paragraph(div, paragraph, text_setting)
 
         return foreign_obj
@@ -786,6 +792,20 @@ class TextConverter(ConverterProtocol):
         # We include it for future compatibility and Safari users.
         if paragraph.style.hanging:
             styles["hanging-punctuation"] = "first last"
+
+        # Hyphenation
+        # Map PSD AutoHyphenate property to CSS hyphens property.
+        # CSS hyphens: auto requires the lang attribute to work properly.
+        if paragraph.style.auto_hyphenate:
+            styles["hyphens"] = "auto"
+
+            # Map hyphenation parameters to CSS hyphenate-limit-chars
+            # Format: hyphenate-limit-chars: <word-min> <char-before> <char-after>
+            # Browser support: Firefox 43+, Safari 17+, not supported in Chrome
+            word_min = paragraph.style.hyphenation_word_size
+            char_before = paragraph.style.pre_hyphen
+            char_after = paragraph.style.post_hyphen
+            styles["hyphenate-limit-chars"] = f"{word_min} {char_before} {char_after}"
 
         return styles
 
