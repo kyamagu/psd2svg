@@ -1550,6 +1550,17 @@ class TestExtractTextCharacters:
         assert "×" in result
 
 
+def _get_local_tag(element: ET.Element) -> str:
+    """Get local tag name without namespace prefix.
+
+    Helper function to strip namespace from element tags for testing.
+    """
+    tag = element.tag
+    if "}" in tag:
+        return tag.split("}", 1)[1]
+    return tag
+
+
 def test_find_elements_with_font_family_foreignobject() -> None:
     """Test finding XHTML elements with specific font-family in foreignObject."""
     svg = ET.fromstring(
@@ -1566,18 +1577,12 @@ def test_find_elements_with_font_family_foreignobject() -> None:
     # Test finding p element with Times-Roman
     elements = svg_utils.find_elements_with_font_family(svg, "Times-Roman")
     assert len(elements) == 1
-    tag = elements[0].tag
-    if "}" in tag:
-        tag = tag.split("}", 1)[1]
-    assert tag == "p"
+    assert _get_local_tag(elements[0]) == "p"
 
     # Test finding span element with Arial-Bold
     elements = svg_utils.find_elements_with_font_family(svg, "Arial-Bold")
     assert len(elements) == 1
-    tag = elements[0].tag
-    if "}" in tag:
-        tag = tag.split("}", 1)[1]
-    assert tag == "span"
+    assert _get_local_tag(elements[0]) == "span"
 
 
 def test_find_elements_with_font_family_mixed_content() -> None:
@@ -1596,18 +1601,12 @@ def test_find_elements_with_font_family_mixed_content() -> None:
     # Test finding traditional text element
     elements = svg_utils.find_elements_with_font_family(svg, "Helvetica")
     assert len(elements) == 1
-    tag = elements[0].tag
-    if "}" in tag:
-        tag = tag.split("}", 1)[1]
-    assert tag == "text"
+    assert _get_local_tag(elements[0]) == "text"
 
     # Test finding foreignObject p element
     elements = svg_utils.find_elements_with_font_family(svg, "Arial")
     assert len(elements) == 1
-    tag = elements[0].tag
-    if "}" in tag:
-        tag = tag.split("}", 1)[1]
-    assert tag == "p"
+    assert _get_local_tag(elements[0]) == "p"
 
 
 def test_strip_text_element_whitespace_with_xml_space() -> None:

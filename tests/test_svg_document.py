@@ -19,6 +19,7 @@ from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
 from psd2svg.core.font_utils import FontInfo, create_file_url, encode_font_data_uri
+from psd2svg.core.text import TextWrappingMode
 from psd2svg.rasterizer import PlaywrightRasterizer, ResvgRasterizer
 from tests.conftest import get_fixture, requires_playwright
 
@@ -545,7 +546,7 @@ class TestSVGDocumentEmbedFonts:
         )
         doc = SVGDocument.from_psd(
             psdimage,
-            text_wrapping_mode=1,  # TextWrappingMode.FOREIGN_OBJECT
+            text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
         )
 
         # Convert with font embedding
@@ -566,7 +567,7 @@ class TestSVGDocumentEmbedFonts:
         )
         doc = SVGDocument.from_psd(
             psdimage,
-            text_wrapping_mode=1,  # TextWrappingMode.FOREIGN_OBJECT
+            text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
         )
 
         # Convert with static font resolution only (no embedding)
