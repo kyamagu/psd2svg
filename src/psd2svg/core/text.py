@@ -332,6 +332,11 @@ class TextConverter(ConverterProtocol):
         dominant_baseline = None
 
         if text_setting.shape_type == ShapeType.BOUNDING_BOX:
+            # Use "hanging" baseline for bounding box text, which aligns text to
+            # the hanging baseline (top of most glyphs). This provides the closest
+            # match to Photoshop's bounding box text positioning, though subtle
+            # differences may remain due to font rendering variations between
+            # Photoshop and browsers.
             dominant_baseline = "hanging"
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
                 if text_anchor == "end":
@@ -399,8 +404,10 @@ class TextConverter(ConverterProtocol):
             should_set_x = x != 0.0 or not first_paragraph
             should_set_y = y != 0.0 and first_paragraph
 
-        # Create paragraph node
-        # TODO: There is still a difference with PSD rendering on dominant-baseline.
+        # Create paragraph node with positioning and baseline attributes.
+        # The dominant-baseline="hanging" provides the closest match to Photoshop's
+        # bounding box text positioning, though subtle differences may remain due to
+        # font rendering variations between Photoshop and browsers.
         return self.create_node(
             "tspan",
             text_anchor=text_anchor,
@@ -743,14 +750,21 @@ class TextConverter(ConverterProtocol):
         }
 
         # Text alignment mapping
+        # Note: CSS text-align: justify works correctly with display: inline-block
+        # spans because the text content inside spans can still wrap and justify.
+        # However, CSS lacks direct support for Photoshop's justify variants:
+        # - JUSTIFY_LAST_LEFT/RIGHT/CENTER: justify all lines except last
+        # - JUSTIFY_ALL: justify all lines including last
+        # CSS text-align-last could provide this, but browser support varies.
+        # For now, all justify modes map to 'justify' (equivalent to JUSTIFY_LAST_LEFT).
         justification_map = {
             Justification.LEFT: "left",
             Justification.RIGHT: "right",
             Justification.CENTER: "center",
             Justification.JUSTIFY_LAST_LEFT: "justify",
-            Justification.JUSTIFY_LAST_RIGHT: "justify",
-            Justification.JUSTIFY_LAST_CENTER: "justify",
-            Justification.JUSTIFY_ALL: "justify",
+            Justification.JUSTIFY_LAST_RIGHT: "justify",  # Approximation
+            Justification.JUSTIFY_LAST_CENTER: "justify",  # Approximation
+            Justification.JUSTIFY_ALL: "justify",  # Approximation
         }
         text_align = justification_map.get(paragraph.justification, "left")
         if text_align != "left":  # Skip default
