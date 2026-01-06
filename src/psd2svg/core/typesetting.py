@@ -109,10 +109,12 @@ class Paragraph:
         return mapping.get(self.justification, None)
 
     def compute_leading(self) -> float:
-        """Compute leading value for the paragraph."""
-        return max(
-            span.style.compute_leading(self.style.auto_leading) for span in self.spans
-        )
+        """Compute leading value for the paragraph.
+
+        Returns the maximum leading value among all spans in the paragraph.
+        Each span determines its own leading based on its auto_leading flag.
+        """
+        return max(span.style.compute_leading() for span in self.spans)
 
 
 @dataclasses.dataclass
@@ -487,10 +489,27 @@ class StyleSheet:
             return None
         return _get_hex_color_from_argb(self.stroke_color)
 
-    def compute_leading(self, auto_leading_scale: float = 1.2) -> float:
-        """Compute leading value."""
+    def compute_leading(self) -> float:
+        """Compute leading value for line height.
+
+        Returns:
+            Leading value in pixels (line height for CSS).
+
+        Note:
+            When auto_leading=True (span-level boolean), Photoshop uses
+            font_size + leading offset (typically 0.01), which effectively
+            gives font_size as the line-height (no extra leading space).
+
+            When auto_leading=False, uses the explicit leading value set by user.
+
+            The paragraph-level auto_leading property (typically 1.2) is NOT
+            used for line-height calculation. It may be for inter-paragraph
+            spacing or other paragraph-level layout, but that's not yet clear.
+        """
         if self.auto_leading:
-            return self.font_size * auto_leading_scale
+            # Auto leading: use font_size + small offset (typically 0.01)
+            # This gives effective line-height = font_size (no extra leading)
+            return self.font_size + self.leading
         return self.leading
 
 
