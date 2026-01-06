@@ -80,7 +80,7 @@ image.save('output.png')
 ## Known Limitations
 
 - **Text rendering**: Requires matching system fonts; rendering may differ from Photoshop if fonts are unavailable or substituted
-- **Text wrapping**: Not supported due to SVG spec limitations (foreignObject has limited compatibility)
+- **Text wrapping**: Basic support via `--text-wrapping-mode foreignobject` CLI option or `text_wrapping_mode=1` in Python API (uses `<foreignObject>`). Note: not supported by ResvgRasterizer, only works in browsers
 - **Blending modes**: Some advanced modes approximated due to CSS spec limitations (Dissolve, Linear Burn/Dodge, Darker/Lighter Color, Vivid/Linear/Pin Light, Hard Mix, Subtract, Divide)
 - **Gradients**: Advanced types not supported (Angle, Reflected, Diamond)
 - **Filter effects**: Bevels, embossing, and satin effects not supported; other effects are approximations
