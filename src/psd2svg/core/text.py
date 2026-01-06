@@ -45,6 +45,11 @@ from psd2svg.core.typesetting import (
 
 logger = logging.getLogger(__name__)
 
+# Threshold for negligible margin values (in pixels).
+# Sub-pixel values below this threshold don't meaningfully affect rendering
+# and are omitted to produce cleaner SVG output (avoiding "-0px" or "-0.005px").
+NEGLIGIBLE_MARGIN_THRESHOLD = 0.01
+
 
 def _needs_whitespace_preservation(text: str) -> bool:
     """Check if text needs whitespace preservation.
@@ -679,7 +684,10 @@ class TextConverter(ConverterProtocol):
         return styles
 
     def _add_foreign_object_paragraph(
-        self, container: ET.Element, paragraph: Paragraph, text_setting: TypeSetting
+        self,
+        container: ET.Element,
+        paragraph: Paragraph,
+        text_setting: TypeSetting,
     ) -> None:
         """Add a paragraph as XHTML <p> element.
 
@@ -746,10 +754,25 @@ class TextConverter(ConverterProtocol):
         if text_align != "left":  # Skip default
             styles["text-align"] = text_align
 
-        # Line height
+        # Line height and margin-top compensation calculation
         leading = paragraph.compute_leading()
+        margin_top_compensation = 0.0  # Track compensation for later use
+
         if leading > 0:
             styles["line-height"] = svg_utils.num2str_with_unit(leading)
+
+            # Calculate half-leading compensation for all paragraphs
+            # CSS line-height centers text within a line box, adding unwanted space
+            # above each line. We calculate the negative margin as:
+            # margin-top = -(leading - font_size) / 2
+            # This removes the half-leading space above each paragraph.
+            if paragraph.spans:
+                # Get font size from the first span
+                first_span = paragraph.spans[0]
+                font_size = first_span.style.font_size
+                if leading > font_size:
+                    # Calculate half-leading compensation
+                    margin_top_compensation = -(leading - font_size) / 2
 
         # First line indent
         if paragraph.style.first_line_indent != 0:
@@ -769,11 +792,12 @@ class TextConverter(ConverterProtocol):
                 paragraph.style.end_indent
             )
 
-        # Space before paragraph - overrides margin: 0
-        if paragraph.style.space_before != 0:
-            styles["margin-top"] = svg_utils.num2str_with_unit(
-                paragraph.style.space_before
-            )
+        # Space before paragraph - combine with line-height compensation
+        # If we have both space_before and compensation, add them together
+        total_margin_top = paragraph.style.space_before + margin_top_compensation
+        # Only add margin-top if it exceeds the negligible threshold
+        if abs(total_margin_top) > NEGLIGIBLE_MARGIN_THRESHOLD:
+            styles["margin-top"] = svg_utils.num2str_with_unit(total_margin_top)
 
         # Space after paragraph - overrides margin: 0
         if paragraph.style.space_after != 0:
