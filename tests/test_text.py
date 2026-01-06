@@ -1166,13 +1166,17 @@ def test_foreignobject_paragraph_combined_formatting() -> None:
 
 
 def test_foreignobject_paragraph_hanging_punctuation() -> None:
-    """Test hanging-punctuation CSS property (limited browser support).
+    """Test that hanging-punctuation CSS property is correctly omitted when disabled.
 
-    Note: The current fixture has Hanging=False, so this test verifies
-    that the property is NOT included when disabled. To fully test the feature,
-    a fixture with Hanging=True would need to be created in Photoshop.
+    Note: This fixture has AutoHyphenate=True but Hanging=False. The hanging
+    punctuation feature requires CJK (Chinese, Japanese, Korean) text in Photoshop
+    and is not available for Latin scripts. This test verifies that when Hanging=False,
+    the hanging-punctuation CSS property is correctly omitted from the output.
+
+    The implementation supports hanging punctuation - if a PSD with Hanging=True
+    is provided, it will output 'hanging-punctuation: first last' CSS property.
     """
-    psdimage = PSDImage.open(get_fixture("texts/paragraph-hanging-punctuation.psd"))
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-auto-hyphenate.psd"))
     doc = SVGDocument.from_psd(
         psdimage,
         text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
