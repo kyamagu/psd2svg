@@ -119,6 +119,30 @@ Apply a global offset (in pixels) to all letter-spacing values. This compensates
 
 Experiment with different values to achieve the best match for your fonts and target renderers.
 
+**--text-wrapping-mode MODE**
+
+Control text wrapping mode for bounding box text layers. Supported modes:
+
+* ``none`` - Uses native SVG ``<text>`` elements (default)
+* ``foreignobject`` - Uses ``<foreignObject>`` with XHTML ``<div>`` for text wrapping
+
+.. code-block:: bash
+
+   # Use default native SVG text
+   psd2svg input.psd output.svg --text-wrapping-mode none
+
+   # Use foreignObject for text wrapping
+   psd2svg input.psd output.svg --text-wrapping-mode foreignobject
+
+.. note::
+   Only affects bounding box text. Point text always uses native SVG ``<text>`` elements.
+
+.. warning::
+   The ``foreignobject`` mode produces SVG that is not supported by ResvgRasterizer.
+   Use browser-based rasterizers for output validation.
+
+See :ref:`configuration-text-wrapping-mode` for detailed SVG output examples and configuration file options.
+
 Generating Font Mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

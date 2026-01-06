@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from psd2svg import convert
+from psd2svg.core.typesetting import TextWrappingMode
 from psd2svg.resource_limits import ResourceLimits
 
 
@@ -87,6 +88,18 @@ def parse_args() -> tuple[argparse.Namespace, argparse.ArgumentParser]:
         help="Font format for embedding (woff2, woff, ttf, otf). Default: woff2",
     )
     parser.add_argument(
+        "--text-wrapping-mode",
+        metavar="MODE",
+        type=str,
+        choices=["none", "foreignobject"],
+        default="none",
+        help=(
+            "Text wrapping mode for bounding box text: 'none' (native SVG "
+            "text, default) or 'foreignobject' (XHTML wrapping). Only affects "
+            "bounding box text; point text always uses native SVG <text> elements."
+        ),
+    )
+    parser.add_argument(
         "--loglevel",
         metavar="LEVEL",
         default="WARNING",
@@ -165,6 +178,13 @@ def main() -> None:
         # Convert ValueError to CLI error with proper exit code
         parser.error(str(e))
 
+    # Map text wrapping mode to enum value
+    text_wrapping_mode_map = {
+        "none": TextWrappingMode.NONE,
+        "foreignobject": TextWrappingMode.FOREIGN_OBJECT,
+    }
+    text_wrapping_mode = text_wrapping_mode_map[args.text_wrapping_mode]
+
     convert(
         args.input,
         args.output,
@@ -177,6 +197,7 @@ def main() -> None:
         text_letter_spacing_offset=args.text_letter_spacing_offset,
         embed_fonts=args.embed_fonts,
         font_format=args.font_format,
+        text_wrapping_mode=text_wrapping_mode,
         resource_limits=resource_limits,
     )
 
