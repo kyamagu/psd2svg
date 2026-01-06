@@ -15,11 +15,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
+from psd_tools import PSDImage
 
 from psd2svg import SVGDocument
 from psd2svg.core.font_utils import FontInfo, create_file_url, encode_font_data_uri
+from psd2svg.core.text import TextWrappingMode
 from psd2svg.rasterizer import PlaywrightRasterizer, ResvgRasterizer
-from tests.conftest import requires_playwright
+from tests.conftest import get_fixture, requires_playwright
 
 
 class TestEncodeFontDataUri:
@@ -518,6 +520,65 @@ class TestSVGDocumentEmbedFonts:
         assert "font-family: 'Times New Roman'" in result
         assert "MOCK_arial" in result
         assert "MOCK_times" in result
+
+    @patch("psd2svg.core.font_utils.encode_font_data_uri")
+    @patch("psd2svg.core.font_utils.FontInfo.resolve")
+    def test_font_embedding_with_foreignobject_mode(
+        self, mock_resolve: MagicMock, mock_encode: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test font embedding works with foreignObject XHTML elements."""
+        # Setup mock font
+        font_file = tmp_path / "times.ttf"
+        font_file.write_bytes(b"FAKE_TIMES_FONT")
+        mock_resolve.return_value = FontInfo(
+            postscript_name="Times-Roman",
+            family="Times New Roman",
+            file=str(font_file),
+            weight=80.0,
+            style="Regular",
+            charset=set(),
+        )
+        mock_encode.return_value = "data:font/ttf;base64,FAKE_TIMES"
+
+        # Load PSD and convert with foreignObject mode
+        psdimage = PSDImage.open(
+            get_fixture("texts/paragraph-shapetype1-justification0.psd")
+        )
+        doc = SVGDocument.from_psd(
+            psdimage,
+            text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+        )
+
+        # Convert with font embedding
+        result = doc.tostring(embed_fonts=True)
+
+        # Verify fonts were resolved and embedded
+        assert "@font-face" in result
+        # Verify XHTML structure exists
+        assert "<p" in result or "<span" in result
+        # Verify font resolution was called (PostScript names were processed)
+        assert mock_resolve.called
+
+    def test_static_font_resolution_foreignobject(self, tmp_path: Path) -> None:
+        """Test static font resolution with foreignObject mode."""
+        # Load PSD and convert with foreignObject mode
+        psdimage = PSDImage.open(
+            get_fixture("texts/paragraph-shapetype1-justification0.psd")
+        )
+        doc = SVGDocument.from_psd(
+            psdimage,
+            text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+        )
+
+        # Convert with static font resolution only (no embedding)
+        result = doc.tostring(embed_fonts=False)
+
+        # Verify XHTML structure exists
+        assert "<p" in result or "<span" in result
+
+        # Verify font-family is present in style attributes
+        # (Even if not resolved, should have font names)
+        assert "font-family:" in result or 'font-family="' in result
 
 
 class TestSVGDocumentRasterizeWithFonts:

@@ -1550,6 +1550,65 @@ class TestExtractTextCharacters:
         assert "×" in result
 
 
+def _get_local_tag(element: ET.Element) -> str:
+    """Get local tag name without namespace prefix.
+
+    Helper function to strip namespace from element tags for testing.
+    """
+    tag = element.tag
+    if "}" in tag:
+        return tag.split("}", 1)[1]
+    return tag
+
+
+def test_find_elements_with_font_family_foreignobject() -> None:
+    """Test finding XHTML elements with specific font-family in foreignObject."""
+    svg = ET.fromstring(
+        """<svg xmlns="http://www.w3.org/2000/svg">
+            <foreignObject>
+                <div xmlns="http://www.w3.org/1999/xhtml">
+                    <p style="font-family: 'Times-Roman'">Test text</p>
+                    <span style="font-family: 'Arial-Bold'">More text</span>
+                </div>
+            </foreignObject>
+        </svg>"""
+    )
+
+    # Test finding p element with Times-Roman
+    elements = svg_utils.find_elements_with_font_family(svg, "Times-Roman")
+    assert len(elements) == 1
+    assert _get_local_tag(elements[0]) == "p"
+
+    # Test finding span element with Arial-Bold
+    elements = svg_utils.find_elements_with_font_family(svg, "Arial-Bold")
+    assert len(elements) == 1
+    assert _get_local_tag(elements[0]) == "span"
+
+
+def test_find_elements_with_font_family_mixed_content() -> None:
+    """Test finding elements in SVG with both text and foreignObject."""
+    svg = ET.fromstring(
+        """<svg xmlns="http://www.w3.org/2000/svg">
+            <text font-family="Helvetica">Traditional text</text>
+            <foreignObject>
+                <p xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial">
+                    Foreign text
+                </p>
+            </foreignObject>
+        </svg>"""
+    )
+
+    # Test finding traditional text element
+    elements = svg_utils.find_elements_with_font_family(svg, "Helvetica")
+    assert len(elements) == 1
+    assert _get_local_tag(elements[0]) == "text"
+
+    # Test finding foreignObject p element
+    elements = svg_utils.find_elements_with_font_family(svg, "Arial")
+    assert len(elements) == 1
+    assert _get_local_tag(elements[0]) == "p"
+
+
 def test_strip_text_element_whitespace_with_xml_space() -> None:
     """Test that xml:space='preserve' is compatible with indentation stripping.
 

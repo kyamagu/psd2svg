@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 def extract_used_unicode(svg_tree: ET.Element) -> dict[str, set[str]]:
     """Extract Unicode characters per font-family from SVG text elements.
 
-    This function analyzes all <text> and <tspan> elements in the SVG tree
-    to determine which Unicode characters are used by each font family.
+    This function analyzes all <text>, <tspan>, and XHTML text elements (p, span
+    from foreignObject) in the SVG tree to determine which Unicode characters are
+    used by each font family.
 
     Args:
         svg_tree: Root SVG element to analyze.
@@ -26,7 +27,7 @@ def extract_used_unicode(svg_tree: ET.Element) -> dict[str, set[str]]:
         Example: {"Arial": {"A", "B", "C"}, "Noto Sans JP": {"あ", "い"}}
 
     Note:
-        - Handles nested <tspan> elements
+        - Handles nested <tspan> elements and XHTML elements
         - Decodes XML entities (e.g., &lt;, &#x4E00;)
         - Extracts font-family from style attributes
         - Returns empty dict if no text elements found
@@ -36,10 +37,10 @@ def extract_used_unicode(svg_tree: ET.Element) -> dict[str, set[str]]:
     # Build parent map for inheritance lookup
     parent_map = {c: p for p in svg_tree.iter() for c in p}
 
-    # Find all text and tspan elements
+    # Find all text, tspan, and XHTML text elements (p, span from foreignObject)
     for element in svg_tree.iter():
         tag_name = _get_local_tag_name(element)
-        if tag_name not in ("text", "tspan"):
+        if tag_name not in ("text", "tspan", "p", "span"):
             continue
 
         # Extract font-family from element or parent
