@@ -109,6 +109,25 @@ Controls how bounding box text is rendered. Requires: ``from psd2svg.core.text i
 
 **Recommendation:** Use default (NONE) unless you specifically need wrapping and target browsers only
 
+**Paragraph Formatting Support:**
+
+When ``text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT``, paragraph formatting properties are converted to CSS:
+
+* **First line indent** → ``text-indent``
+* **Start indent** → ``padding-left``
+* **End indent** → ``padding-right``
+* **Space before** → ``margin-top``
+* **Space after** → ``margin-bottom``
+* **Hanging punctuation** → ``hanging-punctuation`` (Safari only)
+
+Example output:
+
+.. code-block:: xml
+
+   <p style="margin: 0; padding: 0; text-indent: 26.67px; padding-left: 13.33px; margin-bottom: 20px;">
+     Paragraph with first-line indent, left padding, and bottom spacing.
+   </p>
+
 Optimization
 ------------
 

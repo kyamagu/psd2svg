@@ -369,6 +369,28 @@ To enable text wrapping:
 * For web-only SVG display or browser-based rendering, foreignObject provides better text wrapping
 * For maximum compatibility, leave text wrapping disabled (default)
 
+**Paragraph Formatting:**
+
+The following paragraph formatting properties are supported in foreignObject mode:
+
+* ✅ **First line indent** (``text-indent`` CSS)
+* ✅ **Start/end indent** (``padding-left``/``padding-right`` CSS)
+* ✅ **Space before/after** (``margin-top``/``margin-bottom`` CSS)
+* ⚠️ **Hanging punctuation** (``hanging-punctuation`` CSS - Safari only)
+
+**Hanging Punctuation Browser Support:**
+
+* ✅ Safari 10+
+* ❌ Chrome (not supported)
+* ❌ Firefox (not supported)
+* ❌ Edge (not supported)
+
+The ``hanging-punctuation`` property is included in SVG output for future compatibility and Safari users, but will have no effect in other browsers.
+
+**Native SVG Limitation:**
+
+These paragraph formatting properties are only available in foreignObject mode. Native SVG ``<text>`` elements do not support paragraph indentation, spacing, or hanging punctuation.
+
 **Font Requirements:**
 
 Text conversion requires fonts to be installed on the system. The converter uses ``fontconfig`` to resolve font names. If a font is not found:
