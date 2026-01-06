@@ -144,6 +144,44 @@ class TestUnicodeExtraction:
         assert "Times New Roman" in result
         assert result["Times New Roman"] == {"B"}
 
+    def test_extract_foreignobject_elements(self) -> None:
+        """Test extraction from foreignObject XHTML elements with namespace."""
+        svg = ET.fromstring(
+            """<svg xmlns="http://www.w3.org/2000/svg">
+                <foreignObject>
+                    <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p style="font-family: Arial">Hello</p>
+                        <span style="font-family: Courier">World</span>
+                    </div>
+                </foreignObject>
+            </svg>"""
+        )
+        result = extract_used_unicode(svg)
+
+        assert "Arial" in result
+        assert result["Arial"] == {"H", "e", "l", "o"}
+        assert "Courier" in result
+        assert result["Courier"] == {"W", "o", "r", "l", "d"}
+
+    def test_extract_used_unicode_mixed_content(self) -> None:
+        """Test SVG with both traditional text and foreignObject elements."""
+        svg = ET.fromstring(
+            """<svg xmlns="http://www.w3.org/2000/svg">
+                <text font-family="Arial">ABC</text>
+                <foreignObject>
+                    <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p style="font-family: Times">XYZ</p>
+                    </div>
+                </foreignObject>
+            </svg>"""
+        )
+        result = extract_used_unicode(svg)
+
+        assert "Arial" in result
+        assert result["Arial"] == {"A", "B", "C"}
+        assert "Times" in result
+        assert result["Times"] == {"X", "Y", "Z"}
+
 
 class TestFontSubsetting:
     """Tests for subset_font function."""

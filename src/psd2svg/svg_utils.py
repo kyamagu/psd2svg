@@ -1490,11 +1490,11 @@ def extract_font_families(svg: ET.Element) -> set[str]:
 def find_elements_with_font_family(
     svg: ET.Element, font_family: str, include_inherited: bool = True
 ) -> list[ET.Element]:
-    """Find all text/tspan elements that use the given font family.
+    """Find all text/tspan and XHTML text elements that use the given font family.
 
-    This function searches for text and tspan elements that have the specified
-    font-family applied, either directly via attributes or through CSS inheritance
-    from parent elements.
+    This function searches for text, tspan, and XHTML text elements (p, span from
+    foreignObject) that have the specified font-family applied, either directly via
+    attributes or through CSS inheritance from parent elements.
 
     Args:
         svg: SVG element tree to search.
@@ -1505,7 +1505,7 @@ def find_elements_with_font_family(
             declarations. Default is True for backward compatibility.
 
     Returns:
-        List of text/tspan elements that use the specified font family.
+        List of text/tspan/p/span elements that use the specified font family.
 
     Note:
         - Searches both font-family attributes and style attributes
@@ -1539,8 +1539,8 @@ def find_elements_with_font_family(
         if "}" in tag:
             tag = tag.split("}", 1)[1]
 
-        # Only process text/tspan elements
-        if tag not in ("text", "tspan"):
+        # Only process text/tspan and XHTML text elements (p, span from foreignObject)
+        if tag not in ("text", "tspan", "p", "span"):
             continue
 
         # Check if element uses target font (with or without inheritance)

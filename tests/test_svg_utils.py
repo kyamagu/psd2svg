@@ -1550,6 +1550,66 @@ class TestExtractTextCharacters:
         assert "×" in result
 
 
+def test_find_elements_with_font_family_foreignobject() -> None:
+    """Test finding XHTML elements with specific font-family in foreignObject."""
+    svg = ET.fromstring(
+        """<svg xmlns="http://www.w3.org/2000/svg">
+            <foreignObject>
+                <div xmlns="http://www.w3.org/1999/xhtml">
+                    <p style="font-family: 'Times-Roman'">Test text</p>
+                    <span style="font-family: 'Arial-Bold'">More text</span>
+                </div>
+            </foreignObject>
+        </svg>"""
+    )
+
+    # Test finding p element with Times-Roman
+    elements = svg_utils.find_elements_with_font_family(svg, "Times-Roman")
+    assert len(elements) == 1
+    tag = elements[0].tag
+    if "}" in tag:
+        tag = tag.split("}", 1)[1]
+    assert tag == "p"
+
+    # Test finding span element with Arial-Bold
+    elements = svg_utils.find_elements_with_font_family(svg, "Arial-Bold")
+    assert len(elements) == 1
+    tag = elements[0].tag
+    if "}" in tag:
+        tag = tag.split("}", 1)[1]
+    assert tag == "span"
+
+
+def test_find_elements_with_font_family_mixed_content() -> None:
+    """Test finding elements in SVG with both text and foreignObject."""
+    svg = ET.fromstring(
+        """<svg xmlns="http://www.w3.org/2000/svg">
+            <text font-family="Helvetica">Traditional text</text>
+            <foreignObject>
+                <p xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial">
+                    Foreign text
+                </p>
+            </foreignObject>
+        </svg>"""
+    )
+
+    # Test finding traditional text element
+    elements = svg_utils.find_elements_with_font_family(svg, "Helvetica")
+    assert len(elements) == 1
+    tag = elements[0].tag
+    if "}" in tag:
+        tag = tag.split("}", 1)[1]
+    assert tag == "text"
+
+    # Test finding foreignObject p element
+    elements = svg_utils.find_elements_with_font_family(svg, "Arial")
+    assert len(elements) == 1
+    tag = elements[0].tag
+    if "}" in tag:
+        tag = tag.split("}", 1)[1]
+    assert tag == "p"
+
+
 def test_strip_text_element_whitespace_with_xml_space() -> None:
     """Test that xml:space='preserve' is compatible with indentation stripping.
 
