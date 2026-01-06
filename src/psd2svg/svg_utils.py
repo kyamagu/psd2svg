@@ -271,8 +271,11 @@ def _fix_xhtml_namespace_prefixes(svg_string: str) -> str:
         - Only modifies XHTML elements (div, p, span)
         - Adds xmlns declaration to first XHTML element in each foreignObject
     """
+    # XHTML namespace URL - escaped for use in regex patterns
+    xhtml_ns_escaped = re.escape(XHTML_NAMESPACE)
+
     # Pattern to match XHTML namespace declarations with any prefix
-    ns_decl_pattern = r' xmlns:([a-zA-Z0-9]+)="http://www\.w3\.org/1999/xhtml"'
+    ns_decl_pattern = f' xmlns:([a-zA-Z0-9]+)="{xhtml_ns_escaped}"'
 
     # Find all prefixes used for XHTML namespace
     matches = re.findall(ns_decl_pattern, svg_string)
@@ -286,7 +289,7 @@ def _fix_xhtml_namespace_prefixes(svg_string: str) -> str:
     for prefix in set(matches):  # Use set to avoid duplicates
         # Remove the namespace declaration
         result = re.sub(
-            f' xmlns:{re.escape(prefix)}="http://www\\.w3\\.org/1999/xhtml"',
+            f' xmlns:{re.escape(prefix)}="{xhtml_ns_escaped}"',
             "",
             result,
         )
@@ -306,32 +309,36 @@ def _fix_xhtml_namespace_prefixes(svg_string: str) -> str:
         )
 
     # Add xmlns attribute to first XHTML element after each foreignObject
-    # Pattern: <foreignObject...>...<div or <p or <span
-    # Add xmlns="..." as first attribute on that element
+    # Use negative lookahead to ensure we stay within foreignObject boundaries
     def add_xmlns_to_first_element(match: re.Match[str]) -> str:
         """Add xmlns declaration to first XHTML element."""
-        # Everything up to and including <foreignObject...>
+        # Everything up to and including <foreignObject...> and content before tag
         foreign_obj_part = match.group(1)
         tag_name = match.group(2)  # div, p, or span
-        after_tag = match.group(3)  # Space, >, or first attribute
+        # All attributes and spaces before the closing >
+        existing_attrs = match.group(3)
+        end_bracket = match.group(4)  # The closing >
 
-        # Check if xmlns already exists (idempotency)
-        if 'xmlns="http://www.w3.org/1999/xhtml"' in after_tag:
+        # Check if xmlns already exists anywhere in the tag (idempotency)
+        if f'xmlns="{XHTML_NAMESPACE}"' in existing_attrs:
             return match.group(0)
 
-        xmlns_attr = 'xmlns="http://www.w3.org/1999/xhtml"'
+        xmlns_attr = f'xmlns="{XHTML_NAMESPACE}"'
 
-        # Add xmlns as first attribute
-        if after_tag.startswith(">"):
+        # Add xmlns as the first attribute, preserving existing attributes
+        if existing_attrs.strip() == "":
             # No attributes: <tag>
-            return f"{foreign_obj_part}<{tag_name} {xmlns_attr}{after_tag}"
+            new_attrs = f" {xmlns_attr}"
         else:
             # Has attributes: <tag attr="...">
-            return f"{foreign_obj_part}<{tag_name} {xmlns_attr} {after_tag}"
+            new_attrs = f" {xmlns_attr}{existing_attrs}"
+
+        return f"{foreign_obj_part}<{tag_name}{new_attrs}{end_bracket}"
 
     # Apply xmlns addition to first XHTML element in each foreignObject
+    # Use negative lookahead (?!</foreignObject) to stay within boundaries
     result = re.sub(
-        r"(<foreignObject[^>]*>.*?)<(div|p|span)([ >])",
+        r"(<foreignObject[^>]*>(?:(?!</foreignObject).)*?)<(div|p|span)([^>]*)(>)",
         add_xmlns_to_first_element,
         result,
         flags=re.DOTALL,
