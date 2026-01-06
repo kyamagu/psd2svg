@@ -1166,17 +1166,12 @@ def test_foreignobject_paragraph_combined_formatting() -> None:
 
 
 def test_foreignobject_paragraph_hanging_punctuation() -> None:
-    """Test that hanging-punctuation CSS property is correctly omitted when disabled.
+    """Test hanging-punctuation CSS property (limited browser support).
 
-    Note: This fixture has AutoHyphenate=True but Hanging=False. The hanging
-    punctuation feature requires CJK (Chinese, Japanese, Korean) text in Photoshop
-    and is not available for Latin scripts. This test verifies that when Hanging=False,
-    the hanging-punctuation CSS property is correctly omitted from the output.
-
-    The implementation supports hanging punctuation - if a PSD with Hanging=True
-    is provided, it will output 'hanging-punctuation: first last' CSS property.
+    Note: Hanging punctuation has limited browser support (Safari 10+ only).
+    Chrome, Firefox, and Edge do not support this CSS property.
     """
-    psdimage = PSDImage.open(get_fixture("texts/paragraph-auto-hyphenate.psd"))
+    psdimage = PSDImage.open(get_fixture("texts/paragraph-hanging-punctuation.psd"))
     doc = SVGDocument.from_psd(
         psdimage,
         text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
@@ -1193,11 +1188,9 @@ def test_foreignobject_paragraph_hanging_punctuation() -> None:
 
     style_dict = _parse_style_string(p.attrib.get("style", ""))
 
-    # Fixture has Hanging=False, so property should not be present
-    assert "hanging-punctuation" not in style_dict
-    # But it should have other properties like space-after
-    assert "margin-bottom" in style_dict
-    assert style_dict["margin-bottom"] == "20px"
+    # Fixture has Hanging=True, so property should be present
+    assert "hanging-punctuation" in style_dict
+    assert style_dict["hanging-punctuation"] == "first last"
 
 
 def test_foreignobject_paragraph_default_values_skipped() -> None:
