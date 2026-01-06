@@ -103,8 +103,7 @@ class TextConverter(ConverterProtocol):
         # Determine if we should use foreignObject
         # Only use for bounding box text when explicitly enabled
         use_foreign_object = (
-            hasattr(self, "text_wrapping_mode")
-            and self.text_wrapping_mode == TextWrappingMode.FOREIGN_OBJECT
+            self.text_wrapping_mode == TextWrappingMode.FOREIGN_OBJECT
             and text_setting.shape_type == ShapeType.BOUNDING_BOX
         )
 
@@ -532,8 +531,7 @@ class TextConverter(ConverterProtocol):
         # letter-spacing applies after the character.
         letter_spacing = style.tracking / 1000 * scaled_font_size
         letter_spacing -= style.tsume / 10 * scaled_font_size  # Tsume tightens spacing
-        if hasattr(self, "text_letter_spacing_offset"):
-            letter_spacing += self.text_letter_spacing_offset
+        letter_spacing += self.text_letter_spacing_offset
 
         # Only set letter-spacing if non-zero (or if offset makes it non-zero)
         if letter_spacing != 0:
@@ -902,8 +900,7 @@ class TextConverter(ConverterProtocol):
 
         # Letter spacing
         letter_spacing = style.tracking / 1000 * style.font_size
-        if hasattr(self, "text_letter_spacing_offset"):
-            letter_spacing += self.text_letter_spacing_offset
+        letter_spacing += self.text_letter_spacing_offset
         if letter_spacing != 0:
             styles["letter-spacing"] = svg_utils.num2str_with_unit(letter_spacing)
 

@@ -27,6 +27,10 @@ class ConverterProtocol(Protocol):
     enable_title: bool
     enable_class: bool
 
+    # Text conversion configuration
+    text_letter_spacing_offset: float
+    text_wrapping_mode: int
+
     def add_layer(
         self, layer: layers.Layer, depth: int = 0, **attrib: str
     ) -> ET.Element | None: ...
