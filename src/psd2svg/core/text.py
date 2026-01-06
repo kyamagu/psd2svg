@@ -676,7 +676,6 @@ class TextConverter(ConverterProtocol):
             "padding": "0",
             "overflow": "hidden",  # Match Photoshop clipping behavior
             "box-sizing": "border-box",
-            "font-family": "sans-serif",  # Default fallback
         }
 
         if text_setting.writing_direction == WritingDirection.VERTICAL_RL:
