@@ -246,11 +246,119 @@ def fromstring(data: str) -> ET.Element:
     return ET.fromstring(data)
 
 
+def _fix_xhtml_namespace_prefixes(svg_string: str) -> str:
+    """Remove namespace prefixes from XHTML elements in foreignObject.
+
+    ElementTree serializes XHTML namespaced elements with prefixes like
+    'html:div', 'html:p', 'html:span'. Browsers require unprefixed elements
+    with xmlns declaration for proper CSS styling.
+
+    Transforms:
+        <foreignObject xmlns:html="..."><html:div>...</html:div></foreignObject>
+
+    Into:
+        <foreignObject><div xmlns="http://www.w3.org/1999/xhtml">...</div></foreignObject>
+
+    Args:
+        svg_string: Serialized SVG string from ElementTree.
+
+    Returns:
+        SVG string with XHTML namespace prefixes removed.
+
+    Note:
+        - Handles multiple foreignObject elements
+        - Works with any namespace prefix (html, ns0, ns1, etc.)
+        - Only modifies XHTML elements (div, p, span)
+        - Adds xmlns declaration to first XHTML element in each foreignObject
+    """
+    # XHTML namespace URL - escaped for use in regex patterns
+    xhtml_ns_escaped = re.escape(XHTML_NAMESPACE)
+
+    # Pattern to match XHTML namespace declarations with any prefix
+    ns_decl_pattern = f' xmlns:([a-zA-Z0-9]+)="{xhtml_ns_escaped}"'
+
+    # Find all prefixes used for XHTML namespace
+    matches = re.findall(ns_decl_pattern, svg_string)
+    if not matches:
+        # No XHTML namespace found, return unchanged
+        return svg_string
+
+    result = svg_string
+
+    # Process each prefix (usually just one, but handle multiple)
+    for prefix in set(matches):  # Use set to avoid duplicates
+        # Remove the namespace declaration
+        result = re.sub(
+            f' xmlns:{re.escape(prefix)}="{xhtml_ns_escaped}"',
+            "",
+            result,
+        )
+
+        # Replace prefixed tags with unprefixed versions
+        # Opening tags: <prefix:tag> or <prefix:tag attr="...">
+        result = re.sub(
+            f"<{re.escape(prefix)}:(div|p|span)",
+            r"<\1",
+            result,
+        )
+        # Closing tags: </prefix:tag>
+        result = re.sub(
+            f"</{re.escape(prefix)}:(div|p|span)>",
+            r"</\1>",
+            result,
+        )
+
+    # Add xmlns attribute to first XHTML element after each foreignObject
+    # Use negative lookahead to ensure we stay within foreignObject boundaries
+    def add_xmlns_to_first_element(match: re.Match[str]) -> str:
+        """Add xmlns declaration to first XHTML element."""
+        # Everything up to and including <foreignObject...> and content before tag
+        foreign_obj_part = match.group(1)
+        tag_name = match.group(2)  # div, p, or span
+        # All attributes and spaces before the closing >
+        existing_attrs = match.group(3)
+        end_bracket = match.group(4)  # The closing >
+
+        # Check if xmlns already exists anywhere in the tag (idempotency)
+        if f'xmlns="{XHTML_NAMESPACE}"' in existing_attrs:
+            return match.group(0)
+
+        xmlns_attr = f'xmlns="{XHTML_NAMESPACE}"'
+
+        # Add xmlns as the first attribute, preserving existing attributes
+        if existing_attrs.strip() == "":
+            # No attributes: <tag>
+            new_attrs = f" {xmlns_attr}"
+        else:
+            # Has attributes: <tag attr="...">
+            new_attrs = f" {xmlns_attr}{existing_attrs}"
+
+        return f"{foreign_obj_part}<{tag_name}{new_attrs}{end_bracket}"
+
+    # Apply xmlns addition to first XHTML element in each foreignObject
+    # Use negative lookahead (?!</foreignObject) to stay within boundaries
+    result = re.sub(
+        r"(<foreignObject[^>]*>(?:(?!</foreignObject).)*?)<(div|p|span)([^>]*)(>)",
+        add_xmlns_to_first_element,
+        result,
+        flags=re.DOTALL,
+    )
+
+    return result
+
+
 def tostring(node: ET.Element, indent: str = "  ") -> str:
     """Convert an XML node to a string."""
     ET.indent(node, space=indent)
     _strip_text_element_whitespace(node)
-    return ET.tostring(node, encoding="unicode", xml_declaration=False)
+    svg_string = ET.tostring(node, encoding="unicode", xml_declaration=False)
+
+    # Fix XHTML namespace prefixes in foreignObject elements
+    # ElementTree adds prefixes (html:div), but browsers need unprefixed elements
+    # with xmlns declaration for proper CSS styling
+    svg_string = _fix_xhtml_namespace_prefixes(svg_string)
+
+    return svg_string
 
 
 def parse(file: Any) -> ET.Element:
