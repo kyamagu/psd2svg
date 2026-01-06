@@ -424,7 +424,7 @@ class TextConverter(ConverterProtocol):
             svg_utils.set_attribute(
                 paragraph_node,
                 "textLength",
-                svg_utils.num2str(text_setting.bounds.width),
+                text_setting.bounds.width,
             )
             svg_utils.set_attribute(paragraph_node, "lengthAdjust", "spacingAndGlyphs")
 
@@ -540,7 +540,7 @@ class TextConverter(ConverterProtocol):
             svg_utils.set_attribute(
                 tspan,
                 "letter-spacing",
-                svg_utils.num2str(letter_spacing),
+                letter_spacing,
             )
 
         # Apply kerning adjustment (manual kerning in 1/1000 em units)
@@ -554,9 +554,9 @@ class TextConverter(ConverterProtocol):
             kerning_offset = style.kerning / 1000 * scaled_font_size
             # Use dx for horizontal text, dy for vertical text
             if text_setting.writing_direction == WritingDirection.HORIZONTAL_TB:
-                svg_utils.set_attribute(tspan, "dx", svg_utils.num2str(kerning_offset))
+                svg_utils.set_attribute(tspan, "dx", kerning_offset)
             elif text_setting.writing_direction == WritingDirection.VERTICAL_RL:
-                svg_utils.set_attribute(tspan, "dy", svg_utils.num2str(kerning_offset))
+                svg_utils.set_attribute(tspan, "dy", kerning_offset)
 
         # Apply non-uniform scale transform if needed
         # (Uniform scaling is already handled via scaled_font_size above)
@@ -570,10 +570,7 @@ class TextConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 tspan,
                 "transform",
-                "scale({},{})".format(
-                    svg_utils.num2str(transform_scale[0]),
-                    svg_utils.num2str(transform_scale[1]),
-                ),
+                f"scale({svg_utils.num2str(transform_scale[0])},{svg_utils.num2str(transform_scale[1])})",
             )
 
             # Set transform-origin to the paragraph's position
@@ -670,8 +667,8 @@ class TextConverter(ConverterProtocol):
             Dictionary of CSS property names to values.
         """
         styles = {
-            "width": f"{bounds.width}px",
-            "height": f"{bounds.height}px",
+            "width": svg_utils.num2str_with_unit(bounds.width),
+            "height": svg_utils.num2str_with_unit(bounds.height),
             "margin": "0",
             "padding": "0",
             "overflow": "hidden",  # Match Photoshop clipping behavior
@@ -754,36 +751,36 @@ class TextConverter(ConverterProtocol):
         # Line height
         leading = paragraph.compute_leading()
         if leading > 0:
-            styles["line-height"] = f"{leading}px"
+            styles["line-height"] = svg_utils.num2str_with_unit(leading)
 
         # First line indent
         if paragraph.style.first_line_indent != 0:
-            styles["text-indent"] = (
-                f"{svg_utils.num2str(paragraph.style.first_line_indent)}px"
+            styles["text-indent"] = svg_utils.num2str_with_unit(
+                paragraph.style.first_line_indent
             )
 
         # Start indent (left padding) - overrides padding: 0
         if paragraph.style.start_indent != 0:
-            styles["padding-left"] = (
-                f"{svg_utils.num2str(paragraph.style.start_indent)}px"
+            styles["padding-left"] = svg_utils.num2str_with_unit(
+                paragraph.style.start_indent
             )
 
         # End indent (right padding) - overrides padding: 0
         if paragraph.style.end_indent != 0:
-            styles["padding-right"] = (
-                f"{svg_utils.num2str(paragraph.style.end_indent)}px"
+            styles["padding-right"] = svg_utils.num2str_with_unit(
+                paragraph.style.end_indent
             )
 
         # Space before paragraph - overrides margin: 0
         if paragraph.style.space_before != 0:
-            styles["margin-top"] = (
-                f"{svg_utils.num2str(paragraph.style.space_before)}px"
+            styles["margin-top"] = svg_utils.num2str_with_unit(
+                paragraph.style.space_before
             )
 
         # Space after paragraph - overrides margin: 0
         if paragraph.style.space_after != 0:
-            styles["margin-bottom"] = (
-                f"{svg_utils.num2str(paragraph.style.space_after)}px"
+            styles["margin-bottom"] = svg_utils.num2str_with_unit(
+                paragraph.style.space_after
             )
 
         # Hanging punctuation (limited browser support - Safari only as of 2025)
@@ -804,7 +801,11 @@ class TextConverter(ConverterProtocol):
             word_min = paragraph.style.hyphenation_word_size
             char_before = paragraph.style.pre_hyphen
             char_after = paragraph.style.post_hyphen
-            styles["hyphenate-limit-chars"] = f"{word_min} {char_before} {char_after}"
+            styles["hyphenate-limit-chars"] = (
+                f"{svg_utils.num2str(word_min)} "
+                f"{svg_utils.num2str(char_before)} "
+                f"{svg_utils.num2str(char_after)}"
+            )
 
         return styles
 
@@ -869,7 +870,7 @@ class TextConverter(ConverterProtocol):
 
         # Font size
         if style.font_size:
-            styles["font-size"] = f"{style.font_size}px"
+            styles["font-size"] = svg_utils.num2str_with_unit(style.font_size)
 
         # Font weight - only set for faux bold (PostScript name encodes actual weight)
         if style.faux_bold:
@@ -904,23 +905,28 @@ class TextConverter(ConverterProtocol):
         if hasattr(self, "text_letter_spacing_offset"):
             letter_spacing += self.text_letter_spacing_offset
         if letter_spacing != 0:
-            styles["letter-spacing"] = f"{letter_spacing}px"
+            styles["letter-spacing"] = svg_utils.num2str_with_unit(letter_spacing)
 
         # Vertical alignment (superscript/subscript)
         if style.font_baseline == FontBaseline.SUPERSCRIPT:
             styles["vertical-align"] = "super"
-            styles["font-size"] = f"{style.font_size * text_setting.superscript_size}px"
+            styles["font-size"] = svg_utils.num2str_with_unit(
+                style.font_size * text_setting.superscript_size
+            )
         elif style.font_baseline == FontBaseline.SUBSCRIPT:
             styles["vertical-align"] = "sub"
-            styles["font-size"] = f"{style.font_size * text_setting.subscript_size}px"
+            styles["font-size"] = svg_utils.num2str_with_unit(
+                style.font_size * text_setting.subscript_size
+            )
         elif style.baseline_shift != 0.0:
             # Custom baseline shift
-            styles["vertical-align"] = f"{style.baseline_shift}px"
+            styles["vertical-align"] = svg_utils.num2str_with_unit(style.baseline_shift)
 
         # Horizontal/vertical scale
         if style.vertical_scale != 1.0 or style.horizontal_scale != 1.0:
             styles["transform"] = (
-                f"scale({style.horizontal_scale}, {style.vertical_scale})"
+                f"scale({svg_utils.num2str(style.horizontal_scale)}, "
+                f"{svg_utils.num2str(style.vertical_scale)})"
             )
             styles["display"] = (
                 "inline-block"  # Required for transform on inline elements

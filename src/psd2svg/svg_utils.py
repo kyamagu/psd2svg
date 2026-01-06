@@ -77,6 +77,30 @@ def num2str(num: int | float | bool, digit: int = DEFAULT_NUMBER_DIGITS) -> str:
     raise ValueError(f"Unsupported type: {type(num)}")
 
 
+def num2str_with_unit(
+    num: int | float, unit: str = "px", digit: int = DEFAULT_NUMBER_DIGITS
+) -> str:
+    """Convert a number to a string with a CSS unit appended.
+
+    Args:
+        num: The numeric value to format
+        unit: The CSS unit to append (default: "px")
+        digit: Number of decimal digits for floats (default: 2)
+
+    Returns:
+        Formatted string with unit (e.g., "10px", "1.5em", "100%")
+
+    Examples:
+        >>> num2str_with_unit(10.0, "px")
+        '10px'
+        >>> num2str_with_unit(1.5, "em")
+        '1.5em'
+        >>> num2str_with_unit(100, "%")
+        '100%'
+    """
+    return f"{num2str(num, digit)}{unit}"
+
+
 def seq2str(
     seq: Sequence[int | float | bool],
     sep: str = ",",
