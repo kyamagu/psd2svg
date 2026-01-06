@@ -1227,6 +1227,51 @@ def test_foreignobject_paragraph_default_values_skipped() -> None:
     assert "hanging-punctuation" not in style_dict
 
 
+def test_foreignobject_xhtml_namespace_serialization() -> None:
+    """Test that XHTML elements use unprefixed tags with xmlns (#257).
+
+    Regression test for issue #257: XHTML elements should not have namespace
+    prefixes (html:div) as this prevents CSS styling in browsers. Instead, they
+    should use unprefixed tags (<div>) with xmlns declaration.
+    """
+    psdimage = PSDImage.open(
+        get_fixture("texts/paragraph-shapetype1-justification0.psd")
+    )
+    doc = SVGDocument.from_psd(
+        psdimage,
+        text_wrapping_mode=TextWrappingMode.FOREIGN_OBJECT,
+    )
+
+    # Get the serialized SVG string
+    svg_string = doc.tostring()
+
+    # Check that no XHTML namespace prefixes are present
+    assert "html:div" not in svg_string, "Should not have html:div prefix"
+    assert "html:p" not in svg_string, "Should not have html:p prefix"
+    assert "html:span" not in svg_string, "Should not have html:span prefix"
+    assert "ns0:div" not in svg_string, "Should not have ns0:div prefix"
+    assert "ns0:p" not in svg_string, "Should not have ns0:p prefix"
+    assert "ns0:span" not in svg_string, "Should not have ns0:span prefix"
+
+    # Check that xmlns declaration exists on first XHTML element
+    assert 'xmlns="http://www.w3.org/1999/xhtml"' in svg_string, (
+        "First XHTML element should have xmlns declaration"
+    )
+
+    # Verify proper structure: <div xmlns="...">
+    assert '<div xmlns="http://www.w3.org/1999/xhtml"' in svg_string, (
+        "Should have unprefixed <div> with xmlns attribute"
+    )
+
+    # Verify no namespace prefix declarations
+    assert 'xmlns:html="http://www.w3.org/1999/xhtml"' not in svg_string, (
+        "Should not have namespace prefix declaration"
+    )
+    assert 'xmlns:ns0="http://www.w3.org/1999/xhtml"' not in svg_string, (
+        "Should not have namespace prefix declaration"
+    )
+
+
 def test_text_whitespace_preservation() -> None:
     """Test that whitespace in text is preserved with xml:space='preserve'.
 
