@@ -7,20 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.11.0] - 2026-01-06
 
-- **resvg-py upgrade** (#242)
-  - Updated resvg-py from 0.2.3 to 0.2.5 for improved stability
-  - Malformed/invalid SVG files now raise `ValueError` instead of crashing (SIGABRT)
-  - Missing files now raise `ValueError` with proper error messages
-  - Added error handling to ResvgRasterizer for better error reporting
+### Status Update
+
+**Alpha → Beta**: Core PSD→SVG conversion is now considered Beta quality. The public API (SVGDocument, convert) is stable and production-ready. Text conversion and adjustment layers remain experimental features (see Experimental Features below).
+
+### Added
+
+- **Text wrapping mode CLI option** (#268)
+  - New `--text-wrapping-mode foreignobject` flag for HTML/CSS-based text wrapping
+  - Alternative to native SVG text for bounding box text (ShapeType=1)
+  - Requires browser-based rendering (not supported by ResvgRasterizer)
+
+- **CSS hyphens support** (#259)
+  - Auto hyphenation for foreignObject text mode
+  - Includes `lang` attribute for proper dictionary-based hyphenation
+  - Browser-dependent support (Chrome/Edge/Firefox/Safari)
+
+- **Paragraph formatting for foreignObject** (#256)
+  - First line indent (`text-indent`)
+  - Start/end indent (`padding-left`/`padding-right`)
+  - Space before/after (`margin-top`/`margin-bottom`)
+  - Hanging punctuation (`hanging-punctuation`, Safari only)
+
+- **Resource limit CLI configuration** (#248)
+  - New flags: `--max-file-size`, `--max-processing-time`, `--max-layer-depth`, `--max-dimension`
+  - Allows customization of DoS prevention limits
+
+- **Text configuration in ConverterProtocol** (#266)
+  - Added text_wrapping_mode and text_letter_spacing_offset attributes
+  - Improved extensibility for converter implementations
 
 ### Fixed
 
-- **Rasterizer stability** (#242)
-  - Fixed process crashes when rasterizing malformed or empty SVG content
+- **foreignObject rendering improvements**
+  - Fixed line-height with inline-block spans (#274, #273)
+  - Fixed auto-leading calculation (#272, #271)
+  - Fixed font resolution for text wrapping mode (#264)
+  - Fixed XHTML namespace serialization (#258, #257)
+  - Removed unnecessary font-family from container (#261)
+
+### Changed
+
+- **resvg-py upgrade** (#255, #242)
+  - Updated from 0.2.3 to 0.2.5 (now required minimum version)
+  - Malformed/invalid SVG files now raise `ValueError` instead of crashing (SIGABRT)
+  - Missing files now raise `ValueError` with proper error messages
+  - Added error handling to ResvgRasterizer for better stability
   - Added 4 new edge case tests for error handling validation
-  - Removed crash warnings from documentation (Issue #242)
+
+- **Code quality improvements**
+  - Unified resource limit validation in ResourceLimits class (#250)
+  - Added num2str_with_unit() helper for consistent numeric formatting (#265)
+
+### Documentation
+
+- **Text kerning documentation** (#269)
+  - Documented optical vs metrics kerning differences
+  - Explained Photoshop vs SVG/browser kerning behavior
+  - Added examples for text_letter_spacing_offset workaround
+
+- **Code clarity** (#276)
+  - Improved comments for text justification and baseline alignment
+
+- **Project documentation** (#247, #246)
+  - Added community standards documentation
+  - Improved README structure and reduced duplication
+
+### Experimental Features
+
+The following features remain experimental and may have limitations:
+
+- **Text conversion** (enable_text=True, default): Requires matching fonts, may differ across renderers
+- **Text wrapping** (foreignObject mode): Only supported in browsers, not ResvgRasterizer
+- **Adjustment layers**: Do not work correctly with transparency in backdrop layers
+- **Arc warp**: Limited to horizontal orientation
+
+See [limitations.rst](https://psd2svg.readthedocs.io/en/latest/limitations.html) for complete details.
+
+### Internal
+
+- Fixed release asset exclusions (#245)
 
 ## [0.10.1] - 2025-12-19
 
@@ -225,6 +293,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Previous releases - see git history for details.
 
+[0.11.0]: https://github.com/kyamagu/psd2svg/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/kyamagu/psd2svg/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/kyamagu/psd2svg/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/kyamagu/psd2svg/compare/v0.8.0...v0.9.0
