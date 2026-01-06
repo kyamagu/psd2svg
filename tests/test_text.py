@@ -1083,7 +1083,7 @@ def test_foreignobject_paragraph_end_indent() -> None:
 def test_foreignobject_paragraph_space_before() -> None:
     """Test margin-top CSS property for space before paragraph.
 
-    The fixture has space_before=20px, font-size=32px, leading=0.01px (auto).
+    The fixture has space_before=20px, font-size=32px, auto-leading with offset=0.01px.
     With corrected auto-leading: line-height = font_size + leading = 32.01px
     Expected margin-top = space_before + compensation
                         = 20px + (-(32.01-32)/2)

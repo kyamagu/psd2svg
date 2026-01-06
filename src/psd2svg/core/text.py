@@ -45,6 +45,11 @@ from psd2svg.core.typesetting import (
 
 logger = logging.getLogger(__name__)
 
+# Threshold for negligible margin values (in pixels).
+# Sub-pixel values below this threshold don't meaningfully affect rendering
+# and are omitted to produce cleaner SVG output (avoiding "-0px" or "-0.005px").
+NEGLIGIBLE_MARGIN_THRESHOLD = 0.01
+
 
 def _needs_whitespace_preservation(text: str) -> bool:
     """Check if text needs whitespace preservation.
@@ -790,9 +795,8 @@ class TextConverter(ConverterProtocol):
         # Space before paragraph - combine with line-height compensation
         # If we have both space_before and compensation, add them together
         total_margin_top = paragraph.style.space_before + margin_top_compensation
-        # Only add margin-top if it's non-negligible (> 0.01px in absolute value)
-        # This avoids adding "-0px" or tiny values like "-0.005px"
-        if abs(total_margin_top) > 0.01:
+        # Only add margin-top if it exceeds the negligible threshold
+        if abs(total_margin_top) > NEGLIGIBLE_MARGIN_THRESHOLD:
             styles["margin-top"] = svg_utils.num2str_with_unit(total_margin_top)
 
         # Space after paragraph - overrides margin: 0
