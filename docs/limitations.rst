@@ -261,7 +261,7 @@ When ``enable_text=True`` (default), text layers are converted to native SVG ``<
 * Superscript and subscript with accurate positioning
 * Baseline shift for custom vertical positioning
 * Letter spacing (tracking)
-* Manual kerning adjustments
+* Kerning: Manual kerning adjustments (per-character pairs) and automatic metrics-based kerning (browser default)
 * Tsume (East Asian character tightening)
 * Ligatures (common ligatures and discretionary ligatures)
 * Line height (leading)
@@ -461,13 +461,32 @@ Given these complexities, the current implementation emits a clear warning rathe
 
 **Letter Spacing Differences:**
 
-Photoshop and SVG renderers may have slightly different default letter spacing and kerning behaviors:
+Photoshop and SVG use different kerning algorithms, which may result in slight letter spacing differences:
 
-* Photoshop uses optical kerning by default (AutoKern=true)
-* SVG renderers use font's built-in kerning tables without optical adjustments
-* Different text layout engines may have subtle spacing differences
+**Kerning Types:**
 
-To compensate for these differences, you can use the ``text_letter_spacing_offset`` parameter:
+* **Metrics kerning**: Uses the font's built-in kerning tables (kerning pairs)
+* **Optical kerning**: Adobe's proprietary visual analysis algorithm that adjusts spacing based on glyph shapes
+
+**Photoshop Behavior:**
+
+* Uses optical kerning by default when AutoKern is enabled (most common case)
+* Optical kerning analyzes character shapes and applies visual adjustments beyond font tables
+* Can also use metrics kerning or manual kerning when explicitly configured
+
+**SVG/Browser Behavior:**
+
+* Uses metrics kerning automatically via the CSS ``font-kerning: auto`` property (browser default)
+* Applies the font's built-in kerning tables without optical adjustments
+* Manual kerning adjustments from PSD files are preserved via SVG ``dx``/``dy`` attributes
+
+**Why They Differ:**
+
+Optical kerning is a proprietary Adobe algorithm that cannot be replicated in SVG. The difference between optical and metrics kerning is expected and inherent to the different rendering engines. Most fonts have well-designed kerning tables, so the visual difference is typically minimal.
+
+**Workaround:**
+
+To compensate for kerning differences, you can use the ``text_letter_spacing_offset`` parameter:
 
 .. code-block:: python
 
@@ -489,6 +508,18 @@ To compensate for these differences, you can use the ``text_letter_spacing_offse
    )
 
 The offset is in pixels and is added to all letter-spacing values. Typical values range from -0.02 to 0.02. You may need to experiment with different values depending on your fonts and target renderers.
+
+**Technical Notes:**
+
+* The ``auto_kerning`` property in PSD files indicates optical kerning mode
+* SVG 1.1: ``kerning="auto"`` attribute enables kerning (default)
+* SVG 2.0/CSS: ``font-kerning: auto`` property enables kerning (browser default)
+* Manual kerning from PSD is always preserved regardless of the kerning mode
+
+**References:**
+
+* `CSS font-kerning property <https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning>`_
+* `SVG Text Module <https://www.w3.org/TR/SVG2/text.html>`_
 
 Rasterized Text (Image Fallback)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
