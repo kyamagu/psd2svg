@@ -570,10 +570,7 @@ class TextConverter(ConverterProtocol):
             svg_utils.append_attribute(
                 tspan,
                 "transform",
-                "scale({},{})".format(
-                    transform_scale[0],
-                    transform_scale[1],
-                ),
+                f"scale({transform_scale[0]},{transform_scale[1]})",
             )
 
             # Set transform-origin to the paragraph's position
