@@ -71,6 +71,8 @@ class PaintConverter(ConverterProtocol):
             class_="stroke",
         )
         self.set_stroke(layer, use)
+        if layer.stroke.blend_mode != Enum.Normal:
+            self.set_blend_mode(layer.stroke.blend_mode, use)
 
     def set_fill(
         self, layer: layers.ShapeLayer | adjustments.FillLayer, node: ET.Element
@@ -199,7 +201,11 @@ class PaintConverter(ConverterProtocol):
             ]
             svg_utils.set_attribute(node, "stroke-dasharray", line_dash_set)
             svg_utils.set_attribute(node, "stroke-dashoffset", stroke.line_dash_offset)
-        # TODO: stroke blend mode?
+        # NOTE: Stroke blend mode is handled in apply_vector_stroke() for the <use>
+        # element. The strokeStyleBlendMode field exists in PSD format but is not
+        # settable via Photoshop UI (as of recent versions), so it typically remains
+        # Normal. The implementation supports it for future-proofing and compatibility
+        # with programmatically-generated PSD files.
 
     def add_gradient_definition(
         self, layer: layers.Layer, descriptor: Descriptor
