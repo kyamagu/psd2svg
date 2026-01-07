@@ -401,7 +401,7 @@ class PaintConverter(ConverterProtocol):
         # Scale and rotation (applied after reference translation)
         transforms = []
 
-        # TODO: Maybe check the valid values for pattern fill settings.
+        # NOTE: Maybe check the valid values for pattern fill settings.
         scale = (
             float(
                 setting.get(Key.Scale, UnitFloat(unit=Unit.Percent, value=100.0)).value

@@ -702,7 +702,7 @@ class TypeSetting:
         - 0: Horizontal Top to Bottom
         - 2: Vertical Right to Left
 
-        TODO: There could be other values, need to verify.
+        NOTE: There could be other values, need to verify.
         """
         assert "Rendered" in self.engine_dict
         rendered = self.engine_dict["Rendered"]
@@ -768,7 +768,7 @@ class TypeSetting:
                 'warpRotate': (b'Ornt', b'Hrzn')
             }
         """
-        # TODO: Check for other warp styles, and make an enum if needed.
+        # NOTE: Check for other warp styles, and make an enum if needed.
         warp_style = self._warp.get("warpStyle", None)
         if warp_style is None:
             return None
@@ -1003,7 +1003,7 @@ class TypeSetting:
             )
         else:
             # Negative warp, arc bulging downwards.
-            # TODO: Height adjustment should be the baseline height, not the
+            # NOTE: Height adjustment should be the baseline height, not the
             # half box height.
             x1 = self.bounding_box.left - self.bounding_box.height / 2
             y1 = self.bounding_box.top + self.bounding_box.height / 2

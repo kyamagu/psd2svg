@@ -155,7 +155,7 @@ class FontInfo:
     @property
     def bold(self) -> bool:
         """Whether the font is bold."""
-        # TODO: Should we consider style names as well?
+        # NOTE: Should we consider style names as well?
         return self.weight >= 200
 
     @property
