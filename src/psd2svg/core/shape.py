@@ -70,7 +70,7 @@ class ShapeConverter(ConverterProtocol):
             "clip-rule" if self.current.tag == "clipPath" else "fill-rule"
         )
 
-        # TODO: Use clipPath when possible.
+        # NOTE: Use clipPath when possible.
         # It's possible when all operations are Union (OR) or Intersect (AND).
 
         # Composite shape with multiple paths.

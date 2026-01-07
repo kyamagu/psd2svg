@@ -428,7 +428,7 @@ class LayerConverter(ConverterProtocol):
                 raise ValueError(
                     f"Failed to create clipping target for layer: '{layer.name}'"
                 )
-            # TODO: Maybe move clip-path or mask out of the outer mask container?
+            # NOTE: Maybe move clip-path or mask out of the outer mask container?
 
         if self.enable_class:
             svg_utils.append_attribute(target, "class", "clipping-base")

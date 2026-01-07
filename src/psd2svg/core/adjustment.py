@@ -1185,7 +1185,7 @@ class AdjustmentConverter(ConverterProtocol):
 
     def _wrap_backdrop(self, tag: str = "symbol", **attrib: str) -> ET.Element:
         """Wrap previous nodes into a container node for adjustment application."""
-        # TODO: Find the appropriate container in the clipping context,
+        # NOTE: Find the appropriate container in the clipping context,
         # as the parent is mask or clipPath.
         if self.current.tag == "clipPath" or self.current.tag == "mask":
             logger.warning(

@@ -296,7 +296,7 @@ class EffectConverter(ConverterProtocol):
         if float(effect.size) != 1.0:
             svg_utils.set_attribute(use, "stroke-width", float(effect.size))
 
-        # TODO: Check position, phase, and offset.
+        # NOTE: Check position, phase, and offset.
         if effect.position != Enum.CenteredFrame:
             position = Enum(effect.position)  # For validation.
             logger.info(
@@ -331,7 +331,7 @@ class EffectConverter(ConverterProtocol):
         """Add a drop shadow filter to the SVG document."""
         choke = float(effect.choke)
         size = float(effect.size)
-        # TODO: Adjust the width and height based on size.
+        # NOTE: Adjust the width and height based on size.
         filter = self.create_node(
             "filter",
             id=self.auto_id("dropshadow"),
@@ -401,12 +401,12 @@ class EffectConverter(ConverterProtocol):
         """Add an outer glow filter to the SVG document."""
         choke = float(effect.choke)
         size = float(effect.size)
-        # TODO: Adjust the width and height based on size.
+        # NOTE: Adjust the width and height based on size.
         filter = self.create_node(
             "filter",
             id=self.auto_id("outerglow"),
         )
-        # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
+        # NOTE: Adjust radius and stdDeviation, as the rendering quality differs.
         with self.set_current(filter):
             self.create_node(
                 "feMorphology",
@@ -884,12 +884,12 @@ class EffectConverter(ConverterProtocol):
                 logger.warning(f"Failed to extract gradient color for inner glow: {e}")
                 glow_color = "none"
 
-        # TODO: Adjust the width and height based on size.
+        # NOTE: Adjust the width and height based on size.
         filter = self.create_node(
             "filter",
             id=self.auto_id("innerglow"),
         )
-        # TODO: Adjust radius and stdDeviation, as the rendering quality differs.
+        # NOTE: Adjust radius and stdDeviation, as the rendering quality differs.
         with self.set_current(filter):
             self.create_node(
                 "feMorphology",
